@@ -8,6 +8,7 @@
 
 #include "game/FirstPersonDepth.h"
 #include "game/KeyScanCodes.h"
+#include "vr/AttackControl.h"
 #include "vr/ButtonBindings.h"
 #include "vr/HandInput.h"
 #include "vr/HandMode.h"
@@ -554,6 +555,20 @@ void TestPlanner() {
 	motion.rightGrip = true;
 	w = PlanHandControls(motion, 0.4f);
 	Check(w.grab, "the grip still grabs");
+
+	// The weapon away (vr::TriggerHeldBackAway): the trigger would only ready it.
+	HandFrameInput away;
+	away.rightValid = true;
+	away.leftValid = true;
+	away.rightTrigger = true;
+	away.leftTrigger = true;
+	away.weaponAway = true;
+	w = PlanHandControls(away, 0.4f);
+	Check(!w.attack, "the weapon away: the trigger does not press attack, which would draw it");
+	Check(w.cast, "the other hand's trigger still casts");
+	away.swingAttackHeld = true;
+	w = PlanHandControls(away, 0.4f);
+	Check(w.attack, "a swing's attack still held goes through");
 }
 
 void TestGamepadPlanner() {
@@ -3697,6 +3712,92 @@ void TestSwingPressesAttack() {
 	      "a grip closed, or the weapon away: never");
 }
 
+void TestTriggerHeldBackAway() {
+	std::printf("The trigger does not ready what is away\n");
+	const EquippedKind kinds[] = {EquippedKind::Nothing, EquippedKind::OneHand, EquippedKind::TwoHand, EquippedKind::Bow};
+	for (const EquippedKind kind : kinds) {
+		for (UInt32 mask = 0; mask < 4; ++mask) {
+			const bool fists = (mask & 1) != 0;
+			const bool holsters = (mask & 2) != 0;
+			Check(!TriggerHeldBackAway(WeaponSeen::Drawn, kind, fists, holsters),
+			      "drawn: the trigger is the weapon's (a bow's draw, a staff's bolt)");
+			Check(!TriggerHeldBackAway(WeaponSeen::Unknown, kind, fists, holsters),
+			      "the weapon's state unreadable: the trigger as before");
+		}
+	}
+	// A weapon in the slot, sheathed: it comes from its place or by the
+	// ready-weapon input, never by the trigger.
+	const EquippedKind weapons[] = {EquippedKind::OneHand, EquippedKind::TwoHand, EquippedKind::Bow};
+	for (const EquippedKind kind : weapons) {
+		for (UInt32 mask = 0; mask < 4; ++mask) {
+			Check(TriggerHeldBackAway(WeaponSeen::Sheathed, kind, (mask & 1) != 0, (mask & 2) != 0),
+			      "a sheathed weapon: the trigger does not draw it, whatever the settings");
+		}
+	}
+	// Nothing in the slot, the fists down.
+	Check(TriggerHeldBackAway(WeaponSeen::Sheathed, EquippedKind::Nothing, true, true),
+	      "bare hands, a fist can be made: the trigger does not raise them");
+	Check(TriggerHeldBackAway(WeaponSeen::Sheathed, EquippedKind::Nothing, true, false),
+	      "the same with the holsters off");
+	Check(TriggerHeldBackAway(WeaponSeen::Sheathed, EquippedKind::Nothing, false, false),
+	      "no fist to be made, holsters off: the ready-weapon input raises them, not the trigger");
+	Check(!TriggerHeldBackAway(WeaponSeen::Sheathed, EquippedKind::Nothing, false, true),
+	      "no fist to be made and the ready-weapon input the Rest menu's: the trigger still raises them");
+}
+
+// Through the mode: the weapon hand's trigger pulled with the weapon away (a
+// Quest 2 tester, 2026-11-25: the equipped weapon popped into the hand).
+void TestTriggerWithWeaponAway() {
+	std::printf("The trigger with the weapon away, through the mode\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	settings.archery.enabled = false;  // the bow's trigger draw, the vanilla way
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.dtSeconds = 0.011f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
+	frame.left.position = NiPoint3{-0.3f, -0.2f, -0.5f};
+	frame.right.trigger = 1.0f;
+
+	const EquippedKind weapons[] = {EquippedKind::OneHand, EquippedKind::TwoHand, EquippedKind::Bow};
+	for (const EquippedKind kind : weapons) {
+		frame.equipped = kind;
+		frame.weaponSeen = WeaponSeen::Sheathed;
+		HandMode sheathed;
+		HandModeResult r = sheathed.Update(frame, settings);
+		Check(!r.controls.attack, "sheathed: the trigger presses no attack");
+		r = sheathed.Update(frame, settings);
+		Check(!r.controls.attack, "nor on the frames after");
+	}
+	frame.equipped = EquippedKind::Bow;
+	frame.weaponSeen = WeaponSeen::Drawn;
+	HandMode drawn;
+	HandModeResult r = drawn.Update(frame, settings);
+	Check(r.controls.attack, "the bow drawn (the bow by hand off): the trigger draws the string, as before");
+
+	// Bare hands, the fists down. The frame gives no finger curls, so no fist
+	// can be made (FistVerdict::known false).
+	frame.equipped = EquippedKind::Nothing;
+	frame.weaponSeen = WeaponSeen::Sheathed;
+	settings.holster.enabled = true;
+	HandMode onlyWay;
+	r = onlyWay.Update(frame, settings);
+	Check(!r.fist.known && r.controls.attack,
+	      "no fingers read and the holsters on: the trigger is the only way to the fists, and keeps it");
+	settings.holster.enabled = false;
+	HandMode byInput;
+	r = byInput.Update(frame, settings);
+	Check(!r.controls.attack, "the holsters off: the ready-weapon input raises them, the trigger does not");
+	settings.holster.enabled = true;
+	frame.right.curlValid = true;
+	HandMode byFist;
+	r = byFist.Update(frame, settings);
+	Check(r.fist.known && !r.controls.attack, "the fingers read: a fist raises them, the trigger does not");
+}
+
 void TestRunToggle() {
 	std::printf("Run held or toggled\n");
 	bool latched = true;
@@ -4595,6 +4696,8 @@ int main() {
 	TestGrabReach();
 	TestReadyWeapon();
 	TestSwingPressesAttack();
+	TestTriggerHeldBackAway();
+	TestTriggerWithWeaponAway();
 	TestPowerDirection();
 	TestShieldBlock();
 	TestRunToggle();

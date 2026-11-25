@@ -1,0 +1,41 @@
+# The cast on a button (OBVR_Controls.ini [Buttons] Cast, vr/ButtonBindings.h;
+# a Quest 2 tester, 2026-11-19 and again 2026-11-25 with beta 9: "My left
+# trigger casts spells and cant be rebound even with ... Cast=LeftA"). Flare
+# (000A97DF) the active spell, the overlay's [Buttons] puts the cast on the
+# other hand's A. The other hand's trigger pulled twice casts nothing; its A
+# held and let go casts once. With a DLL that does not know the key (beta 9)
+# the trigger casts twice and the A never.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/cast-on-button.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Buttons Cast=LeftA
+console player.addspell 000A97DF
+console SetActiveSpell 000A97DF
+
+expect HandScript: finished
+expect Cast=LeftA
+expect Buttons: Cast from the left A
+count 1 Aim: the spell starts at the casting hand
+reject HandScript: WARNING
+
+wait 12
+right pos 0.25 -0.60 -0.10
+left pos -0.15 -0.30 -0.45
+left rot 0 0 0
+wait 1.5
+mark raised
+left trigger 1
+wait 0.6
+left trigger 0
+wait 2.5
+mark trigger_once
+left trigger 1
+wait 0.6
+left trigger 0
+wait 2.5
+mark trigger_twice
+left a 1
+wait 0.6
+left a 0
+wait 2.5
+mark button

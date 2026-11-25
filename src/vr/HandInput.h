@@ -715,6 +715,7 @@ struct HandFrameInput {
 	bool drawBlocked = false;      // the bow wants a reach-back first and has not had one
 	bool meleeByMotion = false;    // a swung weapon strikes by motion: the trigger does not attack
 	bool meleeInHand = false;      // a melee weapon or bare fists drawn: the trigger never attacks
+	bool weaponAway = false;       // the trigger would only ready what is away (vr::TriggerHeldBackAway)
 	bool menuMode = false;
 	// In a menu: it is a container's menu opened by reaching, under which
 	// the sticks still move the player (PlanHandControls).
@@ -796,7 +797,9 @@ inline HandControlsWanted PlanHandControls(const HandFrameInput& in, float stick
 		// trigger verbieten nun für alle waffen und ohne waffen da wir ja nun
 		// die motions haben"). The bow keeps its trigger draw for the vanilla
 		// way (archery by hand off); by hand its draw sets the attack itself.
-		out.attack = (in.rightTrigger && !in.drawBlocked && !in.meleeByMotion && !in.meleeInHand) ||
+		// With the weapon away the trigger readies nothing (vr/AttackControl.h).
+		out.attack = (in.rightTrigger && !in.drawBlocked && !in.meleeByMotion && !in.meleeInHand &&
+		              !in.weaponAway) ||
 		             in.swingAttackHeld;
 		out.turn = in.rightThumbX;
 	}
@@ -1836,31 +1839,6 @@ inline bool StepRunToggle(bool& latched, bool toggleMode, bool click, bool held)
 		latched = !latched;
 	}
 	return latched;
-}
-
-// Whether a swing presses the attack control. Not when the swung weapon
-// strikes by motion (the blade itself hits), and not with the weapon away:
-// the attack control readies a sheathed weapon (a player on the gamesas
-// forum, 2011: "if my weapon was sheathed, one left-click would draw
-// (ready) my weapon"), so a hand moved quickly to reach for or throw
-// something drew the fists (2026-09-25). Not while a grip is closed either:
-// that hand is holding or reaching, not striking.
-//
-// `strikeByMotion` means: the swung thing belongs to the strike by motion
-// (motionHits on, a melee weapon or the fists in hand) - whether this swing
-// may strike or not. An open hand with the fists up may not strike
-// (FistAllowsStrike), and it must not fall back to the attack control
-// either: that ran vanilla's hand-to-hand attack, its sound and its step
-// forward, for a hand waved through empty air (the tester, 2026-09-29: "wenn
-// ich die touch controller schwinge im leeren raum kommt ein h2h attacke
-// mit attack sound und mit ausfallschritt (nausea)"). SwingMayPressAttack
-// is what HandMode asks.
-inline bool SwingPressesAttack(bool strikeByMotion, bool weaponDrawn, bool gripHeld) {
-	return !strikeByMotion && weaponDrawn && !gripHeld;
-}
-
-inline bool SwingMayPressAttack(bool motionHits, bool meleeInHand, bool weaponDrawn, bool gripHeld) {
-	return SwingPressesAttack(motionHits && meleeInHand, weaponDrawn, gripHeld);
 }
 
 // ------------------------------------------------------------ Grab by reach

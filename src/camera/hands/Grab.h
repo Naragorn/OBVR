@@ -21,11 +21,13 @@
 
 #include "camera/hands/Handover.h"
 #include "camera/hands/HandStep.h"
+#include "game/AnchoredRef.h"
 #include "game/DropRotationLogic.h"
 #include "game/GrappleLogic.h"
 #include "game/InventoryGrabLogic.h"
 #include "game/NearbyItems.h"
 #include "game/PickHold.h"
+#include "game/StuckArrow.h"
 #include "game/TorchGrab.h"
 #include "game/WeaponGrab.h"
 #include "game/WeaponTimeline.h"
@@ -84,6 +86,11 @@ struct GrabState {
 	bool weaponTakeReadyClick = false;      // the draw's click, for the next frame's hand mode step
 	UInt32 weaponGrabLinesLeft = 60;
 	vr::GrabReachState grabReach;
+	// An arrow that sticks in the world, taken by the grip (game/StuckArrow.h),
+	// and whether the pick's thing may be carried at all (game/AnchoredRef.h).
+	game::ArrowTakeState arrowTake;
+	UInt32 arrowTakeLines = 20;
+	game::CarryMemo carryMemo;
 	bool grabReachPick = false;
 	bool grabKeyDown = false;
 	// The take's timeline (game/WeaponTimeline.h): from a pulled weapon's

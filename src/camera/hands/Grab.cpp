@@ -6,6 +6,7 @@
 #include "core/Log.h"
 #include "core/MathFns.h"
 #include "game/AimAtSource.h"
+#include "game/AnchoredRef.h"
 #include "game/CrosshairTarget.h"
 #include "game/DropRotationLogic.h"
 #include "game/GameAddresses.h"
@@ -18,6 +19,7 @@
 #include "game/QuickKeys.h"
 #include "game/ReachTargets.h"
 #include "game/Shove.h"
+#include "game/StuckArrow.h"
 #include "game/TakeItem.h"
 #include "game/WeaponDrawSpeed.h"
 #include "game/WeaponHang.h"
@@ -44,9 +46,11 @@ void SayPullRefusal(GrabState& state, const game::WeaponPullInput& pin, const ga
 	state.pullRefusalSaid = pin.heldRef != 0 && (state.pullRefusalSaid || refused);
 }
 
-// The grab key never on a living person (game::GrabMayTakeTarget): refused,
-// with a line the first frames of each such reach.
-bool GrabMayTake(const game::CrosshairTarget& target) {
+// The grab key never on a living person (game::GrabMayTakeTarget), and never
+// on a frame with parts hanging from it - a training dummy on its beam, a
+// hinged sign (game/AnchoredRef.h; asked once per thing and now and then, not
+// every frame): refused, with a line the first frames of each such reach.
+bool GrabMayTake(GrabState& state, const game::CrosshairTarget& target) {
 	const bool living = game::ActorStillLiving(reinterpret_cast<void*>(target.refAddress));
 	static UInt32 s_lines = 12;
 	static UInt32 s_lastRefused = 0;
@@ -56,7 +60,103 @@ bool GrabMayTake(const game::CrosshairTarget& target) {
 		         "of a living one by the grip)", target.refAddress);
 	}
 	s_lastRefused = living ? target.refAddress : 0;
-	return game::GrabMayTakeTarget(living);
+	if (!game::GrabMayTakeTarget(living)) {
+		return false;
+	}
+	const bool carried = game::MayCarryKept(state.carryMemo, target.refAddress, &game::RefMayBeCarried);
+	static UInt32 s_anchoredLines = 12;
+	static UInt32 s_lastAnchored = 0;
+	if (!carried && target.refAddress != s_lastAnchored && s_anchoredLines > 0) {
+		--s_anchoredLines;
+		const game::BodyCensus census = game::CensusBodiesOf(target.refAddress);
+		OBVR_LOG("Hands: grab - %08X under the hand (form type %02X) hangs from a fixed part, %u of its %u bodies "
+		         "fixed - the grab key stays up (a hand pushes it, a hold would put its frame in the hand)",
+		         target.refAddress, game::RefBaseFormType(target.refAddress), census.anchored, census.bodies);
+	}
+	s_lastAnchored = carried ? 0 : target.refAddress;
+	return carried;
+}
+
+// At a hand script's mark: the arrows of the player's cell and what each is
+// (game/StuckArrow.h), for the scenario that takes one.
+void SayArrowsAtMark(const game::NearItem& item) {
+	game::ArrowSeen arrows[8];
+	const UInt32 count = game::ArrowsOfPlayerCell(arrows, 8);
+	for (UInt32 i = 0; i < count; ++i) {
+		const game::ArrowRead arrow = game::ReadArrow(arrows[i].ref);
+		OBVR_LOG("Arrow take: at the mark arrow %08X (form %08X) at %.0f %.0f %.0f - state %u, hit record %s, kind %u: "
+		         "%s%s", arrows[i].ref, arrows[i].formId, static_cast<double>(arrows[i].position.x),
+		         static_cast<double>(arrows[i].position.y), static_cast<double>(arrows[i].position.z), arrow.state,
+		         arrow.haveImpact ? "there" : "none", arrow.kind,
+		         game::IsStuckArrow(arrow) ? "stuck, the grip takes it" : "not stuck, the grab holds it",
+		         item.valid && item.ref == arrows[i].ref ? " - the item at the hand" : "");
+	}
+}
+
+// An arrow that sticks in the world, at the gripping hand where the grip
+// would grab or pull an item: taken as the game's own activate takes it
+// (game/StuckArrow.h), once per closing of the grip. The pick's memory of
+// it goes with the take, since the activation deletes the reference.
+// Answers whether that hand grabs nothing now.
+bool TakeStuckArrow(GrabState& state, const HandStep& step, const vr::HandModeFrame& frame, GrabLinks& links,
+                    bool gripHeld, bool leftGrabs) {
+	const Config& config = step.config;
+	const float perMetre = config.tracker.unitsPerMetre;
+	const game::NearItem& item = links.nearItem;
+	game::ArrowTakeInput in;
+	in.gripHeld = gripHeld;
+	in.stuckInReach = gripHeld && item.valid && item.left == leftGrabs &&
+	                  game::GripTakes(item.distance, true, config.hands.grabReachMetres * perMetre,
+	                                  config.hands.pullReachMetres * perMetre) &&
+	                  game::IsStuckArrow(game::ReadArrow(item.ref));
+	in.free = step.active && !step.menuIsUp && frame.inWorld && !links.holsterFitting && !game::PlayerHoldsGrab() &&
+	          game::GrabbedRef() == 0 && !game::PlayerIsDead();
+	const game::ArrowTakeVerdict v = game::StepArrowTake(state.arrowTake, in);
+	if (test::HandScriptMarkedThisFrame()) {
+		SayArrowsAtMark(item);
+	}
+	if (v.takeNow) {
+		const UInt32 ref = item.ref;
+		const game::ArrowRead arrow = game::ReadArrow(ref);
+		const float distance = item.distance;
+		links.forgetTaken(ref);
+		const game::TakeResult taken = game::TakeIntoInventory(ref, nullptr);
+		if (taken == game::TakeResult::Taken) {
+			state.pickHold = game::PickHoldState{};
+			links.nearItem = game::NearItem{};
+		}
+		if (state.arrowTakeLines > 0) {
+			--state.arrowTakeLines;
+			OBVR_LOG("Arrow take: %08X %s where it stuck (state %u, in %s), %.1f units from the %s hand - %s",
+			         ref, taken == game::TakeResult::Taken ? "taken" : "NOT taken", arrow.state,
+			         arrow.kind == game::kArrowHitLand ? "the ground" : "a thing's body", static_cast<double>(distance),
+			         leftGrabs ? "other" : "weapon", game::TakeResultName(taken));
+		}
+	}
+	return v.blocksGrab;
+}
+
+// Whether the grab that just began is a pull of a weapon (game/WeaponGrab.h):
+// then the weapon is equipped the moment it arrives in the hand. And the
+// time since the grab key last went down.
+void NoteGrabKey(GrabState& state, bool key, UInt32 reachRef, bool leftGrabs, bool torches, float deltaSeconds) {
+	if (key && !state.keyWas) {
+		// Any weapon the weapon hand's grab takes - pulled from afar or
+		// touched on its blade - is equipped the moment it is in the hand:
+		// the pick's own choice can be empty in the frame the key goes
+		// down (the pick resets as the grip closes, 2026-10-24 07:54), so
+		// the key's target itself says what was taken.
+		state.weaponPullGrab = reachRef != 0 && game::RefWeaponType(reachRef) >= 0 && !leftGrabs;
+		// A torch the other hand's grab takes is equipped there the same way.
+		state.torchPullGrab = reachRef != 0 && leftGrabs && torches && game::RefIsTorch(reachRef);
+		state.weaponHoldLeft = leftGrabs;
+		state.sinceGrabKey = 0.0f;
+	} else if (!key) {
+		state.weaponPullGrab = false;
+		state.torchPullGrab = false;
+	}
+	state.keyWas = key;
+	state.sinceGrabKey += deltaSeconds == deltaSeconds && deltaSeconds > 0.0f ? deltaSeconds : 0.0f;
 }
 
 // Before the grab key can go down: Put it in its Place's toggled grab off,
@@ -216,9 +316,12 @@ const float grabUnits = handResult.grabDistanceMetres * config.tracker.unitsPerM
 const bool gripHeld =
 	active && !menuIsUp && handResult.grabWanted && !(links.grapple.actor != 0 && handResult.grabWithLeftHand);
 KeepModToggleOffBeforeKey(gripHeld || links.slapTapPressed);
+// A stuck arrow at the gripping hand is taken, not held (game/StuckArrow.h);
+// the hand that took one reads no pick below - the take deleted its reference.
+const bool arrowBlocksGrab = TakeStuckArrow(state, step, frame, links, gripHeld, handResult.grabWithLeftHand);
 bool inReach = false;
 UInt32 reachRef = 0;
-if (gripHeld && state.grabReachPick && shared.cyclopeanCameraValid) {
+if (gripHeld && !arrowBlocksGrab && state.grabReachPick && shared.cyclopeanCameraValid) {
 	const game::CrosshairTarget target = game::ReadCrosshairTarget();
 	const NiPoint3& offset =
 		handResult.grabWithLeftHand ? handResult.leftHandOffsetUnits : handResult.rightHandOffsetUnits;
@@ -231,11 +334,12 @@ if (gripHeld && state.grabReachPick && shared.cyclopeanCameraValid) {
 	// Within the grab's reach, or an item within the pull's, which then
 	// floats to the hand (game::GripTakes, game::HeldObject).
 	const float perMetre = config.tracker.unitsPerMetre;
-	inReach = target.haveRef && GrabMayTake(target) &&
+	inReach = target.haveRef &&
 	          game::GripTakes(
 	              math::Sqrt((hit - handWorld).LengthSquared()),
 	              game::IsHandItemType(game::RefBaseFormType(target.refAddress)),
-	              config.hands.grabReachMetres * perMetre, config.hands.pullReachMetres * perMetre);
+	              config.hands.grabReachMetres * perMetre, config.hands.pullReachMetres * perMetre) &&
+	          GrabMayTake(state, target);
 	reachRef = target.haveRef ? target.refAddress : 0;
 }
 // A weapon in the world, at its grip (game/WeaponGrab.h; free-weapons-spec
@@ -350,33 +454,14 @@ if (weaponChoice == game::WeaponGrabChoice::Equip || weaponChoice == game::Weapo
 }
 // The hold that took a weapon, still closed: no grab of anything else
 // until it opens (game::WeaponHoldBlocksGrab).
-if (game::WeaponHoldBlocksGrab(state.weaponHoldLatch) || game::WeaponHoldBlocksGrab(state.torchHoldLatch)) {
+if (game::WeaponHoldBlocksGrab(state.weaponHoldLatch) || game::WeaponHoldBlocksGrab(state.torchHoldLatch) ||
+    arrowBlocksGrab) {
 	inReach = false;
 	state.grabReach = vr::GrabReachState{};
 }
 const vr::GrabReachVerdict reach = vr::StepGrabReach(state.grabReach, gripHeld, inReach);
-// Whether the grab that just began is a pull of a weapon (game/WeaponGrab.h):
-// then the weapon is equipped the moment it arrives in the hand.
-{
-	if (reach.key && !state.keyWas) {
-		// Any weapon the weapon hand's grab takes - pulled from afar or
-		// touched on its blade - is equipped the moment it is in the hand:
-		// the pick's own choice can be empty in the frame the key goes
-		// down (the pick resets as the grip closes, 2026-10-24 07:54), so
-		// the key's target itself says what was taken.
-		state.weaponPullGrab = reachRef != 0 && game::RefWeaponType(reachRef) >= 0 && !handResult.grabWithLeftHand;
-		// A torch the other hand's grab takes is equipped there the same way.
-		state.torchPullGrab = reachRef != 0 && handResult.grabWithLeftHand && config.hands.weaponGrab.torches &&
-		                  game::RefIsTorch(reachRef);
-		state.weaponHoldLeft = handResult.grabWithLeftHand;
-		state.sinceGrabKey = 0.0f;
-	} else if (!reach.key) {
-		state.weaponPullGrab = false;
-		state.torchPullGrab = false;
-	}
-	state.keyWas = reach.key;
-	state.sinceGrabKey += links.deltaSeconds == links.deltaSeconds && links.deltaSeconds > 0.0f ? links.deltaSeconds : 0.0f;
-}
+NoteGrabKey(state, reach.key, reachRef, handResult.grabWithLeftHand, config.hands.weaponGrab.torches,
+            links.deltaSeconds);
 state.grabReachPick = reach.reachPick;
 state.grabKeyDown = reach.key;
 handResult.controls.grab = reach.key || links.slapTapPressed;

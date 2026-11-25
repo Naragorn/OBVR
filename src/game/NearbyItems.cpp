@@ -8,6 +8,7 @@
 #include "game/GameTypes.h"
 #include "game/HandBodies.h"
 #include "game/HandBodyLogic.h"
+#include "game/StuckArrow.h"
 #include "game/TorchGrab.h"
 
 namespace obvr::game {
@@ -611,6 +612,30 @@ UInt8 RefBaseFormType(UInt32 ref) {
 	const UInt32 base = Read(ref + addr::kRefBaseFormOffset);
 	return LooksLikeObject(base) ? *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset)
 	                             : 0;
+}
+
+UInt32 ArrowsOfPlayerCell(ArrowSeen* out, UInt32 max) {
+	const UInt32 player = Read(addr::kPlayerPointer);
+	const UInt32 cell = LooksLikeObject(player) ? Read(player + kRefParentCellOffset) : 0;
+	if (!LooksLikeObject(cell)) {
+		return 0;
+	}
+	UInt32 found = 0;
+	UInt32 entry = cell + kCellObjectListOffset;
+	for (UInt32 walked = 0; entry != 0 && walked < kMaxRefsPerFrame && found < max; ++walked) {
+		const UInt32 ref = Read(entry);
+		const UInt32 next = Read(entry + 4);
+		entry = LooksLikeObject(next) ? next : 0;
+		if (!LooksLikeObject(ref) || (Read(ref + kFormFlagsOffset) & kFormDeletedOrDisabled) != 0 ||
+		    !ReadArrow(ref).isArrow) {
+			continue;
+		}
+		out[found].ref = ref;
+		out[found].formId = Read(ref + addr::kFormIdOffset);
+		out[found].position = *reinterpret_cast<const NiPoint3*>(ref + addr::kRefPositionOffset);
+		++found;
+	}
+	return found;
 }
 
 NearItem FindNearestItem(const SearchHand& right, const SearchHand& left, float reachUnits,

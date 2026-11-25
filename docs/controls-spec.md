@@ -38,7 +38,7 @@ rows say it; button_bindings_test, hand_mode_test, native_settings_test.
 
 | Control | Right hand | Left hand |
 |---|---|---|
-| Trigger | attack (a bow draws while held); with a swung melee weapon the swing itself strikes | cast |
+| Trigger | attack with the weapon drawn (a bow draws while held, a staff fires); with a swung melee weapon the swing itself strikes; with the weapon away it does nothing (2026-11-25, below) | cast, unless Cast is on a button |
 | Grip | grab (holding objects, docs/holding-objects-spec.md); cancels a teleport aim; closed at the left hip: one-handed weapon, over the right shoulder: two-handed weapon or staff (4.1) | grab; closed behind the left shoulder: the bow (4.2) |
 | A | activate (what the right laser points at) | nothing |
 | B (menu button) | Escape | Tab (the menus) |
@@ -6182,3 +6182,49 @@ only - **nothing below has run in the game, the harness or a headset; the DLL wa
   before the fix did not crash in newgame-intro.txt either). That E is the same fault is derived:
   the same last steps, and an access violation in the render thread that FEX on the Frame does
   not hand on would leave the thread stopped as the watchdog says - not verified on ARM.
+
+## A tester's wishes and a bug, 2026-11-25 (Quest 2, beta 9)
+
+Discord, the morning of 2026-11-25, a Quest 2 tester on beta 9 (OBVR.dll of 2026-11-16): three
+wishes for the next build and one bug. The first two are the controls' and stand here; the
+arrows and the dummies are the hands' own and stand in docs/holding-objects-spec.md ("Arrows
+that stick", "Things with a fixed part").
+
+- **"Bindable action keys ... My left trigger casts spells and cant be rebound even with ...
+  Cast=LeftA"** - **built on 2026-11-19 (F above), not in beta 9.** Beta 9's source has no Cast
+  action: `git show ce777e9:src/vr/ButtonBindings.h` lists exactly the eleven actions the
+  tester names. Measured on Linux 2026-11-25 with the build of this day (headless, the
+  stand-in runtime): `cast-on-button.txt` with `[Buttons] Cast=LeftA` - the other hand's
+  trigger pulled twice casts nothing, its A held and let go casts once ("Buttons: Cast from
+  the left A", one "Aim: the spell starts at the casting hand"), PASS (20261125-112315-slot2).
+  Without the line (`cast-on-trigger-default.txt`, 20261125-112507-slot2, PASS) the same two
+  pulls cast twice and the A nothing. Beta 9's own DLL cannot run in this harness (it is older
+  than the stand-in runtime), so its side is the source and the tester's word, not a run.
+- **"Stop equipped weapon popping into hand when right trigger is pressed"** - **cause found,
+  fixed.** The weapon hand's trigger pressed the game's attack control whenever no swung
+  weapon and no fists were drawn (`vr::PlanHandControls`), and the attack control readies what
+  is away. On a Touch controller a fist is the grip and the trigger together, so the hand
+  closed to box drew the equipped weapon - and the fist's own way (4.3: a sheathed weapon is
+  taken off, the fists come up) never ran, because a fist round a drawn weapon is the hand on
+  its handle. **Fix:** with the weapon away the trigger is kept from the attack control
+  (`vr::TriggerHeldBackAway`, vr/AttackControl.h). What is away has its own way out: a weapon
+  from its place on the body (Holsters) or by the ready-weapon input (Holsters off), the
+  fists by a fist or by that input. One corner keeps the trigger: nothing equipped, no fist
+  to be made (Fists off, or a controller that reads no fingers) and Holsters on, where the
+  ready-weapon input opens the Rest menu - there nothing else would raise the fists. With the
+  weapon's state unreadable the trigger is as before. The trigger still draws the bow's
+  string (the bow by hand off) and fires a staff: those are drawn weapons. hand_mode_test
+  (`TestTriggerHeldBackAway`: every state, kind and setting; `TestTriggerWithWeaponAway`
+  through the mode; red without the line, 8 checks).
+  - **Measured** (Linux, headless, the stand-in runtime, `trigger-weapon-away.txt`: a sword
+    equipped and sheathed, the trigger held 1.5 s, then the trigger, the grip and the curled
+    fingers together). Before (main a9ff91a, OBVR.dll 32026f9e, 20261125-105303-slot4, FAIL):
+    half a second into the trigger the state line reads "weapon 2 (slot 1)" - the sword is
+    out; the fist then says "nothing to ready", and when the hand opens the weapon hold lets
+    the drawn sword fall ("Weapon hold: let go - dropped where the hand is"). After
+    (20261125-112315-slot3, PASS): "weapon 1 (slot 1)" through the trigger; the fist takes
+    the sheathed sword off and raises the fists ("weapon 2 (slot 0)"), the open hand lowers
+    them. Filmed both ways (the right eye, 5 s from the trigger's mark): before, the sword
+    appears in the hand as the trigger goes down; after, the hands stay empty.
+  - **Not done:** the headset. No setting brings the old way back - a player who drew by the
+    trigger reaches for the weapon now, or plays with Holsters off and the ready-weapon input.

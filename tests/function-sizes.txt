@@ -23,7 +23,7 @@ src/camera/hands/Archery.cpp	StepArchery	137
 src/camera/hands/ControlsOut.cpp	StepControlsOut	268
 src/camera/hands/Dismember.cpp	StepDismember	201
 src/camera/hands/Gestures.cpp	UpdateYield	104
-src/camera/hands/Grab.cpp	StepGrab	711
+src/camera/hands/Grab.cpp	StepGrab	696
 src/camera/hands/Handover.cpp	StepHandover	102
 src/camera/hands/Held.cpp	StepHeldObject	195
 src/camera/hands/Holster.cpp	StepHolsterReach	162
@@ -103,7 +103,6 @@ src/game/HandBodies.cpp	(file globals)	7
 src/game/HandBones.cpp	(file globals)	7
 src/game/HandControls.cpp	(file globals)	3
 src/game/HandGrip.cpp	(file globals)	3
-src/game/HeldObject.cpp	StepHeldObject	105
 src/game/HeldObject.cpp	(file globals)	4
 src/game/HitShader.cpp	(file globals)	4
 src/game/HolsterSlots.cpp	(file globals)	2
@@ -206,7 +205,7 @@ src/ui/ControlPhrase.h	ControlPieces	106
 src/ui/MenuPainter.cpp	PaintMenu#2	163
 src/ui/NativeControlsCard.h	ControlsCardFor	133
 src/vr/HandHud.h	(file lines)	1003
-src/vr/HandInput.h	(file lines)	2093
+src/vr/HandInput.h	(file lines)	2071
 src/vr/HandInput.h	StepLaserPress	106
 src/vr/HandMode.cpp	(file lines)	1373
 src/vr/HandMode.cpp	HandMode::Update	713

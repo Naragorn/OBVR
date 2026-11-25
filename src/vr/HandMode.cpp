@@ -4,6 +4,7 @@
 #include "core/MathFns.h"
 #include "core/Rotation.h"
 #include "game/MenuCursor.h"
+#include "vr/AttackControl.h"
 #include "vr/HeadOffset.h"
 #include "vr/QuickSaveChord.h"
 #include "vr/SheathReach.h"
@@ -781,6 +782,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.drawBlocked = s.gestures.bowNeedsReachBack && !m_reachArmed;
 	in.meleeByMotion = r.strikeByMotion;
 	in.meleeInHand = f.meleeHeld;
+	in.weaponAway = TriggerHeldBackAway(f.weaponSeen, f.equipped, r.fist.known, s.holster.enabled);
 	if (!in.rightTrigger && m_reachSpent) {
 		m_reachArmed = false;
 	}

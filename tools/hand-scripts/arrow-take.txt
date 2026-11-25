@@ -1,0 +1,80 @@
+# An arrow that sticks in the world, taken by the grip (game/StuckArrow.h; a
+# Quest 2 tester, 2026-11-25: "Arrows stuck in training targets / wood etc
+# cannot be recovered as they cannot be grabbed"). In the Chorrol Fighters
+# Guild's basement, a step before its chained doll (0001DB3F): the bow drawn
+# from behind the left shoulder, an arrow shot into the doll the vanilla way
+# (the weapon hand's trigger held and let go, the bow by hand off), the weapon
+# hand brought to the arrow and its grip closed. The arrow sticks in a hanging
+# part ("Arrow take: at the mark arrow ... state 2, hit record there, kind 1:
+# stuck"), the grip takes it ("taken where it stuck") and the cell has no
+# arrow left. Before the fix the grip put the grab key down, the engine's grab
+# refused the arrow's keyframed body ("the engine did NOT take it") and the
+# arrow stayed.
+# Where an arrow does not stick: shot into stone it bounces off and lies loose
+# (kind 3) - the harness save's floor, this basement's walls - and the grab
+# holds that one like any item.
+# The guild's members turn on the scripted player in this cell; the scenario
+# is over before that matters.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/arrow-take.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands BowByHand=0
+console-at settle CloseAllMenus
+console-at settle coc ChorrolFightersGuildBasement
+console-at cell player.moveto 0001DB3F 0 -70 0
+console-at cell player.setangle z 0
+console-at cell player.additem 00025231 1
+console-at cell player.equipitem 00025231
+console-at arrows player.additem 00017829 20
+console-at arrows_on player.equipitem 00017829
+
+expect HandScript: finished
+expect state 2, hit record there, kind 1: stuck, the grip takes it - the item at the hand
+count 1 taken where it stuck (state 2, in a thing's body)
+reject NOT taken where it stuck
+reject the engine did NOT take it
+reject HandScript: WARNING
+
+wait 14
+mark settle
+wait 22
+mark cell
+wait 5
+mark arrows
+wait 3
+mark arrows_on
+wait 8
+# The bow from behind the left shoulder, its hold kept closed (WeaponHold).
+left pos -0.18 -0.15 0.12
+wait 0.3
+left grip 1
+wait 0.2
+left pos -0.25 -0.30 -0.50
+wait 3
+mark bow_drawn
+right pos 0.20 -0.30 -0.40
+wait 0.5
+right trigger 1
+wait 2.0
+mark drawn
+right trigger 0
+wait 3
+mark shot
+wait 4
+mark moved
+right pos 0.00 -0.35 -0.55
+wait 1.0
+mark near
+right pos 0.00 -0.35 -0.75
+wait 1.0
+mark mid
+right pos 0.00 -0.35 -0.95
+wait 1.0
+mark far
+right grip 1
+wait 1.5
+mark gripped
+right grip 0
+wait 1.5
+mark open

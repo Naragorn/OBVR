@@ -1,0 +1,50 @@
+# The weapon hand's trigger with the weapon away (vr/AttackControl.h; a Quest 2
+# tester, 2026-11-25: "Stop equipped weapon popping into hand when right
+# trigger is pressed"). The sword equipped and sheathed, the trigger pulled a
+# second and a half: the attack key stays up and the sword stays at the hip.
+# Then a Touch controller's fist - the trigger and the grip pulled, the
+# fingers curled: the sheathed sword is taken off and the fists come up
+# (vr/Fist.h). Before the fix the trigger's attack drew the sword ("weapon 2
+# (slot 1)" in the state line, "attack key 1" in the items line), and the
+# fist was then the hand round it.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/trigger-weapon-away.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands Fists=1
+ini Hands Holsters=1
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+
+expect HandScript: finished
+expect weapon 1 (slot 1)
+reject weapon 2 (slot 1)
+reject attack key 1
+expect Fist: the weapon hand closed - the sheathed weapon taken off for the fists
+expect Fist: the slot is empty - fists up
+expect weapon 2 (slot 0)
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark sheathed
+right trigger 1
+wait 0.5
+mark trigger_held
+wait 1.0
+right trigger 0
+wait 2
+mark trigger_let_go
+
+# A Touch controller's fist: the trigger, the grip, the fingers curled.
+right trigger 1
+right grip 1
+right curl 1
+wait 3
+mark fist
+right trigger 0
+right grip 0
+right curl 0
+wait 1.5
+mark open

@@ -1,0 +1,38 @@
+# The cast as built, for comparison with cast-on-button.txt: no [Buttons]
+# Cast line. Flare (000A97DF) the active spell; the other hand's trigger
+# pulled twice casts twice, its A held and let go casts nothing.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/cast-on-trigger-default.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+
+console player.addspell 000A97DF
+console SetActiveSpell 000A97DF
+
+expect HandScript: finished
+
+
+count 2 Aim: the spell starts at the casting hand
+reject Buttons: Cast from
+reject HandScript: WARNING
+
+wait 12
+right pos 0.25 -0.60 -0.10
+left pos -0.15 -0.30 -0.45
+left rot 0 0 0
+wait 1.5
+mark raised
+left trigger 1
+wait 0.6
+left trigger 0
+wait 2.5
+mark trigger_once
+left trigger 1
+wait 0.6
+left trigger 0
+wait 2.5
+mark trigger_twice
+left a 1
+wait 0.6
+left a 0
+wait 2.5
+mark button

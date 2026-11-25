@@ -441,6 +441,32 @@ endif()
 add_test(NAME draw_hook_fast_path COMMAND draw_hook_fast_path_test)
 
 
+add_executable(stuck_arrow_test
+	StuckArrowTest.cpp
+)
+
+target_include_directories(stuck_arrow_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(stuck_arrow_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME stuck_arrow COMMAND stuck_arrow_test)
+
+
+add_executable(anchored_ref_test
+	AnchoredRefTest.cpp
+)
+
+target_include_directories(anchored_ref_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(anchored_ref_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME anchored_ref COMMAND anchored_ref_test)
+
+
 add_executable(bone_rebase_test
 	BoneRebaseTest.cpp
 )

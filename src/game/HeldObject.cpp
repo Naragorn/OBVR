@@ -2,6 +2,7 @@
 
 #include "core/AddressSpace.h"
 #include "core/Log.h"
+#include "game/AnchoredRef.h"
 #include "game/BonePin.h"
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
@@ -77,6 +78,21 @@ const HeldAttachment& TurnHeldWeapon(Hold& h, const NiMatrix33& handRot, const H
 	return h.attachment;
 }
 
+// A new hold, for the log: placed in the hand or left on the engine's spring, and why.
+void SayNewHold(UInt32 ref, UInt8 type, float radius, bool haveTouched, bool anchored, bool small) {
+	if (g_reportsLeft == 0) {
+		return;
+	}
+	--g_reportsLeft;
+	OBVR_LOG("Hands: holding %08X (form type %02X, bound radius %.1f units) - %s", ref, type,
+	         static_cast<double>(radius),
+	         g_hold.attached ? (haveTouched ? "in the hand as it lay, the marked side in the grip, turning with the wrist"
+	                                        : "in the hand as it lay, its middle in the grip, turning with the wrist")
+	         : anchored      ? "a fixed part under it: on the spring, its frame left where it stands"
+	         : small         ? "small, but no touched point: on the spring"
+	                         : "not small: on the spring");
+}
+
 }  // namespace
 
 void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveTouched,
@@ -108,7 +124,10 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 		const float radius = g_hold.node->worldBound.radius;
 		const bool small = IsSmallHeldObject(type, radius);
 		const NiTransform& world = g_hold.node->worldTransform;
-		if (AttachesInHand(attachAll, small, haveTouched)) {
+		// A frame with parts hanging from it (game/AnchoredRef.h) is not put in the
+		// hand: its root node is the frame. The engine's spring keeps the part it took.
+		const bool anchored = !RefMayBeCarried(ref);
+		if (!anchored && AttachesInHand(attachAll, small, haveTouched)) {
 			// Turned against the hand as it lay in the world when the grip
 			// closed; the side the marker showed - the point the pick touched -
 			// in the grip, the middle when there is no such point.
@@ -124,17 +143,7 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 			g_arrivedEvent = true;
 			g_arrivedRightHand = hand.rightHand;
 		}
-		if (g_reportsLeft > 0) {
-			--g_reportsLeft;
-			OBVR_LOG("Hands: holding %08X (form type %02X, bound radius %.1f units) - %s", ref,
-			         type, static_cast<double>(radius),
-			         g_hold.attached ? (haveTouched ? "in the hand as it lay, the marked side in "
-			                                          "the grip, turning with the wrist"
-			                                        : "in the hand as it lay, its middle in the "
-			                                          "grip, turning with the wrist")
-			         : small         ? "small, but no touched point: on the spring"
-			                         : "not small: on the spring");
-		}
+		SayNewHold(ref, type, radius, haveTouched, anchored, small);
 	}
 	if (!g_hold.attached || !LooksLikeObject(reinterpret_cast<UInt32>(g_hold.node))) {
 		return;

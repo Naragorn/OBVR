@@ -1026,6 +1026,136 @@ reports").** Two clashes, both fixed in OBVR, not yet seen in the game:
   toggle off whenever the grab key may go down (`game::PiiiPToggleGrabToTurnOff`) - a grip is a
   hold already. The clash this section foresaw above ("it would want to be switched off").
 
+## Arrows that stick (2026-11-25)
+
+A Quest 2 tester, 2026-11-25: "Arrows stuck in training targets / wood etc cannot be recovered as
+they cannot be grabbed, please make these grabbable so i can recover them as training then
+becomes a real big expense."
+
+- **What a shot arrow is** (read in the EXE; `../OBNG/knowledge/arrow-projectiles.md` has the
+  addresses). It stays an ArrowProjectile reference for its whole life, with the ammo as its
+  base form, in its cell's object list, with a scene node - so `game::FindNearestItem` finds it
+  like any item and the ring comes up on it. Its state is at +0x60 (0 flying, 1 hit this
+  frame, 2 at rest, 3 fading), what it hit in a record at +0x5C whose first word is the kind:
+  0 an actor, 1 another reference's body, 2 the land, 3 bounced off, 4 the flight ran out.
+  Stuck (kinds 1 and 2) its Havok body stays keyframed; bounced or run out (3 and 4) it is
+  dynamic clutter. On the land the Havok material decides (`0x0060BAC0`): the codes 0, 3, 5,
+  10, 11, 13, their stair kinds 15, 18, 20, 25, 26, 28, and 30 bounce it - by NifSkope's
+  nif.xml stone, glass, metal, heavy stone, heavy metal, chain and the elevator - every other
+  keeps it (cloth, dirt, grass, organic, wood, snow). A hit on another reference's body is
+  decided in `0x0060B120` (not read through).
+- **Why nothing took a stuck one.** The engine's grab refuses a keyframed body (motion type 6
+  at `0x0066D5EF`), so the grip's grab key went down for nothing; and the activate button is
+  kept from loose items (TakeOnlyByHand, `vr::ActivateWithheld`). Vanilla takes it by
+  activating it: the reference's activate to the ammo's to the player's pick-up (`0x004DD260`,
+  `0x004B28E0`, `0x00660910`) - the pick-up sound, one arrow into the inventory, the reference
+  gone, no owner asked. A loose arrow (kinds 3 and 4) was never the problem: the grab holds it
+  and the chest stows it.
+- **Built.** A grip closed with a stuck arrow at that hand - within the reach where it would
+  grab an item, or pull one (GrabReachMetres, PullReachMetres with the laser on it) - takes the
+  arrow the way the game's activate does (`game::TakeIntoInventory`), once per closing; the
+  hand that took one grabs nothing else until it opens (`game::StepArrowTake`,
+  game/StuckArrow.h; `TakeStuckArrow` in camera/hands/Grab.cpp). "Stuck" is: an
+  ArrowProjectile, at rest or fading, with a hit record of kind 1 or 2 (`game::IsStuckArrow`).
+  The log says "Arrow take: <ref> taken where it stuck (state, in the ground / a thing's
+  body), <distance> from the weapon / other hand". stuck_arrow_test: every state and kind,
+  one take per closing, a grip already closed, the take waiting while something is in the
+  grab.
+- **Measured** (Linux, headless, the stand-in runtime, `arrow-take.txt`: in the Chorrol
+  Fighters Guild's basement an arrow shot from a metre into the chained doll, the weapon hand
+  brought to it, the grip closed). The log lists every arrow of the cell at each mark ("Arrow
+  take: at the mark arrow ...").
+  - Before (main a9ff91a, OBVR.dll 32026f9e, 20261125-105735-slot3, FAIL): the ring's item is
+    the arrow, the crosshair is on it; "grab - right grip took 22E6DFB8 ..., key 5A down",
+    then "the engine did NOT take it"; after the hand opened the arrow is still the nearest
+    item, 11 units from the hand.
+  - After (20261125-112315-slot4, PASS): "state 2, hit record there, kind 1: stuck, the grip
+    takes it - the item at the hand", then "Arrow take: 2241E9C4 taken where it stuck (state
+    2, in a thing's body), 10.9 units from the weapon hand - taken"; at the next marks the
+    cell has no arrow and the hands' search finds nothing.
+  - The stuck arrow goes with the hanging part it is in: its position read 7 -462 -533,
+    6 -460 -532 and 6 -457 -534 at three marks of one run.
+  - Where it did not stick: shot level past the doll into the basement's stonework, steeply
+    into the harness save's stone floor, and into the ground of the meadow at Tamriel -13 21
+    it read state 2, kind 3 - bounced, lying loose - and the engine's grab held it ("Hands:
+    holding ... (form type 22 ...)") with the old build and the new alike. Which material the
+    meadow answered was not read.
+  - Not measured: an arrow in the land (kind 2; none of the shots made one), a fading one
+    (state 3), the other hand, the pull's reach beyond the hand, the headset.
+- **Left alone:** an arrow in a body (kind 0) - the hit already puts every second one into
+  that body's inventory (`iArrowInventoryChance`), a take of the reference would double it; a
+  flying one; a magic projectile (another class).
+- **Decided here, Nadi's to overrule:** the arrow goes straight into the inventory, as vanilla's
+  activate does, and is not first held in the hand. Freeing it into the hand (its body set
+  dynamic, as the engine's own bounce does) would be the Blade & Sorcery way: medium, an
+  engine write this does without.
+
+## Things with a fixed part (2026-11-25)
+
+The same tester: "Training dummies and some signs have a weird bug where they seem to give a
+connected beam of wood or iron that is a physics object, as if its part of the model and its
+breaking it. It feels terrible and the dummy is useless when it happens ... common with dummys."
+
+- **What they are** (read from Oblivion.esm and the meshes' Havok blocks): one reference of many
+  rigid bodies joined by constraints, a few of them fixed. ChainDoll01 (00000E06, a static):
+  23 bodies, 5 fixed (the root node's beam, two supports, two feet), 18 hanging on 20 ragdoll
+  constraints and a hinge. The arena's doll, the heavy bag, the heavy target and some fifty
+  hinged signs are built the same way, and so are the prison's chains and the hanging lamps.
+  329 meshes of the game have two or more bodies and a constraint - but 205 of them are items
+  whose bodies are all free (amulets, a cuirass on the ground), so "several bodies" is not the
+  test.
+- **Cause.** No fixed body turns loose. A fist is a closed grip, and a closed grip within the
+  grab's reach of anything not alive put the engine's grab key down (`GrabMayTake`). The
+  engine's grab takes one hanging part - vanilla then tugs it on its spring. OBVR's hold is
+  written for a thing of one free body: `game::StepHeldObject` puts the reference's **root
+  node** on the hand, the grab physics gives the grabbed body the player's group and, let go,
+  sets it to the root node's pose. On such a reference the root node is the frame: the beam
+  was drawn in the hand, and the part came back at the frame's place in the player's group,
+  where it no longer met the hands. Nadi's own Windows log of 2026-11-22 has the same chain on
+  statics ("holding 8A838A74 (form type 1C, bound radius 145.5) - in the hand as it lay").
+- **Fix.** A reference with a fixed or keyframed rigid body under its node and free ones
+  beside it - a frame with parts hanging from it - is anchored (`game::IsAnchoredThing`,
+  `game::RefMayBeCarried`, game/AnchoredRef.h; the walk asks each node's rigid body for its
+  motion type, an actor is exempt). The grip's grab key stays up on it: the hands' own
+  bodies push its parts, a fist punches it. Asked once per thing under the grip and again
+  every 15 frames (`game::MayCarryKept`), not every frame. A hold of such a thing begun another
+  way - the grab key itself - is left on the engine's spring, its frame where it stands
+  (`StepHeldObject`). anchored_ref_test: the census, what is carried, the answer kept.
+  - Only a frame with free parts beside it counts. A thing whose bodies are all fixed or
+    keyframed - the floor, a wall, a door - keeps the key as it was: the engine's grab refuses
+    it by itself, and the key has to go down there, because the pick through a hand at an item
+    on the floor often meets the floor first and the engine's own grab then takes the item.
+    The first cut of this fix kept the key up on every fixed body, and `weapon-pull.txt`
+    failed on it (2026-11-25, 20261125-105925-slot2: "the grab key stays up" on the floor, the
+    sword not pulled); with the rule as it is now it passes (20261125-110244-slot3).
+  - The walk tells a rigid body by the hands' own bodies' class (`game::HavokBodyOfNode`).
+    Without the hands' bodies it reads nothing and the grip is as before.
+- **Measured** (Linux, headless, the stand-in runtime, `dummy-fist.txt`: the Chorrol Fighters
+  Guild's ChainDoll01, reference 0001DB3F; the weapon hand at its hanging parts, the grip, the
+  trigger and the curled fingers closed together, the hand moved and opened, at three
+  depths).
+  - Before (main a9ff91a, OBVR.dll 32026f9e, 20261125-103843-slot2, FAIL): "grab - right grip
+    took 192219F0 ..., key 5A down", "Hands: holding 192219F0 (form type 1C, bound radius 168.2
+    units) - in the hand as it lay, the marked side in the grip, turning with the wrist", "its
+    filter 0126810A, group 294 -> the player's 9", "the engine TOOK it", and at the release
+    "placed where it was seen". Filmed (the grip alone, the hand moved 20 cm aside and back):
+    the whole doll comes to the hand and goes with it.
+  - After (20261125-112315-slot1, PASS): "grab - 192219F0 under the hand (form type 1C) hangs
+    from a fixed part, 5 of its 23 bodies fixed - the grab key stays up", no "Hands: holding".
+    The 5 of 23 are the mesh's numbers. Filmed: the doll stays hanging while the hand moves
+    through its place.
+  - Unchanged beside it, same build: weapon-grab, weapon-pull, pick-hold, holster-pull,
+    reach-open, door-grip-push, fist, grab-mod-toggle, bow-by-hand PASS. stow, take-only-by-hand
+    and fist-armed FAIL with the old build and the new alike (known since 2026-09-27 and
+    2026-10-11, docs/hand-script-harness.md).
+  - Not measured: a hinged sign, the arena's doll and bag, the prison's chains (the rule is
+    the same; none was run), a hold begun by the grab key itself, the headset - whether a fist
+    now punches the doll the way the tester liked it is theirs to say.
+- **Decided here, Nadi's to overrule:** such things can no longer be pulled by the grip, only
+  punched and pushed. Keeping vanilla's tug (the part on the engine's spring, nothing placed
+  in the hand) is possible and medium: the hand's body and the spring would then work against
+  each other at the palm, which wants a headset.
+
 ## Order
 
 Built first: 1, 2 and 4 (the tester's choice). Next: tune 1 and 2 in the

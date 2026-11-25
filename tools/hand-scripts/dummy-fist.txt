@@ -1,0 +1,86 @@
+# A fist at a training dummy (game/AnchoredRef.h; a Quest 2 tester,
+# 2026-11-25: "Training dummies and some signs ... seem to give a connected
+# beam of wood or iron that is a physics object, as if its part of the model
+# and its breaking it"). The Fighters Guild's chained doll (ChainDoll01,
+# 00000E06: 23 rigid bodies, 5 of them fixed - the beam, its supports and
+# feet) in the Chorrol Fighters Guild's basement (reference 0001DB3F); the
+# weapon hand at its hanging parts, the grip closed as a Touch controller's
+# fist closes it, moved a hand's breadth and opened, at three depths. The
+# grab key stays up: the doll hangs from a fixed part. Before the fix the
+# engine's grab took a hanging part and OBVR's hold put the doll's root node -
+# its frame - into the hand ("Hands: holding ... (form type 1C ...) - in the
+# hand as it lay").
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/dummy-fist.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands Fists=1
+console-at settle CloseAllMenus
+console-at settle coc ChorrolFightersGuildBasement
+console-at cell player.moveto 0001DB3F 0 -70 0
+console-at cell player.setangle z 0
+
+expect HandScript: finished
+expect hangs from a fixed part, 5 of its 23 bodies fixed
+expect the grab key stays up (a hand pushes it
+reject Hands: holding
+reject HandScript: WARNING
+
+wait 14
+mark settle
+wait 22
+mark cell
+wait 5
+head pitch -15
+right pos 0.05 -0.40 -0.30
+left pos -0.25 -0.60 -0.10
+wait 1.5
+mark before
+
+right pos 0.00 -0.35 -0.55
+wait 1.0
+mark near
+right grip 1
+right trigger 1
+right curl 1
+wait 1.0
+mark fist_near
+right pos 0.20 -0.30 -0.45
+wait 1.0
+mark moved_near
+right grip 0
+right trigger 0
+right curl 0
+wait 1.5
+
+right pos 0.00 -0.35 -0.75
+wait 1.0
+mark mid
+right grip 1
+right trigger 1
+right curl 1
+wait 1.0
+mark fist_mid
+right pos 0.20 -0.30 -0.65
+wait 1.0
+mark moved_mid
+right grip 0
+right trigger 0
+right curl 0
+wait 1.5
+
+right pos 0.00 -0.35 -0.95
+wait 1.0
+mark far
+right grip 1
+right trigger 1
+right curl 1
+wait 1.0
+mark fist_far
+right pos 0.20 -0.30 -0.85
+wait 1.0
+mark moved_far
+right grip 0
+right trigger 0
+right curl 0
+wait 2
+mark end
