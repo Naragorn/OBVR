@@ -1995,6 +1995,8 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
   unmirrored effects with the hand (a spell's glow) should now draw too - not filmed.
 - **2026-11-24, headset on Windows (Nadi; the DLL of 2026-11-23 12:23, 06601d8, before
   the mirror-cull fix; OBVR.log of 22:26).** Only the Akaviri Katana and the torch were tried.
+  Oblivion Walkers was loaded in that session (Mode 2, the dead rise; the Walkers session's
+  correction of 2026-11-25), not weighed in the reading below.
   - The hand goes to the handle after a handover, not where it held the weapon. [M] the
     four switches: three from the two-hand hold, the other hand 7.0, 7.5 and 8.1 units below
     the weapon hand's palm, one with the other hand closed 5.7 units off the handle's line.
@@ -2026,8 +2028,10 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
     back 0.159 % new (4 frames over 0.1 %) against 0.094 % old - the staff one frame off;
     the 1.2-1.3 % at 0.03 s of the bow, torch and shield films are the same old and new.
     [G] the engine sets the weapon in the new hand a few frames late; not read. The
-    headset's flicker is not reproduced in the harness (no SteamVR, no stereo). Evidence
-    page: https://claude.ai/artifact/Fd1Wc9NSEMsQCtLP8qGps3
+    headset's flicker is not reproduced in the harness (no SteamVR, no stereo). These runs
+    had Oblivion Walkers loaded (Mode 2), old and new alike: its DLL lay in both games from
+    2026-11-20 to 2026-11-25 09:13. Evidence page:
+    https://claude.ai/artifact/Fd1Wc9NSEMsQCtLP8qGps3
   - **Fixed 2026-11-25, harness only: the staff gliding 5.9 units along the hand at the
     hand-back.** [M] a trace of the six frames after each switch: the Weapon node as the
     engine left it at z 42.4, 42.4, 41.5, 40.3, 39.3, 38.2 against its idle 36.7, the palm
@@ -2043,7 +2047,7 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
     weapon). [M] after: the node at 36.7 on all six frames, the palm -25.4 on the switch's
     first frame, "held at its rest for 0.12 s after the action - the animation's way back
     came home". The handover scenarios now reject "OFF the hold" (the palm more than a unit
-    from the hold wanted).
+    from the hold wanted). Before and after ran with Oblivion Walkers loaded, alike.
   - **Fixed 2026-11-25, harness only: the co-save keeps the hold; headset open.** Before, the
     co-save kept the side ('OBWS') but not the hold, and the side switch a load makes was taken
     for a handover. [M] handover-cosave-hold.txt (new) with 66e2f29 (DLL b7645e28,
@@ -2060,7 +2064,8 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
     table's 1000 lines). [M] with the fix (DLL d0ab32a8, -091702-slot2, PASS): "into the
     co-save - 12.7 units below the grip of 0001C6CD", "the sides switched with the load - no
     handover", "after the load the weapon is held where it was saved", the palm -12.7 (wanted
-    -12.7) on the first frame and half a second on. handover-cosave and handover-two-hander PASS
+    -12.7) on the first frame and half a second on (Walkers no longer loaded, since 09:13).
+    handover-cosave and handover-two-hander PASS
     beside it (-091722-slot3, -091742-slot4); handover_hold_save_test covers the record, the
     read-back, the take after the load and the switch. Not run: the save loaded in a game
     started anew (the harness loads in the running game); an enchanted weapon made in the game
