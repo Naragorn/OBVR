@@ -83,7 +83,8 @@
 		+[](Config& c, float v) { c.hands.twoHand.slide = v != 0.0f; },
 	},
 	{
-		"Combat: features", "Make a fist to fight", "Bare-handed, clench a fist to raise your fists, open it to lower them",
+		"Combat: features", "Make a fist to fight",
+		"Bare-handed, clench a fist to raise your fists, open it to lower them. Not on Index: hold the trigger",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Fists",
 		+[](const Config& c) { return c.hands.fist.enabled ? 1.0f : 0.0f; },

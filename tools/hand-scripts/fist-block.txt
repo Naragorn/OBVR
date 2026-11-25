@@ -17,6 +17,8 @@ expect Hands: both fists are up - blocking
 expect Hands: the left hand is down - block released
 reject HandScript: WARNING
 
+# The scripted weapon hand is an Index: its fist is its fingers (vr::FistFingersOf).
+right index 1
 wait 20
 right curl 1
 wait 2

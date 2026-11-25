@@ -838,6 +838,19 @@ void TestControlsCard() {
   }
   Check(fits,"an Index's lines fit the card too");
   {
+   // The fist (2026-11-25): an Index makes it with its fingers, any other controller with the trigger.
+   const ControlsCardText indexPlaces=ControlsCardFor(ControlsCardPage::WeaponPlaces,leftHanded!=0,true);
+   const ControlsCardText touchPlaces=ControlsCardFor(ControlsCardPage::WeaponPlaces,leftHanded!=0,false);
+   bool indexFist=false, touchTrigger=false, touchFist=false;
+   for (UInt32 i=0;i<kControlsCardLines;++i) {
+    indexFist=indexFist || std::strcmp(indexPlaces.lines[i],"Make a fist to fight bare-handed.")==0;
+    touchTrigger=touchTrigger || std::strcmp(touchPlaces.lines[i],"Hold the trigger to fight bare-handed.")==0;
+    touchFist=touchFist || std::strstr(touchPlaces.lines[i],"Make a fist")!=nullptr;
+   }
+   Check(indexFist && touchTrigger && !touchFist,
+         "the fist on the card: a fist on an Index, the trigger held on any other controller");
+  }
+  {
    const ControlsCardText stick=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,false);
    const ControlsCardText swing=ControlsCardFor(ControlsCardPage::OtherButtons,leftHanded!=0,false,true);
    const ControlsCardText ringsStick=ControlsCardFor(ControlsCardPage::BothHands,leftHanded!=0,false,false);

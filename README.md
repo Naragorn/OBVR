@@ -60,7 +60,7 @@ You find the same list in the game: settings menu, Help, "Show the controls".
 
 | | Right hand (weapon) | Left hand |
 | --- | --- | --- |
-| Trigger | bow: hold to draw, let go to shoot | cast your spell |
+| Trigger | bow: hold to draw, let go to shoot. Bare-handed on Quest: hold to raise your fists | cast your spell |
 | Grip | at your hip or behind your shoulder: take out or put away a weapon. On an item: hold it | grab an item. At your hip or shoulder: take the bow, shield or torch |
 | Swing | hit with your weapon. A long, fast swing is a power attack | punch |
 | Raise your hand | - | with a shield: block |
@@ -75,6 +75,9 @@ More tips:
 
 - **Picking up items:** hold the item with the grip and bring it to your chest,
   or reach for it and press A.
+- **Fists:** with no weapon out, make a fist to raise your fists and open your
+  hand to lower them. On Quest and other controllers that are not Index, hold
+  the trigger instead; while you hold it, that hand's grip grabs nothing.
 - **Give up a fight (yield):** raise both open hands, palms to the enemy, and
   move them gently left and right for a second.
 - **Holsters:** you have four places on your body, both hips and behind both

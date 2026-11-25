@@ -301,12 +301,104 @@ void TestFingersRead() {
 	}
 }
 
+// A controller's hand as the backend reads it.
+HandPose Controller(ControllerKind kind, float trigger, float fingers, bool curlValid = true) {
+	HandPose p;
+	p.valid = true;
+	p.kind = kind;
+	p.trigger = trigger;
+	p.curlValid = curlValid;
+	p.curl[0] = 0.3f;
+	for (int f = 1; f < 5; ++f) {
+		p.curl[f] = fingers;
+	}
+	return p;
+}
+
+// On a controller that is not an Index the fist is the trigger (Nadi,
+// 2026-11-25): the trigger stands for all the fingers, the grip has no part.
+void TestFistFingersOf() {
+	std::printf("The fingers the fist goes by\n");
+	FistInput in;
+	FistFingersOf(in, Controller(ControllerKind::Index, 1.0f, 0.2f));
+	Check(!in.byTrigger && in.curlValid && in.curl[1] == 0.2f && in.curl[4] == 0.2f && in.curl[0] == 0.3f,
+	      "an Index: its fingers, the trigger not among them");
+	FistFingersOf(in, Controller(ControllerKind::Index, 1.0f, 1.0f, false));
+	Check(!in.curlValid, "an Index without a skeleton: no curls");
+	FistFingersOf(in, Controller(ControllerKind::Unknown, 1.0f, 0.2f));
+	Check(!in.byTrigger && in.curl[2] == 0.2f, "a controller of unknown kind: its fingers, as before");
+	FistFingersOf(in, Controller(ControllerKind::Other, 0.95f, 1.0f));
+	Check(in.byTrigger && in.curlValid && in.curl[0] == 0.95f && in.curl[1] == 0.95f && in.curl[4] == 0.95f,
+	      "a Touch: the trigger for every finger, the grip's fingers not read");
+	FistFingersOf(in, Controller(ControllerKind::Other, 0.0f, 1.0f));
+	Check(in.byTrigger && in.curl[2] == 0.0f, "a Touch with the grip squeezed and the trigger let go: an open hand");
+	FistFingersOf(in, Controller(ControllerKind::Other, 0.9f, 0.0f, false));
+	Check(in.curlValid, "a controller with no skeleton at all (a Vive wand): the trigger still makes the fist");
+	HandPose lost = Controller(ControllerKind::Other, 1.0f, 1.0f);
+	lost.valid = false;
+	FistFingersOf(in, lost);
+	Check(!in.curlValid, "a controller not tracked: nothing");
+
+	// Through the fist: the trigger held closes it, let go opens it; the verdict says by what.
+	const FistSettings settings;
+	FistState s;
+	FistInput touch = Hand(0.0f);
+	FistFingersOf(touch, Controller(ControllerKind::Other, 1.0f, 0.0f));
+	touch.read = nullptr;
+	FistVerdict v = Hold(s, touch, 3, settings);
+	Check(v.closed && v.byTrigger && v.readyClick, "the trigger held a quarter second: the fist, the fists up");
+	touch.seen = WeaponSeen::Drawn;  // the fists up
+	FistFingersOf(touch, Controller(ControllerKind::Other, 0.6f, 1.0f));
+	v = Hold(s, touch, 5, settings);
+	Check(v.closed, "the trigger eased to 0.6 with the grip squeezed: still the fist (the open limit is 0.35)");
+	FistFingersOf(touch, Controller(ControllerKind::Other, 0.1f, 1.0f));
+	v = Hold(s, touch, 3, settings);
+	Check(!v.closed && v.readyClick, "the trigger let go, the grip still squeezed: open, the fists down");
+}
+
+// The weapon hand's grip kept from the grab while that hand is a trigger fist.
+void TestFistKeepsGripFromGrab() {
+	std::printf("The grip of a trigger fist grabs nothing\n");
+	const FistSettings settings;
+	FistVerdict touch;
+	touch.byTrigger = true;
+	FistVerdict index;
+	const WeaponSeen sheathed = WeaponSeen::Sheathed;
+	const EquippedKind nothing = EquippedKind::Nothing;
+	Check(!FistKeepsGripFromGrab(touch, 0.0f, settings, false, sheathed, nothing),
+	      "a Touch, the trigger let go and no fist: the grip grabs");
+	Check(FistKeepsGripFromGrab(touch, 0.95f, settings, false, sheathed, nothing),
+	      "the trigger held: kept at once, before the fist's quarter second");
+	Check(!FistKeepsGripFromGrab(touch, 0.85f, settings, false, sheathed, nothing),
+	      "the trigger short of the close limit: the grip grabs");
+	touch.closed = true;
+	Check(FistKeepsGripFromGrab(touch, 0.5f, settings, false, sheathed, nothing),
+	      "the fist still closed while the trigger eases off: kept");
+	Check(FistKeepsGripFromGrab(touch, 0.95f, settings, false, WeaponSeen::Drawn, nothing), "the fists up: kept");
+	Check(FistKeepsGripFromGrab(touch, 0.95f, settings, false, sheathed, EquippedKind::OneHand),
+	      "a weapon sheathed, the fist taking it off: kept");
+	Check(!FistKeepsGripFromGrab(touch, 0.95f, settings, true, sheathed, nothing),
+	      "the hand already holding something: the grab keeps it");
+	Check(!FistKeepsGripFromGrab(touch, 0.95f, settings, false, WeaponSeen::Drawn, EquippedKind::OneHand),
+	      "a sword drawn in that hand: no fist, the grip as ever");
+	Check(!FistKeepsGripFromGrab(touch, 0.95f, settings, false, WeaponSeen::Drawn, EquippedKind::Bow),
+	      "a bow drawn: the trigger is the arrow's, the grip as ever");
+	FistSettings off;
+	off.enabled = false;
+	Check(!FistKeepsGripFromGrab(touch, 0.95f, off, false, sheathed, nothing), "the fists off: the grip as ever");
+	index.closed = true;
+	Check(!FistKeepsGripFromGrab(index, 1.0f, settings, false, sheathed, nothing),
+	      "an Index fist: its grip as ever - a squeeze there is a grab");
+}
+
 }  // namespace
 
 int main() {
 	TestFist();
 	TestLimits();
 	TestFingersRead();
+	TestFistFingersOf();
+	TestFistKeepsGripFromGrab();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

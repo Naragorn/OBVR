@@ -28,6 +28,34 @@ namespace {
 
 constexpr float kHolsterHintSeconds = 2.5f;
 
+// What the weapon hand's fist did this frame (vr/Fist.h), for the log: closed
+// or opened - by its trigger on a controller that is not an Index - and what
+// that readied; and the first frame of each closing whose grip it kept from
+// the grab (vr::FistKeepsGripFromGrab).
+void SayFist(HolsterState& state, const vr::FistVerdict& fist, bool unequipped) {
+	if ((fist.changed || fist.gaveUp) && state.linesLeft > 0) {
+		--state.linesLeft;
+		if (fist.gaveUp) {
+			OBVR_LOG("Fist: the weapon never left the slot - fists given up");
+		} else {
+			OBVR_LOG("Fist: the weapon hand %s%s", !fist.closed ? "opened" : fist.byTrigger ? "closed by its trigger" : "closed",
+			         fist.unequip ? (unequipped ? " - the sheathed weapon taken off for the fists"
+			                                    : " - the sheathed weapon could NOT be taken off")
+			         : fist.readyClick ? (fist.closed ? " - fists up" : " - fists down")
+			                           : " - nothing to ready");
+		}
+	}
+	if (fist.readyClick && !fist.changed && state.linesLeft > 0) {
+		--state.linesLeft;
+		OBVR_LOG("Fist: the slot is empty - fists up");
+	}
+	if (fist.keepsGrip && !state.fistKeptGrip && state.fistGripLinesLeft > 0) {
+		--state.fistGripLinesLeft;
+		OBVR_LOG("Fist: the weapon hand's grip kept from the grab - that hand is a fist by its trigger");
+	}
+	state.fistKeptGrip = fist.keepsGrip;
+}
+
 }  // namespace
 
 void StepHolsterReach(HolsterState& state, const HandShared& shared, const vr::HandModeFrame& frame,
@@ -125,25 +153,7 @@ void StepHolsterReach(HolsterState& state, const HandShared& shared, const vr::H
 			places[at] = 0;
 		}
 	}
-	const bool unequipped = hand.fist.unequip && game::UnequipWeapon();
-	if ((hand.fist.changed || hand.fist.gaveUp) && state.linesLeft > 0) {
-		--state.linesLeft;
-		if (hand.fist.gaveUp) {
-			OBVR_LOG("Fist: the weapon never left the slot - fists given up");
-		} else {
-			OBVR_LOG("Fist: the weapon hand %s%s", hand.fist.closed ? "closed" : "opened",
-			         hand.fist.unequip
-			             ? (unequipped ? " - the sheathed weapon taken off for the fists"
-			                           : " - the sheathed weapon could NOT be taken off")
-			         : hand.fist.readyClick
-			             ? (hand.fist.closed ? " - fists up" : " - fists down")
-			             : " - nothing to ready");
-		}
-	}
-	if (hand.fist.readyClick && !hand.fist.changed && state.linesLeft > 0) {
-		--state.linesLeft;
-		OBVR_LOG("Fist: the slot is empty - fists up");
-	}
+	SayFist(state, hand.fist, hand.fist.unequip && game::UnequipWeapon());
 	// A grip that closed at no place: where the hand was and how far from
 	// the nearest place, for a reach that found nothing (Nadi,
 	// left-handed, 2026-10-20: "waffe ziehen mit links nicht" - his log

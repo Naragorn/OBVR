@@ -1,0 +1,56 @@
+# The fist on a controller that is not an Index (vr/Fist.h FistFingersOf and
+# FistKeepsGripFromGrab; Nadi, 2026-11-25: "trigger gehalten zählt bei quest
+# als faust rdy. loslassen faust weg"). The scripted weapon hand is no Index,
+# as a Touch is not. An apple dropped at the feet, the hand brought down to
+# it. First the trigger and the grip together, a Touch fist: the fist by the
+# trigger takes the harness save's sheathed sword off and raises the fists,
+# and the grip at the apple grabs nothing. Then the trigger let go, the grip
+# still closed: the fists go down and the grip takes the apple. Before, a
+# Touch fist was the grip squeezed with the trigger, and the grip grabbed
+# whatever the fist met (a Quest 2 tester's log of 2026-11-19: "grab - right
+# grip took ... key 5A down" and "Fist: the weapon hand closed" together) -
+# the build before the fix takes the apple into the fist at the first mark.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/fist-touch.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands Fists=1
+ini Hands StowAtBody=0
+ini Hands EatAtMouth=0
+ini Hands PushPeople=0
+console-at settle CloseAllMenus
+console player.additem 0003365D 1
+console player.drop 0003365D 1
+
+expect HandScript: finished
+expect Fist: the weapon hand closed by its trigger - the sheathed weapon taken off for the fists
+expect Fist: the slot is empty - fists up
+expect Fist: the weapon hand's grip kept from the grab - that hand is a fist by its trigger
+expect Fist: the weapon hand opened - fists down
+count 1 grip took
+expect Hands: holding
+reject HandScript: WARNING
+
+wait 15
+mark settle
+wait 1
+head pitch -50
+right pos 0.00 -1.22 -0.73
+right rot -80 0 0
+wait 1.5
+mark near
+# A Touch fist: the trigger and the grip - and the fingers as SteamVR reads
+# them from those two on a Touch (the index from the trigger, the other three
+# from the grip), so the build before the fix makes its fist here too.
+right trigger 1
+right grip 1
+right curl 1
+wait 3
+mark fist
+# Let go of the trigger, the grip still closed (the three fingers on it stay
+# curled; the script has one curl for all five, so it stays at 1).
+right trigger 0
+wait 3
+mark grip_only
+right grip 0
+wait 1.5
+mark open

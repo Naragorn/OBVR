@@ -23,6 +23,8 @@ ini Debug EyeDump=1
 # Both hands open at the start (curl 0); the sword hand closes round the
 # controller on the draw, the shield hand round the strap - each counted as
 # holding, not asked to open.
+# The scripted weapon hand is an Index: its fist is its fingers (vr::FistFingersOf).
+right index 1
 right curl 0
 left curl 0
 console-at ready CloseAllMenus

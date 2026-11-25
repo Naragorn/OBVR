@@ -30,6 +30,8 @@ namespace obvr::camera::hands {
 struct HolsterState {
 	UInt32 draws = 0;                // reaches that drew a weapon, for the hints (camera/hands/Hints.h)
 	UInt32 linesLeft = 30;          // the reaches', the fists' and the kept-at-no-place lines
+	bool fistKeptGrip = false;      // the weapon hand's trigger fist kept its grip from the grab last frame
+	UInt32 fistGripLinesLeft = 20;
 	UInt32 offHandLinesLeft = 40;   // the other hand's shield and torch at a place
 	// The grips that closed at no place (HolsterVerdict::rightMissed): their
 	// own budget, so a session of misses does not spend the reaches' lines.

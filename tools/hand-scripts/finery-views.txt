@@ -25,6 +25,8 @@ expect a world frame while the game loads
 expect Body tree
 reject HandScript: WARNING
 
+# The scripted weapon hand is an Index: its fist is its fingers (vr::FistFingersOf).
+right index 1
 wait 12
 mark ready
 wait 6

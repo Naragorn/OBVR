@@ -32,6 +32,8 @@ expect Body tree: 13             NiNode@@ "RightRing  (00038015)"
 expect Body IK: the body's "RightRing  (00038015)" (on "Bip01 R Finger1") hidden while an arm follows its hand
 reject HandScript: WARNING
 
+# The scripted weapon hand is an Index: its fist is its fingers (vr::FistFingersOf).
+right index 1
 wait 12
 mark ready
 wait 16

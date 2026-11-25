@@ -63,7 +63,7 @@ Combat: features|Toggle grip|Grip once to keep your weapon in hand, grip again t
 Combat: features|Two hands on two-handers|Grab a two-hander's handle with your other hand too|Hands|TwoHandGrip|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Two hands on one-handers|Grab one-handed weapons with both hands too|Hands|TwoHandOneHanders|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Slide your grip|With both hands on, hold the other trigger to slide that hand along the handle|Hands|TwoHandSlide|||0|0|1|1|0|0|1|1|1|0|0|RW
-Combat: features|Make a fist to fight|Bare-handed, clench a fist to raise your fists, open it to lower them|Hands|Fists|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Make a fist to fight|Bare-handed, clench a fist to raise your fists, open it to lower them. Not on Index: hold the trigger|Hands|Fists|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Pommel strikes|Ram the pommel into someone to make them stagger. Hit hard and they fall|Hands|PommelStrikes|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Half-swording|Grab a big sword by the blade with your other hand|Hands|HalfSwording|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Half-sword with both hands|Your sword hand can let go of the handle and grab the blade too|Hands|HalfSwordRightHand|||0|0|1|1|0|0|1|1|1|0|0|RW

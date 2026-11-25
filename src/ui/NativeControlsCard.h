@@ -163,6 +163,26 @@ inline void ControlsCardBindingLines(ControlsCardPage page, bool kick, const vr:
 	}
 }
 
+// The weapon places' page: the fist made with the fingers on an Index, with
+// the trigger on any other controller (vr::FistFingersOf, 2026-11-25).
+inline const char* const* ControlsCardPlacesLines(bool index) {
+	static const char* const fingers[kControlsCardLines] = {
+		"Grab at your hip to draw or sheathe a one-hander.",
+		"Grab over your shoulder for two-handers and staffs.",
+		"Swing to hit. Big, fast swings hit harder.",
+		"Make a fist to fight bare-handed.",
+		"Hold a two-hander with both hands.",
+	};
+	static const char* const trigger[kControlsCardLines] = {
+		"Grab at your hip to draw or sheathe a one-hander.",
+		"Grab over your shoulder for two-handers and staffs.",
+		"Swing to hit. Big, fast swings hit harder.",
+		"Hold the trigger to fight bare-handed.",
+		"Hold a two-hander with both hands.",
+	};
+	return index ? fingers : trigger;
+}
+
 // `index`: Index controllers, whose rings open on the trackpads held.
 // armSwing: running by swung arms ([Hands] ArmSwingRun) instead of the left
 // stick pushed in - the card says the one that is set. kick: [Hands] Kick, the
@@ -199,14 +219,7 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 	}
 	case ControlsCardPage::WeaponPlaces: {
 		t.title = "Drawing weapons 2/5";
-		static const char* const l[kControlsCardLines] = {
-			"Grab at your hip to draw or sheathe a one-hander.",
-			"Grab over your shoulder for two-handers and staffs.",
-			"Swing to hit. Big, fast swings hit harder.",
-			"Make a fist to fight bare-handed.",
-			"Hold a two-hander with both hands.",
-		};
-		lines = l;
+		lines = ControlsCardPlacesLines(index);
 		break;
 	}
 	case ControlsCardPage::OtherButtons: {

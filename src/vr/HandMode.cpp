@@ -376,10 +376,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	{
 		FistInput fin;
 		fin.allowed = !f.menuMode && f.inWorld;
-		fin.curlValid = f.right.valid && f.right.curlValid;
-		for (int finger = 0; finger < 5; ++finger) {
-			fin.curl[finger] = f.right.curl[finger];
-		}
+		FistFingersOf(fin, f.right);  // the fingers on an Index, the trigger on any other controller
 		// Holding something, or the grip the holster's (from the last frame:
 		// the holster steps later, and a fist has to hold a quarter second).
 		fin.busy = f.holdingObject || m_holster.rightClaimed;
@@ -603,8 +600,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		in.leftGrip = in.leftGrip && !r.holster.leftClaimed;
 	}
 	// A left grip on a weapon's handle neither grabs nor does anything else a
-	// grip does.
+	// grip does; nor does the weapon hand's grip while that hand is a fist made with the trigger.
 	in.leftGrip = in.leftGrip && !f.leftGripOnHandle;
+	r.fist.keepsGrip = FistKeepsGripFromGrab(r.fist, cr.trigger, s.fist, f.holdingObject, f.weaponSeen, f.equipped);
+	in.rightGrip = in.rightGrip && !r.fist.keepsGrip;
 	// The bow by hand (vr::StepArchery): the weapon hand's grip at the quiver
 	// takes an arrow, and from then on the grip is the arrow's.
 	const bool bowDrawn = f.inWorld && !f.menuMode && f.equipped == EquippedKind::Bow &&
@@ -891,7 +890,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	r.grabWanted = r.controls.grab;
 	// Use whichever hand is grabbing for distance - right grip takes priority
 	// when both are down (rare, but gives deterministic behaviour).
-	const bool grabRight = f.grabHand == 0 || (f.grabHand < 0 && f.right.valid && GripDown(f.right.buttonsPressed));
+	const bool grabRight =
+		f.grabHand == 0 || (f.grabHand < 0 && f.right.valid && GripDown(f.right.buttonsPressed) && !r.fist.keepsGrip);
 	const bool grabLeft = f.grabHand == 1 || (f.grabHand < 0 && f.left.valid && GripDown(f.left.buttonsPressed));
 	if (grabRight && f.right.valid) {
 		r.grabDistanceMetres = math::Sqrt(rightRelative.LengthSquared());

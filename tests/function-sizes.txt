@@ -203,7 +203,7 @@ src/test/WaterVRTestRuntime.cpp	ObserveWaterVREye	138
 src/test/WaterVRTestRuntime.cpp	(file globals)	21
 src/ui/ControlPhrase.h	ControlPieces	106
 src/ui/MenuPainter.cpp	PaintMenu#2	163
-src/ui/NativeControlsCard.h	ControlsCardFor	133
+src/ui/NativeControlsCard.h	ControlsCardFor	126
 src/vr/HandHud.h	(file lines)	1003
 src/vr/HandInput.h	(file lines)	2071
 src/vr/HandInput.h	StepLaserPress	106

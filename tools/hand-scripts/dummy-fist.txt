@@ -4,12 +4,13 @@
 # and its breaking it"). The Fighters Guild's chained doll (ChainDoll01,
 # 00000E06: 23 rigid bodies, 5 of them fixed - the beam, its supports and
 # feet) in the Chorrol Fighters Guild's basement (reference 0001DB3F); the
-# weapon hand at its hanging parts, the grip closed as a Touch controller's
-# fist closes it, moved a hand's breadth and opened, at three depths. The
-# grab key stays up: the doll hangs from a fixed part. Before the fix the
-# engine's grab took a hanging part and OBVR's hold put the doll's root node -
-# its frame - into the hand ("Hands: holding ... (form type 1C ...) - in the
-# hand as it lay").
+# weapon hand (an Index) at its hanging parts, closed to a fist with the grip
+# squeezed, moved a hand's breadth and opened, at three depths. The grab key
+# stays up: the doll hangs from a fixed part. Before the fix the engine's
+# grab took a hanging part and OBVR's hold put the doll's root node - its
+# frame - into the hand ("Hands: holding ... (form type 1C ...) - in the hand
+# as it lay"). On a Touch a fist is the trigger, and its grip grabs nothing
+# at all while it is held (fist-touch.txt).
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/dummy-fist.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
 
 ini Hands Enabled=1
@@ -25,6 +26,8 @@ expect the grab key stays up (a hand pushes it
 reject Hands: holding
 reject HandScript: WARNING
 
+# The scripted weapon hand is an Index: its fist is its fingers (vr::FistFingersOf).
+right index 1
 wait 14
 mark settle
 wait 22

@@ -24,6 +24,8 @@ expect Hands: strikes by motion armed - weapon type 1
 reject its tip 1016
 reject HandScript: WARNING
 reject draw given up
+# The scripted weapon hand is an Index: its fist is its fingers (vr::FistFingersOf).
+right index 1
 wait 20
 mark settle
 wait 1

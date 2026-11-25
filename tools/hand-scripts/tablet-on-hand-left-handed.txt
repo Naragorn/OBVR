@@ -34,6 +34,8 @@ expect shown with 1 popup(s)
 reject Tablet: the left hand's model not read
 reject HandScript: WARNING
 
+# The scripted weapon hand is an Index: its fist is its fingers (vr::FistFingersOf).
+right index 1
 wait 12
 # The console-at line runs at the mark named ready, before the tablet opens.
 mark ready

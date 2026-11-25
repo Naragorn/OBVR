@@ -16,6 +16,8 @@ expect Measure: blade - the body
 expect Measure: blade - the weapon node's axis z
 reject HandScript: WARNING
 
+# The scripted weapon hand is an Index: its fist is its fingers (vr::FistFingersOf).
+right index 1
 wait 10
 right rot 0 0 0
 right pos 0.20 -0.40 -0.30

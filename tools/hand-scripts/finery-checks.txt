@@ -61,6 +61,8 @@ expect Wear check at third-behind: item 0003489F on the body - every shape drawn
 reject WEAR WRONG
 reject HandScript: WARNING
 
+# The scripted weapon hand is an Index: its fist is its fingers (vr::FistFingersOf).
+right index 1
 wait 12
 mark ready
 wait 6

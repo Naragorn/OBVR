@@ -6237,3 +6237,54 @@ that stick", "Things with a fixed part").
   be taken at all before this day's fix. Nadi's own games had it at 0 all along, the harness
   with them (it copies the live INI). `vr/Stow.h`, the shipped OBVR.ini, README, stow_test.
   A live OBVR.ini that says `TakeOnlyByHand=1` keeps that until it is switched.
+- **The fist on a controller that is not an Index is the trigger (Nadi, the same day: "trigger
+  gehalten zählt bei quest als faust rdy. loslassen faust weg"; after the Touch was laid out to him,
+  "ja mach den fix").** What a Touch reports (Meta's developer documentation; OpenXR's
+  `oculus/touch_controller` profile): the grip is an analog squeeze, 0 to 1, with no touch sensor
+  and no force; the trigger is analog with a touch sensor; the thumb is sensed on the stick, the
+  face buttons and the thumb rest. There is no fist without the grip: Blade & Sorcery Nomad's
+  players describe its fist as "hold down the grip buttons and then the trigger" (r/BladeAndSorcery,
+  2022), and its grab is the grip. Cause, measured in the Quest 2
+  tester's own log of 2026-11-19 (`OBVR-grab-bug-0505.log`, 120 "curls" lines): a Touch reads
+  the middle, ring and little finger from the grip itself - the three alike to 0.01 at every
+  step (0.57 0.57 0.57, 0.91 0.91 0.92, 1.00 1.00 1.00) while the index finger goes its own way
+  with the trigger. So a fist (4.3: all four fingers past 0.9) was always the grip squeezed past
+  its click, and the grip is the grab: the same log has "grab - right grip took ... key 5A down"
+  and "Fist: the weapon hand closed - nothing to ready" in the same moment again and again (lines
+  7053/7054, 7203/7204, 7310/7323) - the fist grabbed what it met, the training dummy's frame
+  among it (holding-objects-spec "Things with a fixed part"). An Index reads its fingers apart
+  from the grip's squeeze, so there a fist needs no click.
+  - **Built.** On any controller that is not an Index (`vr::ControllerKind::Other`: Touch,
+    Pico, Vive, WMR) the fist reads the weapon hand's trigger for all its fingers
+    (`vr::FistFingersOf`, vr/Fist.h): held past the close limit ("Fist tightness", 0.9) for a
+    quarter second the fists come up, let go below the open limit (0.35) for a quarter
+    second they go down - the grip plays no part. And while that trigger is held past the
+    close limit, or the fist it made is still closed, the weapon hand's grip grabs nothing
+    (`vr::FistKeepsGripFromGrab`): a Touch fist, the grip squeezed with the trigger, punches
+    and takes nothing. Not while the hand holds something (the grab keeps it), not with a
+    weapon drawn in it, not with `[Hands] Fists=0`. To take a thing on a Touch the grip
+    closes without the trigger. An Index, and a controller whose kind is not known, keep the
+    fingers as before. fist_test (`TestFistFingersOf`, `TestFistKeepsGripFromGrab`),
+    hand_mode_test (`TestTriggerFist`).
+  - **What the player reads:** the controls card's line "Make a fist to fight bare-handed."
+    reads "Hold the trigger to fight bare-handed." on a controller that is not an Index; the
+    setting "Make a fist to fight" adds "Not on Index: hold the trigger". The log says
+    "Fist: the weapon hand closed by its trigger ..." and, at the first frame a grip is kept,
+    "Fist: the weapon hand's grip kept from the grab - that hand is a fist by its trigger".
+  - **Harness:** a scripted hand is no Index unless the script says `right index 1`. The 21
+    scenarios that close the weapon hand by `right curl` (fist.txt, fist-armed.txt and the
+    rest, finery and yield among them) now say `right index 1`, so they keep their Index fist
+    by the fingers; `fist-touch.txt` is the Touch's.
+  - **Measured** (Linux, headless, the stand-in runtime, `fist-touch.txt`: an apple at the feet,
+    the weapon hand at it, trigger, grip and the fingers' curl closed together as a Touch reports
+    them, then the trigger let go with the grip still closed). Before (main a53b22c, OBVR.dll
+    18cdb5ce, 20261125-150517-slot1, FAIL): "grab - right grip took 22361900 ... key 5A down",
+    "Hands: holding 22361900 (form type 19 ...)" - the fist took the apple at once, and the fists
+    came up only after the hand let it go. After (20261125-150517-slot2, PASS): "Fist: the weapon
+    hand's grip kept from the grab - that hand is a fist by its trigger", "closed by its trigger -
+    the sheathed weapon taken off for the fists", "fists up", the apple left where it lay; the
+    trigger let go: "opened - fists down", and the grip still closed took the apple. The Index
+    scenarios with the same build: fist, fist-block, left-fist, slap-fists-up,
+    two-hander-from-fists, dummy-fist, trigger-weapon-away PASS (20261125-1458xx to -1503xx).
+  - **Not done:** the headset (no Touch here), the other hand (its trigger casts; its strike
+    needs no fist), an Index's squeeze-fist (`FistGripForce`) - its grip still grabs.

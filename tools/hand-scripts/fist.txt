@@ -20,6 +20,8 @@ expect Hands: ready weapon done
 reject HandScript: WARNING
 
 # Time for the runner's three console lines and the console to close.
+# The scripted weapon hand is an Index: its fist is its fingers (vr::FistFingersOf).
+right index 1
 wait 20
 mark settle
 wait 1

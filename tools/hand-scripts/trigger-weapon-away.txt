@@ -2,11 +2,12 @@
 # tester, 2026-11-25: "Stop equipped weapon popping into hand when right
 # trigger is pressed"). The sword equipped and sheathed, the trigger pulled a
 # second and a half: the attack key stays up and the sword stays at the hip.
-# Then a Touch controller's fist - the trigger and the grip pulled, the
-# fingers curled: the sheathed sword is taken off and the fists come up
-# (vr/Fist.h). Before the fix the trigger's attack drew the sword ("weapon 2
-# (slot 1)" in the state line, "attack key 1" in the items line), and the
-# fist was then the hand round it.
+# Then a fist - the trigger and the grip pulled, the fingers curled: the
+# sheathed sword is taken off and the fists come up (vr/Fist.h). Before the
+# fix the trigger's attack drew the sword ("weapon 2 (slot 1)" in the state
+# line, "attack key 1" in the items line), and the fist was then the hand
+# round it. The weapon hand is an Index here, whose trigger alone is no fist;
+# on a Touch the trigger is the fist itself (fist-touch.txt).
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/trigger-weapon-away.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
 
 ini Hands Enabled=1
@@ -24,6 +25,8 @@ expect Fist: the slot is empty - fists up
 expect weapon 2 (slot 0)
 reject HandScript: WARNING
 
+# The scripted weapon hand is an Index: its fist is its fingers (vr::FistFingersOf).
+right index 1
 wait 12
 right pos 0.20 -0.40 -0.30
 left pos -0.20 -0.40 -0.30

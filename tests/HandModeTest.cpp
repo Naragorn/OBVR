@@ -3798,6 +3798,93 @@ void TestTriggerWithWeaponAway() {
 	Check(r.fist.known && !r.controls.attack, "the fingers read: a fist raises them, the trigger does not");
 }
 
+// The fist on a controller that is not an Index is the trigger, and while it
+// is held that hand's grip grabs nothing (vr/Fist.h; Nadi, 2026-11-25: "trigger
+// gehalten zählt bei quest als faust rdy. loslassen faust weg").
+void TestTriggerFist() {
+	std::printf("The trigger's fist on a Touch, through the mode\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.dtSeconds = 0.05f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.right.kind = ControllerKind::Other;
+	frame.right.position = NiPoint3{0.3f, -0.2f, -0.5f};
+	frame.left.position = NiPoint3{-0.3f, -0.2f, -0.5f};
+	frame.equipped = EquippedKind::Nothing;
+	frame.weaponSeen = WeaponSeen::Sheathed;
+	const UInt64 grip = 1ull << openvr::kButtonIndexGrip;
+	HandMode mode;
+
+	// The grip alone: a grab, no fist.
+	frame.right.buttonsPressed = grip;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.controls.grab && !r.grabWithLeftHand && !r.fist.keepsGrip, "the grip alone grabs");
+	frame.right.buttonsPressed = 0;
+	mode.Update(frame, settings);
+
+	// The trigger held: kept from the grab at once, the fist after a quarter second.
+	frame.right.trigger = 1.0f;
+	frame.right.buttonsPressed = grip;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.grab && r.fist.keepsGrip, "the trigger and the grip together: no grab from the first frame");
+	bool readied = false;
+	for (int i = 0; i < 8; ++i) {
+		r = mode.Update(frame, settings);
+		readied = readied || r.fist.readyClick;
+	}
+	Check(r.fist.closed && r.fist.byTrigger && readied && !r.controls.grab, "a quarter second on: the fist, the fists up, still no grab");
+	frame.weaponSeen = WeaponSeen::Drawn;  // the fists are up: bare fists count as a melee weapon in hand
+	frame.meleeHeld = true;
+	frame.meleeInHand = true;
+	r = mode.Update(frame, settings);
+	Check(!r.controls.attack, "the trigger held with the fists up presses no attack");
+
+	// Let go of the trigger, the grip still closed: the fist opens and the grip grabs again.
+	frame.right.trigger = 0.0f;
+	bool lowered = false;
+	for (int i = 0; i < 8; ++i) {
+		r = mode.Update(frame, settings);
+		lowered = lowered || r.fist.readyClick;
+	}
+	Check(!r.fist.closed && lowered && r.controls.grab && !r.fist.keepsGrip,
+	      "the trigger let go: the fists down, and the grip grabs");
+
+	// Holding something: the trigger then keeps nothing from the grab.
+	frame.holdingObject = true;
+	frame.right.trigger = 1.0f;
+	r = mode.Update(frame, settings);
+	Check(r.controls.grab && !r.fist.keepsGrip, "a hand holding something keeps it, trigger or not");
+	frame.holdingObject = false;
+
+	// A sword drawn: that hand is no fist and its grip is as ever.
+	frame.equipped = EquippedKind::OneHand;
+	r = mode.Update(frame, settings);
+	Check(!r.fist.keepsGrip, "a sword drawn: the grip as ever");
+
+	// An Index: the trigger alone is no fist, and a fist there keeps no grip.
+	HandMode index;
+	frame.right.kind = ControllerKind::Index;
+	frame.equipped = EquippedKind::Nothing;
+	frame.weaponSeen = WeaponSeen::Sheathed;
+	frame.right.curlValid = true;
+	frame.right.buttonsPressed = 0;
+	frame.right.trigger = 1.0f;
+	for (int i = 0; i < 8; ++i) {
+		r = index.Update(frame, settings);
+	}
+	Check(!r.fist.closed && !r.fist.byTrigger, "an Index: the trigger alone makes no fist");
+	for (int f = 1; f < 5; ++f) {
+		frame.right.curl[f] = 1.0f;
+	}
+	frame.right.buttonsPressed = grip;
+	r = index.Update(frame, settings);
+	Check(r.controls.grab && !r.fist.keepsGrip, "an Index, the fingers closed and the grip squeezed: a grab as before");
+}
+
 void TestRunToggle() {
 	std::printf("Run held or toggled\n");
 	bool latched = true;
@@ -4698,6 +4785,7 @@ int main() {
 	TestSwingPressesAttack();
 	TestTriggerHeldBackAway();
 	TestTriggerWithWeaponAway();
+	TestTriggerFist();
 	TestPowerDirection();
 	TestShieldBlock();
 	TestRunToggle();

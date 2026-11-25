@@ -35,6 +35,8 @@ expect - fists up
 reject HandScript: WARNING
 reject top menu Generic
 
+# The scripted weapon hand is an Index: its fist is its fingers (vr::FistFingersOf).
+right index 1
 wait 12
 right pos 0.20 -0.40 -0.30
 left pos -0.20 -0.75 -0.25

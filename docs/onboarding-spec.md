@@ -1328,7 +1328,9 @@ player decides, and "die option gehört auch ins onboarding". `[Hands] TakeOnlyB
 after the tablet's, in Full VR while the inventory ring is on (only by hand needs the ring to take anything):
 "Take only by hand - A doesn't pick up loose items anymore. Grab them and stow them instead"
 (`ui::SettingShownIn`, kComfortOrder). native_settings_test: the row's place in every combination, not in
-Vanilla VR, not with the ring off, off by default. The headset is open.
+Vanilla VR, not with the ring off, off by default. first-start.txt PASS with the build (20261125-145911-slot2);
+its log names the page's first seven rows, as before - the new row stands on the page's second screen,
+which no run turned to. The headset is open.
 
 ## The guide comes back once with a new beta (2026-11-25)
 

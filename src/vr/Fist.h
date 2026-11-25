@@ -31,6 +31,10 @@
 // A fist made while the hand holds something, or while its grip is the
 // holster's (a reach to the hip curls the fingers too), counts for nothing.
 //
+// On a controller that is not an Index the fist is the trigger (FistFingersOf,
+// 2026-11-25), and while it is held the grip grabs nothing
+// (FistKeepsGripFromGrab).
+//
 // Pure, covered by fist_test.
 
 #include "core/Types.h"
@@ -84,6 +88,8 @@ struct FistInput {
 	// The fingers this hand's sensors have read (vr/FingersRead.h): one that
 	// never has is left out. Null: all four count.
 	const FingersRead* read = nullptr;
+	// The curls are the trigger's (FistFingersOf): a controller that is not an Index.
+	bool byTrigger = false;
 };
 
 struct FistVerdict {
@@ -93,10 +99,13 @@ struct FistVerdict {
 	bool unequip = false;     // take the sheathed weapon off, for the fists
 	bool readyClick = false;  // the ready-weapon click: fists up or down
 	bool gaveUp = false;      // the weapon never left the slot
+	bool byTrigger = false;   // the fist is the trigger (FistInput::byTrigger)
+	bool keepsGrip = false;   // the hand's grip is kept from the grab this frame (FistKeepsGripFromGrab)
 };
 
 inline FistVerdict StepFist(FistState& s, const FistInput& in, const FistSettings& settings) {
 	FistVerdict v;
+	v.byTrigger = in.byTrigger;
 	if (!settings.enabled || !in.curlValid) {
 		s = FistState{};
 		return v;
@@ -159,6 +168,42 @@ inline FistVerdict StepFist(FistState& s, const FistInput& in, const FistSetting
 // always; fists only as a fist, when the curls are known.
 inline bool FistAllowsStrike(bool fists, const FistVerdict& fist) {
 	return !fists || !fist.known || fist.closed;
+}
+
+// The fingers the fist goes by (Nadi, 2026-11-25: "trigger gehalten zählt bei
+// quest als faust rdy. loslassen faust weg"). On an Index they are the
+// fingers as its handle reads them, apart from the grip's squeeze. On any
+// other controller - an Oculus Touch, a Pico, a Vive wand - they are the
+// trigger: a Touch reads the middle, ring and little finger from the grip
+// itself (a Quest 2 tester's log of 2026-11-19, 120 curl lines: the three
+// alike to 0.01 at every step - 0.57 0.57 0.57, 0.91 0.91 0.92, 1.00 1.00
+// 1.00 - while the index went its own way with the trigger), so a fist there
+// was always the grip squeezed, and the grip is the grab. The trigger held
+// past the close limit is the fist, let go below the open limit it is open;
+// the grip plays no part. A controller of unknown kind keeps its fingers.
+inline void FistFingersOf(FistInput& in, const HandPose& hand) {
+	in.byTrigger = hand.kind == ControllerKind::Other;
+	in.curlValid = hand.valid && (in.byTrigger || hand.curlValid);
+	for (int finger = 0; finger < 5; ++finger) {
+		in.curl[finger] = in.byTrigger ? hand.trigger : hand.curl[finger];
+	}
+}
+
+// Whether the weapon hand's grip is kept from the grab because that hand is
+// a fist made with the trigger: the trigger held past the close limit, or
+// the fist still closed by it. The same tester's log, again and again in the
+// same moment: "grab - right grip took ... key 5A down" and "Fist: the
+// weapon hand closed" - a Touch fist pressed the grip, the grip grabbed what
+// the punch met, and a training dummy's frame came into the hand that way.
+// Not while that hand holds something (the grab keeps it) nor with a weapon
+// drawn in it (that hand is no fist), and never with the fists off ([Hands]
+// Fists) or on an Index, whose fist does not need the grip. Let go of the
+// trigger, and the grip grabs again.
+inline bool FistKeepsGripFromGrab(const FistVerdict& fist, float trigger, const FistSettings& settings,
+                                  bool holding, WeaponSeen seen, EquippedKind equipped) {
+	const bool weaponInHand = seen == WeaponSeen::Drawn && equipped != EquippedKind::Nothing;
+	const bool fistHeld = fist.closed || trigger >= settings.closeCurl;
+	return settings.enabled && fist.byTrigger && fistHeld && !holding && !weaponInHand;
 }
 
 }  // namespace obvr::vr

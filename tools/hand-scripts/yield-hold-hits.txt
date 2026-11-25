@@ -16,6 +16,8 @@ ini Hands Holsters=1
 ini Hands CombatReach=85
 ini Hands OffHandStrikes=0
 ini Hands Yield=1
+# The scripted weapon hand is an Index: its fist is its fingers (vr::FistFingersOf).
+right index 1
 right curl 0
 left curl 0
 console-at ready CloseAllMenus
