@@ -1,0 +1,759 @@
+# The tablet on a hand in a gauntlet (inventory-tablet-spec section 21):
+# tablet-on-hand.txt with the iron set (0001C6CE..0001C6D2, its gauntlets
+# among them) put on while the tablet is up, as from the inventory. The page
+# stands before the hand as it is drawn, so it has to stand before the
+# gauntlet too once that is on: the hand's model is read again within 60
+# frames, and the log's "Tablet: the left hand as drawn reaches ..." says how
+# far the gauntlet reaches against the bare hand's 7.5 cm. The films show the
+# bare hand behind the page, the gauntlet coming on behind it, then the
+# gauntlet closed, opened and turned.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --parallel --headset beyond --record 9 --record-width 1280 tools/hand-scripts/tablet-on-hand-gauntlets.txt
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Tablet Enabled=1
+ini Tablet Unroll=sideways
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+ini Debug RecordCropLeft=0.10
+ini Debug RecordCropTop=0.16
+ini Debug RecordCropRight=0.90
+ini Debug RecordCropBottom=0.96
+# The harness save's question box (Lovers with PK.esm active without its esp) closed first.
+console-at ready CloseAllMenus
+# Strong enough to carry the set (inventory-near-shapes.txt); it is put on at the mark puts_on, the tablet up.
+console-at ready player.setav strength 100
+console-at ready player.additem 0001C6CE 1
+console-at ready player.additem 0001C6CF 1
+console-at ready player.additem 0001C6D0 1
+console-at ready player.additem 0001C6D1 1
+console-at ready player.additem 0001C6D2 1
+console-at puts_on player.equipitem 0001C6CE
+console-at puts_on player.equipitem 0001C6CF
+console-at puts_on player.equipitem 0001C6D0
+console-at puts_on player.equipitem 0001C6D1
+console-at puts_on player.equipitem 0001C6D2
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Tablet: in the off hand, drawn into the eyes
+expect Hands: the left hand's Torch node read
+expect Tablet: the left hand as drawn reaches
+expect Tablet: at the mark the left hand holds it
+reject Tablet: the left hand's model not read
+reject HandScript: WARNING
+
+wait 12
+# The console-at line runs at the mark named ready, before the tablet opens.
+mark ready
+wait 2
+head pitch -15
+# Half a metre before the eyes and a little left of them: the page, 34 cm wide
+# to the right of the hand, stays in the right eye's film while it is turned.
+left pos -0.12 -0.22 -0.50
+left rot 90 0 90
+left curl 0
+# The pointing hand out of the picture, its beam off the page.
+right pos 0.30 -0.55 -0.10
+right rot 0 -40 0
+wait 1.5
+mark opens
+left b 1
+wait 0.2
+left b 0
+wait 4
+# The bare hand behind the page; then the iron set is put on.
+mark puts_on
+wait 5
+# The gauntlet open behind the page; then the fingers close.
+mark open_hand
+wait 1
+left curl 0.05
+wait 0.07
+left curl 0.10
+wait 0.07
+left curl 0.15
+wait 0.07
+left curl 0.20
+wait 0.07
+left curl 0.25
+wait 0.07
+left curl 0.30
+wait 0.07
+left curl 0.35
+wait 0.07
+left curl 0.40
+wait 0.07
+left curl 0.45
+wait 0.07
+left curl 0.50
+wait 0.07
+left curl 0.55
+wait 0.07
+left curl 0.60
+wait 0.07
+left curl 0.65
+wait 0.07
+left curl 0.70
+wait 0.07
+left curl 0.75
+wait 0.07
+left curl 0.80
+wait 0.07
+left curl 0.85
+wait 0.07
+left curl 0.90
+wait 0.07
+left curl 0.95
+wait 0.07
+left curl 1.00
+wait 0.07
+wait 2.5
+# The fist behind the page; then the fingers open again.
+mark fist
+wait 1
+left curl 0.95
+wait 0.07
+left curl 0.90
+wait 0.07
+left curl 0.85
+wait 0.07
+left curl 0.80
+wait 0.07
+left curl 0.75
+wait 0.07
+left curl 0.70
+wait 0.07
+left curl 0.65
+wait 0.07
+left curl 0.60
+wait 0.07
+left curl 0.55
+wait 0.07
+left curl 0.50
+wait 0.07
+left curl 0.45
+wait 0.07
+left curl 0.40
+wait 0.07
+left curl 0.35
+wait 0.07
+left curl 0.30
+wait 0.07
+left curl 0.25
+wait 0.07
+left curl 0.20
+wait 0.07
+left curl 0.15
+wait 0.07
+left curl 0.10
+wait 0.07
+left curl 0.05
+wait 0.07
+left curl 0.00
+wait 0.07
+wait 2.5
+# Up and down: the blade from up towards ahead, to 30 degrees, and back (2 degrees each 0.05 s).
+mark up_down
+left rot 90 0 90
+wait 0.05
+left rot 88 0 90
+wait 0.05
+left rot 86 0 90
+wait 0.05
+left rot 84 0 90
+wait 0.05
+left rot 82 0 90
+wait 0.05
+left rot 80 0 90
+wait 0.05
+left rot 78 0 90
+wait 0.05
+left rot 76 0 90
+wait 0.05
+left rot 74 0 90
+wait 0.05
+left rot 72 0 90
+wait 0.05
+left rot 70 0 90
+wait 0.05
+left rot 68 0 90
+wait 0.05
+left rot 66 0 90
+wait 0.05
+left rot 64 0 90
+wait 0.05
+left rot 62 0 90
+wait 0.05
+left rot 60 0 90
+wait 0.05
+left rot 58 0 90
+wait 0.05
+left rot 56 0 90
+wait 0.05
+left rot 54 0 90
+wait 0.05
+left rot 52 0 90
+wait 0.05
+left rot 50 0 90
+wait 0.05
+left rot 48 0 90
+wait 0.05
+left rot 46 0 90
+wait 0.05
+left rot 44 0 90
+wait 0.05
+left rot 42 0 90
+wait 0.05
+left rot 40 0 90
+wait 0.05
+left rot 38 0 90
+wait 0.05
+left rot 36 0 90
+wait 0.05
+left rot 34 0 90
+wait 0.05
+left rot 32 0 90
+wait 0.05
+left rot 30 0 90
+wait 0.05
+left rot 30 0 90
+wait 0.05
+left rot 32 0 90
+wait 0.05
+left rot 34 0 90
+wait 0.05
+left rot 36 0 90
+wait 0.05
+left rot 38 0 90
+wait 0.05
+left rot 40 0 90
+wait 0.05
+left rot 42 0 90
+wait 0.05
+left rot 44 0 90
+wait 0.05
+left rot 46 0 90
+wait 0.05
+left rot 48 0 90
+wait 0.05
+left rot 50 0 90
+wait 0.05
+left rot 52 0 90
+wait 0.05
+left rot 54 0 90
+wait 0.05
+left rot 56 0 90
+wait 0.05
+left rot 58 0 90
+wait 0.05
+left rot 60 0 90
+wait 0.05
+left rot 62 0 90
+wait 0.05
+left rot 64 0 90
+wait 0.05
+left rot 66 0 90
+wait 0.05
+left rot 68 0 90
+wait 0.05
+left rot 70 0 90
+wait 0.05
+left rot 72 0 90
+wait 0.05
+left rot 74 0 90
+wait 0.05
+left rot 76 0 90
+wait 0.05
+left rot 78 0 90
+wait 0.05
+left rot 80 0 90
+wait 0.05
+left rot 82 0 90
+wait 0.05
+left rot 84 0 90
+wait 0.05
+left rot 86 0 90
+wait 0.05
+left rot 88 0 90
+wait 0.05
+left rot 90 0 90
+wait 0.05
+wait 0.5
+# Turned about the upright, the hand open: to the left until the page is seen nearly edge on,
+# back through ahead a little to the right, and back.
+mark turn_open
+left rot 90 0 90
+wait 0.05
+left rot 90 2 90
+wait 0.05
+left rot 90 4 90
+wait 0.05
+left rot 90 6 90
+wait 0.05
+left rot 90 8 90
+wait 0.05
+left rot 90 10 90
+wait 0.05
+left rot 90 12 90
+wait 0.05
+left rot 90 14 90
+wait 0.05
+left rot 90 16 90
+wait 0.05
+left rot 90 18 90
+wait 0.05
+left rot 90 20 90
+wait 0.05
+left rot 90 22 90
+wait 0.05
+left rot 90 24 90
+wait 0.05
+left rot 90 26 90
+wait 0.05
+left rot 90 28 90
+wait 0.05
+left rot 90 30 90
+wait 0.05
+left rot 90 32 90
+wait 0.05
+left rot 90 34 90
+wait 0.05
+left rot 90 36 90
+wait 0.05
+left rot 90 38 90
+wait 0.05
+left rot 90 40 90
+wait 0.05
+left rot 90 42 90
+wait 0.05
+left rot 90 44 90
+wait 0.05
+left rot 90 46 90
+wait 0.05
+left rot 90 48 90
+wait 0.05
+left rot 90 50 90
+wait 0.05
+left rot 90 52 90
+wait 0.05
+left rot 90 54 90
+wait 0.05
+left rot 90 56 90
+wait 0.05
+left rot 90 58 90
+wait 0.05
+left rot 90 60 90
+wait 0.05
+left rot 90 62 90
+wait 0.05
+left rot 90 64 90
+wait 0.05
+left rot 90 66 90
+wait 0.05
+left rot 90 68 90
+wait 0.05
+left rot 90 70 90
+wait 0.05
+left rot 90 72 90
+wait 0.05
+left rot 90 74 90
+wait 0.05
+left rot 90 76 90
+wait 0.05
+left rot 90 76 90
+wait 0.05
+left rot 90 74 90
+wait 0.05
+left rot 90 72 90
+wait 0.05
+left rot 90 70 90
+wait 0.05
+left rot 90 68 90
+wait 0.05
+left rot 90 66 90
+wait 0.05
+left rot 90 64 90
+wait 0.05
+left rot 90 62 90
+wait 0.05
+left rot 90 60 90
+wait 0.05
+left rot 90 58 90
+wait 0.05
+left rot 90 56 90
+wait 0.05
+left rot 90 54 90
+wait 0.05
+left rot 90 52 90
+wait 0.05
+left rot 90 50 90
+wait 0.05
+left rot 90 48 90
+wait 0.05
+left rot 90 46 90
+wait 0.05
+left rot 90 44 90
+wait 0.05
+left rot 90 42 90
+wait 0.05
+left rot 90 40 90
+wait 0.05
+left rot 90 38 90
+wait 0.05
+left rot 90 36 90
+wait 0.05
+left rot 90 34 90
+wait 0.05
+left rot 90 32 90
+wait 0.05
+left rot 90 30 90
+wait 0.05
+left rot 90 28 90
+wait 0.05
+left rot 90 26 90
+wait 0.05
+left rot 90 24 90
+wait 0.05
+left rot 90 22 90
+wait 0.05
+left rot 90 20 90
+wait 0.05
+left rot 90 18 90
+wait 0.05
+left rot 90 16 90
+wait 0.05
+left rot 90 14 90
+wait 0.05
+left rot 90 12 90
+wait 0.05
+left rot 90 10 90
+wait 0.05
+left rot 90 8 90
+wait 0.05
+left rot 90 6 90
+wait 0.05
+left rot 90 4 90
+wait 0.05
+left rot 90 2 90
+wait 0.05
+left rot 90 0 90
+wait 0.05
+left rot 90 -2 90
+wait 0.05
+left rot 90 -4 90
+wait 0.05
+left rot 90 -6 90
+wait 0.05
+left rot 90 -8 90
+wait 0.05
+left rot 90 -10 90
+wait 0.05
+left rot 90 -12 90
+wait 0.05
+left rot 90 -14 90
+wait 0.05
+left rot 90 -16 90
+wait 0.05
+left rot 90 -18 90
+wait 0.05
+left rot 90 -20 90
+wait 0.05
+left rot 90 -22 90
+wait 0.05
+left rot 90 -24 90
+wait 0.05
+left rot 90 -26 90
+wait 0.05
+left rot 90 -28 90
+wait 0.05
+left rot 90 -30 90
+wait 0.05
+left rot 90 -32 90
+wait 0.05
+left rot 90 -34 90
+wait 0.05
+left rot 90 -36 90
+wait 0.05
+left rot 90 -36 90
+wait 0.05
+left rot 90 -34 90
+wait 0.05
+left rot 90 -32 90
+wait 0.05
+left rot 90 -30 90
+wait 0.05
+left rot 90 -28 90
+wait 0.05
+left rot 90 -26 90
+wait 0.05
+left rot 90 -24 90
+wait 0.05
+left rot 90 -22 90
+wait 0.05
+left rot 90 -20 90
+wait 0.05
+left rot 90 -18 90
+wait 0.05
+left rot 90 -16 90
+wait 0.05
+left rot 90 -14 90
+wait 0.05
+left rot 90 -12 90
+wait 0.05
+left rot 90 -10 90
+wait 0.05
+left rot 90 -8 90
+wait 0.05
+left rot 90 -6 90
+wait 0.05
+left rot 90 -4 90
+wait 0.05
+left rot 90 -2 90
+wait 0.05
+left rot 90 0 90
+wait 0.05
+wait 0.5
+left curl 1
+wait 1.5
+# The same with the hand closed.
+mark turn_fist
+left rot 90 0 90
+wait 0.05
+left rot 90 2 90
+wait 0.05
+left rot 90 4 90
+wait 0.05
+left rot 90 6 90
+wait 0.05
+left rot 90 8 90
+wait 0.05
+left rot 90 10 90
+wait 0.05
+left rot 90 12 90
+wait 0.05
+left rot 90 14 90
+wait 0.05
+left rot 90 16 90
+wait 0.05
+left rot 90 18 90
+wait 0.05
+left rot 90 20 90
+wait 0.05
+left rot 90 22 90
+wait 0.05
+left rot 90 24 90
+wait 0.05
+left rot 90 26 90
+wait 0.05
+left rot 90 28 90
+wait 0.05
+left rot 90 30 90
+wait 0.05
+left rot 90 32 90
+wait 0.05
+left rot 90 34 90
+wait 0.05
+left rot 90 36 90
+wait 0.05
+left rot 90 38 90
+wait 0.05
+left rot 90 40 90
+wait 0.05
+left rot 90 42 90
+wait 0.05
+left rot 90 44 90
+wait 0.05
+left rot 90 46 90
+wait 0.05
+left rot 90 48 90
+wait 0.05
+left rot 90 50 90
+wait 0.05
+left rot 90 52 90
+wait 0.05
+left rot 90 54 90
+wait 0.05
+left rot 90 56 90
+wait 0.05
+left rot 90 58 90
+wait 0.05
+left rot 90 60 90
+wait 0.05
+left rot 90 62 90
+wait 0.05
+left rot 90 64 90
+wait 0.05
+left rot 90 66 90
+wait 0.05
+left rot 90 68 90
+wait 0.05
+left rot 90 70 90
+wait 0.05
+left rot 90 72 90
+wait 0.05
+left rot 90 74 90
+wait 0.05
+left rot 90 76 90
+wait 0.05
+left rot 90 76 90
+wait 0.05
+left rot 90 74 90
+wait 0.05
+left rot 90 72 90
+wait 0.05
+left rot 90 70 90
+wait 0.05
+left rot 90 68 90
+wait 0.05
+left rot 90 66 90
+wait 0.05
+left rot 90 64 90
+wait 0.05
+left rot 90 62 90
+wait 0.05
+left rot 90 60 90
+wait 0.05
+left rot 90 58 90
+wait 0.05
+left rot 90 56 90
+wait 0.05
+left rot 90 54 90
+wait 0.05
+left rot 90 52 90
+wait 0.05
+left rot 90 50 90
+wait 0.05
+left rot 90 48 90
+wait 0.05
+left rot 90 46 90
+wait 0.05
+left rot 90 44 90
+wait 0.05
+left rot 90 42 90
+wait 0.05
+left rot 90 40 90
+wait 0.05
+left rot 90 38 90
+wait 0.05
+left rot 90 36 90
+wait 0.05
+left rot 90 34 90
+wait 0.05
+left rot 90 32 90
+wait 0.05
+left rot 90 30 90
+wait 0.05
+left rot 90 28 90
+wait 0.05
+left rot 90 26 90
+wait 0.05
+left rot 90 24 90
+wait 0.05
+left rot 90 22 90
+wait 0.05
+left rot 90 20 90
+wait 0.05
+left rot 90 18 90
+wait 0.05
+left rot 90 16 90
+wait 0.05
+left rot 90 14 90
+wait 0.05
+left rot 90 12 90
+wait 0.05
+left rot 90 10 90
+wait 0.05
+left rot 90 8 90
+wait 0.05
+left rot 90 6 90
+wait 0.05
+left rot 90 4 90
+wait 0.05
+left rot 90 2 90
+wait 0.05
+left rot 90 0 90
+wait 0.05
+left rot 90 -2 90
+wait 0.05
+left rot 90 -4 90
+wait 0.05
+left rot 90 -6 90
+wait 0.05
+left rot 90 -8 90
+wait 0.05
+left rot 90 -10 90
+wait 0.05
+left rot 90 -12 90
+wait 0.05
+left rot 90 -14 90
+wait 0.05
+left rot 90 -16 90
+wait 0.05
+left rot 90 -18 90
+wait 0.05
+left rot 90 -20 90
+wait 0.05
+left rot 90 -22 90
+wait 0.05
+left rot 90 -24 90
+wait 0.05
+left rot 90 -26 90
+wait 0.05
+left rot 90 -28 90
+wait 0.05
+left rot 90 -30 90
+wait 0.05
+left rot 90 -32 90
+wait 0.05
+left rot 90 -34 90
+wait 0.05
+left rot 90 -36 90
+wait 0.05
+left rot 90 -36 90
+wait 0.05
+left rot 90 -34 90
+wait 0.05
+left rot 90 -32 90
+wait 0.05
+left rot 90 -30 90
+wait 0.05
+left rot 90 -28 90
+wait 0.05
+left rot 90 -26 90
+wait 0.05
+left rot 90 -24 90
+wait 0.05
+left rot 90 -22 90
+wait 0.05
+left rot 90 -20 90
+wait 0.05
+left rot 90 -18 90
+wait 0.05
+left rot 90 -16 90
+wait 0.05
+left rot 90 -14 90
+wait 0.05
+left rot 90 -12 90
+wait 0.05
+left rot 90 -10 90
+wait 0.05
+left rot 90 -8 90
+wait 0.05
+left rot 90 -6 90
+wait 0.05
+left rot 90 -4 90
+wait 0.05
+left rot 90 -2 90
+wait 0.05
+left rot 90 0 90
+wait 0.05
+wait 0.5
+left curl 0
+wait 1.5
+mark closes
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark closed
+wait 1

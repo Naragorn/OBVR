@@ -1,0 +1,161 @@
+# The stats page's own info box on the tablet (docs/inventory-tablet-spec.md
+# section 22; Nadi, 2026-11-25: "die infobox erscheint im stats tab für ein
+# paar Einträge du hast die nur abgeschnitten ... den stats tab verbessern
+# sodass die infoboxen wieder sichtbar sind und nicht abgeschnitten"): the
+# tablet in the left hand, the thumb up and the palm to the eyes, the stats
+# page turned to; each of its first three tabs chosen by its icon with the
+# right hand's beam and trigger, then the beam stepped down the tab's rows,
+# resting 1.1 s on each step, so the hovered row's description slides out
+# beside the page and stands (each film begins with the beam still on the
+# tab's icon: the first box slides out half a second in). The box is the
+# stats menu's own picture (the tile of id 61), not the MagicPopup menu: the
+# log says "Tablet: the page's own info box shown beside the page". The DLL
+# from before cuts the face at the page's edge: the rows highlight and no box
+# is seen. The right hand stands near the right eye, out of the picture, so
+# its beam meets the page nearly square on.
+# The beam's angles are measured, not reckoned: a grid of
+# angles run once (tablet-aim-grid.txt), the laser's hit read at each mark's
+# state line and fitted, then asked for the tabs' icons and the rows' column
+# by their places in stats_menu.xml (tools/tablet-aim.py --stats: the icons
+# 135 wide from 28, 165 and 304 at 631 down the 745 by 792 page). A DLL from
+# before section 21 holds the page 7.8 cm deeper and needs its own aim.
+# Films from each mark, the eye cut to the page and the box.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --parallel --headset beyond --record 13 --record-width 1600 tools/hand-scripts/tablet-stats-info.txt
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Tablet Enabled=1
+ini Tablet Unroll=sideways
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+ini Debug RecordCropLeft=0.00
+ini Debug RecordCropTop=0.30
+ini Debug RecordCropRight=0.86
+ini Debug RecordCropBottom=0.88
+# The harness save's question box (Lovers with PK.esm active without its esp) closed first.
+console-at ready CloseAllMenus
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Tablet: the Stats page read
+expect Tablet: the page's own info box shown beside the page
+reject HandScript: WARNING
+
+wait 12
+# The console-at line runs at the mark named ready, before the tablet opens.
+mark ready
+wait 1
+head pitch -15
+left pos -0.22 -0.18 -0.40
+left rot 90 0 90
+left curl 0
+right pos 0.14 -0.14 -0.04
+right rot 24 27 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 3
+right stick -1 0
+wait 0.3
+right stick 0 0
+wait 2
+# The aim: 22 marks with a hit; the fit's worst error 0.65 degrees of pitch, 0.11 of yaw; the stats page at 41,197..1161,1388 layer pixels
+# The general tab chosen by its icon, then the beam stepped down its rows, resting on each step.
+right rot 9.7 38.7 0
+wait 0.8
+right trigger 1
+wait 0.3
+right trigger 0
+wait 1
+mark general
+wait 0.5
+right rot 41.6 32.5 0
+wait 1.1
+right rot 38.3 32.2 0
+wait 1.1
+right rot 35.1 31.8 0
+wait 1.1
+right rot 32.0 31.4 0
+wait 1.1
+right rot 29.0 31.0 0
+wait 1.1
+right rot 26.1 30.6 0
+wait 1.1
+right rot 23.4 30.2 0
+wait 1.1
+right rot 20.7 29.8 0
+wait 1.1
+right rot 18.1 29.3 0
+wait 1.1
+right rot 15.7 28.9 0
+wait 1.1
+right rot 13.3 28.4 0
+wait 1.1
+# The attributes tab chosen by its icon, then the beam stepped down its rows, resting on each step.
+right rot 8.0 32.3 0
+wait 0.8
+right trigger 1
+wait 0.3
+right trigger 0
+wait 1
+mark attributes
+wait 0.5
+right rot 41.6 32.5 0
+wait 1.1
+right rot 38.3 32.2 0
+wait 1.1
+right rot 35.1 31.8 0
+wait 1.1
+right rot 32.0 31.4 0
+wait 1.1
+right rot 29.0 31.0 0
+wait 1.1
+right rot 26.1 30.6 0
+wait 1.1
+right rot 23.4 30.2 0
+wait 1.1
+right rot 20.7 29.8 0
+wait 1.1
+right rot 18.1 29.3 0
+wait 1.1
+right rot 15.7 28.9 0
+wait 1.1
+right rot 13.3 28.4 0
+wait 1.1
+# The skills tab chosen by its icon, then the beam stepped down its rows, resting on each step.
+right rot 6.4 24.5 0
+wait 0.8
+right trigger 1
+wait 0.3
+right trigger 0
+wait 1
+mark skills
+wait 0.5
+right rot 41.6 32.5 0
+wait 1.1
+right rot 38.3 32.2 0
+wait 1.1
+right rot 35.1 31.8 0
+wait 1.1
+right rot 32.0 31.4 0
+wait 1.1
+right rot 29.0 31.0 0
+wait 1.1
+right rot 26.1 30.6 0
+wait 1.1
+right rot 23.4 30.2 0
+wait 1.1
+right rot 20.7 29.8 0
+wait 1.1
+right rot 18.1 29.3 0
+wait 1.1
+right rot 15.7 28.9 0
+wait 1.1
+right rot 13.3 28.4 0
+wait 1.1
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark closed
+wait 1

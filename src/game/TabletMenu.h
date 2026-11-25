@@ -24,6 +24,9 @@ struct TabletMenuState {
 	// The item info (MagicPopup) beside the page as last said, and the lines left to say it.
 	bool itemInfoSeen = false;
 	UInt32 itemInfoLines = 12;
+	// The same for the page's own info box (the stats menu's, vr::PagePopupTileId).
+	bool ownInfoSeen = false;
+	UInt32 ownInfoLines = 12;
 	// The figure's rectangle as last read (game/MenuFigure.h), and how many
 	// frames ago; 0 reads it on the next frame.
 	render::FigureRect figure;

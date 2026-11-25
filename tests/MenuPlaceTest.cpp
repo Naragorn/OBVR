@@ -512,12 +512,19 @@ void TestSword() {
 	left.blade = NiPoint3{0.0f, 0.6f, -0.8f};
 	left.edge = NiPoint3{0.0f, -0.8f, -0.6f};
 	f.tablet.held[0] = left;
+	// The off hand as drawn: 3 cm of it before the page's face (the other side is not this hand's).
+	HandReach leftReach;
+	leftReach.valid = true;
+	leftReach.beforeLeft = 0.03f;
+	leftReach.beforeRight = 0.5f;
+	f.tablet.reach[0] = leftReach;
 	MenuPlaceResult r;
 	MenuTarget t = PlaceMenu(f, s, true, r);
 	Check(r.menuOnTablet && NearPoint(t.quad.up, left.blade) && NearPoint(t.quad.right, left.edge),
 	      "the off hand's node read: the page's up the blade, its right towards the knuckles");
-	Check(NearPoint(t.quad.centre, f.left.position + left.edge * 0.2f),
-	      "held at its side in the hand, across the knuckles");
+	const NiPoint3 face = Cross(left.edge, left.blade);
+	Check(NearPoint(t.quad.centre, f.left.position + left.edge * 0.2f + face * (0.03f + kPageClearMetres)),
+	      "held at its side across the knuckles, before the hand as it is drawn - the hand behind the page");
 	// A quarter turn about y: the page goes with the hand.
 	f.left.orientation = Quaternion{0.0f, 0.7071068f, 0.0f, 0.7071068f};
 	r = MenuPlaceResult{};
@@ -533,11 +540,22 @@ void TestSword() {
 	right.blade = NiPoint3{0.0f, 0.6f, -0.8f};
 	right.edge = NiPoint3{0.0f, -0.8f, -0.6f};
 	f.tablet.held[1] = right;
+	HandReach rightReach;
+	rightReach.valid = true;
+	rightReach.beforeRight = 0.02f;
+	rightReach.beforeLeft = 0.5f;
+	f.tablet.reach[1] = rightReach;
 	const TabletPlace kept = HeldByRight(f, s, TabletHold::Side);
 	const NiPoint3 keptRight{kept.transform.m[0][0], kept.transform.m[1][0], kept.transform.m[2][0]};
 	const NiPoint3 keptUp{kept.transform.m[0][1], kept.transform.m[1][1], kept.transform.m[2][1]};
 	Check(kept.valid && NearPoint(keptUp, right.blade) && NearPoint(keptRight, right.edge * -1.0f),
 	      "kept by the right hand: its blade up, the page reaching back across its knuckles");
+	f.tablet.reach[1].beforeRight = 0.05f;
+	const TabletPlace further = HeldByRight(f, s, TabletHold::Side);
+	const NiPoint3 moved{further.transform.m[0][3] - kept.transform.m[0][3], further.transform.m[1][3] - kept.transform.m[1][3],
+	                     further.transform.m[2][3] - kept.transform.m[2][3]};
+	Check(NearPoint(moved, Cross(keptRight, keptUp) * 0.03f),
+	      "and before the right hand as it is drawn: its own reach, on its own side");
 	f.tablet.held[0].valid = false;
 	r = MenuPlaceResult{};
 	t = PlaceMenu(f, s, true, r);

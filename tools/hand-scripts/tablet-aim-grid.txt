@@ -1,0 +1,139 @@
+# Where the right hand's beam meets the tablet (exploratory, for aiming other
+# scenarios): the tablet in the left hand, the thumb up and the palm to the
+# eyes (held like the sword, before the hand - inventory-tablet-spec 20, 21),
+# the stats page turned to; the right hand near the right eye, out of the
+# picture, its beam stepped over a grid of angles. Each mark is named
+# y<yaw>p<pitch> and its "HandScript: state" line says where the laser hits
+# the layer: tools/tablet-aim.py reads the run's OBVR.log, fits the hit to the
+# angles and answers the angles for a place on the page. Re-run it whenever
+# the page's place in the hand changes; a DLL from before a change needs its
+# own run (its page stands elsewhere: 7.8 cm deeper before section 21).
+# No films: every mark costs the runner a picture already.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --parallel --headset beyond tools/hand-scripts/tablet-aim-grid.txt
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Tablet Enabled=1
+ini Tablet Unroll=sideways
+ini Render MonitorMenusOnly=0
+# The harness save's question box (Lovers with PK.esm active without its esp) closed first.
+console-at ready CloseAllMenus
+
+expect HandScript: finished
+expect Tablet: the Stats page read
+reject HandScript: WARNING
+
+wait 12
+# The console-at line runs at the mark named ready, before the tablet opens.
+mark ready
+wait 1
+head pitch -15
+left pos -0.22 -0.18 -0.40
+left rot 90 0 90
+left curl 0
+right pos 0.14 -0.14 -0.04
+right rot 24 27 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 3
+right stick -1 0
+wait 0.3
+right stick 0 0
+wait 2
+right rot 0 5 0
+wait 0.5
+mark y5p0
+right rot 10 5 0
+wait 0.5
+mark y5p10
+right rot 20 5 0
+wait 0.5
+mark y5p20
+right rot 30 5 0
+wait 0.5
+mark y5p30
+right rot 40 5 0
+wait 0.5
+mark y5p40
+right rot 50 5 0
+wait 0.5
+mark y5p50
+right rot 0 15 0
+wait 0.5
+mark y15p0
+right rot 10 15 0
+wait 0.5
+mark y15p10
+right rot 20 15 0
+wait 0.5
+mark y15p20
+right rot 30 15 0
+wait 0.5
+mark y15p30
+right rot 40 15 0
+wait 0.5
+mark y15p40
+right rot 50 15 0
+wait 0.5
+mark y15p50
+right rot 0 25 0
+wait 0.5
+mark y25p0
+right rot 10 25 0
+wait 0.5
+mark y25p10
+right rot 20 25 0
+wait 0.5
+mark y25p20
+right rot 30 25 0
+wait 0.5
+mark y25p30
+right rot 40 25 0
+wait 0.5
+mark y25p40
+right rot 50 25 0
+wait 0.5
+mark y25p50
+right rot 0 35 0
+wait 0.5
+mark y35p0
+right rot 10 35 0
+wait 0.5
+mark y35p10
+right rot 20 35 0
+wait 0.5
+mark y35p20
+right rot 30 35 0
+wait 0.5
+mark y35p30
+right rot 40 35 0
+wait 0.5
+mark y35p40
+right rot 50 35 0
+wait 0.5
+mark y35p50
+right rot 0 45 0
+wait 0.5
+mark y45p0
+right rot 10 45 0
+wait 0.5
+mark y45p10
+right rot 20 45 0
+wait 0.5
+mark y45p20
+right rot 30 45 0
+wait 0.5
+mark y45p30
+right rot 40 45 0
+wait 0.5
+mark y45p40
+right rot 50 45 0
+wait 0.5
+mark y45p50
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark closed
+wait 1

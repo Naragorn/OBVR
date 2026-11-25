@@ -218,6 +218,65 @@ void TestPopup() {
 	      "no pixels without a layer height or a rectangle");
 }
 
+// The stats page's own info box (Nadi, 2026-11-25: "die infobox erscheint im
+// stats tab für ein paar Einträge du hast die nur abgeschnitten"): a picture
+// of the stats menu itself, slid out beside the page - not the MagicPopup
+// menu. Read as one more picture of the page it was under the join share and
+// stayed out of the face; a tall one joined the page's outline.
+void TestOwnPopup() {
+	std::printf("The page's own info box:\n");
+	Check(PagePopupTileId(game::kMenuIdStats) == 61, "the stats menu's is the tile the engine knows by id 61");
+	Check(PagePopupTileId(game::kMenuIdInventory) == 0 && PagePopupTileId(game::kMenuIdMagic) == 0 &&
+	          PagePopupTileId(game::kMenuIdMap) == 0 && PagePopupTileId(game::kMenuIdMagicPopup) == 0,
+	      "the other pages have none of their own");
+	// As the game lays it out at rest: 419 wide from 20 inside the page's
+	// right edge, its corner 2 beyond; the tabs' strip is the page's.
+	const PaperTile box{752.0f, 170.0f, 1171.0f, 620.0f, true};
+	const PaperTile corner{1163.0f, 170.0f, 1173.0f, 180.0f, true};
+	const PaperTile icon{793.0f, 200.0f, 1049.0f, 456.0f, true};
+	const PaperTile stats[] = {{50.0f, 673.0f, 841.0f, 849.0f}, kPage, box, corner, icon};
+	TabletRects r = PaperOf(stats, 5, kScreenWidth, kScreenHeight);
+	Check(r.valid && SameRect(r.paper, 27.0f, 131.0f, 772.0f, 923.0f), "the page stays the page");
+	Check(SameRect(r.outline, 27.0f, 131.0f, 772.0f, 923.0f), "its outline without the box");
+	Check(r.popupCount == 1 && SameRect(r.popups[0], 752.0f, 170.0f, 1173.0f, 620.0f),
+	      "the box kept as a popup: all its pictures together");
+	Check(SameRect(r.crop, 27.0f, 131.0f, 1173.0f, 923.0f), "and the face grown to hold it - shown whole");
+
+	// What the read gave before: the same pictures, none told apart.
+	PaperTile plain[5];
+	for (int i = 0; i < 5; ++i) {
+		plain[i] = stats[i];
+		plain[i].popup = false;
+	}
+	r = PaperOf(plain, 5, kScreenWidth, kScreenHeight);
+	Check(r.popupCount == 0 && Near(r.crop.right, 772.0f, 0.01f),
+	      "(not told apart, a box under the join share was cut off at the page's edge)");
+
+	// A long description: the box taller, over the join share.
+	const PaperTile tallBox{752.0f, 170.0f, 1171.0f, 800.0f, true};
+	Check(RectArea(OnScreen(tallBox, kScreenWidth, kScreenHeight)) > kPaperJoinShare * 745.0f * 792.0f,
+	      "(a tall box is over the join share)");
+	const PaperTile tall[] = {kPage, tallBox};
+	r = PaperOf(tall, 2, kScreenWidth, kScreenHeight);
+	Check(SameRect(r.outline, 27.0f, 131.0f, 772.0f, 923.0f) && r.popupCount == 1 &&
+	          SameRect(r.popups[0], 752.0f, 170.0f, 1171.0f, 800.0f),
+	      "a tall box is a popup too, no part of the page's outline");
+
+	// Sliding out from behind the page: still under it.
+	const PaperTile under[] = {kPage, {340.0f, 170.0f, 759.0f, 620.0f, true}};
+	r = PaperOf(under, 2, kScreenWidth, kScreenHeight);
+	Check(r.popupCount == 1 && SameRect(r.crop, 27.0f, 131.0f, 772.0f, 923.0f), "still behind the page: the face as it is");
+
+	const PaperTile huge[] = {kPage, {0.0f, 0.0f, 1700.0f, 960.0f, true}};
+	r = PaperOf(huge, 2, kScreenWidth, kScreenHeight);
+	Check(r.valid && SameRect(r.paper, 27.0f, 131.0f, 772.0f, 923.0f), "a box larger than the page is not the page");
+	const PaperTile alone[] = {box, icon};
+	Check(!PaperOf(alone, 2, kScreenWidth, kScreenHeight).valid, "a box without a page: no page");
+	const PaperTile offScreen[] = {kPage, {2000.0f, 100.0f, 2400.0f, 500.0f, true}};
+	r = PaperOf(offScreen, 2, kScreenWidth, kScreenHeight);
+	Check(r.valid && r.popupCount == 0 && Near(r.crop.right, 772.0f, 0.01f), "a box wholly off the screen: none");
+}
+
 TabletFrame FrameOf(const UiRect& paper, const UiRect& crop) {
 	TabletFrame f;
 	f.up = true;
@@ -349,13 +408,16 @@ void TestHeldLikeTheSword() {
 	const NiPoint3 palm{-0.04f, 0.01f, 0.13f};
 	const NiPoint3 palmSide = CrossOf(left.edge, left.blade);  // the node's z on the left hand: out of the palm
 	Check(palmSide.x > 0.9f, "(the test's hand: knuckles by blade points out of the palm, to the handle)");
+	// The hand's model not read here: the page an open hand's reach before
+	// the palm (tablet_on_hand_test has the reach read).
+	const NiPoint3 out = palmSide * PageLiftMetres(HandReach{}, true);
 
 	TabletPlace p = PlaceTablet(f, s, true, palm, TabletHold::Side, left);
 	Check(p.valid && NearPoint(Column(p, 1), left.blade), "the page's up is the blade's way out of the fist");
 	Check(NearPoint(Column(p, 0), left.edge), "its right towards the knuckles - to the body's middle, the palm to the eyes");
 	Check(NearPoint(Column(p, 2), palmSide), "its face the blade's flat on the palm's side");
-	Check(NearPoint(Column(p, 3), palm + left.edge * 0.20f),
-	      "held at its side: its left edge's middle in the palm, the page across the knuckles");
+	Check(NearPoint(Column(p, 3), palm + left.edge * 0.20f + out),
+	      "held at its side: its left edge's middle before the palm, the page across the knuckles");
 	Check(Near(p.width, 0.40f) && Near(p.height, 0.40f), "its size as before");
 
 	s.tiltDegrees = 0.0f;
@@ -366,10 +428,10 @@ void TestHeldLikeTheSword() {
 	p = PlaceTablet(f, s, true, palm, TabletHold::Bottom, left);
 	Check(NearPoint(Column(p, 1), left.blade) && NearPoint(Column(p, 0), left.edge),
 	      "held at its bottom edge: the same way round");
-	Check(NearPoint(Column(p, 3), palm + left.edge * 0.10f + left.blade * 0.20f),
+	Check(NearPoint(Column(p, 3), palm + left.edge * 0.10f + left.blade * 0.20f + out),
 	      "the grip a quarter along the lower edge, the page rising along the blade - no clipboard offsets");
 	p = PlaceTablet(f, s, true, palm, TabletHold::Top, left);
-	Check(NearPoint(Column(p, 3), palm - left.blade * 0.20f), "held at its top edge: hanging below the fist");
+	Check(NearPoint(Column(p, 3), palm - left.blade * 0.20f + out), "held at its top edge: hanging below the fist");
 
 	// The right hand: the mirror image of the left, the page read the right
 	// way round - its right turned back, its up and face mirrored.
@@ -772,14 +834,93 @@ void TestPopupPictures() {
 	      "popups not all kept: the whole cut as one picture, nothing lost");
 }
 
+// Where a pixel column of the face lies along the quad's right axis, from
+// the hand that holds it, metres.
+float AcrossFromHand(const TabletPlace& p, const TabletFrame& f, const NiPoint3& hand, float x) {
+	const NiPoint3 right = Column(p, 0);
+	const NiPoint3 from = Column(p, 3) - hand;
+	const float centre = from.x * right.x + from.y * right.y + from.z * right.z;
+	return centre + ((x - f.crop.left) / (f.crop.right - f.crop.left) - 0.5f) * p.width;
+}
+
+// Held at its side the hand has the page's edge. It had the whole face's: in
+// a physical right hand that is the edge a popup joins, so an info box
+// sliding out moved the page left by the box's width and back as it went.
+void TestHeldByItsOutline() {
+	std::printf("Held by the page's edge, not a popup's:\n");
+	TabletSettings s;
+	s.enabled = true;
+	s.widthMetres = 0.40f;
+	const UiRect paper = Rect(100.0f, 200.0f, 900.0f, 1000.0f);  // 800 pixels wide: 0.0005 m a pixel
+	TabletFrame plain = FrameOf(paper, paper);
+	plain.outline = paper;
+	// An info box 400 pixels out to the right of the page.
+	TabletFrame box = plain;
+	box.crop = Rect(100.0f, 200.0f, 1300.0f, 1000.0f);
+	box.pageCrop = box.crop;
+	box.popupCount = 1;
+	box.popups[0] = Rect(900.0f, 300.0f, 1300.0f, 700.0f);
+	const NiPoint3 hand{0.02f, -0.01f, 0.10f};
+
+	TabletPlace p = PlaceTablet(plain, s, false, hand, TabletHold::Side);
+	Check(Near(AcrossFromHand(p, plain, hand, 900.0f), 0.0f), "in the right hand: the page's right edge in the hand");
+	p = PlaceTablet(box, s, false, hand, TabletHold::Side);
+	Check(Near(AcrossFromHand(p, box, hand, 900.0f), 0.0f) && Near(AcrossFromHand(p, box, hand, 100.0f), -0.40f),
+	      "an info box out to its right: the page stays where it was");
+	Check(Near(AcrossFromHand(p, box, hand, 1300.0f), 0.20f), "and the box reaches out past the hand");
+	TabletFrame unread = box;
+	unread.outline = UiRect{};
+	p = PlaceTablet(unread, s, false, hand, TabletHold::Side);
+	Check(Near(AcrossFromHand(p, unread, hand, 1300.0f), 0.0f) && Near(AcrossFromHand(p, unread, hand, 900.0f), -0.20f),
+	      "(no outline read: the face's own edge in the hand - the page a box's width aside, as it was)");
+
+	p = PlaceTablet(box, s, true, hand, TabletHold::Side);
+	Check(Near(AcrossFromHand(p, box, hand, 100.0f), 0.0f) && Near(AcrossFromHand(p, box, hand, 900.0f), 0.40f),
+	      "in the left hand the box is at the far side: the page's left edge in the hand, as before");
+	TabletFrame boxLeft = plain;
+	boxLeft.crop = Rect(0.0f, 200.0f, 900.0f, 1000.0f);
+	boxLeft.pageCrop = boxLeft.crop;
+	boxLeft.popupCount = 1;
+	boxLeft.popups[0] = Rect(0.0f, 300.0f, 300.0f, 700.0f);
+	p = PlaceTablet(boxLeft, s, true, hand, TabletHold::Side);
+	Check(Near(AcrossFromHand(p, boxLeft, hand, 100.0f), 0.0f) && Near(AcrossFromHand(p, boxLeft, hand, 0.0f), -0.05f),
+	      "a box reaching out to the left of the page: the left hand keeps the page's edge too");
+
+	// The figure's own page beside the page is no popup: its outer edge is the hand's.
+	TabletFrame figure = plain;
+	figure.figurePage = true;
+	figure.backing = Rect(900.0f, 200.0f, 1200.0f, 1000.0f);
+	figure.crop = Rect(100.0f, 200.0f, 1200.0f, 1000.0f);
+	p = PlaceTablet(figure, s, false, hand, TabletHold::Side);
+	Check(Near(AcrossFromHand(p, figure, hand, 1200.0f), 0.0f), "the figure's page beside it: the right hand holds that page's edge");
+	Check(SameRect(HoldFace(figure), 100.0f, 200.0f, 1200.0f, 1000.0f) && SameRect(HoldFace(box), 100.0f, 200.0f, 900.0f, 1000.0f) &&
+	          SameRect(HoldFace(unread), 100.0f, 200.0f, 1300.0f, 1000.0f),
+	      "what the hand holds: the outline, with the figure's page, or the face when no outline was read");
+
+	// Like the sword: along the page's own right, whichever way it is turned.
+	HeldAxes right;
+	right.valid = true;
+	right.blade = NiPoint3{0.0f, 0.6f, -0.8f};
+	right.edge = NiPoint3{0.0f, -0.8f, -0.6f};
+	p = PlaceTablet(box, s, false, hand, TabletHold::Side, right);
+	Check(Near(AcrossFromHand(p, box, hand, 900.0f), 0.0f) && Near(AcrossFromHand(p, box, hand, 1300.0f), 0.20f),
+	      "held like the sword: the same");
+	p = PlaceTablet(box, s, false, hand, TabletHold::Bottom);
+	const TabletPlace q = PlaceTablet(plain, s, false, hand, TabletHold::Bottom);
+	Check(Near(AcrossFromHand(p, box, hand, 900.0f), AcrossFromHand(q, plain, hand, 900.0f)),
+	      "held at its lower edge the page never moved with a box: still so");
+}
+
 }  // namespace
 
 int main() {
 	TestMenus();
 	TestPaper();
 	TestPopup();
+	TestOwnPopup();
 	TestPopupPictures();
 	TestPlace();
+	TestHeldByItsOutline();
 	TestHeldLikeTheSword();
 	TestCorners();
 	TestFigurePage();

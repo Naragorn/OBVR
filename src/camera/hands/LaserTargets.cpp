@@ -14,8 +14,13 @@ namespace obvr::camera::hands {
 namespace {
 
 // The tablet held at the palms' middles read last frame (vr/FingerTip.h
-// PalmBetween), turned like the sword in that hand (vr::HeldAxes).
-void PalmsToTablet(const LaserTargetsState& state, vr::TabletFrame& tablet) {
+// PalmBetween), turned like the sword in that hand (vr::HeldAxes), before
+// the hand as it is drawn (vr::HandReach) - whose read is told whether the
+// tablet is up.
+void PalmsToTablet(LaserTargetsState& state, vr::TabletFrame& tablet) {
+	state.tabletUp = tablet.up;
+	tablet.reach[0] = state.reach.shown[0];
+	tablet.reach[1] = state.reach.shown[1];
 	tablet.palmValid[0] = state.leftPalm.valid;
 	tablet.palm[0] = state.leftPalm.local;
 	tablet.palmValid[1] = state.rightPalm.valid;
@@ -212,6 +217,8 @@ void StepIndexTips(LaserTargetsState& state, bool rightFollows, bool leftFollows
 	};
 	held(true, hand.rightHandValid, hand.rightHandRotation, state.rightHeld);
 	held(false, hand.leftHandValid, hand.leftHandRotation, state.leftHeld);
+	// And how far each hand as drawn reaches out of the flat the page lies in, while the tablet is up.
+	StepHandReachRead(state.reach, state.tabletUp, hand, unitsPerMetre);
 }
 
 }  // namespace obvr::camera::hands

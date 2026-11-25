@@ -139,7 +139,7 @@ inline TabletPlace HeldByRight(const HandModeFrame& f, const HandSettings& s, Ta
 	const TabletPlace own =
 		PlaceTablet(f.tablet, s.tablet, rightPhysicalLeft,
 		            TabletHoldPoint(f.tablet, true, DrawnHandOnController(s, rightPhysicalLeft)), hold,
-		            TabletHeldAxes(f.tablet, true));
+		            TabletHeldAxes(f.tablet, true), TabletHandReach(f.tablet, true));
 	if (!own.valid) {
 		return own;
 	}
@@ -216,7 +216,8 @@ inline MenuTarget PlaceMenu(const HandModeFrame& f, const HandSettings& s, bool 
 	const TabletHold hold = HoldFor(s.tablet.unroll, keptOnTop);
 	TabletPlace tablet = inHand && f.left.valid ? PlaceTablet(f.tablet, s.tablet, holderLeft,
 	                                                          TabletHoldPoint(f.tablet, false, DrawnHandOnController(s, holderLeft)),
-	                                                          hold, TabletHeldAxes(f.tablet, false))
+	                                                          hold, TabletHeldAxes(f.tablet, false),
+	                                                          TabletHandReach(f.tablet, false))
 	                                            : TabletPlace{};
 	// The scroll (vr/TabletScroll.h): between the hands while it unrolls or
 	// rolls up, in the right hand when that one kept it.

@@ -174,13 +174,30 @@ inline UInt32 TabletFaceMenus(const UInt32* stack, UInt32 count, UInt32* out, UI
 // ---------------------------------------------------------- The rectangle
 
 // A drawn picture of a menu - a tile with a file, shown, not clear - by its
-// rectangle in HUD units. What game::ReadMenuPaper hands over.
+// rectangle in HUD units. What game::ReadMenuPaper hands over. `popup`: the
+// picture is the page's own info box or lies under it (PagePopupTileId).
 struct PaperTile {
 	float left = 0.0f;
 	float top = 0.0f;
 	float right = 0.0f;
 	float bottom = 0.0f;
+	bool popup = false;
 };
+
+// A page's own info box. The stats menu shows an attribute's or a skill's
+// description in a picture of its own (vanilla stats_menu.xml:
+// stat_pop_background), a tile of the stats menu itself that slides out
+// beside the page - not the MagicPopup menu the inventory and the spells
+// use. Read as one more picture of the page it was under the join share and
+// stayed out of the face (Nadi, 2026-11-25: "die infobox erscheint im stats
+// tab für ein paar Einträge du hast die nur abgeschnitten"). The engine
+// knows it by its id, whatever a UI mod calls or lays it out: [R in
+// Oblivion.exe 1.2.416] StatsMenu::SetField at 0x005D9BE0 (the menu's vtable
+// 0x00A6D9DC, slot 1) keeps the tile of id 61 at +0x58, the focus box of id
+// 60 at +0x54. The other three pages have no box of their own: 0.
+inline constexpr UInt32 kStatsInfoTileId = 61;
+
+inline UInt32 PagePopupTileId(UInt32 menuId) { return menuId == game::kMenuIdStats ? kStatsInfoTileId : 0u; }
 
 // The popups kept on their own beside the page (vr::LayerPictures): an item
 // info, a message or quantity box, a Generic box - more at once is not seen.
@@ -219,47 +236,6 @@ inline UiRect OnScreen(const PaperTile& t, float screenWidth, float screenHeight
 	return r;
 }
 
-// The page of one menu from its pictures: the largest is the page, and every
-// picture of at least kPaperJoinShare of its area joins the crop. Invalid
-// with no picture, a screen without a size, or a page too small to be one.
-inline TabletRects PaperOf(const PaperTile* tiles, UInt32 count, float screenWidth, float screenHeight) {
-	TabletRects out;
-	if (tiles == nullptr || !(screenWidth > 0.0f) || !(screenHeight > 0.0f)) {
-		return out;
-	}
-	float most = 0.0f;
-	for (UInt32 i = 0; i < count; ++i) {
-		const UiRect r = OnScreen(tiles[i], screenWidth, screenHeight);
-		if (RectArea(r) > most) {
-			most = RectArea(r);
-			out.paper = r;
-		}
-	}
-	if (!(most >= kPaperLeastShare * screenWidth * screenHeight)) {
-		return TabletRects{};
-	}
-	out.crop = out.paper;
-	for (UInt32 i = 0; i < count; ++i) {
-		const UiRect r = OnScreen(tiles[i], screenWidth, screenHeight);
-		if (RectArea(r) >= kPaperJoinShare * most) {
-			out.crop = UnionRect(out.crop, r);
-		}
-	}
-	out.outline = out.crop;
-	out.valid = true;
-	return out;
-}
-
-// What a popup takes of the screen: all its pictures together, however
-// small - a message box is no page, and must not be cut off.
-inline UiRect PopupRect(const PaperTile* tiles, UInt32 count, float screenWidth, float screenHeight) {
-	UiRect out;
-	for (UInt32 i = 0; tiles != nullptr && i < count; ++i) {
-		out = UnionRect(out, OnScreen(tiles[i], screenWidth, screenHeight));
-	}
-	return out;
-}
-
 // A popup over the page: the crop grows to hold it, the page stays the page,
 // and the popup is kept on its own to be drawn as its own picture.
 inline void JoinPopup(TabletRects& page, const UiRect& popup) {
@@ -271,6 +247,54 @@ inline void JoinPopup(TabletRects& page, const UiRect& popup) {
 			page.popupsOverflow = true;
 		}
 	}
+}
+
+// The page of one menu from its pictures: the largest is the page, and every
+// picture of at least kPaperJoinShare of its area joins the crop. The
+// pictures of the page's own info box (PaperTile::popup) are no part of the
+// page, however large: all of them together are a popup beside it, joined as
+// one of another menu is. Invalid with no picture, a screen without a size,
+// or a page too small to be one.
+inline TabletRects PaperOf(const PaperTile* tiles, UInt32 count, float screenWidth, float screenHeight) {
+	TabletRects out;
+	if (tiles == nullptr || !(screenWidth > 0.0f) || !(screenHeight > 0.0f)) {
+		return out;
+	}
+	float most = 0.0f;
+	for (UInt32 i = 0; i < count; ++i) {
+		const UiRect r = OnScreen(tiles[i], screenWidth, screenHeight);
+		if (!tiles[i].popup && RectArea(r) > most) {
+			most = RectArea(r);
+			out.paper = r;
+		}
+	}
+	if (!(most >= kPaperLeastShare * screenWidth * screenHeight)) {
+		return TabletRects{};
+	}
+	out.crop = out.paper;
+	UiRect own;
+	for (UInt32 i = 0; i < count; ++i) {
+		const UiRect r = OnScreen(tiles[i], screenWidth, screenHeight);
+		if (tiles[i].popup) {
+			own = UnionRect(own, r);
+		} else if (RectArea(r) >= kPaperJoinShare * most) {
+			out.crop = UnionRect(out.crop, r);
+		}
+	}
+	out.outline = out.crop;
+	out.valid = true;
+	JoinPopup(out, own);
+	return out;
+}
+
+// What a popup takes of the screen: all its pictures together, however
+// small - a message box is no page, and must not be cut off.
+inline UiRect PopupRect(const PaperTile* tiles, UInt32 count, float screenWidth, float screenHeight) {
+	UiRect out;
+	for (UInt32 i = 0; tiles != nullptr && i < count; ++i) {
+		out = UnionRect(out, OnScreen(tiles[i], screenWidth, screenHeight));
+	}
+	return out;
 }
 
 // HUD units to the layer's pixels: the layer is kHudUiHeightUnits high.
@@ -325,6 +349,38 @@ inline void StepHeldAxes(HeldAxes& kept, bool read, const NiPoint3& blade, const
 	kept.edge = kept.edge + (edge - kept.edge) * kHeldAxesEase;
 }
 
+// How far a drawn hand reaches out of the flat a page held like the sword
+// lies in, from its palm's middle, in metres: before the face the page shows
+// in a physical left hand, and before the one it shows in a right hand - on
+// the same axes the two faces look opposite ways (PageLikeTheSword), so the
+// two are the hand's two sides, and a hand uses its own. Read from the
+// hand's model as it is drawn, gauntlet and all (vr/HandReach.h).
+struct HandReach {
+	bool valid = false;
+	float beforeLeft = 0.0f;
+	float beforeRight = 0.0f;
+};
+
+// The page stands a hair before the hand's foremost part, so nothing of the
+// hand shows through it.
+inline constexpr float kPageClearMetres = 0.003f;
+// The hand's model not read: an open hand's reach stands in. [R in the
+// harness, 2026-11-25, tablet-on-hand.txt] The save's bare left hand reaches
+// 7.5 cm before its palm's middle open - its fingertips, 10.5 cm across the
+// page - and 6.9 cm closed, its curled fingers 2.6 cm across: the fingers
+// stand out of the blade's flat, open or not. Its right hand 6.4 cm.
+inline constexpr float kHandReachUnreadMetres = 0.075f;
+
+// How far before the palm's middle the page stands, along its face: the hand
+// that carries it lies behind it (Nadi, 2026-11-25: "das tablet auf die
+// tragende hand schieben sodass die hand nicht durchklippt, die hand soll
+// also hinter dem tablet sein und nicht andersherum wie es jetzt ist" - the
+// page lay in the flat through the palm's middle, the fingers before it).
+inline float PageLiftMetres(const HandReach& reach, bool holderPhysicalLeft) {
+	const float before = !reach.valid ? kHandReachUnreadMetres : (holderPhysicalLeft ? reach.beforeLeft : reach.beforeRight);
+	return before + kPageClearMetres;
+}
+
 // What the hand mode is told each frame: the tablet's menus are up and their
 // rectangles were read, both in the layer's pixels.
 struct TabletFrame {
@@ -366,6 +422,9 @@ struct TabletFrame {
 	// Each drawn hand's held-item node (0 the left role's, 1 the right's):
 	// the page is turned like the sword in it (PageLikeTheSword).
 	HeldAxes held[2];
+	// How far each drawn hand reaches out of that flat (0 the left role's, 1
+	// the right's): the page lies before the hand (PageLiftMetres).
+	HandReach reach[2];
 };
 
 // The rectangles of the layer drawn on the face, in the layer's pixels: the
@@ -401,6 +460,9 @@ inline NiPoint3 TabletHoldPoint(const TabletFrame& f, bool rightRole, const NiPo
 // How a hand holds an item, in its controller's frame: its held-item node's
 // axes when read.
 inline HeldAxes TabletHeldAxes(const TabletFrame& f, bool rightRole) { return f.held[rightRole ? 1 : 0]; }
+
+// How far a hand reaches before the page it holds.
+inline HandReach TabletHandReach(const TabletFrame& f, bool rightRole) { return f.reach[rightRole ? 1 : 0]; }
 
 // The figure's page: abutting the page on its right, as high as the page,
 // the figure in it a gap in from the page's edge, made smaller to fit the
@@ -636,12 +698,29 @@ inline PageAxes PageLikeTheSword(const HeldAxes& held, bool holderPhysicalLeft) 
 	return a;
 }
 
+// What a hand at the side holds by its outer edge: the page's outline and,
+// beside it, the figure's own page - not a popup, which comes and goes. The
+// edge was the whole face's: held by a physical right hand - left-handed, or
+// the scroll kept by the right - the face's right edge is where a popup
+// joins it, so every info box sliding out moved the page to the left by the
+// box's width and back ([R in the code, 2026-11-25; the stats page's own box
+// of section 22 would have added one]). A frame without an outline (none
+// read) holds the face as it is.
+inline UiRect HoldFace(const TabletFrame& f) {
+	if (!f.outline.valid) {
+		return f.crop;
+	}
+	return f.figurePage ? UnionRect(f.outline, f.backing) : f.outline;
+}
+
 // `held`: the holding hand's held-item node; read, the page is turned like
-// the sword in that hand and held at the hold's edge in the palm, without
-// the clipboard's grip offsets or the tilt; else on the controller as above.
+// the sword in that hand and held at the hold's edge before the palm - by
+// `reach`, the hand as it is drawn behind it (PageLiftMetres) - without the
+// clipboard's grip offsets or the tilt; else on the controller as above.
 inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bool holderPhysicalLeft,
                                const NiPoint3& hand = NiPoint3{0.0f, 0.0f, 0.0f},
-                               TabletHold hold = TabletHold::Bottom, const HeldAxes& held = HeldAxes{}) {
+                               TabletHold hold = TabletHold::Bottom, const HeldAxes& held = HeldAxes{},
+                               const HandReach& reach = HandReach{}) {
 	TabletPlace place;
 	const float paperWidth = f.paper.right - f.paper.left;
 	const float cropWidth = f.crop.right - f.crop.left;
@@ -653,7 +732,8 @@ inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bo
 	const float metresPerPixel = s.widthMetres / paperWidth;
 	const float share = holderPhysicalLeft ? s.gripShare : 1.0f - s.gripShare;
 	const float pageMiddleY = 0.5f * (f.paper.top + f.paper.bottom);
-	const float anchorX = hold == TabletHold::Side   ? (holderPhysicalLeft ? f.crop.left : f.crop.right)
+	const UiRect side = HoldFace(f);
+	const float anchorX = hold == TabletHold::Side   ? (holderPhysicalLeft ? side.left : side.right)
 	                      : hold == TabletHold::Top  ? 0.5f * (f.paper.left + f.paper.right)
 	                                                 : f.paper.left + share * paperWidth;
 	const float anchorY = hold == TabletHold::Side ? pageMiddleY : (hold == TabletHold::Top ? f.paper.top : f.paper.bottom);
@@ -671,7 +751,8 @@ inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bo
 			m.m[1][c] = axes[c].y;
 			m.m[2][c] = axes[c].z;
 		}
-		const NiPoint3 centre = hand + sword.right * across + sword.up * along;
+		const NiPoint3 centre =
+			hand + sword.right * across + sword.up * along + sword.front * PageLiftMetres(reach, holderPhysicalLeft);
 		m.m[0][3] = centre.x;
 		m.m[1][3] = centre.y;
 		m.m[2][3] = centre.z;

@@ -45,8 +45,10 @@ UInt32 ReadHudTiles(UInt32 menuId, vr::HudTile* out, UInt32 capacity);
 // file, has a size and is not clear, with no hidden tile above it - a menu
 // whose root is hidden (a page of the F1-F4 menus that is not the one shown)
 // gives none. Rectangles in HUD units. Returns how many were read, 0 when
-// the menu is not loaded; stops at `capacity`.
-UInt32 ReadMenuPaper(UInt32 menuId, vr::PaperTile* out, UInt32 capacity);
+// the menu is not loaded; stops at `capacity`. `popupTileId`: the id trait
+// of the menu's own info box (vr::PagePopupTileId; 0 for none) - the
+// pictures of that tile and under it are marked PaperTile::popup.
+UInt32 ReadMenuPaper(UInt32 menuId, vr::PaperTile* out, UInt32 capacity, UInt32 popupTileId = 0);
 
 // The root tile of a loaded menu from the tile menu array; nullptr when it
 // is not loaded.

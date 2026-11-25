@@ -17,6 +17,7 @@
 // Harness: main-menu-laser.txt, slider-knob.txt, laser-drag.txt,
 // settings-sections.txt, load-menu-map.txt.
 
+#include "camera/hands/HandReachRead.h"
 #include "camera/hands/HandStep.h"
 #include "game/TabletMenu.h"
 #include "render/HeadsetRenderer.h"
@@ -44,6 +45,10 @@ struct LaserTargetsState {
 	vr::HeldAxes rightHeld;
 	vr::HeldAxes leftHeld;
 	UInt32 heldLinesLeft = 4;
+	// How far each hand as drawn reaches out of the page's flat, read while
+	// the tablet is up (camera/hands/HandReachRead.h): the page lies before it.
+	HandReachState reach;
+	bool tabletUp = false;  // the tablet's menus were up at the last fill
 };
 
 // What the fill reads of the rest of the frame.

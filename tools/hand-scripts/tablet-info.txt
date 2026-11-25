@@ -2,15 +2,18 @@
 # infotexten wenn du einträge highlightes im stat und invenotry tab. karte auch
 # mal"; the info text cut off, docs/inventory-tablet-spec.md 19). The tablet in
 # the left hand, the thumb up and the palm to the eyes (held like the sword,
-# section 20); the right hand's beam drawn slowly down three columns of the
-# inventory page, so the rows it crosses are highlighted one after another and
-# the item info comes up beside the page; the same on the stats page; then the
-# map, the beam drawn across it. The beam is the controller turned down by
-# LaserPitchDegrees (40): a controller pitch of 52 points it 12 degrees up.
-# Films from each mark; the log says where the beam hits at each mark. The
-# sweeps' steps: tools/gen-tablet-sweeps.py (columns, row).
-# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --record 12 --record-width 1280 tools/hand-scripts/tablet-info.txt
+# section 20, before the hand, section 21); the right hand's beam drawn slowly
+# down three columns of the inventory page, so the rows it crosses are
+# highlighted one after another and the item info comes up beside the page;
+# the same on the stats page (its own info box, section 22); then the map,
+# the beam drawn across its page. The right hand stands near the right eye,
+# out of the picture; its angles are measured for the page where it is held
+# now: tablet-aim-grid.txt run once, then tools/tablet-aim.py --column X 60
+# 700 12 0.06 for X 180, 370 and 560 and --row 380 60 700 8 0.05.
+# Films from each mark; the log says where the beam hits at each mark.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --headset beyond --record 14 --record-width 1280 tools/hand-scripts/tablet-info.txt
 ini Hands Enabled=1
+ini Hands LeftHanded=0
 ini Tablet Enabled=1
 ini Tablet Unroll=sideways
 ini Render MonitorMenusOnly=0
@@ -20,7 +23,9 @@ console-at ready CloseAllMenus
 
 expect HandScript: finished
 expect Tablet: the Inventory page read
+expect Tablet: the item info (MagicPopup) shown beside the page
 expect Tablet: the Stats page read
+expect Tablet: the page's own info box shown beside the page
 expect Tablet: the Map page read
 reject HandScript: WARNING
 
@@ -31,361 +36,344 @@ wait 1
 head pitch -15
 left pos -0.22 -0.18 -0.40
 left rot 90 0 90
-right pos 0.22 -0.28 -0.20
-right rot 52 40 0
+left curl 0
+right pos 0.14 -0.14 -0.04
+right rot 41.8 40.3 0
 wait 1.5
 left b 1
 wait 0.2
 left b 0
 wait 2.5
 mark inventory
-right rot 80 25 0
+right rot 41.8 40.3 0
 wait 0.4
-right rot 80 25 0
+right rot 41.8 40.3 0
 wait 0.06
-right rot 79 25 0
+right rot 41.0 40.2 0
 wait 0.06
-right rot 78 25 0
+right rot 40.2 40.1 0
 wait 0.06
-right rot 77 25 0
+right rot 39.4 40.0 0
 wait 0.06
-right rot 76 25 0
+right rot 38.6 39.9 0
 wait 0.06
-right rot 75 25 0
+right rot 37.8 39.8 0
 wait 0.06
-right rot 74 25 0
+right rot 37.0 39.7 0
 wait 0.06
-right rot 73 25 0
+right rot 36.2 39.6 0
 wait 0.06
-right rot 72 25 0
+right rot 35.4 39.6 0
 wait 0.06
-right rot 71 25 0
+right rot 34.6 39.5 0
 wait 0.06
-right rot 70 25 0
+right rot 33.9 39.4 0
 wait 0.06
-right rot 69 25 0
+right rot 33.1 39.3 0
 wait 0.06
-right rot 68 25 0
+right rot 32.4 39.2 0
 wait 0.06
-right rot 67 25 0
+right rot 31.6 39.1 0
 wait 0.06
-right rot 66 25 0
+right rot 30.9 39.0 0
 wait 0.06
-right rot 65 25 0
+right rot 30.1 38.9 0
 wait 0.06
-right rot 64 25 0
+right rot 29.4 38.8 0
 wait 0.06
-right rot 63 25 0
+right rot 28.7 38.7 0
 wait 0.06
-right rot 62 25 0
+right rot 28.0 38.6 0
 wait 0.06
-right rot 61 25 0
+right rot 27.3 38.5 0
 wait 0.06
-right rot 60 25 0
+right rot 26.6 38.4 0
 wait 0.06
-right rot 59 25 0
+right rot 25.9 38.3 0
 wait 0.06
-right rot 58 25 0
+right rot 25.2 38.2 0
 wait 0.06
-right rot 57 25 0
+right rot 24.6 38.1 0
 wait 0.06
-right rot 56 25 0
+right rot 23.9 38.0 0
 wait 0.06
-right rot 55 25 0
+right rot 23.2 37.9 0
 wait 0.06
-right rot 54 25 0
+right rot 22.6 37.8 0
 wait 0.06
-right rot 53 25 0
+right rot 22.0 37.7 0
 wait 0.06
-right rot 52 25 0
+right rot 21.3 37.6 0
 wait 0.06
-right rot 51 25 0
+right rot 20.7 37.5 0
 wait 0.06
-right rot 50 25 0
+right rot 20.1 37.4 0
 wait 0.06
-right rot 49 25 0
+right rot 19.5 37.3 0
 wait 0.06
-right rot 48 25 0
+right rot 18.8 37.1 0
 wait 0.06
-right rot 47 25 0
+right rot 18.2 37.0 0
 wait 0.06
-right rot 46 25 0
+right rot 17.7 36.9 0
 wait 0.06
-right rot 45 25 0
+right rot 17.1 36.8 0
 wait 0.06
-right rot 44 25 0
+right rot 16.5 36.7 0
 wait 0.06
-right rot 43 25 0
+right rot 15.9 36.6 0
 wait 0.06
-right rot 42 25 0
+right rot 15.3 36.5 0
 wait 0.06
-right rot 41 25 0
+right rot 14.8 36.4 0
 wait 0.06
-right rot 40 25 0
+right rot 14.2 36.2 0
 wait 0.06
-right rot 39 25 0
+right rot 13.7 36.1 0
 wait 0.06
-right rot 38 25 0
+right rot 13.2 36.0 0
 wait 0.06
-right rot 37 25 0
+right rot 12.6 35.9 0
 wait 0.06
-right rot 36 25 0
+right rot 12.1 35.8 0
 wait 0.06
-right rot 35 25 0
+right rot 11.6 35.7 0
 wait 0.06
-right rot 34 25 0
+right rot 11.1 35.5 0
 wait 0.06
-right rot 33 25 0
+right rot 10.6 35.4 0
 wait 0.06
-right rot 32 25 0
+right rot 10.1 35.3 0
 wait 0.06
-right rot 31 25 0
+right rot 9.6 35.2 0
 wait 0.06
-right rot 30 25 0
+right rot 9.1 35.0 0
 wait 0.06
-right rot 29 25 0
+right rot 8.7 34.9 0
 wait 0.06
-right rot 28 25 0
+right rot 8.2 34.8 0
 wait 0.06
-right rot 27 25 0
+right rot 7.7 34.7 0
 wait 0.06
-right rot 26 25 0
-wait 0.06
-right rot 25 25 0
-wait 0.06
-right rot 24 25 0
-wait 0.06
-right rot 80 40 0
+right rot 42.9 30.3 0
 wait 0.4
-right rot 80 40 0
+right rot 42.9 30.3 0
 wait 0.06
-right rot 79 40 0
+right rot 42.0 30.3 0
 wait 0.06
-right rot 78 40 0
+right rot 41.1 30.2 0
 wait 0.06
-right rot 77 40 0
+right rot 40.3 30.1 0
 wait 0.06
-right rot 76 40 0
+right rot 39.4 30.0 0
 wait 0.06
-right rot 75 40 0
+right rot 38.5 29.9 0
 wait 0.06
-right rot 74 40 0
+right rot 37.7 29.8 0
 wait 0.06
-right rot 73 40 0
+right rot 36.8 29.7 0
 wait 0.06
-right rot 72 40 0
+right rot 36.0 29.6 0
 wait 0.06
-right rot 71 40 0
+right rot 35.1 29.5 0
 wait 0.06
-right rot 70 40 0
+right rot 34.3 29.4 0
 wait 0.06
-right rot 69 40 0
+right rot 33.5 29.3 0
 wait 0.06
-right rot 68 40 0
+right rot 32.7 29.2 0
 wait 0.06
-right rot 67 40 0
+right rot 31.9 29.1 0
 wait 0.06
-right rot 66 40 0
+right rot 31.1 29.0 0
 wait 0.06
-right rot 65 40 0
+right rot 30.3 28.9 0
 wait 0.06
-right rot 64 40 0
+right rot 29.5 28.8 0
 wait 0.06
-right rot 63 40 0
+right rot 28.7 28.6 0
 wait 0.06
-right rot 62 40 0
+right rot 28.0 28.5 0
 wait 0.06
-right rot 61 40 0
+right rot 27.2 28.4 0
 wait 0.06
-right rot 60 40 0
+right rot 26.4 28.3 0
 wait 0.06
-right rot 59 40 0
+right rot 25.7 28.2 0
 wait 0.06
-right rot 58 40 0
+right rot 24.9 28.1 0
 wait 0.06
-right rot 57 40 0
+right rot 24.2 28.0 0
 wait 0.06
-right rot 56 40 0
+right rot 23.5 27.9 0
 wait 0.06
-right rot 55 40 0
+right rot 22.8 27.8 0
 wait 0.06
-right rot 54 40 0
+right rot 22.0 27.7 0
 wait 0.06
-right rot 53 40 0
+right rot 21.3 27.5 0
 wait 0.06
-right rot 52 40 0
+right rot 20.6 27.4 0
 wait 0.06
-right rot 51 40 0
+right rot 19.9 27.3 0
 wait 0.06
-right rot 50 40 0
+right rot 19.3 27.2 0
 wait 0.06
-right rot 49 40 0
+right rot 18.6 27.1 0
 wait 0.06
-right rot 48 40 0
+right rot 17.9 27.0 0
 wait 0.06
-right rot 47 40 0
+right rot 17.3 26.8 0
 wait 0.06
-right rot 46 40 0
+right rot 16.6 26.7 0
 wait 0.06
-right rot 45 40 0
+right rot 15.9 26.6 0
 wait 0.06
-right rot 44 40 0
+right rot 15.3 26.5 0
 wait 0.06
-right rot 43 40 0
+right rot 14.7 26.4 0
 wait 0.06
-right rot 42 40 0
+right rot 14.0 26.2 0
 wait 0.06
-right rot 41 40 0
+right rot 13.4 26.1 0
 wait 0.06
-right rot 40 40 0
+right rot 12.8 26.0 0
 wait 0.06
-right rot 39 40 0
+right rot 12.2 25.9 0
 wait 0.06
-right rot 38 40 0
+right rot 11.6 25.7 0
 wait 0.06
-right rot 37 40 0
+right rot 11.0 25.6 0
 wait 0.06
-right rot 36 40 0
+right rot 10.4 25.5 0
 wait 0.06
-right rot 35 40 0
+right rot 9.8 25.4 0
 wait 0.06
-right rot 34 40 0
+right rot 9.3 25.2 0
 wait 0.06
-right rot 33 40 0
+right rot 8.7 25.1 0
 wait 0.06
-right rot 32 40 0
+right rot 8.2 25.0 0
 wait 0.06
-right rot 31 40 0
+right rot 7.6 24.8 0
 wait 0.06
-right rot 30 40 0
+right rot 7.1 24.7 0
 wait 0.06
-right rot 29 40 0
+right rot 6.5 24.6 0
 wait 0.06
-right rot 28 40 0
+right rot 6.0 24.4 0
 wait 0.06
-right rot 27 40 0
+right rot 5.5 24.3 0
 wait 0.06
-right rot 26 40 0
-wait 0.06
-right rot 25 40 0
-wait 0.06
-right rot 24 40 0
-wait 0.06
-right rot 80 55 0
+right rot 44.4 18.0 0
 wait 0.4
-right rot 80 55 0
+right rot 44.4 18.0 0
 wait 0.06
-right rot 79 55 0
+right rot 43.5 17.9 0
 wait 0.06
-right rot 78 55 0
+right rot 42.5 17.8 0
 wait 0.06
-right rot 77 55 0
+right rot 41.6 17.7 0
 wait 0.06
-right rot 76 55 0
+right rot 40.7 17.6 0
 wait 0.06
-right rot 75 55 0
+right rot 39.7 17.5 0
 wait 0.06
-right rot 74 55 0
+right rot 38.8 17.4 0
 wait 0.06
-right rot 73 55 0
+right rot 37.9 17.3 0
 wait 0.06
-right rot 72 55 0
+right rot 37.0 17.2 0
 wait 0.06
-right rot 71 55 0
+right rot 36.1 17.1 0
 wait 0.06
-right rot 70 55 0
+right rot 35.2 17.0 0
 wait 0.06
-right rot 69 55 0
+right rot 34.3 16.9 0
 wait 0.06
-right rot 68 55 0
+right rot 33.5 16.7 0
 wait 0.06
-right rot 67 55 0
+right rot 32.6 16.6 0
 wait 0.06
-right rot 66 55 0
+right rot 31.7 16.5 0
 wait 0.06
-right rot 65 55 0
+right rot 30.9 16.4 0
 wait 0.06
-right rot 64 55 0
+right rot 30.0 16.3 0
 wait 0.06
-right rot 63 55 0
+right rot 29.2 16.2 0
 wait 0.06
-right rot 62 55 0
+right rot 28.3 16.1 0
 wait 0.06
-right rot 61 55 0
+right rot 27.5 15.9 0
 wait 0.06
-right rot 60 55 0
+right rot 26.7 15.8 0
 wait 0.06
-right rot 59 55 0
+right rot 25.9 15.7 0
 wait 0.06
-right rot 58 55 0
+right rot 25.1 15.6 0
 wait 0.06
-right rot 57 55 0
+right rot 24.3 15.5 0
 wait 0.06
-right rot 56 55 0
+right rot 23.5 15.4 0
 wait 0.06
-right rot 55 55 0
+right rot 22.7 15.2 0
 wait 0.06
-right rot 54 55 0
+right rot 21.9 15.1 0
 wait 0.06
-right rot 53 55 0
+right rot 21.2 15.0 0
 wait 0.06
-right rot 52 55 0
+right rot 20.4 14.9 0
 wait 0.06
-right rot 51 55 0
+right rot 19.6 14.7 0
 wait 0.06
-right rot 50 55 0
+right rot 18.9 14.6 0
 wait 0.06
-right rot 49 55 0
+right rot 18.2 14.5 0
 wait 0.06
-right rot 48 55 0
+right rot 17.4 14.4 0
 wait 0.06
-right rot 47 55 0
+right rot 16.7 14.2 0
 wait 0.06
-right rot 46 55 0
+right rot 16.0 14.1 0
 wait 0.06
-right rot 45 55 0
+right rot 15.3 14.0 0
 wait 0.06
-right rot 44 55 0
+right rot 14.6 13.8 0
 wait 0.06
-right rot 43 55 0
+right rot 13.9 13.7 0
 wait 0.06
-right rot 42 55 0
+right rot 13.2 13.6 0
 wait 0.06
-right rot 41 55 0
+right rot 12.5 13.5 0
 wait 0.06
-right rot 40 55 0
+right rot 11.8 13.3 0
 wait 0.06
-right rot 39 55 0
+right rot 11.1 13.2 0
 wait 0.06
-right rot 38 55 0
+right rot 10.5 13.1 0
 wait 0.06
-right rot 37 55 0
+right rot 9.8 12.9 0
 wait 0.06
-right rot 36 55 0
+right rot 9.2 12.8 0
 wait 0.06
-right rot 35 55 0
+right rot 8.5 12.7 0
 wait 0.06
-right rot 34 55 0
+right rot 7.9 12.5 0
 wait 0.06
-right rot 33 55 0
+right rot 7.3 12.4 0
 wait 0.06
-right rot 32 55 0
+right rot 6.7 12.2 0
 wait 0.06
-right rot 31 55 0
+right rot 6.0 12.1 0
 wait 0.06
-right rot 30 55 0
+right rot 5.4 12.0 0
 wait 0.06
-right rot 29 55 0
+right rot 4.8 11.8 0
 wait 0.06
-right rot 28 55 0
+right rot 4.2 11.7 0
 wait 0.06
-right rot 27 55 0
-wait 0.06
-right rot 26 55 0
-wait 0.06
-right rot 25 55 0
-wait 0.06
-right rot 24 55 0
+right rot 3.7 11.5 0
 wait 0.06
 wait 0.5
 # To the stats page: the right stick left from the inventory.
@@ -394,353 +382,335 @@ wait 0.3
 right stick 0 0
 wait 1.5
 mark stats
-right rot 80 25 0
+right rot 41.8 40.3 0
 wait 0.4
-right rot 80 25 0
+right rot 41.8 40.3 0
 wait 0.06
-right rot 79 25 0
+right rot 41.0 40.2 0
 wait 0.06
-right rot 78 25 0
+right rot 40.2 40.1 0
 wait 0.06
-right rot 77 25 0
+right rot 39.4 40.0 0
 wait 0.06
-right rot 76 25 0
+right rot 38.6 39.9 0
 wait 0.06
-right rot 75 25 0
+right rot 37.8 39.8 0
 wait 0.06
-right rot 74 25 0
+right rot 37.0 39.7 0
 wait 0.06
-right rot 73 25 0
+right rot 36.2 39.6 0
 wait 0.06
-right rot 72 25 0
+right rot 35.4 39.6 0
 wait 0.06
-right rot 71 25 0
+right rot 34.6 39.5 0
 wait 0.06
-right rot 70 25 0
+right rot 33.9 39.4 0
 wait 0.06
-right rot 69 25 0
+right rot 33.1 39.3 0
 wait 0.06
-right rot 68 25 0
+right rot 32.4 39.2 0
 wait 0.06
-right rot 67 25 0
+right rot 31.6 39.1 0
 wait 0.06
-right rot 66 25 0
+right rot 30.9 39.0 0
 wait 0.06
-right rot 65 25 0
+right rot 30.1 38.9 0
 wait 0.06
-right rot 64 25 0
+right rot 29.4 38.8 0
 wait 0.06
-right rot 63 25 0
+right rot 28.7 38.7 0
 wait 0.06
-right rot 62 25 0
+right rot 28.0 38.6 0
 wait 0.06
-right rot 61 25 0
+right rot 27.3 38.5 0
 wait 0.06
-right rot 60 25 0
+right rot 26.6 38.4 0
 wait 0.06
-right rot 59 25 0
+right rot 25.9 38.3 0
 wait 0.06
-right rot 58 25 0
+right rot 25.2 38.2 0
 wait 0.06
-right rot 57 25 0
+right rot 24.6 38.1 0
 wait 0.06
-right rot 56 25 0
+right rot 23.9 38.0 0
 wait 0.06
-right rot 55 25 0
+right rot 23.2 37.9 0
 wait 0.06
-right rot 54 25 0
+right rot 22.6 37.8 0
 wait 0.06
-right rot 53 25 0
+right rot 22.0 37.7 0
 wait 0.06
-right rot 52 25 0
+right rot 21.3 37.6 0
 wait 0.06
-right rot 51 25 0
+right rot 20.7 37.5 0
 wait 0.06
-right rot 50 25 0
+right rot 20.1 37.4 0
 wait 0.06
-right rot 49 25 0
+right rot 19.5 37.3 0
 wait 0.06
-right rot 48 25 0
+right rot 18.8 37.1 0
 wait 0.06
-right rot 47 25 0
+right rot 18.2 37.0 0
 wait 0.06
-right rot 46 25 0
+right rot 17.7 36.9 0
 wait 0.06
-right rot 45 25 0
+right rot 17.1 36.8 0
 wait 0.06
-right rot 44 25 0
+right rot 16.5 36.7 0
 wait 0.06
-right rot 43 25 0
+right rot 15.9 36.6 0
 wait 0.06
-right rot 42 25 0
+right rot 15.3 36.5 0
 wait 0.06
-right rot 41 25 0
+right rot 14.8 36.4 0
 wait 0.06
-right rot 40 25 0
+right rot 14.2 36.2 0
 wait 0.06
-right rot 39 25 0
+right rot 13.7 36.1 0
 wait 0.06
-right rot 38 25 0
+right rot 13.2 36.0 0
 wait 0.06
-right rot 37 25 0
+right rot 12.6 35.9 0
 wait 0.06
-right rot 36 25 0
+right rot 12.1 35.8 0
 wait 0.06
-right rot 35 25 0
+right rot 11.6 35.7 0
 wait 0.06
-right rot 34 25 0
+right rot 11.1 35.5 0
 wait 0.06
-right rot 33 25 0
+right rot 10.6 35.4 0
 wait 0.06
-right rot 32 25 0
+right rot 10.1 35.3 0
 wait 0.06
-right rot 31 25 0
+right rot 9.6 35.2 0
 wait 0.06
-right rot 30 25 0
+right rot 9.1 35.0 0
 wait 0.06
-right rot 29 25 0
+right rot 8.7 34.9 0
 wait 0.06
-right rot 28 25 0
+right rot 8.2 34.8 0
 wait 0.06
-right rot 27 25 0
+right rot 7.7 34.7 0
 wait 0.06
-right rot 26 25 0
-wait 0.06
-right rot 25 25 0
-wait 0.06
-right rot 24 25 0
-wait 0.06
-right rot 80 40 0
+right rot 42.9 30.3 0
 wait 0.4
-right rot 80 40 0
+right rot 42.9 30.3 0
 wait 0.06
-right rot 79 40 0
+right rot 42.0 30.3 0
 wait 0.06
-right rot 78 40 0
+right rot 41.1 30.2 0
 wait 0.06
-right rot 77 40 0
+right rot 40.3 30.1 0
 wait 0.06
-right rot 76 40 0
+right rot 39.4 30.0 0
 wait 0.06
-right rot 75 40 0
+right rot 38.5 29.9 0
 wait 0.06
-right rot 74 40 0
+right rot 37.7 29.8 0
 wait 0.06
-right rot 73 40 0
+right rot 36.8 29.7 0
 wait 0.06
-right rot 72 40 0
+right rot 36.0 29.6 0
 wait 0.06
-right rot 71 40 0
+right rot 35.1 29.5 0
 wait 0.06
-right rot 70 40 0
+right rot 34.3 29.4 0
 wait 0.06
-right rot 69 40 0
+right rot 33.5 29.3 0
 wait 0.06
-right rot 68 40 0
+right rot 32.7 29.2 0
 wait 0.06
-right rot 67 40 0
+right rot 31.9 29.1 0
 wait 0.06
-right rot 66 40 0
+right rot 31.1 29.0 0
 wait 0.06
-right rot 65 40 0
+right rot 30.3 28.9 0
 wait 0.06
-right rot 64 40 0
+right rot 29.5 28.8 0
 wait 0.06
-right rot 63 40 0
+right rot 28.7 28.6 0
 wait 0.06
-right rot 62 40 0
+right rot 28.0 28.5 0
 wait 0.06
-right rot 61 40 0
+right rot 27.2 28.4 0
 wait 0.06
-right rot 60 40 0
+right rot 26.4 28.3 0
 wait 0.06
-right rot 59 40 0
+right rot 25.7 28.2 0
 wait 0.06
-right rot 58 40 0
+right rot 24.9 28.1 0
 wait 0.06
-right rot 57 40 0
+right rot 24.2 28.0 0
 wait 0.06
-right rot 56 40 0
+right rot 23.5 27.9 0
 wait 0.06
-right rot 55 40 0
+right rot 22.8 27.8 0
 wait 0.06
-right rot 54 40 0
+right rot 22.0 27.7 0
 wait 0.06
-right rot 53 40 0
+right rot 21.3 27.5 0
 wait 0.06
-right rot 52 40 0
+right rot 20.6 27.4 0
 wait 0.06
-right rot 51 40 0
+right rot 19.9 27.3 0
 wait 0.06
-right rot 50 40 0
+right rot 19.3 27.2 0
 wait 0.06
-right rot 49 40 0
+right rot 18.6 27.1 0
 wait 0.06
-right rot 48 40 0
+right rot 17.9 27.0 0
 wait 0.06
-right rot 47 40 0
+right rot 17.3 26.8 0
 wait 0.06
-right rot 46 40 0
+right rot 16.6 26.7 0
 wait 0.06
-right rot 45 40 0
+right rot 15.9 26.6 0
 wait 0.06
-right rot 44 40 0
+right rot 15.3 26.5 0
 wait 0.06
-right rot 43 40 0
+right rot 14.7 26.4 0
 wait 0.06
-right rot 42 40 0
+right rot 14.0 26.2 0
 wait 0.06
-right rot 41 40 0
+right rot 13.4 26.1 0
 wait 0.06
-right rot 40 40 0
+right rot 12.8 26.0 0
 wait 0.06
-right rot 39 40 0
+right rot 12.2 25.9 0
 wait 0.06
-right rot 38 40 0
+right rot 11.6 25.7 0
 wait 0.06
-right rot 37 40 0
+right rot 11.0 25.6 0
 wait 0.06
-right rot 36 40 0
+right rot 10.4 25.5 0
 wait 0.06
-right rot 35 40 0
+right rot 9.8 25.4 0
 wait 0.06
-right rot 34 40 0
+right rot 9.3 25.2 0
 wait 0.06
-right rot 33 40 0
+right rot 8.7 25.1 0
 wait 0.06
-right rot 32 40 0
+right rot 8.2 25.0 0
 wait 0.06
-right rot 31 40 0
+right rot 7.6 24.8 0
 wait 0.06
-right rot 30 40 0
+right rot 7.1 24.7 0
 wait 0.06
-right rot 29 40 0
+right rot 6.5 24.6 0
 wait 0.06
-right rot 28 40 0
+right rot 6.0 24.4 0
 wait 0.06
-right rot 27 40 0
+right rot 5.5 24.3 0
 wait 0.06
-right rot 26 40 0
-wait 0.06
-right rot 25 40 0
-wait 0.06
-right rot 24 40 0
-wait 0.06
-right rot 80 55 0
+right rot 44.4 18.0 0
 wait 0.4
-right rot 80 55 0
+right rot 44.4 18.0 0
 wait 0.06
-right rot 79 55 0
+right rot 43.5 17.9 0
 wait 0.06
-right rot 78 55 0
+right rot 42.5 17.8 0
 wait 0.06
-right rot 77 55 0
+right rot 41.6 17.7 0
 wait 0.06
-right rot 76 55 0
+right rot 40.7 17.6 0
 wait 0.06
-right rot 75 55 0
+right rot 39.7 17.5 0
 wait 0.06
-right rot 74 55 0
+right rot 38.8 17.4 0
 wait 0.06
-right rot 73 55 0
+right rot 37.9 17.3 0
 wait 0.06
-right rot 72 55 0
+right rot 37.0 17.2 0
 wait 0.06
-right rot 71 55 0
+right rot 36.1 17.1 0
 wait 0.06
-right rot 70 55 0
+right rot 35.2 17.0 0
 wait 0.06
-right rot 69 55 0
+right rot 34.3 16.9 0
 wait 0.06
-right rot 68 55 0
+right rot 33.5 16.7 0
 wait 0.06
-right rot 67 55 0
+right rot 32.6 16.6 0
 wait 0.06
-right rot 66 55 0
+right rot 31.7 16.5 0
 wait 0.06
-right rot 65 55 0
+right rot 30.9 16.4 0
 wait 0.06
-right rot 64 55 0
+right rot 30.0 16.3 0
 wait 0.06
-right rot 63 55 0
+right rot 29.2 16.2 0
 wait 0.06
-right rot 62 55 0
+right rot 28.3 16.1 0
 wait 0.06
-right rot 61 55 0
+right rot 27.5 15.9 0
 wait 0.06
-right rot 60 55 0
+right rot 26.7 15.8 0
 wait 0.06
-right rot 59 55 0
+right rot 25.9 15.7 0
 wait 0.06
-right rot 58 55 0
+right rot 25.1 15.6 0
 wait 0.06
-right rot 57 55 0
+right rot 24.3 15.5 0
 wait 0.06
-right rot 56 55 0
+right rot 23.5 15.4 0
 wait 0.06
-right rot 55 55 0
+right rot 22.7 15.2 0
 wait 0.06
-right rot 54 55 0
+right rot 21.9 15.1 0
 wait 0.06
-right rot 53 55 0
+right rot 21.2 15.0 0
 wait 0.06
-right rot 52 55 0
+right rot 20.4 14.9 0
 wait 0.06
-right rot 51 55 0
+right rot 19.6 14.7 0
 wait 0.06
-right rot 50 55 0
+right rot 18.9 14.6 0
 wait 0.06
-right rot 49 55 0
+right rot 18.2 14.5 0
 wait 0.06
-right rot 48 55 0
+right rot 17.4 14.4 0
 wait 0.06
-right rot 47 55 0
+right rot 16.7 14.2 0
 wait 0.06
-right rot 46 55 0
+right rot 16.0 14.1 0
 wait 0.06
-right rot 45 55 0
+right rot 15.3 14.0 0
 wait 0.06
-right rot 44 55 0
+right rot 14.6 13.8 0
 wait 0.06
-right rot 43 55 0
+right rot 13.9 13.7 0
 wait 0.06
-right rot 42 55 0
+right rot 13.2 13.6 0
 wait 0.06
-right rot 41 55 0
+right rot 12.5 13.5 0
 wait 0.06
-right rot 40 55 0
+right rot 11.8 13.3 0
 wait 0.06
-right rot 39 55 0
+right rot 11.1 13.2 0
 wait 0.06
-right rot 38 55 0
+right rot 10.5 13.1 0
 wait 0.06
-right rot 37 55 0
+right rot 9.8 12.9 0
 wait 0.06
-right rot 36 55 0
+right rot 9.2 12.8 0
 wait 0.06
-right rot 35 55 0
+right rot 8.5 12.7 0
 wait 0.06
-right rot 34 55 0
+right rot 7.9 12.5 0
 wait 0.06
-right rot 33 55 0
+right rot 7.3 12.4 0
 wait 0.06
-right rot 32 55 0
+right rot 6.7 12.2 0
 wait 0.06
-right rot 31 55 0
+right rot 6.0 12.1 0
 wait 0.06
-right rot 30 55 0
+right rot 5.4 12.0 0
 wait 0.06
-right rot 29 55 0
+right rot 4.8 11.8 0
 wait 0.06
-right rot 28 55 0
+right rot 4.2 11.7 0
 wait 0.06
-right rot 27 55 0
-wait 0.06
-right rot 26 55 0
-wait 0.06
-right rot 25 55 0
-wait 0.06
-right rot 24 55 0
+right rot 3.7 11.5 0
 wait 0.06
 wait 0.5
 # To the map: the right stick left from the stats page.
@@ -749,107 +719,331 @@ wait 0.3
 right stick 0 0
 wait 1.5
 mark map
-right rot 52 15 0
+right rot 22.8 42.9 0
+wait 0.4
+right rot 22.8 42.9 0
 wait 0.05
-right rot 52 16 0
+right rot 22.7 42.6 0
 wait 0.05
-right rot 52 17 0
+right rot 22.7 42.2 0
 wait 0.05
-right rot 52 18 0
+right rot 22.6 41.9 0
 wait 0.05
-right rot 52 19 0
+right rot 22.6 41.6 0
 wait 0.05
-right rot 52 20 0
+right rot 22.5 41.3 0
 wait 0.05
-right rot 52 21 0
+right rot 22.5 40.9 0
 wait 0.05
-right rot 52 22 0
+right rot 22.5 40.6 0
 wait 0.05
-right rot 52 23 0
+right rot 22.4 40.2 0
 wait 0.05
-right rot 52 24 0
+right rot 22.4 39.9 0
 wait 0.05
-right rot 52 25 0
+right rot 22.3 39.5 0
 wait 0.05
-right rot 52 26 0
+right rot 22.3 39.2 0
 wait 0.05
-right rot 52 27 0
+right rot 22.3 38.8 0
 wait 0.05
-right rot 52 28 0
+right rot 22.2 38.5 0
 wait 0.05
-right rot 52 29 0
+right rot 22.2 38.1 0
 wait 0.05
-right rot 52 30 0
+right rot 22.2 37.7 0
 wait 0.05
-right rot 52 31 0
+right rot 22.1 37.3 0
 wait 0.05
-right rot 52 32 0
+right rot 22.1 37.0 0
 wait 0.05
-right rot 52 33 0
+right rot 22.1 36.6 0
 wait 0.05
-right rot 52 34 0
+right rot 22.0 36.2 0
 wait 0.05
-right rot 52 35 0
+right rot 22.0 35.8 0
 wait 0.05
-right rot 52 36 0
+right rot 22.0 35.4 0
 wait 0.05
-right rot 52 37 0
+right rot 21.9 35.0 0
 wait 0.05
-right rot 52 38 0
+right rot 21.9 34.6 0
 wait 0.05
-right rot 52 39 0
+right rot 21.9 34.2 0
 wait 0.05
-right rot 52 40 0
+right rot 21.9 33.7 0
 wait 0.05
-right rot 52 41 0
+right rot 21.8 33.3 0
 wait 0.05
-right rot 52 42 0
+right rot 21.8 32.9 0
 wait 0.05
-right rot 52 43 0
+right rot 21.8 32.5 0
 wait 0.05
-right rot 52 44 0
+right rot 21.8 32.0 0
 wait 0.05
-right rot 52 45 0
+right rot 21.7 31.6 0
 wait 0.05
-right rot 52 46 0
+right rot 21.7 31.2 0
 wait 0.05
-right rot 52 47 0
+right rot 21.7 30.7 0
 wait 0.05
-right rot 52 48 0
+right rot 21.7 30.3 0
 wait 0.05
-right rot 52 49 0
+right rot 21.7 29.8 0
 wait 0.05
-right rot 52 50 0
+right rot 21.6 29.3 0
 wait 0.05
-right rot 52 51 0
+right rot 21.6 28.9 0
 wait 0.05
-right rot 52 52 0
+right rot 21.6 28.4 0
 wait 0.05
-right rot 52 53 0
+right rot 21.6 27.9 0
 wait 0.05
-right rot 52 54 0
+right rot 21.6 27.5 0
 wait 0.05
-right rot 52 55 0
+right rot 21.6 27.0 0
 wait 0.05
-right rot 52 56 0
+right rot 21.5 26.5 0
 wait 0.05
-right rot 52 57 0
+right rot 21.5 26.0 0
 wait 0.05
-right rot 52 58 0
+right rot 21.5 25.5 0
 wait 0.05
-right rot 52 59 0
+right rot 21.5 25.0 0
 wait 0.05
-right rot 52 60 0
+right rot 21.5 24.5 0
 wait 0.05
-right rot 52 61 0
+right rot 21.5 24.0 0
 wait 0.05
-right rot 52 62 0
+right rot 21.5 23.5 0
 wait 0.05
-right rot 52 63 0
+right rot 21.5 23.0 0
 wait 0.05
-right rot 52 64 0
+right rot 21.5 22.5 0
 wait 0.05
-right rot 52 65 0
+right rot 21.4 21.9 0
+wait 0.05
+right rot 21.4 21.4 0
+wait 0.05
+right rot 21.4 20.9 0
+wait 0.05
+right rot 21.4 20.3 0
+wait 0.05
+right rot 21.4 19.8 0
+wait 0.05
+right rot 21.4 19.3 0
+wait 0.05
+right rot 21.4 18.7 0
+wait 0.05
+right rot 21.4 18.1 0
+wait 0.05
+right rot 21.4 17.6 0
+wait 0.05
+right rot 21.4 17.0 0
+wait 0.05
+right rot 21.4 16.5 0
+wait 0.05
+right rot 21.4 15.9 0
+wait 0.05
+right rot 21.4 15.3 0
+wait 0.05
+right rot 21.4 14.7 0
+wait 0.05
+right rot 21.4 14.2 0
+wait 0.05
+right rot 21.4 13.6 0
+wait 0.05
+right rot 21.4 13.0 0
+wait 0.05
+right rot 21.4 12.4 0
+wait 0.05
+right rot 21.4 11.8 0
+wait 0.05
+right rot 21.5 11.2 0
+wait 0.05
+right rot 21.5 10.6 0
+wait 0.05
+right rot 21.5 9.9 0
+wait 0.05
+right rot 21.5 9.3 0
+wait 0.05
+right rot 21.5 8.7 0
+wait 0.05
+right rot 21.5 8.1 0
+wait 0.05
+right rot 21.5 7.5 0
+wait 0.05
+right rot 21.5 6.8 0
+wait 0.05
+right rot 21.5 6.2 0
+wait 0.05
+right rot 21.6 5.5 0
+wait 0.05
+right rot 21.6 4.9 0
+wait 0.05
+right rot 21.6 4.2 0
+wait 0.05
+right rot 21.6 4.2 0
+wait 0.05
+right rot 21.6 4.9 0
+wait 0.05
+right rot 21.6 5.5 0
+wait 0.05
+right rot 21.5 6.2 0
+wait 0.05
+right rot 21.5 6.8 0
+wait 0.05
+right rot 21.5 7.5 0
+wait 0.05
+right rot 21.5 8.1 0
+wait 0.05
+right rot 21.5 8.7 0
+wait 0.05
+right rot 21.5 9.3 0
+wait 0.05
+right rot 21.5 9.9 0
+wait 0.05
+right rot 21.5 10.6 0
+wait 0.05
+right rot 21.5 11.2 0
+wait 0.05
+right rot 21.4 11.8 0
+wait 0.05
+right rot 21.4 12.4 0
+wait 0.05
+right rot 21.4 13.0 0
+wait 0.05
+right rot 21.4 13.6 0
+wait 0.05
+right rot 21.4 14.2 0
+wait 0.05
+right rot 21.4 14.7 0
+wait 0.05
+right rot 21.4 15.3 0
+wait 0.05
+right rot 21.4 15.9 0
+wait 0.05
+right rot 21.4 16.5 0
+wait 0.05
+right rot 21.4 17.0 0
+wait 0.05
+right rot 21.4 17.6 0
+wait 0.05
+right rot 21.4 18.1 0
+wait 0.05
+right rot 21.4 18.7 0
+wait 0.05
+right rot 21.4 19.3 0
+wait 0.05
+right rot 21.4 19.8 0
+wait 0.05
+right rot 21.4 20.3 0
+wait 0.05
+right rot 21.4 20.9 0
+wait 0.05
+right rot 21.4 21.4 0
+wait 0.05
+right rot 21.4 21.9 0
+wait 0.05
+right rot 21.5 22.5 0
+wait 0.05
+right rot 21.5 23.0 0
+wait 0.05
+right rot 21.5 23.5 0
+wait 0.05
+right rot 21.5 24.0 0
+wait 0.05
+right rot 21.5 24.5 0
+wait 0.05
+right rot 21.5 25.0 0
+wait 0.05
+right rot 21.5 25.5 0
+wait 0.05
+right rot 21.5 26.0 0
+wait 0.05
+right rot 21.5 26.5 0
+wait 0.05
+right rot 21.6 27.0 0
+wait 0.05
+right rot 21.6 27.5 0
+wait 0.05
+right rot 21.6 27.9 0
+wait 0.05
+right rot 21.6 28.4 0
+wait 0.05
+right rot 21.6 28.9 0
+wait 0.05
+right rot 21.6 29.3 0
+wait 0.05
+right rot 21.7 29.8 0
+wait 0.05
+right rot 21.7 30.3 0
+wait 0.05
+right rot 21.7 30.7 0
+wait 0.05
+right rot 21.7 31.2 0
+wait 0.05
+right rot 21.7 31.6 0
+wait 0.05
+right rot 21.8 32.0 0
+wait 0.05
+right rot 21.8 32.5 0
+wait 0.05
+right rot 21.8 32.9 0
+wait 0.05
+right rot 21.8 33.3 0
+wait 0.05
+right rot 21.9 33.7 0
+wait 0.05
+right rot 21.9 34.2 0
+wait 0.05
+right rot 21.9 34.6 0
+wait 0.05
+right rot 21.9 35.0 0
+wait 0.05
+right rot 22.0 35.4 0
+wait 0.05
+right rot 22.0 35.8 0
+wait 0.05
+right rot 22.0 36.2 0
+wait 0.05
+right rot 22.1 36.6 0
+wait 0.05
+right rot 22.1 37.0 0
+wait 0.05
+right rot 22.1 37.3 0
+wait 0.05
+right rot 22.2 37.7 0
+wait 0.05
+right rot 22.2 38.1 0
+wait 0.05
+right rot 22.2 38.5 0
+wait 0.05
+right rot 22.3 38.8 0
+wait 0.05
+right rot 22.3 39.2 0
+wait 0.05
+right rot 22.3 39.5 0
+wait 0.05
+right rot 22.4 39.9 0
+wait 0.05
+right rot 22.4 40.2 0
+wait 0.05
+right rot 22.5 40.6 0
+wait 0.05
+right rot 22.5 40.9 0
+wait 0.05
+right rot 22.5 41.3 0
+wait 0.05
+right rot 22.6 41.6 0
+wait 0.05
+right rot 22.6 41.9 0
+wait 0.05
+right rot 22.7 42.2 0
+wait 0.05
+right rot 22.7 42.6 0
+wait 0.05
+right rot 22.8 42.9 0
 wait 0.05
 wait 1
 left b 1

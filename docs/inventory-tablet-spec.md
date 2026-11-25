@@ -1188,3 +1188,209 @@ erwartet. B ist go. das inv soll wie das schwert ausgerichtet sein."
   hands' calibrations differ]. Seen: the left hand covers the rows' starts at
   the lower left. The item info is whole at rest and misses its left part
   while it slides (section 19's open point, not settled).
+
+## 21. The page on the hand that carries it (Nadi, 2026-11-25)
+
+Nadi, on the films of section 20: "toll das ist besser. Jetzt aber das tablet
+auf die tragende hand schieben sodass die hand nicht durchklippt, die hand
+soll also hinter dem tablet sein und nicht andersherum wie es jetzt ist."
+
+- [R in the code, 981fa47] Held like the sword the page lay in the flat
+  through the palm's middle - a point on the bones' line, inside the hand
+  (vr::PalmBetween) - its hold edge in the palm, the page across the knuckles.
+  [R in the films of 2026-11-24 and in the run of the DLL from before,
+  20261125-103111-slot1] The fingers stood before the page and hid the rows'
+  starts; closed to a fist the hand lay on the page's lower left.
+- [R with pyffi, tools/nif-bone-extents.py, the Linux game's loose hand.nif
+  and femalehand.nif] How far a hand stands out of a flat through its bones is
+  no one number: a finger link's skin lies 0.3 to 1.3 units off its bone's axis
+  on the palm's side, the hand bone's own vertices 2.5 units (the male hand)
+  and 3.0 (the HGEC female one) at the thumb's ball; the fingers' curl moves
+  them, and a glove or a gauntlet is another model. [R in the harness log,
+  20261125-102621-slot1, the save's bare hands, 814 vertices each] Out of the
+  page's flat the left hand reaches 7.5 cm before its palm's middle open - its
+  fingertips, 10.5 cm across the page from the palm's middle - and 6.9 cm
+  closed (its curled fingers, 2.6 cm across), and 2.1 cm behind it; the right
+  hand 6.4 and 1.7 cm. Closing, the fingertips sweep further out first: 7.9,
+  8.3, 8.6, 9.0 and 9.2 cm at curls 0.05 to 0.25, then 8.9 at 0.40, 8.1 at
+  0.50, 7.6 at 0.55 and 7.2 at 0.65. [D] So much for an open hand because the
+  blade's flat is not the open hand's: the game's open hand has each link
+  bent 4 to 30 degrees (game/HandGrip.h), and its fingers stand out of the
+  held item's flat on the palm's side whether they are open or closed round
+  it. The page so stands some 7 cm nearer the eyes than it did in section 20.
+- **Changed.** The page stands before the hand as it is drawn, the hand
+  behind it.
+  - vr/HandReach.h (pure): `ReachOfHand` - the hand's drawn vertices against
+    its palm's middle, along the face the page shows in that hand
+    (`PageLikeTheSword`), for a physical left hand's face and a right one's
+    (the two look opposite ways on the same axes); a vertex more than 20 cm
+    out is a misread and the reading is not taken. `StepHandReach` eases it
+    (0.3 a frame, as the palm), so the page moves out over a few frames when
+    the fingers close. `StepHandReachClock` says when the model is read.
+  - vr/TabletLogic.h: `HandReach`, `PageLiftMetres` (the reach and 3 mm),
+    `PlaceTablet`'s `reach` - the centre moved out along the page's face;
+    the page's turn, its size and where the hold's edge meets the hand across
+    the page are as in section 20. vr/MenuPlace.h hands each role's own.
+  - camera/hands/HandReachRead.{h,cpp}, called from StepIndexTips right
+    after the fingers are posed: game::ReadHandVerticesNow - the read the
+    hands' contact fit makes outside menus ([Hands] FittedHands; it does not
+    run while a menu is up) - against each hand's palm and held-item node as
+    the bones stand, in the world. Read on the tablet's second frame up (the
+    menu's opening frame is the game's heaviest, section 13); then, with the
+    fingers' curls told, when a finger of the holding hand has moved 0.04 of
+    its curl since the last read (up to a quarter closed each 5 % of curl
+    move the hand's foremost point 0.4 cm out, so 4 % is the page's
+    clearance) - every third frame at most, so fingers moving fast or a
+    flickering sensor do not cost a read a frame - and every 60 frames for
+    what the hand wears changing under the tablet; with no curls told, every
+    15 frames, as the contact fit reads. Said in the log: "Tablet: the left
+    hand as drawn reaches x cm out of the page's flat ..." at the first
+    reading and whenever it has moved 2 mm (40 lines at most), with where on
+    the page the hand's foremost point lies and the index finger's curl; and
+    at a hand-script mark the reach, the reads and the step's time since the
+    last mark.
+  - The hand's model not read (no vertices, a misread): the open hand's 7.5
+    cm stands in. The held-item node not read: the page on the controller as
+    before section 20, no reach applied.
+- Cost [R in the harness, tablet-on-hand.txt run alone (`--exclusive`),
+  20261125-095302-slot1, the DLL of this change]: with the hand still the
+  step takes 0.0015 to 0.0017 ms a frame on average - five reads in 300
+  frames, one every 60 - and 0.10 to 0.15 ms on a frame that reads; while the
+  fingers close or open, 0.0062 to 0.0064 ms a frame (25 reads in 364). The
+  read itself 86 us on the mean, 148 the longest ("Hands: the hand fit's
+  read", 11 memory probes a read). The tablet's own menu read beside it
+  0.0054 to 0.0057 ms a frame, as before. Beside three other games the worst
+  frame of a stretch was 0.15 to 0.29 ms, once 1.6 ms - the contact fit's own
+  reads show 1.2 and 1.7 ms in such runs outside the menu, so that is the
+  machine's load. [R in Nadi's Windows log of 2026-11-23, the same read made
+  by the contact fit] There the read costs more: "the hand fit's read - 120
+  reads, 336 us a read on the mean, 641 the longest, 2.0 shapes and 67.0
+  memory probes a read". [D] So in that game about 0.34 ms on a frame that
+  reads, 0.006 ms a frame on average with the hand still, and at most a read
+  every third frame - 0.11 ms a frame - for as long as the fingers move. Not
+  measured under Windows with the tablet up.
+- Tests: tablet_on_hand_test (the reach from vertices, either side, skew
+  axes, the hand turned in the world, the refusals and the misread; the ease;
+  the read's clock; the page before the hand in every hold and either hand,
+  the stand-in and the node not read), tablet_test and menu_place_test
+  (through PlaceMenu and HeldByRight). Written first: against the sources
+  before they do not build (no vr/HandReach.h).
+- Harness (tablet-on-hand.txt, films; docs/hand-script-harness.md): the
+  tablet opened in the left hand with the palm to the eyes, the fingers
+  closed and opened, the hand turned up and down and about the upright, open
+  and closed. 2026-11-25, Linux, headless, the stand-in runtime, each
+  scenario with the DLL of this change and with the one deployed before it
+  (b7645e28):
+  - tablet-on-hand.txt PASS (20261125-102621-slot1; alone,
+    20261125-095302-slot1), the DLL from before FAIL on the two reach lines
+    (20261125-103111-slot1). In the films no part of the hand shows before
+    the page with the new DLL - held still,
+    the fingers closing and opening, turned up and down, and turned about
+    the upright until the page is seen nearly edge on, where the hand lies
+    behind it; with the old one the fingers and the fist stand before the
+    page throughout.
+  - tablet-on-hand-gauntlets.txt PASS (20261125-094610-slot1; before FAIL,
+    20261125-094614-slot2): the iron set put on with the tablet up, the hand's
+    model read again within the second - 929 vertices for 814. Its reach on
+    the page's side stays 7.5 cm (the gauntlet's fingers end where the bare
+    ones do), the other side's grows from 2.1 to 4.9 cm. The gauntlet lies
+    behind the page; with the old DLL it stands before it.
+  - tablet-on-hand-left-handed.txt PASS (20261125-100047-slot2; before FAIL,
+    20261125-094618-slot3): the off hand on the right controller reaches 7.5
+    cm on a right hand's side of the flat and 2.1 on a left's - the side
+    `PageLiftMetres` takes for a physical right hand - and lies behind the
+    page open, closed and turned.
+- Not changed, open: the scroll between two hands while it unrolls (its
+  ends are in the fists, as a scroll's rolls are); let go, the page moves out
+  to the hand's reach on top of section 20's turn - a jump, not smoothed
+  [D, not seen]. The older scenarios that aim a beam or a finger at a page in
+  the hand by fixed angles (tablet-open.txt, tablet-touch*.txt) aim behind
+  it now. The scroll kept by the right hand of a right-handed player is
+  covered by the unit tests and by the left-handed run's right hand, not run
+  by itself. The headset is the check for how it feels.
+- **Changed with it, found while reading the code** [R in the code; D: not
+  seen in the game before]: held at its side by a physical right hand
+  (left-handed, or the scroll kept by the right hand) the hold's edge was the
+  face's right edge - and the face grows with a popup, so every info box
+  sliding out moved the whole page to the left by the box's width and back
+  as it went; the stats page's own box (section 22) would have added one
+  more. The hand now holds the page's outline, with the figure's own page
+  where that stands beside it (`HoldFace`); a popup reaches out past the
+  hand. tablet_test (either hand, a box on either side, the figure's page, no
+  outline read, held like the sword, held at the lower edge). [R in the
+  films of tablet-on-hand-left-handed.txt, a message box raised over the
+  tablet in the right hand] With the DLL from before the page jumps to the
+  left by the box's width as the box comes up (20261125-094618-slot3); with
+  this one it stays and the box reaches out past the hand
+  (20261125-100047-slot2).
+  Open from that film: the box then hangs over the forearm, which crosses it
+  and hides part of its button. A popup could go to the page's other side
+  for a right-hand holder - the face's pictures need not lie where the game
+  draws them, as the figure's page shows; not built.
+
+## 22. The stats page's own info box (Nadi, 2026-11-25)
+
+Nadi: "nein nicht ganz richtig die infobox erscheint im stats tab für ein
+paar Einträge du hast die nur abgeschnitten. Also nächste arbeit ist den
+stats tab zu verbessern sodass die infoboxen wieder sichtbar sind und nicht
+abgeschnitten." (2026-11-22 already: "der info text der sich rechts vom
+inventar einblendet ist nun abgeschnitten! der kommt bei items oder bei
+stats"; the harness of 2026-11-24 saw no box on the stats page and took it
+for none.)
+
+- [R in stats_menu.xml, Oblivion - Misc.bsa, tools/bsa-extract.py] The stats
+  page's description of an attribute or a skill is no MagicPopup: it is a
+  picture of the stats menu itself, `stat_pop_background`, a child of the
+  menu's root with id 61. 419 units wide, its height the text's lower edge
+  and 25, at y 170; it slides out from behind the page's right edge as its
+  user0 goes from 0 to 1 (0.24 s) and is clear while that is 0; at rest it
+  starts 20 units inside the page's right edge and ends 399 beyond it. The
+  page is 745 by 792.
+- [R in Oblivion.exe 1.2.416, objdump] StatsMenu::SetField at 0x005D9BE0
+  (the menu's vtable 0x00A6D9DC, slot 1) keeps the tile of id 61 at the menu's
+  +0x58, the focus box of id 60 at +0x54, the pages and their panes of ids 10
+  to 52 before them; 0x005D9B80 checks all thirteen. The id is the engine's
+  name for the box, whatever a UI mod calls it or lays it out
+  (../OBNG/knowledge/stats-menu-info-box.md).
+- [R in the code] The page's face was the menu's largest picture and every
+  picture of at least 0.4 of its area (`PaperOf`, for the map's extension).
+  The box is 419 wide: under that share unless its text makes it 563 high.
+  [D] So for most rows it stayed out of the face - cut off whole at the
+  page's edge - and for a long text it joined the page's outline. [R in the
+  log of 2026-11-24 22:04, tablet-info-rest] "the Stats page read ... 0
+  popup(s), the face 40,96..1161,1388" through the whole sweep: the face
+  never grew.
+- **Changed** (vr/TabletLogic.h `PaperTile::popup`, `PagePopupTileId`,
+  `PaperOf`; game/HudTiles `ReadMenuPaper`'s `popupTileId`;
+  game/TabletMenu.cpp): the walk over the page's pictures marks the tile of
+  the page's own box id and everything under it; `PaperOf` leaves those out
+  of the page and its outline, however large, and joins them together as a
+  popup - kept on its own and drawn as its own picture like the item info
+  (section 19). Logged as the item info is: "Tablet: the page's own info box
+  shown beside the page - the face x..y units across" and "gone". The other
+  three pages have no box of their own (id 0: nothing marked, as before).
+- Section 17's guess is answered: the stats page's info is the stats menu's
+  own picture, and it does not sit inside the page.
+- Tests: tablet_test (the box and its pictures a popup, the page and its
+  outline without it, a tall box no part of the outline, one still behind
+  the page, one larger than the page, one off the screen, none without a
+  page; unmarked - the read from before - cut at the page's edge). Written
+  first: against the sources before they do not build (no `PagePopupTileId`).
+- Harness (tablet-stats-info.txt, films), 2026-11-25: PASS with the DLL of
+  this change (20261125-094622-slot4), FAIL with the one from before, aimed
+  for its own place of the page (20261125-095006-slot1: "the page's own info
+  box shown beside the page" missing). [R in the logs] Each tab's icon is hit
+  ("click sent to the Stats menu ... the tile under it stat_tabs_p1", p2, p3,
+  in both runs); with the new DLL "the page's own info box shown beside the
+  page - the face 27..800 units across", the face growing from 1161 to 1765
+  layer pixels (772 to 1173 units) as the box slides out, and back as it
+  goes. [R in the films] On each of the three tabs the box slides out beside
+  the page and stands whole - the race's, the birthsign's and the class's
+  with their pictures, the level's, health's and magicka's text, an
+  attribute's picture and description, a skill's with its governing
+  attribute and level; with the DLL from before the rows highlight and no box
+  is seen. tablet-info.txt and tablet-info-rest.txt PASS with the new DLL
+  (20261125-100024-slot1, 20261125-100028-slot3): the item info beside the
+  inventory, the stats page's box, the map.
+- Not checked: a UI mod's stats menu (the id is the engine's, [D] it holds);
+  the headset.

@@ -2,11 +2,14 @@
 # hold, the beam stepped down one column of the inventory resting 1.2 s on
 # each step, so each hovered row's info box slides out whole and stands
 # before the next - to tell the game's slide from a face read behind the
-# picture. Then the stats page the same way, a row clicked with the trigger
-# at the end (its description, if the game shows one on a click). Steps:
-# tools/gen-tablet-sweeps.py rests.
-# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --headset beyond --record 20 --record-width 1280 tools/hand-scripts/tablet-info-rest.txt
+# picture. Then the stats page the same way (its own info box, section 22), a
+# row clicked with the trigger at the end. The right hand stands near the
+# right eye, out of the picture; its angles are measured for the page held
+# before the hand (section 21): tablet-aim-grid.txt run once, then
+# tools/tablet-aim.py --column 330 75 580 46 1.2 and --at 330 250.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --headset beyond --record 14 --record-width 1280 tools/hand-scripts/tablet-info-rest.txt
 ini Hands Enabled=1
+ini Hands LeftHanded=0
 ini Tablet Enabled=1
 ini Tablet Unroll=sideways
 ini Render MonitorMenusOnly=0
@@ -17,6 +20,7 @@ expect HandScript: finished
 expect Tablet: the Inventory page read
 expect Tablet: the item info (MagicPopup) shown beside the page
 expect Tablet: the Stats page read
+expect Tablet: the page's own info box shown beside the page
 reject HandScript: WARNING
 
 wait 12
@@ -26,84 +30,65 @@ wait 1
 head pitch -15
 left pos -0.22 -0.18 -0.40
 left rot 90 0 90
-right pos 0.22 -0.28 -0.20
-right rot 75 40 0
+left curl 0
+right pos 0.14 -0.14 -0.04
+right rot 41.6 32.5 0
 wait 1.5
 left b 1
 wait 0.2
 left b 0
 wait 2.5
 mark inventory
-right rot 75 40 0
+right rot 41.6 32.5 0
 wait 1.2
-right rot 72 40 0
+right rot 38.3 32.2 0
 wait 1.2
-right rot 69 40 0
+right rot 35.1 31.8 0
 wait 1.2
-right rot 66 40 0
+right rot 32.0 31.4 0
 wait 1.2
-right rot 63 40 0
+right rot 29.0 31.0 0
 wait 1.2
-right rot 60 40 0
+right rot 26.1 30.6 0
 wait 1.2
-right rot 57 40 0
+right rot 23.4 30.2 0
 wait 1.2
-right rot 54 40 0
+right rot 20.7 29.8 0
 wait 1.2
-right rot 51 40 0
+right rot 18.1 29.3 0
 wait 1.2
-right rot 48 40 0
+right rot 15.7 28.9 0
 wait 1.2
-right rot 45 40 0
-wait 1.2
-right rot 42 40 0
-wait 1.2
-right rot 39 40 0
-wait 1.2
-right rot 36 40 0
-wait 1.2
-right rot 33 40 0
-wait 1.2
-right rot 30 40 0
+right rot 13.3 28.4 0
 wait 1.2
 right stick -1 0
 wait 0.3
 right stick 0 0
 wait 1.5
 mark stats
-right rot 75 40 0
+right rot 41.6 32.5 0
 wait 1.2
-right rot 72 40 0
+right rot 38.3 32.2 0
 wait 1.2
-right rot 69 40 0
+right rot 35.1 31.8 0
 wait 1.2
-right rot 66 40 0
+right rot 32.0 31.4 0
 wait 1.2
-right rot 63 40 0
+right rot 29.0 31.0 0
 wait 1.2
-right rot 60 40 0
+right rot 26.1 30.6 0
 wait 1.2
-right rot 57 40 0
+right rot 23.4 30.2 0
 wait 1.2
-right rot 54 40 0
+right rot 20.7 29.8 0
 wait 1.2
-right rot 51 40 0
+right rot 18.1 29.3 0
 wait 1.2
-right rot 48 40 0
+right rot 15.7 28.9 0
 wait 1.2
-right rot 45 40 0
+right rot 13.3 28.4 0
 wait 1.2
-right rot 42 40 0
-wait 1.2
-right rot 39 40 0
-wait 1.2
-right rot 36 40 0
-wait 1.2
-right rot 33 40 0
-wait 1.2
-right rot 30 40 0
-wait 1.2
-right rot 57 40 0
+right rot 29.6 31.1 0
 wait 1
 right trigger 1
 wait 0.3

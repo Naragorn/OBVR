@@ -279,18 +279,23 @@ namespace {
 
 // The walk behind ReadMenuPaper. `baseX`/`baseY` is where this tile's own x
 // and y count from: its nearest ancestor with a locus (vr::HudTileOrigin's
-// rule, carried down instead of climbed up).
+// rule, carried down instead of climbed up). `inPopup`: under the menu's own
+// info box, the tile whose id trait is `popupId`.
 struct PaperWalk {
 	vr::PaperTile* out;
 	UInt32 capacity;
+	UInt32 popupId = 0;
 	UInt32 count = 0;
 };
 
-void CollectPaper(PaperWalk& walk, const UInt8* tile, float baseX, float baseY, UInt32 depth) {
+void CollectPaper(PaperWalk& walk, const UInt8* tile, float baseX, float baseY, UInt32 depth, bool inPopup = false) {
 	const Traits traits = ReadTraits(tile);
 	const auto number = [&](int slot, float fallback) {
 		return traits.have[slot] && traits.text[slot] == nullptr ? traits.num[slot] : fallback;
 	};
+	// Told by its id before anything else: a box not shown is clear, and what
+	// lies under it is still the box's.
+	inPopup = inPopup || (walk.popupId != 0 && number(8, -1.0f) == static_cast<float>(walk.popupId));
 	// Hidden by its own trait (visible = 1, false): nothing under it draws.
 	if (number(4, 2.0f) == 1.0f) {
 		return;
@@ -306,7 +311,7 @@ void CollectPaper(PaperWalk& walk, const UInt8* tile, float baseX, float baseY, 
 		const float left = justify == vr::kHudJustifyCentre  ? x - 0.5f * width
 		                   : justify == vr::kHudJustifyRight ? x - width
 		                                                     : x;
-		walk.out[walk.count++] = vr::PaperTile{left, y, left + width, y + height};
+		walk.out[walk.count++] = vr::PaperTile{left, y, left + width, y + height, inPopup};
 	}
 	if (depth >= kPaperDepth) {
 		return;
@@ -316,7 +321,7 @@ void CollectPaper(PaperWalk& walk, const UInt8* tile, float baseX, float baseY, 
 	for (UInt32 n = 0; LooksLikeObject(child) && n < kMaxListItems; ++n) {
 		const UInt8* const data = Read<const UInt8*>(child, kListNodeDataOffset);
 		if (LooksLikeObject(data) && Read<const UInt8*>(data, addr::kTileParentOffset) == tile) {
-			CollectPaper(walk, data, locus ? x : baseX, locus ? y : baseY, depth + 1);
+			CollectPaper(walk, data, locus ? x : baseX, locus ? y : baseY, depth + 1, inPopup);
 		}
 		child = Read<const UInt8*>(child, kListNodeNextOffset);
 	}
@@ -324,12 +329,12 @@ void CollectPaper(PaperWalk& walk, const UInt8* tile, float baseX, float baseY, 
 
 }  // namespace
 
-UInt32 ReadMenuPaper(UInt32 menuId, vr::PaperTile* out, UInt32 capacity) {
+UInt32 ReadMenuPaper(UInt32 menuId, vr::PaperTile* out, UInt32 capacity, UInt32 popupTileId) {
 	const void* const root = MenuRootTile(menuId);
 	if (root == nullptr || out == nullptr || capacity == 0) {
 		return 0;
 	}
-	PaperWalk walk{out, capacity};
+	PaperWalk walk{out, capacity, popupTileId};
 	CollectPaper(walk, static_cast<const UInt8*>(root), 0.0f, 0.0f, 0);
 	return walk.count;
 }
