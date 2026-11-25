@@ -72,6 +72,7 @@ The OBVR column names the INI key (OBVR.ini). A key's default is what ships.
 | Holsters | Four spots on the body (hips, back). Draw by gripping, sheathe by letting go (`Holsters`, `HolsterLabels`). | Draw and sheathe with F [U] | by hand |
 | Drawing at once | The weapon is in the hand at once instead of after the draw animation (`TakeDrawsAtOnce`). | Draw animation [?] | changed |
 | Grab weapons from the world | A weapon on the ground gripped by its handle is equipped (`GrabEquipsWeapons`, `GrabFromInventory`). | Pick it up, then equip it in the inventory [U] | by hand |
+| Holding a weapon | Hold the grip to hold it, open your hand to let go (`WeaponHold`). Or grip once to keep it and grip again to let go (`GripToggle`, off by default). | It stays in the hand until you sheathe it [U] | by hand |
 | Torch | Grip, drop it burning, hold it with a two-hander (`GrabEquipsTorches`, `TorchDrop`, `TorchWithTwoHander`). | Equip it in the inventory. Torch and two-hander do not go together [?] | new |
 | Potion belt | Potions at the body spots, drink them by hand (`PotionBelt`). | Hotkeys or the inventory [U] | new |
 | Eat and drink | Let go of food or a potion at your mouth (`EatAtMouth`). | Use it in the inventory [U] | by hand |

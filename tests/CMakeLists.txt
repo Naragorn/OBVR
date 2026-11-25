@@ -819,6 +819,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME grip_hold COMMAND grip_hold_test)
 
+add_executable(grip_toggle_test GripToggleTest.cpp)
+target_include_directories(grip_toggle_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(grip_toggle_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME grip_toggle COMMAND grip_toggle_test)
+
 add_executable(harness_token_test HarnessTokenTest.cpp)
 target_include_directories(harness_token_test PRIVATE ../src)
 if(NOT MSVC)

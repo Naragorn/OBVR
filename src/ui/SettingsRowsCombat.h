@@ -55,6 +55,13 @@
 		+[](Config& c, float v) { c.hands.blockByAngle = v != 0.0f; },
 	},
 	{
+		"Combat: features", "Toggle grip", "Grip once to keep your weapon in hand, grip again to let go. Off, hold the grip",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "GripToggle",
+		+[](const Config& c) { return c.hands.gripHold.toggle ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.gripHold.toggle = v != 0.0f; },
+	},
+	{
 		"Combat: features", "Two hands on two-handers", "Grab a two-hander's handle with your other hand too",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "TwoHandGrip",

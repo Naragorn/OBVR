@@ -565,6 +565,10 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		gh.pull = cl.gripPull;
 		leftGripHold = StepGripHold(m_leftHold, gh, s.gripHold);
 	}
+	// The grip toggle ([Hands] GripToggle, vr/GripToggle.h): a grip that took what the hand keeps
+	// leaves its hold closed until the next grip, which lets go; the click is the toggle's meanwhile.
+	r.gripToggle = StepGripToggles(m_rightHold.toggle, m_leftHold.toggle, rightGripHold, leftGripHold, in.rightGrip,
+	                               in.leftGrip, GripToggleFrameOf(f, cr.valid, cl.valid), s.gripHold.toggle);
 	// Drawing by reaching and putting away (vr::StepHolster): a hand's grip at
 	// one of the four places, the weapon hand for weapons, the other for the
 	// bow, the shield and the torch. A grip that did something there is the

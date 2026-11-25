@@ -627,12 +627,13 @@ void TestFirstStart() {
  Check(shown,"the Start guide row is on the comfort page");
 }
 
-// The start guide's combat page (2026-11-20): Full VR only, the kick, the foes
-// and the cuts, the cuts' blood and wounds while the cuts are on; and the
+// The start guide's combat page (2026-11-20): Full VR only, the grip toggle
+// (2026-11-25), the kick, the foes and the cuts, the cuts' blood and wounds
+// while the cuts are on; and the
 // pages' order - the comfort page in Full VR brings it, nothing else does.
 void TestCombatView() {
  std::printf("Combat page view\n");
- const char* const always[]={"Kick","CombatRing","EnemyAttackSpeed","Dismemberment"};
+ const char* const always[]={"GripToggle","Kick","CombatRing","EnemyAttackSpeed","Dismemberment"};
  for(unsigned mask=0;mask<4;++mask) {
   Config c; c.fullVrMode=(mask&1)!=0; c.hands.dismember.enabled=(mask&2)==0;
   const bool full=(mask&1)!=0, cuts=(mask&2)==0;
@@ -650,24 +651,24 @@ void TestCombatView() {
    Check(!(combat && SettingShownIn(SettingsView::Comfort,d,c)),"no row is on both of the guide's pages");
    shown+=combat;
   }
-  Check(shown==(full ? 4+(cuts?2:0) : 0),"the combat page's row count for each combination");
+  Check(shown==(full ? 5+(cuts?2:0) : 0),"the combat page's row count for each combination");
  }
  Config full; full.fullVrMode=true;
  NativeSettings menu; menu.SetView(SettingsView::Combat,full);
- Check(menu.View()==SettingsView::Combat && menu.Pages()==1,"the combat page is one page");
- Check(SameKeys(menu,full,{"Kick","CombatRing","EnemyAttackSpeed","Dismemberment","DismemberBlood","DismemberCaps"}),
-       "the kick, the foes, the cuts and their gore, in that order");
+ Check(menu.View()==SettingsView::Combat && menu.Pages()==1,"the combat page is one page - seven rows");
+ Check(SameKeys(menu,full,{"GripToggle","Kick","CombatRing","EnemyAttackSpeed","Dismemberment","DismemberBlood","DismemberCaps"}),
+       "the grip toggle, the kick, the foes, the cuts and their gore, in that order");
  full.hands.dismember.enabled=false;
  NativeSettings noCuts; noCuts.SetView(SettingsView::Combat,full);
- Check(SameKeys(noCuts,full,{"Kick","CombatRing","EnemyAttackSpeed","Dismemberment"}),
+ Check(SameKeys(noCuts,full,{"GripToggle","Kick","CombatRing","EnemyAttackSpeed","Dismemberment"}),
        "the cuts off: their blood and wounds go, the switch to turn them back on stays");
  // A plus on Dismemberment there brings the gore's rows back.
- const auto edit=noCuts.Click(kNativeRowBase+3*3+2,full);
+ const auto edit=noCuts.Click(kNativeRowBase+4*3+2,full);
  Writer writer;
  Check(edit.definition && !std::strcmp(edit.definition->iniKey,"Dismemberment") && edit.value==1.0f &&
        CommitNativeEdit(edit,full,writer)==NativeEditResult::Saved && full.hands.dismember.enabled,"plus on the cuts turns them on");
  noCuts.Sync(full);
- Check(noCuts.Row(4) && !std::strcmp(noCuts.Row(4)->iniKey,"DismemberBlood"),"and their blood and wounds come back");
+ Check(noCuts.Row(5) && !std::strcmp(noCuts.Row(5)->iniKey,"DismemberBlood"),"and their blood and wounds come back");
  // Which page follows which, and the titles and the Continue button's pages.
  Check(CombatPageFollows(SettingsView::Comfort,true) && !CombatPageFollows(SettingsView::Comfort,false) &&
        !CombatPageFollows(SettingsView::Combat,true) && !CombatPageFollows(SettingsView::Sections,true) &&

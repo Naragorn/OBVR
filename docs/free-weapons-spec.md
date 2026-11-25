@@ -312,7 +312,7 @@ The tester, 2026-10-23: "weapons no longer have to select in inventory to equip 
 | --- | --- | --- | --- | --- |
 | 1 | Where the grip is | The vanilla hold point: one point per weapon, where the game's own animation holds it when equipped ("der griff ist immer da wo der player in vanilla die waffe standardmässig hält wenn sie ausgerüstet ist"). Measured so far (vr/TwoHandLogic.h): the sword's palm 0.8 units below the Weapon node, the two-hander's right hand at the node, the staff 37.6 units up the shaft; the bow not measured. | cheap to small | one point per kind from the model, as `HandleSpanFor` reads the models today; the bow's point is a harness measurement |
 | 2 | The pick-up ring | On the grip of every weapon within reach, always; the ring elsewhere on the weapon (the blade) only with the hand close and precisely there, and that grab is a carry (the held object of today), not an equip. B&S gives its handles the priority by an "Artificial Distance" (the "Half Swording and Support Grip" mod, Nexus 10151, names it); vanilla B&S has not grabbed blades since U8 (reddit, "Half-Swording", 2020). | small | `game::NearbyItems` aims the pick between the middle and the nearest vertex today (`NearSideWeight`); a weapon ref gets its grip point as the preferred pick, the precise pick stays |
-| 3 | Hold or toggle | Hold: the weapon is in the hand while the grip holds it. Toggle an option. | small | section 4.2 said the same; the hold's flicker guard is a release time |
+| 3 | Hold or toggle | Hold: the weapon is in the hand while the grip holds it. Toggle an option - built 2026-11-25, `[Hands] GripToggle`, default off (5.1.1). | small | section 4.2 said the same; the hold's flicker guard is a release time |
 | 4 | What closes a grip | A realistic hold, not the shipped binding's force click: the holsters first, then every weapon grip (the world weapon, the second hand, the drop); the signal and its thresholds from the measurement of 5.4, the click as the fallback where nothing analog reads. | small after the measurement | the thresholds are settings with hysteresis, 4.1's way 2 |
 | 5 | Model A or B | A: only the equipped weapon hangs on the body, the game's own; the holsters remember the last weapon of each kind as today (controls-spec 4.1). B - every holster visibly filled, OBVR's own scene nodes on the body, the stow state in the save - noted for later ("die waffe an meinen schultern sehe ich ja eh nicht bzw würde sogar nerven"). B for the one-handers at the hips built 2026-11-20 (5.12.2); the back stays A, as the tester wanted. | A: the feature's medium; B: large on top | section 2.6 |
 | 6 | A holster already holding a weapon | With A the stow replaces: the holster's weapon is the last of its kind stowed or equipped, the one before stays in the inventory as a plain item - today's rule. The refusal in the tester's first wording belongs to B: there the holster's weapon stays in sight, and freeing it is grabbing it out, as in B&S. With A the hip looks empty once the engine's one slot has moved to the new weapon, a refusal there would be a wall with nothing to see, and "unequip that slot in the inventory" has nothing to unequip - the holster's weapon is not the equipped one. | cheap | the engine's single weapon slot (section 1) |
@@ -323,6 +323,42 @@ The tester, 2026-10-23: "weapons no longer have to select in inventory to equip 
 | 11 | The chest spot | Takes the held weapon into the inventory unequipped, as it takes every held thing ("stow gibts ja schon für alle items also auch waffen"). | small | the stow exists (`vr::StepStow`, `game::TakeIntoInventory`); a weapon in the weapon hand is equipped, so this is the unequip plus the stow's place |
 | 12 | Gates | No grab-equip in menus, mounted, dead or knocked down. A two-hander grabbed with a shield on the arm: the engine takes the shield off, as vanilla does. A quest weapon, which the game does not let fall: it stays in the hand with the game's own message; sliding it into its holster instead is a later nicety (small). | cheap | the gates exist for the holsters and the grab |
 | 13 | The measurement | Accepted (5.4): the instrument built, the headset round the tester's. | cheap, plus a headset round | |
+
+### 5.1.1 The grip toggle (built 2026-11-25, harness PASS, headset open)
+
+Nadi, 2026-11-25: "setting ins onboarding: man muss die hand nicht dauerhaft mehr an der klinge halten um
+diese zu halten, einmal grip reicht zum nehmen und waffe bleibt gehalten, wenn gehalten lässt grip die
+waffe wieder los. oder haben wir die settings bereits? default aus." There was no such setting:
+`WeaponHold=0` locks the weapon in the hand (no let go by the grip at all), `TorchDrop=0` the torch.
+
+- **Built [R]:** `vr/GripToggle.h` (pure, grip_toggle_test), stepped in `HandMode::Update` right after the
+  hold (`StepGripHold`): it changes the hold every reader goes by, not the readers. With `[Hands]
+  GripToggle=1` a grip that took what the hand keeps leaves the hand's hold closed after the grip opens;
+  the next grip opens it at once and keeps it open until that grip opens. So the let go is the opening of
+  decision 10 as before: at a holster sheathed, at the chest stowed, elsewhere dropped, thrown by a swung
+  hand (the hand's speed at that grip). The grip's click is the toggle's while it keeps the hold and during
+  the letting grip: no grab from either.
+- **What a hand keeps (`GripKeepsOf`, from the hand mode's frame):** the weapon hand a drawn one- or
+  two-hander or staff; the other hand a drawn bow, a torch (not while a bow or a two-hander without
+  TorchWithTwoHander took it off the hand), a weapon's handle or blade (the two-hand hold, half-swording).
+  A shield stays on the arm whatever the grip does. Not covered, on the grip as before: loose things the
+  engine's grab carries (potions, bodies), the pull to the hand until the weapon arrives, the bowstring.
+- **Timing [D]:** a grip's hold stays closed 0.5 s for what it takes to show (the take at a grip shows the
+  weapon in three frames since 2026-11-18, the draw at a place in about five), so a short grip is never
+  read as an opening on the way. What a hand kept, gone 0.2 s without a grip (sheathed by a key, taken off
+  in a menu), opens the toggle's hold. Menus pause it (no grip counts, nothing is lost); out of the world
+  (the main menu, a load) it ends. The state rides in each hand's `GripHoldState`, so it goes with the hand
+  when the sides switch (`HandMode::StepRolesSwitch`, a hand-over or a load's 'OBWS' side).
+- **Offered:** the guide's combat page first ("Toggle grip"), the settings under Combat: features, OBVR.ini.
+- **Tests:** grip_toggle_test (the flows: off, keep and let go, a short grip whose take shows later, a grip
+  on nothing, a grip held when the hand comes to keep, the loss, menus, untracked, a load, what each hand
+  keeps, both hands), native_settings_test (the combat page: the toggle first, seven rows, one page),
+  settings_list_test (the row pinned), function_sizes_test; 294 of 294. Harness `weapon-grip-toggle.txt` PASS
+  2026-11-25 (20261125-095513-slot3, DLL 427db869): short grips of 0.15 s only - drawn at the hip and kept three
+  seconds with the grip open, sheathed by a grip at the hip, drawn and kept again, dropped by a grip out in
+  front. With the toggle off, weapon-release-holster (its first run since fcf5e62) and weapon-drop PASS.
+- **Open:** the headset; a take slower than 0.5 s leaves the weapon in the hand but not kept - the next
+  grip keeps it.
 
 ### 5.2 What the decisions rest on [R, D]
 

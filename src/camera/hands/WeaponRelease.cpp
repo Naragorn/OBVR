@@ -318,6 +318,19 @@ bool TorchHandedOver(ReleaseState& state, const Config& config, const HandShared
 	return handed;
 }
 
+// The grip toggle's events ([Hands] GripToggle, vr/GripToggle.h), each hand's
+// by its role: what a grip took and kept, the next grip's let go, a keep lost.
+void SayGripToggle(ReleaseState& state, const vr::GripToggleSeen& seen) {
+	const vr::GripToggleEvent events[2] = {seen.right, seen.left};
+	for (int hand = 0; hand < 2; ++hand) {
+		const char* const words = vr::GripToggleWords(events[hand]);
+		if (words != nullptr && state.gripToggleLinesLeft > 0) {
+			--state.gripToggleLinesLeft;
+			OBVR_LOG("Grip toggle: the %s hand %s", hand == 0 ? "weapon" : "other", words);
+		}
+	}
+}
+
 }  // namespace
 
 void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& shared,
@@ -328,6 +341,7 @@ void StepRelease(ReleaseState& state, const HandStep& step, const HandShared& sh
 	const float deltaSeconds = links.deltaSeconds;
 	const bool fitting = links.holsterFitting;
 	vr::HandModeResult& handResult = shared.hand;
+	SayGripToggle(state, handResult.gripToggle);
 	const game::WeaponReleaseSettings& wr = config.hands.weaponRelease;
 	ArmFlameTrace(config);
 	const bool bow = frame.equipped == vr::EquippedKind::Bow;

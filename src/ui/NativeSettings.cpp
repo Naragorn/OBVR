@@ -16,9 +16,9 @@ const GuideRow kComfortOrder[]={
  {"Locomotion","TeleportInstant"},{"Locomotion","TeleportVignette"},{"Look","NoPlayerKnockdown"},
  {"Look","ExhaustionSounds"},{"Look","ExhaustionHeavyWeapon"},{"Onboarding","Hints"},{"Onboarding","StartGuide"},
 };
-// The combat page's rows in its order: the kick, how the foes fight, the cuts.
+// The combat page's rows in its order: how a hand holds its weapon, the kick, how the foes fight, the cuts.
 const GuideRow kCombatOrder[]={
- {"Hands","Kick"},{"Hands","CombatRing"},{"Hands","EnemyAttackSpeed"},
+ {"Hands","GripToggle"},{"Hands","Kick"},{"Hands","CombatRing"},{"Hands","EnemyAttackSpeed"},
  {"Hands","Dismemberment"},{"Hands","DismemberBlood"},{"Hands","DismemberCaps"},
 };
 bool Key(const SettingDefinition& d,const char* section,const char* key) {
@@ -63,15 +63,17 @@ bool SettingRelevantIn(SettingsMode mode,const SettingDefinition& d) {
  if (Key(d,"Look","SmoothTurning") || Key(d,"Look","TurnSpeed")) return !full;
  return true;
 }
-// The combat page: the kick takes the stick's flick up, which otherwise jumps -
+// The combat page: whether one grip keeps the weapon in the hand until the
+// next (vr/GripToggle.h; Nadi, 2026-11-25: "setting ins onboarding ... default
+// aus"); the kick takes the stick's flick up, which otherwise jumps -
 // a surprise worth asking about first; foes taking turns and how fast they
 // swing - the first thing to turn down for a player new to fighting with
 // their arms; and the cuts, taste, with their blood and wounds while the
 // cuts are on. All Full VR's.
 static bool ShownOnCombatPage(const SettingDefinition& d,const Config& c) {
  if (!c.fullVrMode) return false;
- if (Key(d,"Hands","Kick") || Key(d,"Hands","CombatRing") || Key(d,"Hands","EnemyAttackSpeed") ||
-     Key(d,"Hands","Dismemberment")) return true;
+ if (Key(d,"Hands","GripToggle") || Key(d,"Hands","Kick") || Key(d,"Hands","CombatRing") ||
+     Key(d,"Hands","EnemyAttackSpeed") || Key(d,"Hands","Dismemberment")) return true;
  if (Key(d,"Hands","DismemberBlood") || Key(d,"Hands","DismemberCaps")) return c.hands.dismember.enabled;
  return false;
 }

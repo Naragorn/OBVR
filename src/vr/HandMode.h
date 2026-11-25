@@ -1129,6 +1129,7 @@ struct HandModeResult : MenuPlaceResult {  // the wrists and the tablet: TabletL
 	// world weapon's take go by.
 	bool rightHold = false;
 	bool leftHold = false;
+	GripToggleSeen gripToggle;  // [Hands] GripToggle's events this frame, for the log (vr/GripToggle.h)
 	// Each grip's force, 0..1 (an Index's rAxis[2].x; 0 elsewhere): a fist
 	// squeezes it, so it counts as a fist where the fingers cannot be read
 	// ([Hands] FistGripForce; game::HandBodyFist).

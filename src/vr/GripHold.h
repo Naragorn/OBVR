@@ -16,6 +16,7 @@
 
 #include "core/Types.h"
 #include "vr/ControllerActions.h"
+#include "vr/GripToggle.h"
 #include "vr/HandInput.h"
 
 namespace obvr::vr {
@@ -27,6 +28,7 @@ struct GripHoldSettings {
 	bool byPull = true;    // [Hands] GripByPull: 0 puts the holsters back on the click
 	float closeAt = 0.8f;  // [Hands] GripCloseAt: the pull from which the hand is closed
 	float openAt = 0.4f;   // [Hands] GripOpenAt: the pull down to which it is open again
+	bool toggle = false;   // [Hands] GripToggle: one grip takes and keeps, the next lets go (vr/GripToggle.h)
 };
 
 // The close limit as used: the setting when it is a number in (0, 1], else
@@ -49,6 +51,7 @@ inline float GripOpenLimit(const GripHoldSettings& s) {
 
 struct GripHoldState {
 	bool held = false;
+	GripToggleState toggle;  // the grip toggle's, stepped by the hand mode after the hold
 };
 
 struct GripHoldInput {

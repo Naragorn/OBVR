@@ -89,6 +89,7 @@ struct ReleaseState {
 	bool releaseTimelineLeft = false;
 	UInt32 timelineLinesLeft = 24;
 	UInt32 heldOnLinesLeft = 12;
+	UInt32 gripToggleLinesLeft = 40;  // the grip toggle's events (vr/GripToggle.h)
 	DropTurnWatch weaponDropTurn;
 	DropTurnWatch torchDropTurn;
 	// The block's function statics, as they were (half-swording's two-handed

@@ -1137,6 +1137,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Hands", "GripByPull", hands.gripHold.byPull),
 	OBVR_KEY(Float, "Hands", "GripCloseAt", hands.gripHold.closeAt),
 	OBVR_KEY(Float, "Hands", "GripOpenAt", hands.gripHold.openAt),
+	OBVR_KEY(Bool, "Hands", "GripToggle", hands.gripHold.toggle),
 	OBVR_KEY(Bool, "Hands", "GrabEquipsWeapons", hands.weaponGrab.enabled),
 	OBVR_KEY(Bool, "Hands", "GrabEquipsTorches", hands.weaponGrab.torches),
 	OBVR_KEY(Float, "Hands", "WeaponGripReachMetres", hands.weaponGrab.gripReachMetres),

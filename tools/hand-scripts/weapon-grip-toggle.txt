@@ -1,0 +1,62 @@
+# The grip toggle ([Hands] GripToggle=1, vr/GripToggle.h; Nadi 2026-11-25: "einmal grip reicht zum
+# nehmen und waffe bleibt gehalten, wenn gehalten lässt grip die waffe wieder los"), short grips only
+# (0.15 s, then open): a grip at the hip draws the sword and the hand keeps it with the grip open, three
+# seconds out in front; a grip back at the hip sheathes it there; a grip there draws it again; a grip
+# out in front drops it where the hand is. weapon-release-holster.txt is the same walk with the grip
+# held, the toggle off.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr tools/hand-scripts/weapon-grip-toggle.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=1
+ini Hands GripToggle=1
+# The harness save's question box (Lovers with PK.esm active without its esp, since 2026-10-31) closed first.
+console-at settle CloseAllMenus
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: ready weapon done
+count 2 Grip toggle: the weapon hand took hold - kept closed until the next grip
+count 2 Grip toggle: the weapon hand let go at the next grip
+expect Weapon hold: the hold closed on the drawn weapon
+expect Weapon hold: let go at the holster - sheathed
+expect Weapon hold: let go - dropped where the hand is - the new reference
+reject closed again - kept
+reject lost what it kept
+reject HandScript: WARNING
+
+wait 20
+mark settle
+wait 1
+mark sword_sheathed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.15
+right grip 0
+wait 0.3
+right pos 0.30 -0.40 -0.35
+wait 3
+mark held_with_the_grip_open
+right pos -0.18 -0.62 -0.02
+wait 0.5
+right grip 0.9
+wait 0.15
+right grip 0
+wait 3
+mark sheathed_by_a_grip
+right grip 0.9
+wait 0.15
+right grip 0
+wait 0.3
+right pos 0.30 -0.40 -0.35
+wait 3
+mark drawn_again
+right grip 0.9
+wait 0.15
+right grip 0
+wait 3
+mark dropped_by_a_grip
+wait 1

@@ -1310,3 +1310,12 @@ use, bound mask" (00 or no trigger bit = the binding), "controller not tracked".
 beta: the waiting lines with the hands' places. Then the fix at the cause: a `pico_controller`
 binding (its trigger, grip and joystick paths are known from public bindings; its face buttons'
 paths are not), or a pose the cameras can see.
+
+## The grip toggle on the combat page (2026-11-25)
+
+Nadi: "setting ins onboarding: man muss die hand nicht dauerhaft mehr an der klinge halten um diese zu
+halten, einmal grip reicht zum nehmen und waffe bleibt gehalten, wenn gehalten lässt grip die waffe wieder
+los ... default aus." The combat page offers "Toggle grip" first (`[Hands] GripToggle`, off; the settings
+under Combat: features): "Grip once to keep your weapon in hand, grip again to let go. Off, hold the
+grip". Seven rows now, still one page. What it does: docs/free-weapons-spec.md 5.1.1. native_settings_test
+covers the page; the headset is open.

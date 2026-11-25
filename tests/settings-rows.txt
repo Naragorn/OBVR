@@ -59,6 +59,7 @@ Combat: features|Strikes train skills|Your swings level Blade, Blunt and Hand to
 Combat: features|Hit only what you touch|Blows land only where your blade or fist really hits. Off, the usual reach|Hands|MotionHitsByTouch|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Weapon parries|Catch their blade with yours mid-swing to stop the blow, for a little fatigue|Hands|WeaponParries|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Block by angle|Your blade or shield has to face the blow to block it|Hands|BlockByAngle|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Toggle grip|Grip once to keep your weapon in hand, grip again to let go. Off, hold the grip|Hands|GripToggle|||0|0|1|1|0|0|1|0|0|0|0|RW
 Combat: features|Two hands on two-handers|Grab a two-hander's handle with your other hand too|Hands|TwoHandGrip|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Two hands on one-handers|Grab one-handed weapons with both hands too|Hands|TwoHandOneHanders|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Slide your grip|With both hands on, hold the other trigger to slide that hand along the handle|Hands|TwoHandSlide|||0|0|1|1|0|0|1|1|1|0|0|RW
