@@ -1392,5 +1392,16 @@ for none.)
   is seen. tablet-info.txt and tablet-info-rest.txt PASS with the new DLL
   (20261125-100024-slot1, 20261125-100028-slot3): the item info beside the
   inventory, the stats page's box, the map.
+- The DLL as deployed (OBVR.dll md5 32026f9e from main a9ff91a, in both
+  games since 2026-11-25 10:34): every scenario of sections 21 and 22 PASS
+  with it - tablet-on-hand.txt in its film run (20261125-102621-slot1), the
+  others in plain runs after the deploy: tablet-stats-info.txt
+  (20261125-104501-slot1), tablet-on-hand-gauntlets.txt
+  (20261125-104505-slot2), tablet-on-hand-left-handed.txt
+  (20261125-104509-slot3), tablet-info-rest.txt (20261125-104513-slot4) and
+  tablet-info.txt (20261125-104702-slot1). The films of those five named
+  above are of earlier builds of this change from the same morning; [R, git
+  diff] the tablet's sources of the later of them differ from the commit in
+  comments only.
 - Not checked: a UI mod's stats menu (the id is the engine's, [D] it holds);
   the headset.
