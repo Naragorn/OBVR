@@ -69,9 +69,19 @@ with their own poses.
 | OBNG's GridMoveDefer, -144725 / -145739 | 6, 5 | 10, 6 | 119 / 70, 121 / 68 | 14.8 ms |
 | LatePoseWait, 20261120-145049 / -150104 | 6, 7 | 8, 5 | 47 / 17, 42 / 20 | 14.1 ms |
 
-Both clear the crossings about equally; the late wait also takes two thirds
-of all frames over 14.5 ms away, because every small overrun of the update
-now meets the wait. GridMoveDefer stays off (OBNG's fallback). The crossings
+**Recounted 2026-11-25** (OBNG's tools/re/ride-frame-split.py; OBNG
+knowledge/background-loading.md, "2026-11-25: the cell crossing as played",
+the bullet "Corrected"). The column over 14.5 ms counts the gaps between two
+presents, and a present that comes late within its period loses no period.
+Counted at the pose wait's end (a period is lost when two wait ends lie more
+than 1.5 periods apart), the whole rides lost 28 periods with both off, 26 and
+23 with GridMoveDefer, 28 and 22 with LatePoseWait - about the same. The
+crossings hold: without a lost period 0 of 10 with both off, 6 of 10 in each
+of the four other rides.
+
+Both clear the crossings about equally. The late wait took two thirds of the
+long gaps between presents away, but not the periods lost over the whole
+ride (the recount above). GridMoveDefer stays off (OBNG's fallback). The crossings
 that still lose a period have 9.8-14.7 ms of update before the wait - more
 than the 8.7 ms of slack; the grid's move itself is OBNG's next lever.
 OBNG's split of a ride with the late wait on (obng-profile-ride-anvil-late,
@@ -81,6 +91,13 @@ pump 0x00433590 8.3-15.4 ms in 6 (task ends that are not cell unloads),
 0x004402F0 8.1-25.0 ms in 3, the sound update 0x006AE860 once, the actors'
 ProcessManager in 2, the render alone in 1-2 - all the engine's, none of
 OBVR's. With the late wait the crossings are no longer the main group.
+
+**At 72 and 90 Hz** (OBNG's rides of 2026-11-25 with the late wait on,
+obng-profile-ride-anvil-late/20261125-143623 and -144020 at 72 Hz, -150703
+and -151457 at 90 Hz; the same section of OBNG's knowledge): 72 Hz lost 5 and
+9 of about 8 270 periods, none at a crossing; 90 Hz lost 8 and 13 of about
+9 330, 2 and 4 of them at the crossings - at the diagonal one, where nine
+cells come in (9.7-9.9 ms of update, then their first render).
 
 **The menus' opening** (tablet-open-hitch-late.txt against
 tablet-open-hitch.txt, the same DLL, 20261120-150502 and -150732): no
