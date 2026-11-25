@@ -258,5 +258,25 @@ check(real[0]["ini"]["OBSE/Plugins/FoliageAA.ini"] == {"Leaves": {"Passes": "2"}
       "FoliageAA at 2 passes for leaves and grass")
 check(all(len(c["sha256"]) == 64 and c["dll"] in c["files"] for c in real), "every DLL pinned and shipped")
 
+print("The start guide's revision for a beta")
+problem = pr.guide_revision_problem
+check(problem(2, "-beta10", "1 -beta9\n", False) is None, "a new beta at a higher revision: packed")
+check(problem(1, "-beta10", "1 -beta9\n", False) is not None, "a new beta at the last beta's revision: refused")
+check("raise kGuideRevision" in (problem(1, "-beta10", "2 -beta9\n", False) or ""),
+      "a lower one too, and the refusal says what to raise")
+check(problem(1, "-beta9", "1 -beta9\n", False) is None, "the same beta packed again: packed")
+check(problem(1, "-beta10", "1 -beta9\n", True) is None, "--same-guide: packed on purpose")
+check(problem(1, "", "1 -beta9\n", False) is None and problem(1, "-rc1", "1 -beta9\n", False) is None,
+      "a release: no check (its new rows raise the revision through the settings test)")
+check(problem(1, "-beta10", "", False) is None and problem(1, "-beta10", "garbled", False) is None,
+      "no record yet, or one that cannot be read: packed")
+with tempfile.TemporaryDirectory() as tmp:
+    root = Path(tmp)
+    write(root / "src/ui/GuideRevision.h", "inline constexpr UInt32 kGuideRevision = 7;\n")
+    check(pr.guide_revision_of(root) == 7, "the revision read from the header")
+check(pr.guide_revision_of(here.parent) >= 2, "the real header: revision 2 or later (2 since 2026-11-25)")
+record = (here / "guide-revision-packed.txt").read_text(encoding="utf-8").split()
+check(len(record) == 2 and record[0].isdigit() and "beta" in record[1], "the record of the last beta packed")
+
 print("OK" if failures == 0 else f"{failures} FAILED")
 sys.exit(1 if failures else 0)

@@ -1045,8 +1045,9 @@ becomes a real big expense."
   keeps it (cloth, dirt, grass, organic, wood, snow). A hit on another reference's body is
   decided in `0x0060B120` (not read through).
 - **Why nothing took a stuck one.** The engine's grab refuses a keyframed body (motion type 6
-  at `0x0066D5EF`), so the grip's grab key went down for nothing; and the activate button is
-  kept from loose items (TakeOnlyByHand, `vr::ActivateWithheld`). Vanilla takes it by
+  at `0x0066D5EF`), so the grip's grab key went down for nothing; and the activate button was
+  kept from loose items (TakeOnlyByHand, on by default until 2026-11-25,
+  `vr::ActivateWithheld`). Vanilla takes it by
   activating it: the reference's activate to the ammo's to the player's pick-up (`0x004DD260`,
   `0x004B28E0`, `0x00660910`) - the pick-up sound, one arrow into the inventory, the reference
   gone, no owner asked. A loose arrow (kinds 3 and 4) was never the problem: the grab holds it

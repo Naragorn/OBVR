@@ -17,8 +17,8 @@ namespace obvr::ui {
 // closing ID OBVR clicks after acting on a choice. README.md ("Controls in
 // Full VR") says the same in a table; change both. The door and the chest are
 // named since 2026-10-18 (a tester, 2026-10-17: "cant open doors not sure how
-// to pick up items" - A takes no loose item with TakeOnlyByHand on, the grip
-// holds it and the chest keeps it).
+// to pick up items" - A takes no loose item with TakeOnlyByHand on, which was
+// the default until 2026-11-25; the grip holds it and the chest keeps it).
 //
 // Five pages since 2026-10-21, a drawing and five short lines each (Nadi:
 // "die controls cards gerne mehrere statt alles auf einem haufen gepresst",

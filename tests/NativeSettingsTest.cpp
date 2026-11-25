@@ -2,7 +2,9 @@
 #include <cstring>
 #include <cstdlib>
 #include <initializer_list>
+#include <string>
 #include "ui/FirstStart.h"
+#include "ui/GuideRevision.h"
 #include "ui/NativeControlsCard.h"
 #include "ui/NativeHandAdjust.h"
 #include "ui/NativeSettings.h"
@@ -258,6 +260,7 @@ void TestComfortView() {
    else if(!std::strcmp(d.iniSection,"Tablet") && !std::strcmp(d.iniKey,"Enabled")) expected=full;  // the traditional inventory (2026-11-17)
    else if(!std::strcmp(d.iniSection,"Tablet") && !std::strcmp(d.iniKey,"Figure")) expected=full;  // the figure on it (2026-11-18), the tablet on by default
    else if(!std::strcmp(d.iniSection,"Tablet") && !std::strcmp(d.iniKey,"Unroll")) expected=full;  // how it unrolls (2026-11-18)
+   else if(!std::strcmp(d.iniSection,"Hands") && !std::strcmp(d.iniKey,"TakeOnlyByHand")) expected=full;  // A on items or only the hand (2026-11-25), the inventory ring on by default
    else if(!std::strcmp(d.iniSection,"Locomotion") && !std::strcmp(d.iniKey,"TeleportInstant")) expected=full && teleport;
    else if(!std::strcmp(d.iniSection,"Locomotion") && !std::strcmp(d.iniKey,"TeleportVignette")) expected=full && teleport && !blink;
    else if(!std::strcmp(d.iniSection,"Look") && !std::strcmp(d.iniKey,"NoPlayerKnockdown")) expected=true;  // both modes
@@ -268,10 +271,23 @@ void TestComfortView() {
    shown+=comfort;
   }
   const unsigned want=4+(full?1:0)+(snap ? 3+(instant?0:1)+(vignette?2:0) : (full?1:0))+
-                      (full ? 4+(teleport ? 1+(blink?0:1) : 0) : 0)+(tired ? 1+(full?1:0) : 0)+
+                      (full ? 5+(teleport ? 1+(blink?0:1) : 0) : 0)+(tired ? 1+(full?1:0) : 0)+
                       (full ? 1 : 0);
   Check(shown==want,"the comfort page's row count for each combination");
  }
+ // "Take only by hand" needs the inventory ring: without it the row is not offered, nor in Vanilla VR.
+ for(unsigned mask=0;mask<4;++mask) {
+  Config c;
+  c.fullVrMode=(mask&1)!=0; c.hands.stow.enabled=(mask&2)!=0;
+  bool found=false, shown=false;
+  for(UInt32 i=0;i<SettingDefinitionCount();++i) {
+   const auto& d=SettingDefinitions()[i];
+   if(std::strcmp(d.iniSection,"Hands") || std::strcmp(d.iniKey,"TakeOnlyByHand")) continue;
+   found=true; shown=SettingShownIn(SettingsView::Comfort,d,c);
+  }
+  Check(found && shown==(mask==3),"Take only by hand is on the comfort page in Full VR with the inventory ring on, and only then");
+ }
+ Check(!Config().hands.stow.takeOnlyByHand,"and it is off by default: A picks up what the hand reaches");
  // A section that matches but a key that does not, and the other way round.
  SettingDefinition fake; fake.iniSection="Hands"; fake.iniKey="LeftHande";
  Config c;
@@ -294,8 +310,9 @@ void TestComfortView() {
   Check(speed && !std::strcmp(speed->iniSection,"Hands") && !std::strcmp(speed->label,"Stick turn speed"),
         "the row offered is the Full VR stick's, not VR View's eased mouse turn");
   Check(SameKeys(fullMenu,full,{"SnapTurning","LeftHanded","SneakIndicator","TurnSpeed","WalkDirection","Enabled","Figure","Unroll",
-                                "TeleportInstant","TeleportVignette","NoPlayerKnockdown","ExhaustionSounds","ExhaustionHeavyWeapon","Hints","StartGuide"}),
-        "Full VR, snap off: the sneak indicator, the stick turn speed, the walk direction, the traditional inventory, the figure on the tablet, the teleport's instant and glide vignette, no knockdown, the hints, the start guide");
+                                "TakeOnlyByHand","TeleportInstant","TeleportVignette","NoPlayerKnockdown","ExhaustionSounds",
+                                "ExhaustionHeavyWeapon","Hints","StartGuide"}),
+        "Full VR, snap off: the sneak indicator, the stick turn speed, the walk direction, the traditional inventory, the figure on the tablet, A on items or only the hand, the teleport's instant and glide vignette, no knockdown, the hints, the start guide");
   const SettingDefinition* figure=FindSetting("Tablet","Figure");
   Check(figure && SettingShownIn(SettingsView::Comfort,*figure,full),"Full VR with the menus in the hand: where the figure is");
   full.hands.tablet.enabled=false;
@@ -631,6 +648,55 @@ void TestFirstStart() {
 // (2026-11-25), the kick, the foes and the cuts, the cuts' blood and wounds
 // while the cuts are on; and the
 // pages' order - the comfort page in Full VR brings it, nothing else does.
+// The rows the start guide's pages offer, pinned beside the guide's revision
+// (ui/GuideRevision.h; Nadi, 2026-11-25: new toggles in the guide bring it
+// back once). Every row the comfort or the combat page shows in any of the
+// settings that decide them, as "Section.Key".
+void TestGuideRevision() {
+ std::printf("The guide's rows, pinned beside its revision\n");
+ Check(GuideComesBack(0,kGuideRevision) && GuideComesBack(kGuideRevision-1,kGuideRevision) &&
+       !GuideComesBack(kGuideRevision,kGuideRevision) && !GuideComesBack(kGuideRevision+1,kGuideRevision),
+       "the guide comes back for an INI that names none or an older revision, never for this one or a newer");
+ std::string offered;
+ for(UInt32 i=0;i<SettingDefinitionCount();++i) {
+  const auto& d=SettingDefinitions()[i];
+  bool shown=false;
+  for(unsigned mask=0;mask<2048 && !shown;++mask) {
+   obvr::Config c;
+   c.look.snapTurning=mask&1; c.look.snapTurnInstant=mask&2; c.look.snapTurnVignette=mask&4;
+   c.fullVrMode=(mask&8)!=0; c.hands.teleport.enabled=(mask&16)!=0; c.hands.teleport.instant=(mask&32)!=0;
+   c.look.exhaustion.enabled=(mask&64)!=0; c.hands.dismember.enabled=(mask&128)!=0;
+   c.hands.tablet.enabled=(mask&256)!=0; c.hands.stow.enabled=(mask&512)!=0;
+   shown=SettingShownIn(SettingsView::Comfort,d,c) || SettingShownIn(SettingsView::Combat,d,c);
+  }
+  if(shown) offered+=std::string(d.iniSection)+"."+d.iniKey+" ";
+ }
+ // Change these and raise kGuideRevision together: a player who kept their
+ // OBVR.ini then meets the new rows once (the packer raises it for a beta
+ // anyway; tools/package-release.py).
+ const char* const pinned=
+  "Hands.LeftHanded Look.SnapTurning Look.SnapTurnAngle Look.SnapTurnInstant Look.SnapTurnSpeed Look.SnapTurnVignette "
+  "Look.SnapTurnVignetteRadius Look.SnapTurnVignetteStrength Hands.TurnSpeed Hands.SneakIndicator Hands.WalkDirection "
+  "Tablet.Enabled Tablet.Figure Tablet.Unroll Hands.TakeOnlyByHand Locomotion.TeleportInstant Locomotion.TeleportVignette "
+  "Look.NoPlayerKnockdown Look.ExhaustionSounds Look.ExhaustionHeavyWeapon Onboarding.Hints Onboarding.StartGuide "
+  "Hands.GripToggle Hands.Kick Hands.CombatRing Hands.EnemyAttackSpeed Hands.Dismemberment Hands.DismemberBlood "
+  "Hands.DismemberCaps ";
+ // The same set in any order: each pinned row offered, nothing offered beyond them.
+ bool same=true; std::string rest=offered;
+ const char* p=pinned;
+ while(*p) {
+  const char* end=std::strchr(p,' ');
+  const std::string row(p,end-p);
+  const std::string::size_type at=(" "+rest).find(" "+row+" ");
+  if(at==std::string::npos) { same=false; std::printf("    pinned, not offered: %s\n",row.c_str()); }
+  else rest.erase(at,row.size()+1);
+  p=end+1;
+ }
+ if(!rest.empty()) { same=false; std::printf("    offered, not pinned: %s\n",rest.c_str()); }
+ Check(same && kGuideRevision==2,
+       "the guide's rows are the ones pinned at revision 2 - a change raises kGuideRevision and pins them anew");
+}
+
 void TestCombatView() {
  std::printf("Combat page view\n");
  const char* const always[]={"GripToggle","Kick","CombatRing","EnemyAttackSpeed","Dismemberment"};
@@ -1447,6 +1513,7 @@ int main() {
  TestModes();
  TestComfortView();
  TestCombatView();
+ TestGuideRevision();
  TestComfortPageStep();
  TestUpdateWindow();
  TestHandAdjust();

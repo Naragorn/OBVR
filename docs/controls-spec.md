@@ -6228,3 +6228,12 @@ that stick", "Things with a fixed part").
     appears in the hand as the trigger goes down; after, the hands stay empty.
   - **Not done:** the headset. No setting brings the old way back - a player who drew by the
     trigger reaches for the weapon now, or plays with Holsters off and the ready-weapon input.
+- **The A button on loose items is on by default again (Nadi, the same day).** `[Hands]
+  TakeOnlyByHand` is 0 by default: activate takes the item the ring is on, as in vanilla,
+  and the grip with the chest's ring works beside it. The setting stays for whoever wants
+  only the hand ("Take only by hand" under Grab & throw). It had been on by default since
+  2026-10-07 (4.13); two testers of 2026-10-17 did not find how to pick things up with it
+  ("cant open doors not sure how to pick up items"), and with it on a stuck arrow could not
+  be taken at all before this day's fix. Nadi's own games had it at 0 all along, the harness
+  with them (it copies the live INI). `vr/Stow.h`, the shipped OBVR.ini, README, stow_test.
+  A live OBVR.ini that says `TakeOnlyByHand=1` keeps that until it is switched.

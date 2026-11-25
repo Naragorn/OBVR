@@ -66,6 +66,41 @@ def newer_sources(root: Path, dll: Path) -> list:
     return [p for p in (root / "src").rglob("*") if p.is_file() and p.stat().st_mtime > dll_time]
 
 
+# The start guide's revision a beta was last packed with, "<revision> <tag>"
+# (src/ui/GuideRevision.h): every new beta brings the guide back once.
+GUIDE_RECORD = "tools/guide-revision-packed.txt"
+
+
+def guide_revision_of(root: Path) -> int:
+    """kGuideRevision in src/ui/GuideRevision.h."""
+    text = (root / "src/ui/GuideRevision.h").read_text(encoding="utf-8")
+    found = re.search(r"kGuideRevision\s*=\s*(\d+)", text)
+    if not found:
+        raise SystemExit("src/ui/GuideRevision.h has no kGuideRevision = <n> to read")
+    return int(found.group(1))
+
+
+def guide_revision_problem(revision: int, tag: str, record: str, same_guide: bool):
+    """Why a beta may not be packed at this guide revision, or None.
+
+    Every new beta brings the start guide back once for every player (Nadi,
+    2026-11-25: "bei jeder neuen beta das onboarding für leute wieder
+    anschalten einmalig"), which takes a revision higher than the last beta's
+    (`record`, "<revision> <tag>"). Packing the same tag again, a release
+    (no "beta" in the tag) and --same-guide pass."""
+    if "beta" not in tag or same_guide:
+        return None
+    parts = record.split()
+    if len(parts) < 2 or not parts[0].isdigit():
+        return None
+    last, last_tag = int(parts[0]), parts[1]
+    if tag == last_tag or revision > last:
+        return None
+    return (f"the start guide's revision is {revision}, and {last_tag} was packed at {last}: every new beta brings "
+            "the guide back once - raise kGuideRevision in src/ui/GuideRevision.h (the pinned rows in "
+            "tests/NativeSettingsTest.cpp with it), or pack with --same-guide")
+
+
 def missing_stage_files(root: Path) -> list:
     """The loading stage's models the DLL names (src/vr/LoadingStage.h, "OBVR_Stage\\\\<name>.obj"),
     each with its material and its atlas: the .obj files were lost to .gitignore's *.obj once
@@ -269,8 +304,17 @@ def main() -> int:
                         help="the companion plugins' list (default tools/release-companions.json)")
     parser.add_argument("--without-companions", action="store_true",
                         help="ship without the companion plugins (FoliageAA, WaterAA, ...) on purpose")
+    parser.add_argument("--same-guide", action="store_true",
+                        help="a beta that does not bring the start guide back (src/ui/GuideRevision.h)")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
+    guide_revision = guide_revision_of(root)
+    guide_record = root / GUIDE_RECORD
+    problem = guide_revision_problem(guide_revision, args.tag,
+                                     guide_record.read_text(encoding="utf-8") if guide_record.is_file() else "",
+                                     args.same_guide)
+    if problem:
+        raise SystemExit(problem)
     companion_entries = []
     if not args.without_companions:
         listing = Path(args.companions) if args.companions else root / "tools/release-companions.json"
@@ -333,6 +377,9 @@ def main() -> int:
         for name, data in companion_entries:
             archive.writestr(name, data)
         count = len(archive.namelist())
+    if "beta" in args.tag and not args.same_guide:
+        guide_record.write_text(f"{guide_revision} {args.tag}\n", encoding="utf-8")
+        print(f"The start guide's revision {guide_revision} noted for {args.tag} ({GUIDE_RECORD})")
     if dll_map.is_file():
         shutil.copyfile(dll_map, out / f"OBVR-{version}.map")
     if obng_sha:

@@ -67,7 +67,7 @@ The OBVR column names the INI key (OBVR.ini). A key's default is what ships.
 
 | Feature | OBVR | Vanilla | Kind |
 |---|---|---|---|
-| Picking up | Grip the item and bring it to your chest (`StowAtBody`, `TakeOnlyByHand`). | Activate (Space) [U] | by hand |
+| Picking up | Grip the item and bring it to your chest (`StowAtBody`), or reach for it and press A (`TakeOnlyByHand=1` leaves only the grip). | Activate (Space) [U] | by hand |
 | Holding and carrying | Hold any small object in the hand, pull it from afar, put it down where you like (`PullToHand`, `AttachSmallObjects`). | Grab (Z) carries it in front of you [U] | by hand |
 | Holsters | Four spots on the body (hips, back). Draw by gripping, sheathe by letting go (`Holsters`, `HolsterLabels`). | Draw and sheathe with F [U] | by hand |
 | Drawing at once | The weapon is in the hand at once instead of after the draw animation (`TakeDrawsAtOnce`). | Draw animation [?] | changed |

@@ -12,7 +12,7 @@ const GuideRow kComfortOrder[]={
  {"Look","SnapTurning"},{"Look","SnapTurnAngle"},{"Look","SnapTurnInstant"},{"Look","SnapTurnSpeed"},
  {"Look","SnapTurnVignette"},{"Look","SnapTurnVignetteRadius"},{"Look","SnapTurnVignetteStrength"},
  {"Hands","LeftHanded"},{"Hands","SneakIndicator"},{"Hands","TurnSpeed"},{"Hands","WalkDirection"},
- {"Tablet","Enabled"},{"Tablet","Figure"},{"Tablet","Unroll"},
+ {"Tablet","Enabled"},{"Tablet","Figure"},{"Tablet","Unroll"},{"Hands","TakeOnlyByHand"},
  {"Locomotion","TeleportInstant"},{"Locomotion","TeleportVignette"},{"Look","NoPlayerKnockdown"},
  {"Look","ExhaustionSounds"},{"Look","ExhaustionHeavyWeapon"},{"Onboarding","Hints"},{"Onboarding","StartGuide"},
 };
@@ -107,6 +107,9 @@ bool SettingShownIn(SettingsView view,const SettingDefinition& d,const Config& c
  if (Key(d,"Tablet","Enabled")) return c.fullVrMode;
  // Where the character is on it (Nadi, 2026-11-18): only while the menus are in the hand.
  if (Key(d,"Tablet","Figure") || Key(d,"Tablet","Unroll")) return c.fullVrMode && c.hands.tablet.enabled;
+ // Whether A still picks up what the hand reaches (vr/Stow.h; Nadi, 2026-11-25: off by default, "die option gehört
+ // auch ins onboarding"): only by hand needs the inventory ring, so the row goes with it.
+ if (Key(d,"Hands","TakeOnlyByHand")) return c.fullVrMode && c.hands.stow.enabled;
  if (Key(d,"Locomotion","TeleportInstant")) return c.fullVrMode && c.hands.teleport.enabled;
  if (Key(d,"Locomotion","TeleportVignette"))
   return c.fullVrMode && c.hands.teleport.enabled && !c.hands.teleport.instant;

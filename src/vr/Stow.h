@@ -12,11 +12,13 @@
 // usual. The take waits until the engine has let go of the object itself,
 // so its grab spring never holds a reference that has gone into the pack.
 //
-// [Hands] TakeOnlyByHand (on by default since 2026-10-07, the tester: "aufheben
-// nur mit an körper ran führen auch default an"): the activate button no longer
-// takes loose items; activating a book still opens it to read. It needs
-// stowing on - with that off, activating takes items as ever, or they could
-// not be taken at all.
+// [Hands] TakeOnlyByHand: the activate button no longer takes loose items;
+// activating a book still opens it to read. It needs stowing on - with that
+// off, activating takes items as ever, or they could not be taken at all.
+// Off by default again since 2026-11-25 (Nadi: the A button on items stays on,
+// the player decides); it was on from 2026-10-07 ("aufheben nur mit an körper
+// ran führen auch default an"), and testers new to it did not find how to
+// pick things up (controls-spec, the beta reports of 2026-10-17).
 //
 // The zone is in the body's frame (vr::BodyRelative): metres from the eyes
 // along the head's heading, x right, y forward, z up.
@@ -59,7 +61,7 @@ namespace obvr::vr {
 
 struct StowSettings {
 	bool enabled = true;
-	bool takeOnlyByHand = true;
+	bool takeOnlyByHand = false;
 	// The spot, from the eyes: where a hand held against the chest was
 	// measured (0.19 to 0.23 m ahead, 0.17 to 0.30 m below), and how far
 	// round it the hand counts as in it.

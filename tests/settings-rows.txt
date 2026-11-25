@@ -170,7 +170,7 @@ Grab & throw|Throw strength|How hard things fly when you let go mid-swing|Hands|
 Grab & throw|Held objects push|What you hold pushes other things and turns with your hand|Hands|HeldObjectsPush|||0|0|1|1|0|0|1|1|1|0|0|RW
 Grab & throw|Thrown things hit|Things you throw stagger people, or knock them down if they hit fast|Hands|ThrowHits|||0|0|1|1|0|0|1|1|1|0|0|RW
 Grab & throw|Thrown things make noise|With Oblivion Walkers, the dead come to where your throw lands|Hands|ThrowNoise|||0|0|1|1|0|0|1|1|1|0|0|RW
-Grab & throw|Take only by hand|A doesn't pick up loose items anymore. Grab them and stow them instead|Hands|TakeOnlyByHand|||0|0|1|1|0|0|1|1|1|0|0|RW
+Grab & throw|Take only by hand|A doesn't pick up loose items anymore. Grab them and stow them instead|Hands|TakeOnlyByHand|||0|0|1|1|0|0|1|0|0|0|0|RW
 Holsters & items|Inventory ring|Let go of an item in the gold ring on your body and it goes into your inventory|Hands|StowAtBody|||0|0|1|1|0|0|1|1|1|0|0|RW
 Holsters & items|Place the inventory ring|Grab the gold ring and put it where you want it on your body|||||3|0|0|0|0|0|1|0|0|4|0|RW
 Holsters & items|Show the inventory ring|The gold ring shows faintly when what you hold gets close to it. It works either way|Hands|StowSpotVisible|||0|0|1|1|0|0|1|1|1|0|0|RW

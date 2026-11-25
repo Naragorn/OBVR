@@ -1319,3 +1319,43 @@ los ... default aus." The combat page offers "Toggle grip" first (`[Hands] GripT
 under Combat: features): "Grip once to keep your weapon in hand, grip again to let go. Off, hold the
 grip". Seven rows now, still one page. What it does: docs/free-weapons-spec.md 5.1.1. native_settings_test
 covers the page; the headset is open.
+
+## Take only by hand on the comfort page (2026-11-25)
+
+Nadi, on a Quest 2 tester's report of the same day: the A button on loose items is on by default again, the
+player decides, and "die option gehört auch ins onboarding". `[Hands] TakeOnlyByHand` is 0 by default
+(vr/Stow.h, controls-spec "A tester's wishes and a bug, 2026-11-25") and the comfort page offers its row
+after the tablet's, in Full VR while the inventory ring is on (only by hand needs the ring to take anything):
+"Take only by hand - A doesn't pick up loose items anymore. Grab them and stow them instead"
+(`ui::SettingShownIn`, kComfortOrder). native_settings_test: the row's place in every combination, not in
+Vanilla VR, not with the ring off, off by default. The headset is open.
+
+## The guide comes back once with a new beta (2026-11-25)
+
+Nadi: "neue rule: bei jeder neuen beta das onboarding für leute wieder anschalten einmalig. wenn
+wir dem onboarding neue toggles hinzufügen bei releases auch." Why it is needed: a player who
+keeps their OBVR.ini across an update (the beta posts say so) never met the guide's new rows nor a
+changed default - the same day `[Hands] TakeOnlyByHand` went to 0 by default, and an INI kept from
+beta 9 still says 1; only the comfort page's row puts that choice in front of them. One who unzips
+over Data gets the shipped INI with `StartGuide=1`, and loses their own settings with it. The DLL
+cannot tell one beta from the next by itself: its version is 0.3.0 for every beta, the tag is only
+in the zip's name.
+
+- **Built.** `ui::kGuideRevision` (ui/GuideRevision.h), 2 since this day; revision 1 is the guide
+  of beta 9 and before. At the plugin's load, after OBVR.ini is read, `game::ReturnGuideForNewRevision`
+  (game/GuideReturn.cpp) reads `[Onboarding] GuideRevision` from the player's OBVR.ini (none: 0);
+  a lower one switches the guide on (`StartGuide=1`, saved) and writes this revision. Log:
+  "Onboarding: this OBVR's start guide is revision 2, OBVR.ini named 0 - the guide comes back once".
+  From there the guide runs as on a first start: through to the comfort page it switches itself
+  off; ended by Esc it comes again at the next start, the rule of 2026-11-06. Not in a harness
+  run (its INI keeps the guide off; "the start guide's revision neither read nor written").
+- **Raised by hand, held by two checks.** Every new beta: `tools/package-release.py --tag -betaN`
+  refuses a beta at the revision another beta was packed with (`tools/guide-revision-packed.txt`,
+  "1 -beta9"; it notes the new one after packing; `--same-guide` packs a beta that does not bring
+  the guide back, on purpose). Every change to the rows the guide's pages offer: native_settings_test
+  (`TestGuideRevision`) pins the comfort and combat pages' rows beside revision 2 and fails when they
+  change and the revision does not. package_release test, native_settings_test.
+- **Not done:** the headset, a harness run of the return (the harness keeps the guide off; the
+  decision is a pure function, the rest is two INI writes and a log line).
+- **On Nadi's own games:** their OBVR.ini names no revision yet, so the guide comes back once at
+  the next start after this deploy.

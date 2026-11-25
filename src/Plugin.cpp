@@ -4,6 +4,7 @@
 #include "core/Log.h"
 #include "game/GameAddresses.h"
 #include "game/ConsoleLine.h"
+#include "game/GuideReturn.h"
 #include "game/HandControls.h"
 #include "game/OsCursor.h"
 #include "game/NativeMenuPrototype.h"
@@ -88,6 +89,8 @@ __declspec(dllexport) bool OBSEPlugin_Load(const obvr::obse::Interface* obse) {
 	}
 
 	obvr::GetConfig().Load("OBVR.ini");
+	// A newer start guide than the player's OBVR.ini has seen: once more (ui/GuideRevision.h).
+	obvr::game::ReturnGuideForNewRevision();
 	obvr::perf::Profiler::Instance().Configure(obvr::GetConfig().performance);
 	// A crash writes the performance ring before the crash loggers run.
 	obvr::crash::SetCrashSaver(+[] { obvr::perf::Profiler::Instance().SaveOnCrash(); });

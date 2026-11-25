@@ -73,7 +73,8 @@ You find the same list in the game: settings menu, Help, "Show the controls".
 
 More tips:
 
-- **Picking up items:** hold the item with the grip and bring it to your chest.
+- **Picking up items:** hold the item with the grip and bring it to your chest,
+  or reach for it and press A.
 - **Give up a fight (yield):** raise both open hands, palms to the enemy, and
   move them gently left and right for a second.
 - **Holsters:** you have four places on your body, both hips and behind both

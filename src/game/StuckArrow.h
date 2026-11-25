@@ -17,9 +17,10 @@
 //
 // Stuck in a body or the land its own Havok body stays keyframed, and the
 // engine's grab refuses a keyframed body: a closed grip put the grab key down
-// for nothing. The activate button is kept from loose items (vr/Stow.h,
-// TakeOnlyByHand). So nothing took the arrow. Bounced or dropped it is
-// dynamic clutter and the grab holds it like any item.
+// for nothing. With TakeOnlyByHand on (vr/Stow.h; the default until
+// 2026-11-25) the activate button is kept from loose items as well, so
+// nothing took the arrow. Bounced or dropped it is dynamic clutter and the
+// grab holds it like any item.
 //
 // The game itself takes a stuck arrow when it is activated: the pick-up
 // sound, one arrow into the inventory, the reference gone, no owner asked.

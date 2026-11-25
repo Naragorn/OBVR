@@ -213,6 +213,7 @@ add_library(OBVR SHARED
 	src/game/GrabNearBody.cpp
 	src/game/NearbyItems.cpp
 	src/game/AnchoredRef.cpp
+	src/game/GuideReturn.cpp
 	src/game/StuckArrow.cpp
 	src/game/ReachTargets.cpp
 	src/game/QuickKeys.cpp
