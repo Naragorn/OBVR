@@ -26,6 +26,10 @@ exists, so the sampled addresses were matched to a build of the same day by
 the address shift that puts all 86 distinct return addresses right after a
 call instruction.
 
+Oblivion Walkers was loaded in that session, in its apocalypse mode (spawns
+become walkers, the dead rise); its log of that evening says so. Found on
+2026-11-25. What it added to the fight's load was not measured.
+
 ## What changed (2026-11-24)
 
 Four things a world draw paid for without needing them:
@@ -73,7 +77,16 @@ OBVR.dll's part of the pass falls from 0.475 to 0.280 ms a frame, 41 % less.
 OBNG.dll's part did not grow with it (1.399 / 1.255 before, 1.355 / 1.190
 after), so the time did not just move next door.
 
+All four runs loaded Oblivion Walkers (DLL and ESP, apocalypse mode; each
+run's OBVR.log shows it). The Linux game had carried it since 2026-11-20
+without anyone meaning it to, found on 2026-11-25. It was the same on both
+sides, so the comparison stands; the level is that of a game with Walkers in
+it.
+
 What these runs do not show:
+
+- **A game without Walkers.** Not run. The saving is per hook call, so it
+  should follow the number of draws; that is derived.
 
 - **The scene pass as a whole.** It read 6.71 / 6.10 ms before and 6.38 / 5.64
   after. Two equal runs differ by 0.6 ms, three times the gain, so the pass
