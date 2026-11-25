@@ -675,12 +675,29 @@ class Recording(unittest.TestCase):
     def test_commands(self):
         cmds = r.film_commands("pull", "/g", "/run", 36, ["OBVR-Rec-pull-0000.bmp"])
         self.assertEqual(len(cmds), 3)
-        self.assertIn("/g/OBVR-Rec-pull-%04d.bmp", cmds[0])
+        # By a glob of the four digits, not by counting up: a film counted up
+        # ended at the first frame the recorder dropped.
+        self.assertIn("/g/OBVR-Rec-pull-????.bmp", cmds[0])
+        self.assertEqual(cmds[0][cmds[0].index("-i") - 2:cmds[0].index("-i")], ["-pattern_type", "glob"])
+        self.assertIn("/g/OBVR-Rec-pull-????.bmp", cmds[1])
+        self.assertEqual(cmds[1][cmds[1].index("-i") - 2:cmds[1].index("-i")], ["-pattern_type", "glob"])
+        self.assertNotIn("%04d", " ".join(cmds[0] + cmds[1]))
         self.assertEqual(cmds[0][-1], "/run/rec-pull.mp4")
         self.assertEqual(cmds[1][-1], "/run/rec-pull.gif")
         self.assertEqual(cmds[2][1], "/g/OBVR-Rec-pull-0000.bmp")
         self.assertEqual(cmds[2][-1], "/run/rec-pull-strip.png")
         self.assertEqual(len(r.film_commands("pull", "/g", "/run", 36, [])), 2)
+
+    def test_gaps(self):
+        whole = [f"OBVR-Rec-pull-{i:04d}.bmp" for i in range(5)]
+        self.assertEqual(r.film_gaps(whole), 0)
+        # Frames 2 and 3 dropped while the writer was behind.
+        self.assertEqual(r.film_gaps([whole[0], whole[1], whole[4]]), 2)
+        # In any order, and a film that begins past its first number misses none before it.
+        self.assertEqual(r.film_gaps([whole[4], whole[2]]), 1)
+        self.assertEqual(r.film_gaps([whole[3]]), 0)
+        self.assertEqual(r.film_gaps([]), 0)
+        self.assertEqual(r.film_gaps(["OBVR-Eye-Right-pull.bmp"]), 0)
 
 if __name__ == "__main__":
     unittest.main()

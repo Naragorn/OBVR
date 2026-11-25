@@ -564,9 +564,11 @@ class Run:
             strip = [pictures[i] for i in logic.strip_picks(len(pictures))]
             failed = [cmd[0] for cmd in logic.film_commands(mark, str(self.game_dir), str(self.run_dir), fps, strip)
                       if run_quiet(cmd, timeout=180.0)[0] != 0]
-            say(f"  film rec-{mark}: {len(pictures)} pictures at {fps:g} a second"
+            gaps = logic.film_gaps(pictures)
+            dropped = f", {gaps} dropped by the recorder in between (the film skips them)" if gaps else ""
+            say(f"  film rec-{mark}: {len(pictures)} pictures at {fps:g} a second{dropped}"
                 + (f" - {', '.join(failed)} failed" if failed else ""))
-            self.notes.append(f"film rec-{mark}: {len(pictures)} pictures, played at {fps:g} frames a second "
+            self.notes.append(f"film rec-{mark}: {len(pictures)} pictures{dropped}, played at {fps:g} frames a second "
                               f"(the headset's {hz:g} Hz over every {max(1, self.args.record_every)}); "
                               "rec-" + mark + ".mp4, .gif, -strip.png")
         for name in names:

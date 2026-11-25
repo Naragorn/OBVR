@@ -680,16 +680,31 @@ def film_fps(hz: float, every: int) -> float:
     return max(1.0, (hz if hz > 0 else 72.0) / max(1, every))
 
 
+def film_gaps(pictures: Sequence[str]) -> int:
+    """How many pictures a film misses between its first and its last: the
+    recorder numbers every frame it films and drops one when its writer is
+    behind (render/EyeRecorder.h), so a number missing is a frame dropped."""
+    numbers = sorted(int(m.group(2)) for m in (REC_NAME.match(name) for name in pictures) if m)
+    return numbers[-1] - numbers[0] + 1 - len(numbers) if numbers else 0
+
+
 def film_commands(mark: str, folder: str, out_dir: str, fps: float, strip_names: Sequence[str]) -> List[List[str]]:
     """The commands that make a mark's film: an MP4 and a GIF from its
-    pictures in order, and a strip of the picked pictures side by side."""
-    pattern = f"{folder}/OBVR-Rec-{mark}-%04d.bmp"
+    pictures in order, and a strip of the picked pictures side by side.
+    The pictures are taken by a glob, not by counting up: counted, a film
+    ended at the first number missing - one frame dropped by the recorder
+    while the disk was busy, and a film of 204 pictures came out 9 long
+    (2026-11-25, tablet-on-hand.txt beside other sessions' builds). Four
+    question marks for the number: this ffmpeg's glob takes no [0-9]
+    (tried, "No such file"), and a star would take another mark's pictures
+    too (pull-up-0000 for pull)."""
+    pattern = f"{folder}/OBVR-Rec-{mark}-????.bmp"
     mp4 = [
-        "ffmpeg", "-y", "-loglevel", "error", "-framerate", f"{fps:g}", "-i", pattern,
+        "ffmpeg", "-y", "-loglevel", "error", "-framerate", f"{fps:g}", "-pattern_type", "glob", "-i", pattern,
         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", f"{out_dir}/rec-{mark}.mp4",
     ]
     gif = [
-        "ffmpeg", "-y", "-loglevel", "error", "-framerate", f"{fps:g}", "-i", pattern, "-vf",
+        "ffmpeg", "-y", "-loglevel", "error", "-framerate", f"{fps:g}", "-pattern_type", "glob", "-i", pattern, "-vf",
         "scale=480:-2:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer",
         f"{out_dir}/rec-{mark}.gif",
     ]

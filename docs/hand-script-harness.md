@@ -390,6 +390,21 @@ only the bones named (R or L and upper, utwist, fore, ftwist, hand, fphand):
 the arm a script holds still while the other moves. Checks:
 `python3 tools/drawn-arm-flicker-test.py`.
 
+**Frames the recorder drops (2026-11-25).** The recorder numbers every frame
+it films and drops one when its writer is behind ("Record: at the mark ... N
+dropped (the writer behind)"): a film 1280 wide is 4.9 MB a picture, 370 MB a
+second at 75 Hz, and four games filming beside other sessions' builds did
+not get that onto the disk (tablet-on-hand.txt and tablet-info.txt,
+20261125-094005-slot1 and -094321-slot2: 92 to 265 pictures dropped a run).
+The films were made by counting the pictures' numbers up and ended at the
+first one missing - rec-open_hand.mp4 came out 9 frames long of 204
+pictures, rec-map.mp4 2 of 854. Since then the films take the pictures by a
+glob (tools/hand_script_runner.py `film_commands`), skip a dropped frame
+and go on, and the run's summary says how many were dropped ("film rec-x: N
+pictures, M dropped by the recorder in between"). For a film a person looks
+at, zero dropped is still the aim: run it without builds beside it, three
+filming games at most at this width, and check the summary.
+
 **Open bug (2026-11-20): the last mark's film is collected while the game
 still films it.** The runner makes the films right after the script's end,
 before the game is stopped, so the last film has more pictures than the
