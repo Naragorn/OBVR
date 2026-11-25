@@ -210,6 +210,9 @@ struct TabletRects {
 	UiRect crop;     // the page, what reaches beyond it (the map's extension) and its popups
 	UiRect outline;  // the page and what reaches beyond it, without the popups
 	UiRect popups[kTabletPopupsMost];
+	// An info shown while a row is pointed at - the item info, the page's own
+	// box - not a box that waits for an answer (vr/TabletBoxes.h).
+	bool popupInfo[kTabletPopupsMost] = {};
 	UInt32 popupCount = 0;
 	bool popupsOverflow = false;  // more popups than kept
 };
@@ -237,11 +240,14 @@ inline UiRect OnScreen(const PaperTile& t, float screenWidth, float screenHeight
 }
 
 // A popup over the page: the crop grows to hold it, the page stays the page,
-// and the popup is kept on its own to be drawn as its own picture.
-inline void JoinPopup(TabletRects& page, const UiRect& popup) {
+// and the popup is kept on its own to be drawn as its own picture. `info`:
+// an info shown while a row is pointed at (the item info, the page's own
+// box), not a box.
+inline void JoinPopup(TabletRects& page, const UiRect& popup, bool info = false) {
 	if (page.valid && popup.valid) {
 		page.crop = UnionRect(page.crop, popup);
 		if (page.popupCount < kTabletPopupsMost) {
+			page.popupInfo[page.popupCount] = info;
 			page.popups[page.popupCount++] = popup;
 		} else {
 			page.popupsOverflow = true;
@@ -253,8 +259,8 @@ inline void JoinPopup(TabletRects& page, const UiRect& popup) {
 // picture of at least kPaperJoinShare of its area joins the crop. The
 // pictures of the page's own info box (PaperTile::popup) are no part of the
 // page, however large: all of them together are a popup beside it, joined as
-// one of another menu is. Invalid with no picture, a screen without a size,
-// or a page too small to be one.
+// one of another menu is - an info. Invalid with no picture, a screen
+// without a size, or a page too small to be one.
 inline TabletRects PaperOf(const PaperTile* tiles, UInt32 count, float screenWidth, float screenHeight) {
 	TabletRects out;
 	if (tiles == nullptr || !(screenWidth > 0.0f) || !(screenHeight > 0.0f)) {
@@ -283,7 +289,7 @@ inline TabletRects PaperOf(const PaperTile* tiles, UInt32 count, float screenWid
 	}
 	out.outline = out.crop;
 	out.valid = true;
-	JoinPopup(out, own);
+	JoinPopup(out, own, true);
 	return out;
 }
 

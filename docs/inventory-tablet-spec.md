@@ -1326,7 +1326,8 @@ soll also hinter dem tablet sein und nicht andersherum wie es jetzt ist."
   Open from that film: the box then hangs over the forearm, which crosses it
   and hides part of its button. A popup could go to the page's other side
   for a right-hand holder - the face's pictures need not lie where the game
-  draws them, as the figure's page shows; not built.
+  draws them, as the figure's page shows; not built. Answered in section 23:
+  with the figure behind a tab or off, the boxes come onto the page.
 
 ## 22. The stats page's own info box (Nadi, 2026-11-25)
 
@@ -1405,3 +1406,97 @@ for none.)
   comments only.
 - Not checked: a UI mod's stats menu (the id is the engine's, [D] it holds);
   the headset.
+
+
+## 23. The boxes on the page (Nadi, 2026-11-25)
+
+Nadi: "warum kommt die box seitlich ans tablet. wenn wir das tablet
+zweigeteilt per option haben (figur auf einem tab und tablet auf anderer)
+dann sollten alle msg boxen auch mittig vom tablet kommen statt seitlich.
+das löst auch das linkshänder problem." Then, shown the infos on the page:
+"die infoboxen nicht mittig, die können seitlich bleiben".
+
+- Why beside [R in the menus' XML, Oblivion - Misc.bsa]: the tablet shows
+  each box where the game draws it on a flat screen. The item info
+  (magic_popup_menu.xml) and the stats page's own box (stats_menu.xml,
+  section 22) slide out from behind the page's right edge. A message
+  (message_menu.xml), a quantity box (quantity_menu.xml), a Generic box
+  (quest_added.xml, OBVR's own menus) and a book (book_menu.xml) stand in the
+  screen's middle, and the page stands left of it. Held by a physical right
+  hand at the page's right edge, they hung over the forearm (section 21).
+- **Changed** (vr/TabletBoxes.h, pure), when nothing of the tablet's own
+  stands beside the page - `[Tablet] Figure` tab (the default) or off - and
+  the tablet is drawn into the eyes (`BoxesOnPage`). With the figure beside,
+  and on the overlay (InScene=0), the boxes stay where the game draws them.
+  - A box that waits for an answer or is read - a message, a quantity box, a
+    Generic box, a book (`TabletBoxMoves`) - is moved by the game onto the
+    page's middle. game/TabletMenu.cpp shifts its menu's root tile by the
+    distance from its pictures' middle to the page's (`ShiftOntoPage`, half a
+    unit or more). The game then draws it there and finds its buttons there:
+    the beam and the finger press them where they are seen, and the tablet
+    maps nothing. [R in Oblivion.exe 1.2.416] Tile::UpdateFloat 0x0058CEB0
+    gets the trait's value from 0x0058B220, which makes one when the tile
+    has none, and sets it with 0x0058CA00. A formula the trait has stays and
+    sets its own value again when what it reads changes, so the shift is
+    checked every frame. The tiles under the root count from its place only
+    when it is a locus (game::ReadMenuPaper's rule); every vanilla box's root
+    is one, and a root that is not is left as the game has it (said once).
+    The place before is kept (`KeptOriginal`) and put back when the box
+    leaves the page while it is still up - the pages closed under it, the
+    figure set beside - unless the game set its own meanwhile (`PutBack`).
+  - The infos shown while a row is pointed at - the item info, the stats
+    page's own box - stay beside the page (Nadi). A first build drew them on
+    the page, centred across it and in the half the beam was not in, so the
+    row pointed at stayed free (the stats page's box is 490 to 520 units
+    high, two thirds of the page's 792); taken out again after the films.
+  - Found with it [R in the probe, 20261125-150011-slot3: the right stick's
+    flick from the stats page did nothing]: the stick does not turn the page
+    while a popup is up (vr/TabletPages.h), and the item info (since section
+    17) and the stats page's box (since section 22) counted as popups - so
+    the page did not turn while the beam rested on a row with an info.
+    `TabletFrame::popupUp` now counts only a box (`BoxOverPage`); more popups
+    than kept count as one. The tab shows the page while a box is up, as
+    before.
+  - The face holds a moved box on the page; one wider than the page reaches
+    past it evenly on both sides (the message box: 788 units for the page's
+    745, 2 cm each side at 0.34 m). The hand holds the outline as before
+    (`HoldFace`).
+  - Logged: "Tablet: the Message box moved onto the page's middle - by x,y
+    units, from ... (its root ... to ...)", "Tablet: the Message box gone from
+    the page", "... put back where the game had it ...", "Tablet: the ...
+    box stays where the game draws it - its menu's root is no locus ...".
+- Tests: tablet_boxes_test (when, which boxes, the shift and what is put
+  back, a box told from an info, the moved box in either hand),
+  tablet_test (the info flag). Written first: against main 912f8d6 it does
+  not build (no vr/TabletBoxes.h).
+- Harness, Linux, headless, the stand-in runtime; the DLL of this change on
+  main 715d79f (fc0e06a4) against main 715d79f alone (bcf499b8, the DLL
+  deployed at 15:47):
+  - The probe (20261125-150011-slot3, a first build): the beam stepped down
+    the page's middle column over the moved message box - "message_text"
+    from 330 to 370 of the page's 792, "button_1" (Yes) from 380 to 420,
+    "button_2" (No) from 430 to 470: the game finds the box's parts where
+    the tablet shows them.
+  - tablet-boxes.txt PASS (20261125-161033-slot1), before FAIL
+    (20261125-161053-slot2): with the stats page's box up beside the page
+    "the right stick turns the page right from Stats" - missing before, the
+    page stayed; "the Message box moved onto the page's middle - by -454,47
+    units, from 460,347..1248,614", "click sent to the Message menu ... the
+    tile under it "button_1"", "the Message box gone from the page" - before,
+    the box stood in the screen's middle and the beam on the page's middle
+    pressed nothing. Films 0 frames dropped.
+  - tablet-on-hand-left-handed.txt PASS (20261125-161224-slot1), before FAIL
+    on this section's line alone (20261125-161244-slot2): the face with the
+    message box 8..1193 layer pixels across for 40..1876 - the box on the
+    page in the right hand, not out over the forearm.
+  - tablet-quantity.txt, aimed again for the page held like the sword (a
+    probe, 20261125-154456-slot1: "Iron Arrow" under the beam from 167 to 213
+    down the page at x 330): PASS (20261125-161442-slot1), before FAIL
+    (20261125-161454-slot2): "the Quantity box moved onto the page's middle
+    - by -454,47 units, from 510,306..1198,654 (its root 0,0 to -454,47)".
+  - tablet-stats-info.txt, tablet-message.txt, tablet-info.txt,
+    tablet-info-rest.txt PASS (20261125-161506-slot3, -161518-slot4,
+    -161649-slot1, -161701-slot2): the infos beside the page as before, the
+    message box moved.
+  - Not run: a book, a Generic box (the same root shift as the message box;
+    [D] they move the same way), the headset.

@@ -1,0 +1,96 @@
+# The boxes on the tablet's page (docs/inventory-tablet-spec.md section 23;
+# Nadi, 2026-11-25: "warum kommt die box seitlich ans tablet. wenn wir das
+# tablet zweigeteilt per option haben (figur auf einem tab und tablet auf
+# anderer) dann sollten alle msg boxen auch mittig vom tablet kommen statt
+# seitlich. das löst auch das linkshänder problem." - and then "die
+# infoboxen nicht mittig, die können seitlich bleiben"). The tablet in the
+# left hand, the thumb up and the palm to the eyes, the figure behind a tab.
+# The stats page's attributes: the beam on Strength, its box slides out
+# beside the page; with the box up the right stick turns the page to the
+# inventory (an info is no box over the page - before, the stick did
+# nothing while the beam rested on a row with an info). Then a message box
+# with two buttons is raised: the game draws it on the page's middle, and
+# the beam presses its "Yes" there. The DLL from before keeps the stats page
+# (the stick does nothing) and shows the box in the screen's middle, right
+# of the page: the beam on the page's middle presses nothing.
+# The beam's angles: tools/tablet-aim.py --at on the aim grid's run with the
+# page before the hand (20261125-083055-slot3); the button's place from a
+# probe (20261125-150011-slot3: the tile under the cursor at marks down the
+# page - "button_1" from 380 to 420 down the page's 792 at x 372).
+# Films from each mark; the eye cut wide enough for the boxes beside the page.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --parallel --headset beyond --record 9 --record-width 1024 tools/hand-scripts/tablet-boxes.txt
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Tablet Enabled=1
+ini Tablet Unroll=sideways
+ini Tablet Figure=tab
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+ini Debug RecordCropLeft=0.00
+ini Debug RecordCropTop=0.30
+ini Debug RecordCropRight=0.86
+ini Debug RecordCropBottom=0.92
+# The harness save's question box (Lovers with PK.esm active without its esp) closed first.
+console-at ready CloseAllMenus
+console-at message MessageBox "A box on the tablet" "Yes" "No"
+
+expect HandScript: finished
+expect Tablet: the Stats page read
+expect Tablet: the page's own info box shown beside the page
+expect Tablet: the right stick turns the page right from Stats
+expect Tablet: the Message box moved onto the page's middle
+expect the tile under it "button_1"
+expect Tablet: the Message box gone from the page
+reject HandScript: WARNING
+
+wait 12
+# The console-at line runs at the mark named ready, before the tablet opens.
+mark ready
+wait 1
+head pitch -15
+left pos -0.22 -0.18 -0.40
+left rot 90 0 90
+left curl 0
+right pos 0.14 -0.14 -0.04
+right rot 41.8 40.3 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 3
+# The stats page by the right stick, its attributes by their icon.
+right stick -1 0
+wait 0.3
+right stick 0 0
+wait 2
+right rot 8.0 32.3 0
+wait 0.8
+right trigger 1
+wait 0.3
+right trigger 0
+wait 1
+right rot 41.8 40.3 0
+wait 1
+# Strength: its box slides out beside the page; with the box up the right
+# stick turns the page to the inventory.
+mark stats
+wait 0.3
+right rot 38.3 32.2 0
+wait 2.5
+right stick 1 0
+wait 0.3
+right stick 0 0
+wait 2.5
+right rot 41.8 40.3 0
+wait 1
+# A message box with two buttons over the tablet; the beam presses its "Yes".
+mark message
+wait 2.5
+right rot 20.4 27.3 0
+wait 1.5
+right trigger 1
+wait 0.3
+right trigger 0
+wait 2
+mark closed
+wait 1

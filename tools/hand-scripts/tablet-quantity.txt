@@ -1,49 +1,61 @@
 # A quantity box raised over the inventory on the tablet (docs/inventory-tablet-
-# spec.md 7, "Not run"): 20 of a stack are given by the console, the inventory
-# opens on the left hand's tablet, the beam points at a row, and the left A
-# (drop) on a stack raises the quantity box. Wanted: "Tablet: the Inventory
-# page read ... shown with 1 popup(s)" and the box on the tablet's picture.
-# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-quantity.txt --headless --no-steamvr --parallel
+# spec.md 7, "Not run"; section 23, the box on the page's middle): 20 iron
+# arrows are given by the console, the inventory opens in the left hand's
+# tablet - the thumb up and the palm to the eyes, the figure behind a tab -
+# the right hand's beam points at the arrows' row and the left A (drop) on
+# the stack raises the quantity box. The game draws it on the page's middle.
+# Wanted: "Tablet: the Inventory page read ... shown with 1 popup(s)" and
+# "Tablet: the Quantity box moved onto the page's middle". Until 2026-11-25
+# it aimed at the page held from below with the grips at 0 (unrolled up and
+# down): the beam missed the page held like the sword and no box came. The
+# row's place from a probe (20261125-154456-slot1: "Iron Arrow" under the
+# beam from 167 to 213 down the page's 792 at x 330), the angle from
+# tools/tablet-aim.py --at 330 190 on the aim grid with the page before the
+# hand (20261125-083055-slot3).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-quantity.txt --headless --no-steamvr --parallel --headset beyond
 
 ini Hands Enabled=1
+ini Hands LeftHanded=0
 ini Tablet Enabled=1
-ini Tablet Unroll=vertical
-ini Hands LeftHandGripX=0
-ini Hands LeftHandGripY=0
-ini Hands LeftHandGripZ=0
-ini Hands HandGripUpMetres=0
-ini Hands HandGripForwardMetres=0
+ini Tablet Unroll=sideways
+ini Tablet Figure=tab
 ini Tablet InScene=1
 ini Render UnpausedMenus=0
 ini Render MonitorMenusOnly=0
 ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready player.additem 00017829 20
 
 expect HandScript: finished
 expect Tablet: the Inventory page read
+expect Inventory: under the pointer index
+expect "Iron Arrow"
 expect shown with 1 popup(s)
+expect Tablet: the Quantity box moved onto the page's middle
 reject HandScript: WARNING
 
-console-at ready player.additem 00017829 20
 wait 12
 mark ready
-wait 3
-left pos -0.12 -0.32 -0.32
-left rot 0 0 0
-right pos 0.15 -0.25 -0.15
-right rot 40 25 0
+wait 2
+head pitch -15
+left pos -0.22 -0.18 -0.40
+left rot 90 0 90
+left curl 0
+right pos 0.14 -0.14 -0.04
+right rot 41.8 40.3 0
 wait 1.5
 left b 1
 wait 0.2
 left b 0
-wait 2
+wait 3
 mark inventory
-right rot 55 32 0
-wait 0.8
+right rot 33.5 31.6 0
+wait 1.2
 mark row
 left a 1
 wait 0.2
 left a 0
-wait 1.5
+wait 2.5
 mark box
 wait 1
 mark box2

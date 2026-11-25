@@ -9,9 +9,22 @@
 
 #include "core/Types.h"
 #include "render/MenuModelFit.h"
+#include "vr/TabletBoxes.h"
 #include "vr/TabletLogic.h"
 
 namespace obvr::game {
+
+// A box moved onto the page's middle (vr::TabletBoxMoves): its menu, the root
+// tile shifted, the place the game had (to put back when the box is no longer
+// on the page) and the one written.
+struct TabletMovedBox {
+	UInt32 menuId = 0;
+	const void* root = nullptr;
+	float originalX = 0.0f;
+	float originalY = 0.0f;
+	float writtenX = 0.0f;
+	float writtenY = 0.0f;
+};
 
 // What a menu episode remembers of the tablet: the last page and crop
 // logged, so a change is said once.
@@ -27,6 +40,13 @@ struct TabletMenuState {
 	// The same for the page's own info box (the stats menu's, vr::PagePopupTileId).
 	bool ownInfoSeen = false;
 	UInt32 ownInfoLines = 12;
+	// The boxes on the page (vr/TabletBoxes.h): the boxes the game was moved
+	// to draw on the page's middle, the lines left to say a move, and whether
+	// a box that could not be moved was said.
+	TabletMovedBox moved[vr::kTabletPopupsMost];
+	UInt32 movedCount = 0;
+	UInt32 movedLines = 12;
+	bool unmovableSaid = false;
 	// The figure's rectangle as last read (game/MenuFigure.h), and how many
 	// frames ago; 0 reads it on the next frame.
 	render::FigureRect figure;
@@ -48,7 +68,9 @@ struct TabletMenuState {
 // is on it ([Tablet] Figure: vr::SetFigurePage, vr::SetFigureTab); the
 // overlay's cut holds it where the game draws it, unless it is off.
 // `mark`: a hand-script mark this frame - the read's cost since the last is
-// said.
+// said. With the boxes on the page (vr::BoxesOnPage) a box that waits for an
+// answer is moved by the game onto the page's middle - its menu's root tile
+// shifted, and put back when the box is no longer on the page.
 vr::TabletFrame ReadTabletMenus(TabletMenuState& state, bool wanted, float layerPixelsWidth,
                                 float layerPixelsHeight, bool inScene, vr::TabletFigure mode,
                                 bool mark = false);

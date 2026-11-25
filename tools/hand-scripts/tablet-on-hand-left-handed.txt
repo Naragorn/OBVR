@@ -8,8 +8,9 @@
 # the hand, open and closed, and turned about the upright. The log names the
 # role: "the left hand" is the off hand, here on the right controller. At the
 # end a message box is raised over the tablet: the right hand holds the page
-# by its right edge, where a popup joins the face, and the page has to stay
-# where it is.
+# by its right edge, and the page has to stay where it is (section 21); the
+# box comes onto the page's middle instead of out past the hand, over the
+# forearm (section 23).
 # The sweeps' steps: tools/gen-tablet-sweeps.py (close, open, turn), mirrored.
 # Run with: python3 tools/hand-script-run.py --headless --no-steamvr --parallel --headset beyond --record 9 --record-width 1280 tools/hand-scripts/tablet-on-hand-left-handed.txt
 ini Hands Enabled=1
@@ -31,6 +32,7 @@ expect Tablet: the Inventory page read
 expect Tablet: the left hand as drawn reaches
 expect Tablet: at the mark the left hand holds it
 expect shown with 1 popup(s)
+expect Tablet: the Message box moved onto the page's middle
 reject Tablet: the left hand's model not read
 reject HandScript: WARNING
 
@@ -565,9 +567,10 @@ wait 0.05
 right rot 90 0 -90
 wait 0.05
 wait 0.5
-# A message box raised over the tablet: it joins the face at its right, the
-# side the right hand holds the page by. The page stays where it is (section
-# 21: held by the face's edge it moved a box's width to the left).
+# A message box raised over the tablet: the game draws it on the page's
+# middle (section 23; before, it joined the face at its right, the side the
+# right hand holds the page by, over the forearm). The page stays where it is
+# (section 21: held by the face's edge it moved a box's width to the left).
 mark before_box
 wait 1.5
 mark message

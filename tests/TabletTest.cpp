@@ -197,6 +197,9 @@ void TestPopup() {
 	JoinPopup(page, box);
 	Check(SameRect(page.crop, 27.0f, 131.0f, 1053.0f, 923.0f), "the crop grows to hold the box");
 	Check(SameRect(page.paper, 27.0f, 131.0f, 772.0f, 923.0f), "the page stays the page");
+	Check(page.popupCount == 1 && !page.popupInfo[0], "kept as a box");
+	JoinPopup(page, Rect(772.0f, 300.0f, 1150.0f, 360.0f), true);
+	Check(page.popupCount == 2 && page.popupInfo[1], "an item info joined as an info");
 
 	TabletRects again = PaperOf(pageTiles, 1, kScreenWidth, kScreenHeight);
 	JoinPopup(again, UiRect{});
@@ -240,6 +243,7 @@ void TestOwnPopup() {
 	Check(SameRect(r.outline, 27.0f, 131.0f, 772.0f, 923.0f), "its outline without the box");
 	Check(r.popupCount == 1 && SameRect(r.popups[0], 752.0f, 170.0f, 1173.0f, 620.0f),
 	      "the box kept as a popup: all its pictures together");
+	Check(r.popupInfo[0], "an info, shown while a row is pointed at - not a box");
 	Check(SameRect(r.crop, 27.0f, 131.0f, 1173.0f, 923.0f), "and the face grown to hold it - shown whole");
 
 	// What the read gave before: the same pictures, none told apart.
