@@ -29,6 +29,7 @@ count 2 Hands: the weapon handed over - the hand that took it holds it
 count 2 the first-person skeleton mirrored: root determinant -1
 count 5 the first-person skeleton as the game has it
 reject HandScript: WARNING
+reject OFF the hold
 reject too far, a drop
 reject Weapon hold: the dropped
 reject taken at its grip

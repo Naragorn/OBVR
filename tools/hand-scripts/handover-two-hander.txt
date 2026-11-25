@@ -33,6 +33,7 @@ count 2 handed over - the sides switch, it stays equipped
 count 2 Hands: the sides switched - the two-hand hold ends
 count 3 the first-person skeleton mirrored: root determinant -1
 reject HandScript: WARNING
+reject OFF the hold
 reject too far, a drop
 reject Weapon hold: the dropped
 reject taken at its grip

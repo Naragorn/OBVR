@@ -3035,3 +3035,12 @@ if(NOT MSVC)
 	target_compile_options(fake_bone_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME fake_bone COMMAND fake_bone_test)
+
+# The drawn weapon kept at its rest through an action and its way back
+# (vr/WeaponRestLogic.h, HoldWeaponAtRest).
+add_executable(weapon_rest_test WeaponRestTest.cpp)
+target_include_directories(weapon_rest_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(weapon_rest_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME weapon_rest COMMAND weapon_rest_test)

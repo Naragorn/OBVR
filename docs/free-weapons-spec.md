@@ -1992,8 +1992,23 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
     [G] the engine sets the weapon in the new hand a few frames late; not read. The
     headset's flicker is not reproduced in the harness (no SteamVR, no stereo). Evidence
     page: https://claude.ai/artifact/Fd1Wc9NSEMsQCtLP8qGps3
-  - OPEN: the staff handed back sits 5.9 units off on the switch's first frame (above);
-    the co-save does not keep the hold (after a load the hand is at the grip).
+  - **Fixed 2026-11-25, harness only: the staff gliding 5.9 units along the hand at the
+    hand-back.** [M] a trace of the six frames after each switch: the Weapon node as the
+    engine left it at z 42.4, 42.4, 41.5, 40.3, 39.3, 38.2 against its idle 36.7, the palm
+    -31.3 down to -27.0 against -25.4 wanted; the player's action 6 (the block, the raised
+    other hand) up to the hand-back, -1 after it ("the left hand is down - block released"
+    7 lines before the switch). Cause [D]: HoldWeaponAtRest kept the rest only while an
+    action played; the block's animation still went home over a few frames after it, and
+    those frames were taken for the rest - the staff's block holds it 5.7 units further
+    along than its idle. Any weapon whose action pose differs from its idle glides like this
+    after a block or a swing, with or without a handover [G: not measured for other
+    weapons]. Fix: the rest is held after the action until the engine's pose is back at it,
+    stood still elsewhere for 0.2 s, or 0.75 s passed (vr/WeaponRestLogic.h, keyed per
+    weapon). [M] after: the node at 36.7 on all six frames, the palm -25.4 on the switch's
+    first frame, "held at its rest for 0.12 s after the action - the animation's way back
+    came home". The handover scenarios now reject "OFF the hold" (the palm more than a unit
+    from the hold wanted).
+  - OPEN: the co-save does not keep the hold (after a load the hand is at the grip).
 - Right-handed, without a switch (open, causes not read): the shield one frame higher while
   the sword is drawn at the hip (3.2 %), and the shield's edge wobbling for 12 frames after
   the head turned 30 degrees down (up to 1.7 %).

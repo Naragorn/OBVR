@@ -73,9 +73,11 @@ void ReadVanillaGrip(TwoHandState& s, const TwoHandEnv& /*env*/, const vr::HandS
 // controller is, and so should the weapon be: a strike by motion presses
 // attack, the animation then twisted the blade in the hand, and a left hand on
 // its handle with it. The pose it has while the player does nothing (action
-// -1) is kept per weapon model and written back while any action plays -
-// before the hands are pinned, so they carry it. Not for the bow, whose draw
-// the animation is.
+// -1) is kept per weapon model and written back while any action plays, and
+// after it until the animation's way back has come home (vr/WeaponRestLogic.h:
+// a staff's block let go slid it 5.9 units along the hand and back) - before
+// the hands are pinned, so they carry it. Not for the bow, whose draw the
+// animation is.
 
 // A two-handed sword's blade is a place for the left hand too
 // (vr/HalfSwordLogic.h): above the right hand, past the guard; a blunt
@@ -94,39 +96,76 @@ bool WithUpperGrip(const TwoHandState& s, const TwoHandEnv& env, SInt32 weaponTy
 	return blade || (haft && handle.above);
 }
 
-void HoldWeaponAtRest(TwoHandState& s, const TwoHandEnv& /*env*/) {
+namespace {
+
+// The rest held after an action ended, said when that ends: how long, and
+// whether the engine's pose came back to it or was taken elsewhere.
+void SayWayBack(const WeaponRest& r, const vr::WeaponPose& engine) {
+	static UInt32 s_lines = 8;
+	if (s_lines == 0) {
+		return;
+	}
+	--s_lines;
+	const vr::WeaponPose rest{r.rot, r.pos};
+	const float off = vr::PoseDistance(engine, rest);
+	const float turned = vr::TurnDegrees(rest.rot, engine.rot);
+	const bool there = off <= vr::kRestNearUnits && turned <= vr::kRestNearDegrees;
+	OBVR_LOG("Hands: the weapon held at its rest for %.2f s after the action - %s (%.1f units, %.1f degrees off it)",
+	         static_cast<double>(r.hold.backSeconds),
+	         there ? "the animation's way back came home"
+	         : r.hold.stillSeconds >= vr::kRestStillSeconds ? "the animation stood still elsewhere, taken as the rest"
+	                                                         : "not home in time, taken where the animation has it",
+	         static_cast<double>(off), static_cast<double>(turned));
+}
+
+}  // namespace
+
+void HoldWeaponAtRest(TwoHandState& s, const TwoHandEnv& env) {
 	// Half-swording places the sword itself while the right hand is off the
 	// handle (PoseHalfSwordWeapon); its pose then is no rest.
+	// A way back cut short (the hold off, the weapon away) is not carried on
+	// to the next weapon or hold.
 	if (s.rightHold.hold != vr::RightHold::Handle || s.rightHold.blend < 1.0f) {
+		s.weaponRest.hold = vr::RestHoldState{};
 		return;
 	}
 	SInt32 weaponType = -1;
-	const bool drawn = game::EquippedWeaponForm(&weaponType) != nullptr &&
-	                   game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	const UInt8* const form = game::EquippedWeaponForm(&weaponType);
+	const bool drawn = form != nullptr && game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
 	const vr::EquippedKind kind = vr::KindOfWeaponType(weaponType);
 	NiAVObject* const weapon = game::FindFirstPersonNode("Weapon");
 	if (!drawn || weapon == nullptr || (kind != vr::EquippedKind::OneHand && kind != vr::EquippedKind::TwoHand)) {
+		s.weaponRest.hold = vr::RestHoldState{};
 		return;
 	}
-	if (weapon != s.weaponRest.node) {
+	// Kept per weapon: the Weapon node is the skeleton's own, the same for
+	// every weapon drawn.
+	if (weapon != s.weaponRest.node || form != s.weaponRest.form) {
 		s.weaponRest = WeaponRest{};
 		s.weaponRest.node = weapon;
+		s.weaponRest.form = form;
 	}
-	if (game::ReadPlayerAction() < 0) {
-		s.weaponRest.rot = weapon->localTransform.rot;
-		s.weaponRest.pos = weapon->localTransform.pos;
+	// While an action plays the rest is written over the animation; after it,
+	// until the animation's way back has come home (vr::StepRestHold).
+	const vr::WeaponPose engine{weapon->localTransform.rot, weapon->localTransform.pos};
+	const bool wasBack = s.weaponRest.hold.back;
+	const vr::RestStep step = vr::StepRestHold(s.weaponRest.hold, game::ReadPlayerAction() >= 0, s.weaponRest.have,
+	                                           engine, vr::WeaponPose{s.weaponRest.rot, s.weaponRest.pos},
+	                                           env.deltaSeconds);
+	if (wasBack && !s.weaponRest.hold.back) {
+		SayWayBack(s.weaponRest, engine);
+	}
+	if (step == vr::RestStep::Take) {
+		s.weaponRest.rot = engine.rot;
+		s.weaponRest.pos = engine.pos;
 		s.weaponRest.have = true;
 		return;
 	}
-	if (!s.weaponRest.have) {
+	if (step == vr::RestStep::Leave) {
 		return;
 	}
-	// How far the animation had turned it, for the log: the angle of the turn
-	// from the rest to now.
-	const NiMatrix33 turn = vr::Transposed(s.weaponRest.rot) * weapon->localTransform.rot;
-	float cosine = (turn.data[0][0] + turn.data[1][1] + turn.data[2][2] - 1.0f) * 0.5f;
-	cosine = cosine > 1.0f ? 1.0f : (cosine < -1.0f ? -1.0f : cosine);
-	const float degrees = math::Atan2(math::Sqrt(1.0f - cosine * cosine), cosine) * math::kRadiansToDegrees;
+	// How far the animation had turned it, for the log.
+	const float degrees = vr::TurnDegrees(s.weaponRest.rot, engine.rot);
 	static UInt32 s_lines = 6;
 	if (degrees > s.weaponRest.largestDegrees + 5.0f && s_lines > 0) {
 		--s_lines;
@@ -159,6 +198,7 @@ void EndHoldsAtSwitch(TwoHandState& s, bool mirrored) {
 	s.handoverAxial = s.drawnFormWas != nullptr ? s.handoverAxial + along : 0.0f;
 	s.handoverForm = s.handoverAxial != 0.0f ? s.drawnFormWas : nullptr;
 	s.handoverMeasured = s.handoverAxial == 0.0f;
+	s.handoverTraceFrames = s.handoverAxial != 0.0f ? 6 : 0;
 	if (s.drawnFormWas != nullptr) {
 		OBVR_LOG("Hands: the weapon handed over - the hand that took it holds it %.1f units %s the old hand's palm%s",
 		         static_cast<double>(s.handoverAxial < 0.0f ? -s.handoverAxial : s.handoverAxial),
@@ -684,8 +724,9 @@ void WriteWeaponLocal(NiAVObject* weapon, const vr::WeaponPose& local) {
 // Once after a switch whose hand holds the weapon along it: where the weapon
 // hand's palm is along the weapon now, against where it was wanted.
 void SayHandoverHold(TwoHandState& s, const NiAVObject* weapon) {
-	// Said on the first frame after the switch, and again half a second later
-	// (the hold settled: the engine's equip in the new hand may come late).
+	// Said on the first frame after the switch, and again half a second later;
+	// more than a unit from the hold wanted is said as off it (the staff handed
+	// back sat 5.9 units off while its block's animation went home, 2026-11-24).
 	if (s.handoverSettleFrames > 0) {
 		--s.handoverSettleFrames;
 	}
@@ -701,10 +742,44 @@ void SayHandoverHold(TwoHandState& s, const NiAVObject* weapon) {
 	float off = 0.0f;
 	vr::AxialLateral(palm, weapon->worldTransform.pos, weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f}, along,
 	                 off);
+	const float palmAlong = along - s.twoHandRightPalm;
+	const float miss = palmAlong - s.handoverAxial;
 	OBVR_LOG("Hands: the weapon held along it%s - the palm %.1f units along the weapon from where its grip has it "
-	         "(wanted %.1f), %.1f off its line",
-	         first ? "" : ", half a second on", static_cast<double>(along - s.twoHandRightPalm),
-	         static_cast<double>(s.handoverAxial), static_cast<double>(off));
+	         "(wanted %.1f), %.1f off its line - %s",
+	         first ? "" : ", half a second on", static_cast<double>(palmAlong), static_cast<double>(s.handoverAxial),
+	         static_cast<double>(off), miss < 1.0f && miss > -1.0f ? "on the hold" : "OFF the hold");
+}
+
+// The first frames after a switch with a hold along the weapon, one line each:
+// what the node held when read (the engine's or the pose written last frame),
+// the rest taken, the parent's scale, and the palm along the weapon after the
+// write - where a frame off the hold comes from (the staff handed back sat
+// 5.9 units off on its first frame, 2026-11-24).
+void TraceHandoverFrame(TwoHandState& s, const NiAVObject* weapon, const vr::WeaponPose& localNow, bool ours,
+                        bool gameHold, float scale) {
+	if (s.handoverTraceFrames == 0) {
+		return;
+	}
+	--s.handoverTraceFrames;
+	NiPoint3 palm{};
+	float along = 0.0f;
+	float off = 0.0f;
+	const bool palmRead = PalmOf(true, palm);
+	if (palmRead) {
+		vr::AxialLateral(palm, weapon->worldTransform.pos, weapon->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f},
+		                 along, off);
+	}
+	OBVR_LOG("Hands: switch frame %u - the node read at (%.1f %.1f %.1f)%s, the rest at (%.1f %.1f %.1f), the "
+	         "parent's scale %.3f, the game's hold %d; the palm %.1f along the weapon from the grip (wanted %.1f)%s",
+	         6u - s.handoverTraceFrames, static_cast<double>(localNow.pos.x), static_cast<double>(localNow.pos.y),
+	         static_cast<double>(localNow.pos.z),
+	         ours                     ? " (the handover's own pose of last frame)"
+	         : s.weaponRest.hold.back ? " (the rest, held after an action)"
+	                                  : "",
+	         static_cast<double>(s.restLocal.pos.x), static_cast<double>(s.restLocal.pos.y),
+	         static_cast<double>(s.restLocal.pos.z), static_cast<double>(scale), gameHold ? 1 : 0,
+	         static_cast<double>(along - s.twoHandRightPalm), static_cast<double>(s.handoverAxial),
+	         palmRead ? "" : " (no palm)");
 }
 
 // The game's own hold of the weapon (PoseHalfSwordWeapon's rest), moved along
@@ -729,6 +804,7 @@ vr::WeaponPose GameHoldRest(TwoHandState& s, NiAVObject* weapon, bool gameHold, 
 		s.handoverWrittenValid = s.handoverAxial != 0.0f;
 		SayHandoverHold(s, weapon);
 	}
+	TraceHandoverFrame(s, weapon, localNow, ours, gameHold, scale);
 	return rest;
 }
 

@@ -23,6 +23,7 @@
 #include "vr/HalfSwordLogic.h"
 #include "vr/HandMode.h"
 #include "vr/TwoHandLogic.h"
+#include "vr/WeaponRestLogic.h"
 
 namespace obvr::camera::hands {
 
@@ -39,14 +40,19 @@ struct TwoHandPins {
 // pose and back; the idle, the block and the one-handed idle all hold it at
 // the same pose, read with pyffi 2026-09-30). The pose it has while the
 // player does nothing (action -1) is kept per weapon model and written back
-// while any action plays - before the hands are pinned, so they carry it.
-// Not for the bow, whose draw the animation is.
+// while any action plays, and after it until the animation's way back has
+// come home (vr/WeaponRestLogic.h) - before the hands are pinned, so they
+// carry it. Not for the bow, whose draw the animation is.
 struct WeaponRest {
 	const NiAVObject* node = nullptr;
+	const UInt8* form = nullptr;  // the weapon it was kept for
 	bool have = false;
 	NiMatrix33 rot = NiMatrix33::Identity();
 	NiPoint3 pos{0.0f, 0.0f, 0.0f};
 	float largestDegrees = 0.0f;
+	// After an action the rest is held until the engine's own pose is back
+	// at it (vr::StepRestHold).
+	vr::RestHoldState hold;
 };
 
 struct TwoHandState {
@@ -124,6 +130,7 @@ struct TwoHandState {
 	vr::WeaponPose handoverWritten;
 	bool handoverWrittenValid = false;
 	bool handoverMeasured = true;  // the palm's place along it said once after a switch
+	UInt32 handoverTraceFrames = 0;  // the first frames after a switch, traced (TraceHandoverFrame)
 	UInt32 handoverSettleFrames = 0;  // frames to its second saying, half a second on
 };
 
