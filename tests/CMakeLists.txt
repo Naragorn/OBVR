@@ -3044,3 +3044,12 @@ if(NOT MSVC)
 	target_compile_options(weapon_rest_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME weapon_rest COMMAND weapon_rest_test)
+
+# The hold along the weapon a handover left, kept in the co-save and taken
+# after a load (vr/HandoverHoldSave.h, game/QuickKeyPages.cpp 'OBWH').
+add_executable(handover_hold_save_test HandoverHoldSaveTest.cpp)
+target_include_directories(handover_hold_save_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(handover_hold_save_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME handover_hold_save COMMAND handover_hold_save_test)

@@ -23,6 +23,8 @@ inline constexpr UInt32 kPotionPlacesRecord = 0x4250424F;  // 'OBPB'
 // UInt32, 1 the right hand, 2 the left.
 inline constexpr UInt32 kWeaponSideRecord = 0x5357424F;  // 'OBWS'
 inline constexpr UInt32 kWeaponSideVersion = 1;
+// Where that hand holds the weapon along it after a handover: 'OBWH',
+// vr/HandoverHoldSave.h.
 
 
 struct HolsterSlotsRecord {

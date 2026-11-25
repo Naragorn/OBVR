@@ -3,6 +3,7 @@
 #include <cstdio>
 
 #include "camera/hands/HandLagTrace.h"
+#include "camera/hands/HandoverHold.h"
 #include "core/Config.h"
 #include "core/Log.h"
 #include "core/MathFns.h"
@@ -181,65 +182,6 @@ void HoldWeaponAtRest(TwoHandState& s, const TwoHandEnv& env) {
 
 namespace {
 
-// The sides switched (free-weapons-spec 5.16): the hand that held the handle
-// holds the weapon now, the other hand let go - the two-hand hold and the
-// right hand's half-sword hold end at once, the other hand back at its
-// controller (not slid off the handle from the far side).
-void EndHoldsAtSwitch(TwoHandState& s, bool mirrored) {
-	if (!vr::StepRolesSeen(s.mirrorSeen, mirrored)) {
-		return;
-	}
-	// The hand that took the weapon keeps it where it held it
-	// (vr::HandoverHoldAxial), read from the frame before the switch.
-	// The places were read from the palm as it held the weapon then, itself
-	// moved by an earlier handover: added to that.
-	const float along = vr::HandoverHoldAxial(s.drawnFormWas != nullptr, s.twoHand.active, s.twoHand.handAxial,
-	                                          s.otherClosedWas, s.otherAxialWas, s.handleWas);
-	s.handoverAxial = s.drawnFormWas != nullptr ? s.handoverAxial + along : 0.0f;
-	s.handoverForm = s.handoverAxial != 0.0f ? s.drawnFormWas : nullptr;
-	s.handoverMeasured = s.handoverAxial == 0.0f;
-	s.handoverTraceFrames = s.handoverAxial != 0.0f ? 6 : 0;
-	if (s.drawnFormWas != nullptr) {
-		OBVR_LOG("Hands: the weapon handed over - the hand that took it holds it %.1f units %s the old hand's palm%s",
-		         static_cast<double>(s.handoverAxial < 0.0f ? -s.handoverAxial : s.handoverAxial),
-		         s.handoverAxial < 0.0f ? "below" : "above",
-		         s.handoverAxial != 0.0f ? ", where it held it" : " (at the grip)");
-	}
-	if (s.twoHand.active) {
-		OBVR_LOG("Hands: the sides switched - the two-hand hold ends, the other hand let go");
-	}
-	s.twoHand = vr::TwoHandState{};
-	s.twoHandBlend = 0.0f;
-	s.twoHandPreshape = 0.0f;
-	s.rightHold = vr::RightHoldState{};
-	s.rightHoldPending = vr::RightHoldEvent::None;
-}
-
-// The hold along the weapon from a handover ends with that weapon: put
-// away, dropped or another drawn.
-// Answers the drawn weapon's form (none while it is not drawn).
-const UInt8* EndHandoverHoldWithWeapon(TwoHandState& s, const UInt8* weaponForm) {
-	const UInt8* const drawnForm =
-		weaponForm != nullptr && game::ReadPlayerWeaponState() == game::WeaponState::Drawn ? weaponForm : nullptr;
-	if (s.handoverAxial == 0.0f || drawnForm == s.handoverForm) {
-		return drawnForm;
-	}
-	OBVR_LOG("Hands: the weapon handed over is %s - the hand holds the next one at its grip",
-	         drawnForm == nullptr ? "no longer drawn" : "another one");
-	s.handoverAxial = 0.0f;
-	s.handoverForm = nullptr;
-	return drawnForm;
-}
-
-// What the next frame's switch reads of this one (EndHoldsAtSwitch).
-void NoteFrameForSwitch(TwoHandState& s, const UInt8* drawnForm, bool otherClosed, float otherAxial,
-                        const vr::HandleSpan& handle) {
-	s.drawnFormWas = drawnForm;
-	s.otherClosedWas = otherClosed;
-	s.otherAxialWas = otherAxial;
-	s.handleWas = handle;
-}
-
 // The handle from the weapon's own model (StepTwoHands): measured once per
 // model, retried about once a second while it cannot be read.
 void MeasureHandle(TwoHandState& s, const NiAVObject* weapon, const UInt8* weaponForm, SInt32 weaponType,
@@ -326,11 +268,14 @@ TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 	// animation only; a one-hander's keeps the left hand at the side.
 	SInt32 weaponType = -1;
 	const UInt8* const weaponForm = game::EquippedWeaponForm(&weaponType);
+	const game::WeaponState weaponState = game::ReadPlayerWeaponState();
 	const bool drawn = env.hand.rightHandValid && env.hand.leftHandValid && weaponForm != nullptr &&
-	                   game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	                   weaponState == game::WeaponState::Drawn;
 	const vr::EquippedKind kind = vr::KindOfWeaponType(weaponType);
 	const bool twoHander = drawn && kind == vr::EquippedKind::TwoHand;
+	RestoreHoldAfterLoad(s, env, weaponForm, weaponState);
 	const UInt8* const drawnForm = EndHandoverHoldWithWeapon(s, weaponForm);
+	NoteHoldForSave(s, drawnForm);
 	// The left hand with a torch in it (kept with a two-hander drawn,
 	// [Hands] TorchWithTwoHander) does not take the handle.
 	const bool torchInLeft =

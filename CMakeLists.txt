@@ -71,6 +71,7 @@ add_library(OBVR SHARED
 	src/camera/hands/Swings.cpp
 	src/camera/hands/Teleport.cpp
 	src/camera/hands/TwoHands.cpp
+	src/camera/hands/HandoverHold.cpp
 	src/camera/hands/HandLagTrace.cpp
 	src/game/PhysicsPlan.cpp
 	src/camera/hands/TakeByHand.cpp

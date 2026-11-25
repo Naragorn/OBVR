@@ -7,6 +7,7 @@
 #include "game/HolsterSlots.h"
 #include "game/Dismember.h"
 #include "core/Config.h"
+#include "vr/HandoverHoldSave.h"
 #include "vr/HandSides.h"
 
 namespace obvr::game {
@@ -170,6 +171,15 @@ void OnSave(void*) {
 	// Which hand holds the weapon (vr/HandSides.h; free-weapons-spec 5.16).
 	const UInt32 side = vr::WeaponSideRecordValue(vr::WeaponSideNow());
 	g_serialization->WriteRecord(kWeaponSideRecord, kWeaponSideVersion, &side, sizeof(side));
+	// Where that hand holds the weapon along it after a handover
+	// (vr/HandoverHoldSave.h).
+	const vr::HandoverHoldRecord hold = vr::HoldRecordToSave(vr::HandoverHoldNow());
+	g_serialization->WriteRecord(vr::kHandoverHoldRecord, vr::kHandoverHoldVersion, &hold, sizeof(hold));
+	if (hold.formId != 0) {
+		OBVR_LOG("Hands: the hold along the weapon into the co-save - %.1f units %s the grip of %08X",
+		         static_cast<double>(hold.axial < 0.0f ? -hold.axial : hold.axial), hold.axial < 0.0f ? "below" : "above",
+		         hold.formId);
+	}
 }
 
 void OnLoad(void*) {
@@ -190,7 +200,17 @@ void OnLoad(void*) {
 	}
 	bool sideFound = false;
 	bool sideLeft = false;
+	bool holdFound = false;
+	vr::HoldRestore hold = vr::HoldRestoreNone();
 	while (g_serialization->GetNextRecordInfo(&type, &version, &length)) {
+		if (type == vr::kHandoverHoldRecord) {
+			vr::HandoverHoldRecord record;
+			const UInt32 read = length == sizeof(record) ? g_serialization->ReadRecordData(&record, sizeof(record)) : 0;
+			hold = vr::HoldRestoreOfRecord(read == sizeof(record) ? &record : nullptr, length, version,
+			                               [](UInt32 id, UInt32& out) { return g_serialization->ResolveRefID(id, &out); });
+			holdFound = true;
+			continue;
+		}
 		if (type == kWeaponSideRecord) {
 			UInt32 side = 0;
 			const UInt32 read = length == sizeof(side) && version == kWeaponSideVersion
@@ -249,6 +269,18 @@ void OnLoad(void*) {
 	OBVR_LOG("Hands: the weapon's side %s", !sideFound ? "none in the co-save - the left-handed choice's"
 	                                     : sideLeft  ? "read from the co-save - the left hand"
 	                                                 : "read from the co-save - the right hand");
+	// The hold along the weapon, taken once the world is there
+	// (camera/hands/TwoHands.cpp RestoreHoldAfterLoad).
+	vr::HandoverHoldNow().restore = hold;
+	if (hold.formId != 0) {
+		OBVR_LOG("Hands: the hold along the weapon read from the co-save - %.1f units %s the grip of %08X, taken once "
+		         "the world is there",
+		         static_cast<double>(hold.axial < 0.0f ? -hold.axial : hold.axial), hold.axial < 0.0f ? "below" : "above",
+		         hold.formId);
+	} else {
+		OBVR_LOG("Hands: the hold along the weapon %s - the hand at the grip",
+		         holdFound ? "read from the co-save, none kept" : "none in the co-save");
+	}
 }
 
 void OnNewGame(void*) {
@@ -262,6 +294,8 @@ void OnNewGame(void*) {
 	}
 	SetHolsterSlotsLoaded(false);
 	vr::WeaponSideNow() = vr::WeaponSideState{};
+	vr::HandoverHoldNow() = vr::HandoverHoldSave{};
+	vr::HandoverHoldNow().restore = vr::HoldRestoreNone();
 }
 
 }  // namespace

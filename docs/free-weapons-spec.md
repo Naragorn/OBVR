@@ -1928,7 +1928,7 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
   one-hander in the two-hand hold goes the same way. A two-hander changes hands only from the
   hold, not by a hand merely closed near it. The other hand on a two-handed sword's blade or
   on a haft keeps it as before: half-swording, no switch. At the switch the two-hand hold
-  and the half-sword hold end at once (camera/hands/TwoHands.cpp EndHoldsAtSwitch): the hand
+  and the half-sword hold end at once (camera/hands/HandoverHold.cpp EndHoldsAtSwitch): the hand
   that let go is the other hand now. handover_test covers the choice; harness:
   handover-two-hander, handover-staff.
 - Harness 2026-11-23 (DLL 81403431): handover-two-hander PASS (20261123-122050-slot1: the
@@ -2008,7 +2008,34 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
     first frame, "held at its rest for 0.12 s after the action - the animation's way back
     came home". The handover scenarios now reject "OFF the hold" (the palm more than a unit
     from the hold wanted).
-  - OPEN: the co-save does not keep the hold (after a load the hand is at the grip).
+  - **Fixed 2026-11-25, harness only: the co-save keeps the hold; headset open.** Before, the
+    co-save kept the side ('OBWS') but not the hold, and the side switch a load makes was taken
+    for a handover. [M] handover-cosave-hold.txt (new) with 66e2f29 (DLL b7645e28,
+    20261125-091642-slot1, FAIL): the Claymore saved held 12.7 units below its grip, then handed
+    back (-3.2) and the save loaded - a third "the weapon handed over" line at the load, the
+    palm after it at -3.2, not -12.7. [D] In a game started anew the hand was at the grip (the
+    hold is 0 in a new process; not run). Fix: 'OBWH' (vr/HandoverHoldSave.h, written and read
+    in game/QuickKeyPages.cpp) keeps the drawn weapon's form id and the hold. After a load it is
+    taken at the first frame the hands are there and the weapon's state is read: the weapon
+    kept drawn, held where it was saved; another or none drawn, at the grip. The hold of before
+    the load ends either way (camera/hands/HandoverHold.cpp RestoreHoldAfterLoad). A side
+    switch while the load's hold waits is the load's, no handover. The two-hand step's handover
+    part moved from TwoHands.cpp to camera/hands/HandoverHold.cpp (TwoHands.cpp reached the size
+    table's 1000 lines). [M] with the fix (DLL d0ab32a8, -091702-slot2, PASS): "into the
+    co-save - 12.7 units below the grip of 0001C6CD", "the sides switched with the load - no
+    handover", "after the load the weapon is held where it was saved", the palm -12.7 (wanted
+    -12.7) on the first frame and half a second on. handover-cosave and handover-two-hander PASS
+    beside it (-091722-slot3, -091742-slot4); handover_hold_save_test covers the record, the
+    read-back, the take after the load and the switch. Not run: the save loaded in a game
+    started anew (the harness loads in the running game); an enchanted weapon made in the game
+    (an FF id) through ResolveRefID. Evidence page: https://claude.ai/artifact/S6iM8T4xEBXjWUeZxVj17Q
+  - **Open, seen 2026-11-25 with the old and the new DLL alike: a hand closed through a load
+    counts as closing after it.** In handover-cosave-hold the right hand stays closed through
+    the load and is the other hand after it; the first frames log "the left grip closed off
+    the handle - -35 units along the weapon, 39 from its line". Placed far from the weapon it
+    took nothing. [D] Near the handle it would take the two-hand hold nobody reached for. Cause
+    not read: the two-hand step's grip of the frame before, kept across the load's frames or
+    the side switch.
 - Right-handed, without a switch (open, causes not read): the shield one frame higher while
   the sword is drawn at the hip (3.2 %), and the shield's edge wobbling for 12 frames after
   the head turned 30 degrees down (up to 1.7 %).

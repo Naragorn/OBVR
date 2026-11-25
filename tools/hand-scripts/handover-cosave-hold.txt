@@ -1,0 +1,93 @@
+# Where the hand holds the weapon along it after a handover, through a save and a load
+# (free-weapons-spec 5.16; vr/HandoverHoldSave.h, game/QuickKeyPages.cpp 'OBWH'): the Claymore
+# handed to the left hand as in handover-two-hander.txt, held 12.7 units below its grip, and
+# saved; then handed back to the right hand (the hold another one) and the save loaded. After
+# the load the claymore is the left hand's again ('OBWS') and held where it was saved, not
+# where the frames before the load had it, nor at its grip ("after the load the weapon is held
+# where it was saved", the palm measured on the hold). The load's side switch is no handover:
+# two "handed over" lines, not three. Before 2026-11-25 the co-save kept the side only.
+# The hands apart before the load: the left one open (the claymore's after it), the right one
+# closed far below the weapon; it opens after the load. Two takes of the handle, none after
+# the load. The head looks down for the films.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr tools/hand-scripts/handover-cosave-hold.txt
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Debug WeaponSide=0
+ini Hands HandoverReachMetres=0.12
+ini Hands Holsters=1
+ini Hands WeaponHold=1
+ini Hands TwoHandGrip=1
+ini Hands TwoHandReachUnits=60
+console-at ready CloseAllMenus
+console-at ready player.additem 0001C6CD 1
+console-at ready player.equipitem 0001C6CD
+console-at handed save OBVRWeaponHold
+console-at before_load load OBVRWeaponHold
+
+expect HandScript: finished
+count 2 Hands: the left hand took the
+count 2 handed over - the sides switch, it stays equipped
+count 2 Hands: the weapon handed over - the hand that took it
+expect Hands: the hold along the weapon into the co-save -
+expect Hands: the weapon's side read from the co-save - the left hand
+expect Hands: the hold along the weapon read from the co-save -
+expect Hands: the sides switched with the load - no handover
+expect Hands: after the load the weapon is held where it was saved
+count 3 Hands: the weapon held along it -
+count 3 Hands: the weapon held along it, half a second on
+reject HandScript: WARNING
+reject OFF the hold
+reject too far, a drop
+reject Weapon hold: the dropped
+reject taken at its grip
+reject two-handed sword's blade (half-swording)
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+head pitch -45
+wait 16
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+left pos 0.20 -0.40 -0.10
+wait 0.5
+left grip 1
+wait 1
+mark both_hands
+right grip 0
+wait 1
+mark handed
+# The save, then the claymore back to the right hand: the hold another one.
+wait 6
+mark saved
+right pos 0.40 -0.45 -0.10
+wait 1.5
+right pos 0.20 -0.40 -0.25
+wait 0.5
+right grip 1
+wait 1
+mark both_again
+left grip 0
+wait 1
+mark handed_back
+# Apart before the load: the left hand, open, holds the claymore after it (a weapon drawn
+# with the hand open stays until it closes); the right one, closed, is the other hand after
+# it, far below the weapon - a closing there would take nothing ("closed off the handle").
+left pos -0.20 -0.40 -0.30
+right pos 0.20 -0.90 0.10
+wait 1.5
+mark before_load
+wait 25
+mark reloaded
+right grip 0
+wait 3
+mark reloaded_later
+wait 1
