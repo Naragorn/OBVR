@@ -28,7 +28,7 @@ void SetSpellReleaseHold(bool hold);
 // stage's strength and cost (vr::SpellChargeFactor; 1 = as it is).
 void RequestHeldSpellRelease(int stage, float factor);
 // Whether the casting hand's trigger is held since its press and not dropped (vr::SpellChargeStep
-// castHeld), said once a frame: a touch cast's animation waits at its start while it is
+// castHeld), said once a frame: a touch or target cast's animation waits at its start while it is
 // (vr::StepCastAnimPause). A new press ends what an earlier let go or drop left for the engine's own
 // release.
 void SetSpellCastHeld(bool held);
@@ -37,13 +37,13 @@ void SetSpellCastHeld(bool held);
 void DropHeldSpellRelease();
 // In the player's animation update, after the engine's own: makes a requested held release. Before
 // that, the cast's own animation is kept at its release key while the release is held back, and plays
-// its second half from there the frame it is made or dropped (vr::StepCastAnimPause); a touch cast is
-// kept at its start while the trigger is held.
+// its second half from there the frame it is made or dropped (vr::StepCastAnimPause); a touch or a
+// target cast is kept at its start while the trigger is held.
 void StepHeldSpellRelease();
 
 // Let go and the spell not made yet - the release asked for, or, let go before the engine came to it
-// (a touch spell always), the engine's own release still to come: the charged spell stays in the
-// hand until then (vr::SpellOrbFor).
+// (a touch or target spell always), the engine's own release still to come: the charged spell stays
+// in the hand until then (vr::SpellOrbFor).
 bool SpellReleaseAwaited();
 
 // A release held back or about to be made: the spell is in the hand, so its aim and its start at

@@ -3,8 +3,8 @@
 # --record 2): the engine's hand effect glows only as the cast animation nears its release (0.6 s);
 # held past it, nothing was seen in the hand until the bolt left. Now the spell's own model
 # (MagicEffects\Fireball.NIF) sits at the palm while charged, growing to its full size at stage 3.
-# Since 2026-11-24 the cast's own animation stops at its release key while the spell is held and plays
-# its second half (the hand opening, the engine's glow) at the let go (vr::StepCastAnimPause).
+# Since 2026-11-25 the cast's own animation waits at its start while the spell is held and plays whole at
+# the let go, the bolt leaving at the engine's own key (vr::StepCastAnimPause, as a touch spell's).
 
 ini Hands Enabled=1
 ini Hands SpellCharge=1
@@ -13,12 +13,12 @@ console player.addspell 000A97DF
 console SetActiveSpell 000A97DF
 
 expect HandScript: finished
-expect the held spell MADE at stage 3
+expect the engine's own release after the let go made at stage 3
 expect Spell orb: the spell's model made for the casting hand
 expect Spell orb: shown in the hand at 0.1
 expect of its size (full)
 expect Spell orb: gone from the hand
-expect Spell cast animation: the first-person cast (group 0x24) paused at its release
+expect Spell cast animation: the first-person cast (group 0x24) paused at its start
 expect Spell cast animation: the first-person cast plays on (the spell let go or dropped)
 reject Spell orb: no "magicNode"
 reject Spell orb: the model did not load

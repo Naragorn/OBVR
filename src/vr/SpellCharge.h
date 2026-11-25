@@ -81,7 +81,7 @@ struct SpellChargeStep {
 	bool chargeBegan = false;   // the press became a charge this frame
 	int stage = 0;              // 1-3 while charging and at the release; 0 otherwise
 	float heldSeconds = 0.0f;
-	bool castHeld = false;      // the trigger held since its press, not dropped by a menu (a touch cast waits)
+	bool castHeld = false;      // the trigger held since its press, not dropped by a menu (touch, target wait)
 };
 
 inline int SpellChargeStage(float heldSeconds, const SpellChargeSettings& s) {
@@ -144,8 +144,8 @@ inline SpellChargeStep StepSpellCharge(SpellChargeState& st, const SpellChargeIn
 // spell's own projectile model (its first effect's MGEF model, e.g. MagicEffects\Fireball.NIF for
 // Flare) at the casting palm while the release is held back, growing from a small first size at the
 // charge's start to its full size at stage 3. Gone when the spell leaves the hand - at the let go for
-// a spell whose release the engine had come to (the bolt flies from there), and for a touch spell, whose
-// whole animation plays after the let go, when the engine's own release comes (Nadi, 2026-11-24:
+// a self spell, whose release the engine had come to, and for a touch or target spell, whose whole
+// animation plays after the let go, when the engine's own release comes (Nadi, 2026-11-24:
 // "wenn die anim kommt ist die flamme weg, die sollte noch bleiben"; `releaseAwaited`, the let go made
 // and its spell not yet: game/SpellRelease.h SpellReleaseAwaited) - and when a menu drops it. The sizes
 // are shares of the flying model's own: at 1 its flames covered the arm in the harness film
@@ -175,24 +175,26 @@ inline SpellOrbView SpellOrbFor(const SpellChargeStep& step, const SpellChargeSe
 	return v;
 }
 
-// The cast's own animation in two halves (Nadi, 2026-11-24: "die animation halbieren! die erste
-// hälfte am anfang, dann wird gehalten, und erst beim loslassen des triggers kommt die 2te
-// hälfte"): it plays as the engine plays it up to its release key, where the engine comes to the
-// release OBVR holds back; there it stays while the spell is held, and plays on from there the frame
-// the release is made or dropped. Its second half - the hand opened, filmed 2026-11-24 after the
-// release key for Flare, the fire touch and the novice heal - so comes with the spell.
+// The cast's own animation and the charge.
 //
-// A touch spell waits at its start instead (Nadi, 2026-11-24: "da wärs cooler am anfang und während
-// des charges keine anim zu haben. und dann wenn ich loslasse die volle"): kept where it is first
-// seen while the trigger is held - at its start, time 0 - so the engine does not come to its release then; let go, the whole
-// animation plays and the engine releases at its own key (game/SpellRelease.h gives that release the
-// charge's strength).
+// A self spell's is halved (Nadi, 2026-11-24: "die animation halbieren! die erste hälfte am anfang,
+// dann wird gehalten, und erst beim loslassen des triggers kommt die 2te hälfte"): it plays as the
+// engine plays it up to its release key, where the engine comes to the release OBVR holds back; there
+// it stays while the spell is held, and plays on from there the frame the release is made or dropped.
+//
+// A touch and a target spell's waits at its start instead (Nadi, 2026-11-24 for touch: "da wärs
+// cooler am anfang und während des charges keine anim zu haben. und dann wenn ich loslasse die volle";
+// 2026-11-25 for target: "Flare also target zauber analog zu touch ... die animation kommt erst beim
+// loslassen vom trigger, und NICHT mehr zweigeteilt"): kept at time 0 while the trigger is held, so the
+// engine does not come to its release then; let go, the whole animation plays and the engine releases
+// at its own key - the touch, the bolt leaving the hand - with the charge's strength
+// (game/SpellRelease.h).
 //
 // Measured (harness 2026-11-24): the cast is the anim data's slot 1, group 0x22 for the heal
 // (CastSelf), 0x23 the fire touch (CastTouch), 0x24 Flare (CastTarget); the release at its key 1.
 // The Alt groups 0x25-0x27 after xOBSE's TESAnimGroup (obse/NiNodes.h), not seen in a run.
 inline bool IsCastAnimGroup(unsigned code) { return code >= 0x22 && code <= 0x27; }
-inline bool IsTouchCastGroup(unsigned code) { return code == 0x23 || code == 0x26; }
+inline bool CastWaitsAtStart(unsigned code) { return code == 0x23 || code == 0x24 || code == 0x26 || code == 0x27; }
 
 // The anim data's clock step since the last frame: what a sequence kept still with the cast has its
 // offset moved on by (the engine's own hand effect, game/SpellRelease.h). None when the clock went
@@ -218,15 +220,15 @@ struct CastAnimPause {
 // (game/BowRelease.h); false when it is left alone.
 inline bool StepCastAnimPause(CastAnimPause& p, bool heldBack, bool castHeld, unsigned groupCode, float timeNow,
                               float clock, float& offset) {
-	const bool wait = IsCastAnimGroup(groupCode) && (heldBack || (castHeld && IsTouchCastGroup(groupCode)));
+	const bool wait = IsCastAnimGroup(groupCode) && (heldBack || (castHeld && CastWaitsAtStart(groupCode)));
 	if (!wait) {
 		p = CastAnimPause{};
 		return false;
 	}
 	if (!p.paused) {
 		p.paused = true;
-		// A touch cast waits at its start (time 0): on its first frame the sequence still reads its last
-		// play's time (14.2 s measured, 2026-11-24), and kept there the engine ends the cast unreleased.
+		// A cast waiting at its start waits at time 0: on its first frame the sequence still reads its
+		// last play's time (14.2 s measured, 2026-11-24), and kept there the engine ends it unreleased.
 		p.time = heldBack ? timeNow : 0.0f;
 	}
 	offset = p.time - clock;

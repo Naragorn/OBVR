@@ -471,8 +471,8 @@ void DropHeldSpellRelease() {
 		OBVR_LOG("Spell release: the held spell DROPPED (a menu came up) - no spell, no magicka");
 	}
 	if (p.heldCaster == nullptr) {
-		// Dropped before the engine came to its release (a touch spell always): that release, when the
-		// cast plays on, makes nothing.
+		// Dropped before the engine came to its release (a touch or target spell always): that release,
+		// when the cast plays on, makes nothing.
 		p.swallow = true;
 		p.swallowTick = p.tick;
 		if (p.lines > 0) {
@@ -519,8 +519,8 @@ void StepHeldSpellRelease() {
 	void* const caster = p.heldCaster;
 	p.heldCaster = nullptr;
 	if (caster == nullptr) {
-		// Let go before the engine came to its release (a touch spell always): its own release, when
-		// it comes, is made at the stage.
+		// Let go before the engine came to its release (a touch or target spell always): its own
+		// release, when it comes, is made at the stage.
 		p.pending = true;
 		p.pendingTick = p.tick;
 		p.pendingStage = p.fireStage;

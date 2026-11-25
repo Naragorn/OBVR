@@ -228,7 +228,7 @@ void TestStrength() {
 }
 
 void TestCastAnimPause() {
-	std::printf("The cast animation in two halves: paused at its release while the spell is held\n");
+	std::printf("A self spell's animation in two halves: paused at its release while the spell is held\n");
 	Check(IsCastAnimGroup(0x22) && IsCastAnimGroup(0x23) && IsCastAnimGroup(0x24), "CastSelf, CastTouch, CastTarget");
 	Check(IsCastAnimGroup(0x25) && IsCastAnimGroup(0x27), "and their Alt groups");
 	Check(!IsCastAnimGroup(0x00) && !IsCastAnimGroup(0x13) && !IsCastAnimGroup(0x21) && !IsCastAnimGroup(0x28),
@@ -236,16 +236,16 @@ void TestCastAnimPause() {
 
 	CastAnimPause p;
 	float offset = -99.0f;
-	Check(!StepCastAnimPause(p, false, false, 0x24, 0.2f, 10.0f, offset) && offset == -99.0f && !p.paused,
+	Check(!StepCastAnimPause(p, false, false, 0x22, 0.2f, 10.0f, offset) && offset == -99.0f && !p.paused,
 	      "the first half (nothing held back yet): played as the engine plays it, nothing written");
-	Check(StepCastAnimPause(p, true, false, 0x24, 0.403f, 10.0f, offset) && p.paused, "held back: paused");
-	Check(offset > 0.403f - 10.0f - 1e-4f && offset < 0.403f - 10.0f + 1e-4f,
+	Check(StepCastAnimPause(p, true, false, 0x22, 0.375f, 10.0f, offset) && p.paused, "held back: paused");
+	Check(offset > 0.375f - 10.0f - 1e-4f && offset < 0.375f - 10.0f + 1e-4f,
 	      "at the time the engine came to its release");
-	Check(StepCastAnimPause(p, true, false, 0x24, 0.42f, 12.5f, offset) && offset > 0.403f - 12.5f - 1e-4f &&
-	          offset < 0.403f - 12.5f + 1e-4f,
+	Check(StepCastAnimPause(p, true, false, 0x22, 0.42f, 12.5f, offset) && offset > 0.375f - 12.5f - 1e-4f &&
+	          offset < 0.375f - 12.5f + 1e-4f,
 	      "seconds later: still at that time, however far the clock went");
 	offset = -99.0f;
-	Check(!StepCastAnimPause(p, false, false, 0x24, 0.42f, 12.6f, offset) && offset == -99.0f && !p.paused,
+	Check(!StepCastAnimPause(p, false, false, 0x22, 0.42f, 12.6f, offset) && offset == -99.0f && !p.paused,
 	      "let go (the release asked for): nothing written, the second half plays on from there");
 
 	CastAnimPause q;
@@ -263,10 +263,12 @@ void TestCastAnimPause() {
 	      "held back but the slot is the bow's draw: never paused");
 }
 
-void TestTouchWaitsAtItsStart() {
-	std::printf("A touch spell: no animation while held, the whole of it at the let go\n");
-	Check(IsTouchCastGroup(0x23) && IsTouchCastGroup(0x26), "CastTouch and CastTouchAlt");
-	Check(!IsTouchCastGroup(0x22) && !IsTouchCastGroup(0x24), "self and target: not touch");
+void TestWaitsAtItsStart() {
+	std::printf("A touch or target spell: no animation while held, the whole of it at the let go\n");
+	Check(CastWaitsAtStart(0x23) && CastWaitsAtStart(0x26), "CastTouch and CastTouchAlt wait at their start");
+	Check(CastWaitsAtStart(0x24) && CastWaitsAtStart(0x27), "CastTarget and CastTargetAlt too (Nadi, 2026-11-25)");
+	Check(!CastWaitsAtStart(0x22) && !CastWaitsAtStart(0x25), "self: not - its animation is halved");
+	Check(!CastWaitsAtStart(0x13) && !CastWaitsAtStart(0x00), "the bow's draw, idle: not a cast at all");
 
 	CastAnimPause p;
 	float offset = -99.0f;
@@ -283,9 +285,21 @@ void TestTouchWaitsAtItsStart() {
 
 	CastAnimPause t;
 	offset = -99.0f;
-	Check(!StepCastAnimPause(t, false, true, 0x24, 0.1f, 4.0f, offset) && offset == -99.0f && !t.paused,
-	      "a target spell held: its first half plays as before");
-	Check(StepCastAnimPause(t, true, true, 0x24, 0.403f, 4.5f, offset) && t.paused, "and it waits at its release key");
+	Check(StepCastAnimPause(t, false, true, 0x24, 14.2f, 4.0f, offset) && t.paused && offset > -4.0f - 1e-4f &&
+	          offset < -4.0f + 1e-4f,
+	      "a target spell held: it waits at its start too, no first half");
+	Check(StepCastAnimPause(t, false, true, 0x24, 0.01f, 8.0f, offset) && offset > -8.0f - 1e-4f &&
+	          offset < -8.0f + 1e-4f,
+	      "seconds later: still at its start - the engine never comes to its release while held");
+	offset = -99.0f;
+	Check(!StepCastAnimPause(t, false, false, 0x24, 0.01f, 8.1f, offset) && offset == -99.0f && !t.paused,
+	      "let go: the whole throw plays, the bolt leaves at the engine's own key");
+
+	CastAnimPause h;
+	offset = -99.0f;
+	Check(!StepCastAnimPause(h, false, true, 0x22, 0.1f, 4.0f, offset) && offset == -99.0f && !h.paused,
+	      "a self spell held: its first half plays as before");
+	Check(StepCastAnimPause(h, true, true, 0x22, 0.375f, 4.5f, offset) && h.paused, "and it waits at its release key");
 
 	SpellChargeSettings s;
 	SpellChargeState st;
@@ -371,7 +385,7 @@ int main() {
 	TestOrb();
 	TestStrength();
 	TestCastAnimPause();
-	TestTouchWaitsAtItsStart();
+	TestWaitsAtItsStart();
 	TestOrbUntilTheSpellGoes();
 	TestClockStep();
 	if (g_failures != 0) {
