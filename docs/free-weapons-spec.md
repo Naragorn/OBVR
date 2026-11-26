@@ -1206,7 +1206,7 @@ not seen in first person"; the tester found weapons at the shoulders annoying).
   5's A); an enchanted weapon's glow (the copy has none - not checked); the first load's cost
   (not measured); a shield from a mod whose model lies otherwise than the vanilla ones.
 
-#### 5.12.3 Wish 2026-11-26: one-handers at the shoulders too (not built - the look is Nadi's choice)
+#### 5.12.3 Wish 2026-11-26: one-handers at the shoulders too (built 2026-11-26 as option (b))
 
 Nadi, Windows 2026-11-26: "außerdem will ich nun dass man einhänder auch auf den schultern
 holstern kann. meinetwegen auch ohne echtes schwert dann dort modell sehen zu können". His log
@@ -1235,6 +1235,33 @@ has the hint he met: "Holster sign: at the right shoulder - "" / "This goes on y
   card and guide texts, a harness scenario; (c) medium - a transform each frame, the blade's
   angle, the hilt reach reading it, judged in the headset.
 - **Recommended:** (b).
+- **Built (option (b), chosen by the tester) [M for the tests and the harness, headset not tried]:**
+  - The rule: `vr::SlotAccepts` takes a one-hander at the shoulders too; the torch stays at the
+    hips, two-handers and the bow stay at the shoulders, shields everywhere. A newly equipped
+    one-hander still goes to a hip: `PlaceForUnkept` never puts it on a free shoulder by itself
+    (both hips full: its home, as before). A weapon drawn at a shoulder that keeps nothing is
+    kept there; the "Holster weapon" sign comes there; "This goes on your hip" stays for the torch.
+  - The hide: `vr::HideHipSheath(equipped, keptAt)` - true for the equipped one-hander kept at
+    either shoulder; carried in `SheathMirror::hideSide`. `game/BodySheaths.cpp` writes the hip's
+    "SideWeapon" node with `HiddenSheathLocal` (scale x 0.001, `game/SheathHideLogic.h`) like the
+    mirror's write, booked and given back the same way; logged once on each change ("the sheath
+    "SideWeapon" hidden - the equipped one-hander is kept at a shoulder" / "shown again"). The
+    shoulder shows no model. `GameSheathHip` is None while it is hidden, so a weapon the left hip
+    keeps shows its own copy there. Taking the sword from the shoulder is the ordinary ready click.
+  - Texts: the controls card ("Grab at hip or shoulder: draw or sheathe a one-hander."), the
+    places window and first-start page ("One-handers fit on your back too."), the "Draw from your
+    body" row ("hips or shoulders").
+  - Tests: holster_test (place rule, the reach at a shoulder, the sign, `PlaceForUnkept`,
+    `HideHipSheath` over every kind and place, both hands), kept_on_body_test (`GameSheathHip`
+    hidden, the hip frees, `HiddenSheathLocal`), place_near_test. Harness
+    `tools/hand-scripts/holster-one-hander-shoulder.txt`: the old DLL (main ae3afdc) FAIL
+    (20261126-211700-slot2), the new one PASS (20261126-211548-slot2); holster, kept-on-body,
+    weapon-release-holster and holster-two-handed on the new DLL all PASS (20261126-211813-slot2,
+    -211923-slot2, -212049-slot2, -212200-slot2).
+  - Open: the headset (the empty shoulder, the hip without its sheath while a sword is kept
+    over the shoulder); [G] a mod's sheath nodes with children besides the weapon would be
+    shrunk too; the hide is not seen in a picture (no film was made; the log line and the
+    unit tests are the evidence).
 
 ### 5.13 A throw looks back in time, not in frames (built 2026-10-28)
 

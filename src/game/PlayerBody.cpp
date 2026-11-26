@@ -412,7 +412,7 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 	const bool ik = BeginBodyIk(root);
 	// The sheaths: still through the draw and the sheathe, on a left-hander's side, booked with the IK's writes.
 	if (ik) {
-		StepBodySheaths(frame.mirrorSideSheath, frame.mirrorBackSheath, frame.mirrorQuiver, frame.dtSeconds);
+		StepBodySheaths(frame.sheaths, frame.dtSeconds);
 	}
 
 	// The skeleton read for sense before anything is written to it: one that

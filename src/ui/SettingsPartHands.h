@@ -142,7 +142,7 @@ inline constexpr SettingDefinition kHandsRows[] = {
 		+[](Config& c, float v) { c.hands.holster.showKept = v != 0.0f; },
 	},
 	{
-		"Holsters & items", "Draw from your body", "Reach to your hips or back to draw. Weapons in your sword hand, the rest in the other",
+		"Holsters & items", "Draw from your body", "Reach to your hips or shoulders to draw. Weapons in your sword hand, the rest in the other",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "Holsters",
 		+[](const Config& c) { return c.hands.holster.enabled ? 1.0f : 0.0f; },

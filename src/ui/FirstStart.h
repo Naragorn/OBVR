@@ -14,6 +14,7 @@ inline constexpr const char* kWeaponPlacesWindowMessage =
 	"That's where your gear lives:\n"
 	"one-handers, torches and shields on your hips,\n"
 	"big weapons, staffs and bows on your back.\n"
+	"One-handers fit on your back too.\n"
 	"\n"
 	"Grab a circle to move it,\n"
 	"the right stick changes its size.\n"
@@ -194,6 +195,7 @@ inline const char* FirstStartMessage(FirstStartPage page) {
 		       "That's where your gear lives:\n"
 		       "one-handers, torches and shields on your hips,\n"
 		       "big weapons, staffs and bows on your back.\n"
+		       "One-handers fit on your back too.\n"
 		       "\n"
 		       "Grab a circle to move it,\n"
 		       "the right stick changes its size.";

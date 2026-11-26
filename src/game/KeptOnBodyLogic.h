@@ -83,9 +83,10 @@ struct KeptOnBodyInput {
 
 // The hip the game's sheath node hangs at: a one-hander equipped, the left
 // hip or, mirrored by the body (vr::SheathMirror::side), the right; None for
-// any other weapon or none.
-inline vr::HolsterSlot GameSheathHip(vr::EquippedKind equipped, bool sideMirrored) {
-	if (equipped != vr::EquippedKind::OneHand) {
+// any other weapon or none. None too while the sheath is hidden (the one-hander
+// is kept at a shoulder, vr::HideHipSheath): the hip's own copy may show then.
+inline vr::HolsterSlot GameSheathHip(vr::EquippedKind equipped, bool sideMirrored, bool hidden = false) {
+	if (equipped != vr::EquippedKind::OneHand || hidden) {
 		return vr::HolsterSlot::None;
 	}
 	return sideMirrored ? vr::HolsterSlot::HipRight : vr::HolsterSlot::HipLeft;

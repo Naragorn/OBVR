@@ -2,6 +2,7 @@
 
 #include "game/BodyIk.h"
 #include "game/NiMath.h"
+#include "vr/SheathMirror.h"
 
 namespace obvr::game {
 
@@ -56,10 +57,9 @@ struct BodyFrame {
 	// LookDownBackUnitsFor). 0 when unknown: the game's own is assumed.
 	float cameraNearUnits = 0.0f;
 	// The sheathed weapons' nodes to hang mirrored (vr/SheathMirror.h; body
-	// IK's StepBodySheaths): the hip's, the back's, the quiver's.
-	bool mirrorSideSheath = false;
-	bool mirrorBackSheath = false;
-	bool mirrorQuiver = false;
+	// IK's StepBodySheaths): the hip's, the back's, the quiver's, and the hip's
+	// hidden while a one-hander is kept at a shoulder.
+	vr::SheathMirror sheaths;
 	// The skeleton's scale on top of its own for the real height (vr/
 	// RealHeight.h RealHeightBodyScale): the feet on the ground, the neck
 	// under the real head. Applied with the body IK running.

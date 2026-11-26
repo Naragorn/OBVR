@@ -1437,7 +1437,7 @@ void NoteBodyRenderDone() {
 
 // ------------------------------------------------------------ The sheaths
 
-void StepBodySheaths(bool side, bool back, bool quiver, float dtSeconds) {
+void StepBodySheaths(const vr::SheathMirror& sheaths, float dtSeconds) {
 	if (!g_frame.valid) {
 		return;
 	}
@@ -1448,7 +1448,7 @@ void StepBodySheaths(bool side, bool back, bool quiver, float dtSeconds) {
 	                            g_frame.bone[kLegLeft + kThigh],
 	                            g_frame.bone[kArmRight + kClavicle],
 	                            g_frame.bone[kArmLeft + kClavicle]};
-	StepSheaths(bones, side, back, quiver, dtSeconds);  // game/BodySheaths.h
+	StepSheaths(bones, sheaths, dtSeconds);  // game/BodySheaths.h
 }
 
 // ------------------------------------------------------------ The soft push

@@ -270,7 +270,10 @@ inline HolsterSide FittedSide(HolsterSide side, float fittedX, bool leftHanded) 
 //
 //   the hips, left and right     one-handed weapons, the torch, the shield
 //   the back, left and right     two-handed weapons and staffs, the bow,
-//                                the shield
+//                                the shield, and one-handed weapons (a
+//                                one-hander at a shoulder: 2026-11-26, the
+//                                tester's wish; the hip's sheath is hidden
+//                                meanwhile, vr/SheathMirror.h HideHipSheath)
 //
 // Which hand: the engine's own split, told to the players - the weapon hand
 // for weapons (and the arrows), the other hand for the bow, the shield and
@@ -298,6 +301,7 @@ inline bool SlotIsBack(HolsterSlot slot) { return slot == HolsterSlot::BackLeft 
 inline bool SlotAccepts(HolsterSlot slot, SlotItem item) {
 	switch (item) {
 	case SlotItem::OneHand:
+		return SlotIsHip(slot) || SlotIsBack(slot);
 	case SlotItem::Torch:
 		return SlotIsHip(slot);
 	case SlotItem::TwoHand:
@@ -389,7 +393,8 @@ inline HolsterSlot DefaultSlotFor(SlotItem item, const HolsterSettings& s, bool 
 
 // Where a weapon equipped in the inventory and kept at no place goes: its
 // home (DefaultSlotFor) when that is free; else another free place that takes
-// it, so a weapon put at its home by hand stays kept there; else its home,
+// it, so a weapon put at its home by hand stays kept there (a one-hander never
+// goes to a free shoulder on its own, only to a hip: 2026-11-26); else its home,
 // in the place of what is kept there (it is in the pack, kept nowhere now).
 // None for a kind no place takes.
 inline HolsterSlot PlaceForUnkept(SlotItem item, HolsterSlot home, const SlotItem (&kept)[kHolsterSlotCount]) {
@@ -401,6 +406,9 @@ inline HolsterSlot PlaceForUnkept(SlotItem item, HolsterSlot home, const SlotIte
 	}
 	for (UInt32 i = 1; i < kHolsterSlotCount; ++i) {
 		const HolsterSlot slot = static_cast<HolsterSlot>(i);
+		if (item == SlotItem::OneHand && SlotIsBack(slot)) {
+			continue;
+		}
 		if (slot != home && SlotAccepts(slot, item) && kept[i] == SlotItem::Nothing) {
 			return slot;
 		}
@@ -841,7 +849,7 @@ inline const char* SlotHint(SlotOutcome o, SlotItem kept, SlotItem carried) {
 	case SlotOutcome::WrongHand:
 		return WeaponHandItem(kept) ? "Use your sword hand" : "Use your other hand";
 	case SlotOutcome::DoesNotFit:
-		return carried == SlotItem::OneHand || carried == SlotItem::Torch ? "This goes on your hip"
+		return carried == SlotItem::Torch ? "This goes on your hip"
 		       : carried == SlotItem::TwoHand || carried == SlotItem::Bow ? "This goes on your back"
 		                                                                  : "Doesn't fit here";
 	case SlotOutcome::Full:

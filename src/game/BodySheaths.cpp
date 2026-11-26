@@ -6,6 +6,7 @@
 #include "game/BoneWrite.h"
 #include "game/FirstPersonHide.h"
 #include "game/GameCamera.h"
+#include "game/SheathHideLogic.h"
 #include "game/NodeName.h"
 #include "game/PlayerAim.h"
 #include "game/SheathHoldLogic.h"
@@ -24,6 +25,7 @@ struct SheathState {
 	SheathHoldState hold[kSheathNodes];
 	bool mirroredReported[kSheathNodes] = {};
 	bool refusedReported[kSheathNodes] = {};
+	bool hiddenReported[kSheathNodes] = {};
 };
 
 SheathState& State() {
@@ -89,16 +91,31 @@ bool WriteMirrored(SheathState& s, const BodySheathBones& b, UInt32 i, NiAVObjec
 	return true;
 }
 
+// The hip's node shrunk away while the one-hander is kept at a shoulder.
+bool WriteHidden(SheathState& s, UInt32 i, const NiTransform& local) {
+	WriteLocal(s.write[i], HiddenSheathLocal(local));
+	return true;
+}
+
+// Said once on each change.
+void NoteHidden(SheathState& s, UInt32 i, bool hide) {
+	if (hide != s.hiddenReported[i]) {
+		s.hiddenReported[i] = hide;
+		OBVR_LOG("Body: the sheath \"%s\" %s", kSheathNames[i],
+		         hide ? "hidden - the equipped one-hander is kept at a shoulder" : "shown again");
+	}
+}
+
 }  // namespace
 
-void StepSheaths(const BodySheathBones& bones, bool side, bool back, bool quiver, float dtSeconds) {
+void StepSheaths(const BodySheathBones& bones, const vr::SheathMirror& sheaths, float dtSeconds) {
 	if (!LooksLikeObject(bones.root)) {
 		return;
 	}
 	SheathState& s = State();
 	NiAVObject* nodes[kSheathNodes] = {};
 	FindNodesNamed(bones.root, kSheathNames, kSheathNodes, nodes);
-	const bool want[kSheathNodes] = {side, back, quiver};
+	const bool want[kSheathNodes] = {sheaths.side, sheaths.back, sheaths.quiver};
 	// The draw's and the sheathe's groups turn the sheath nodes; the weapon
 	// hangs there from the sheathe's start (game/SheathHoldLogic.h).
 	const SInt32 action = ReadPlayerAction();
@@ -113,7 +130,14 @@ void StepSheaths(const BodySheathBones& bones, bool side, bool back, bool quiver
 		}
 		const NiTransform local =
 			StepSheathHold(s.hold[i], reinterpret_cast<UInt32>(node), s.write[i].base, still, dtSeconds);
-		bool wrote = want[i] && WriteMirrored(s, bones, i, node, local);
+		const bool hide = i == kSheathSide && sheaths.hideSide;
+		bool wrote = false;
+		if (hide) {
+			wrote = WriteHidden(s, i, local);
+		} else {
+			wrote = want[i] && WriteMirrored(s, bones, i, node, local);
+		}
+		NoteHidden(s, i, hide);
 		if (!wrote && !SameTransform(local, s.write[i].base)) {
 			WriteLocal(s.write[i], local);
 			wrote = true;
@@ -151,6 +175,7 @@ void ReleaseSheaths(NiAVObject* rootNow) {
 			UpdateNodeTransforms(sheathsNow[i]);
 		}
 		s.write[i] = BoneWrite{};
+		s.hiddenReported[i] = false;
 		s.hold[i] = SheathHoldState{};
 	}
 }

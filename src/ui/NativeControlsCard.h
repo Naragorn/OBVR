@@ -167,14 +167,14 @@ inline void ControlsCardBindingLines(ControlsCardPage page, bool kick, const vr:
 // the trigger on any other controller (vr::FistFingersOf, 2026-11-25).
 inline const char* const* ControlsCardPlacesLines(bool index) {
 	static const char* const fingers[kControlsCardLines] = {
-		"Grab at your hip to draw or sheathe a one-hander.",
+		"Grab at hip or shoulder: draw or sheathe a one-hander.",
 		"Grab over your shoulder for two-handers and staffs.",
 		"Swing to hit. Big, fast swings hit harder.",
 		"Make a fist to fight bare-handed.",
 		"Hold a two-hander with both hands.",
 	};
 	static const char* const trigger[kControlsCardLines] = {
-		"Grab at your hip to draw or sheathe a one-hander.",
+		"Grab at hip or shoulder: draw or sheathe a one-hander.",
 		"Grab over your shoulder for two-handers and staffs.",
 		"Swing to hit. Big, fast swings hit harder.",
 		"Hold the trigger to fight bare-handed.",

@@ -1,0 +1,75 @@
+# A one-handed weapon kept over the shoulder (free-weapons-spec 5.12.3, the tester's wish of
+# 2026-11-26): the sword drawn at the left hip, sheathed over the right shoulder - kept there, the
+# hip's sheath hidden (the shoulder shows no model) - drawn from the shoulder again as from a hip,
+# then sheathed at the hip: the hip's sheath shows again.
+# The harness save keeps its Elven Longsword at the left hip, equipped.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --parallel tools/hand-scripts/holster-one-hander-shoulder.txt --plugin build-linux-clangcl/OBVR.dll
+ini Hands Enabled=1
+ini Hands Holsters=1
+# The reach opens the hand after a draw: WeaponHold (2026-10-24) would drop it.
+ini Hands WeaponHold=0
+ini Body Visible=1
+console-at settle CloseAllMenus
+console-at settle set timescale to 0
+console-at settle set gamehour to 12
+
+expect HandScript: finished
+expect Holster: reach for the one-handed weapon - drawing (the weapon hand at the left hip
+expect Holster: reach for the one-handed weapon - sheathing (the weapon hand at the right shoulder
+expect Body: the sheath "SideWeapon" hidden - the equipped one-hander is kept at a shoulder
+expect Holster: reach for the one-handed weapon - drawing (the weapon hand at the right shoulder
+expect Holster: reach for the one-handed weapon - sheathing (the weapon hand at the left hip
+expect Body: the sheath "SideWeapon" shown again
+reject HandScript: WARNING
+reject draw given up
+reject does not fit
+
+wait 20
+mark settle
+wait 1
+
+# The left hip: the sword drawn.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn_from_hip
+
+# The right shoulder: sheathed and kept there.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark kept_at_shoulder
+head pitch -80
+wait 1
+mark hip_no_sheath
+head pitch 0
+wait 0.5
+
+# The same shoulder: the sword drawn again, as from a hip.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn_from_shoulder
+
+# The left hip: sheathed there, the hip's sheath back.
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 0.10 -0.50
+wait 3
+mark kept_at_hip
+wait 1

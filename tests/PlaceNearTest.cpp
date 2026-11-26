@@ -92,8 +92,8 @@ void TestHeld() {
 	      "a drawn one-hander: the weapon hand's");
 	const HandHeldForPlace& w = h.hand[kWeapon];
 	Check(PlaceTakesHeld(HolsterSlot::HipLeft, w, false) && PlaceTakesHeld(HolsterSlot::HipRight, w, false) &&
-	          !PlaceTakesHeld(HolsterSlot::BackLeft, w, false) && !PlaceTakesHeld(HolsterSlot::BackRight, w, false),
-	      "it shows the hips, not the back");
+	          PlaceTakesHeld(HolsterSlot::BackLeft, w, false) && PlaceTakesHeld(HolsterSlot::BackRight, w, false),
+	      "it shows the hips and the shoulders (2026-11-26)");
 	h = HeldOf(WeaponSeen::Drawn, EquippedKind::TwoHand);
 	Check(h.hand[kWeapon].item == SlotItem::TwoHand, "a drawn two-hander: the weapon hand's");
 	Check(!PlaceTakesHeld(HolsterSlot::HipLeft, h.hand[kWeapon], false) &&

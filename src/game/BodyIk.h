@@ -5,6 +5,7 @@
 #include "game/GameTypes.h"
 #include "game/KickLogic.h"
 #include "game/NiMath.h"
+#include "vr/SheathMirror.h"
 
 namespace obvr::game {
 
@@ -174,7 +175,7 @@ void NoteBodyRenderDone();
 // (vr/SheathMirror.h decides which: a left-hander's places, Nadi 2026-10-21):
 // game/BodySheaths.h, with this frame's bones. After BeginBodyIk, before the
 // body is placed.
-void StepBodySheaths(bool side, bool back, bool quiver, float dtSeconds);
+void StepBodySheaths(const vr::SheathMirror& sheaths, float dtSeconds);
 
 // For a frame the body is not shown: every bone written put back where it
 // still holds the write, under the body root the engine has now (none: only

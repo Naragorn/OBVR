@@ -7382,9 +7382,7 @@ void BeforeFirstScenePass() {
 					                    c.fullVrMode ? game::SlotKeeping(game::HolsterSlotIds(),
 					                                                     game::FormIdOf(g_weaponFrame.equippedWeaponForm))
 					                                 : vr::HolsterSlot::None);
-				frame.mirrorSideSheath = sheaths.side;
-				frame.mirrorBackSheath = sheaths.back;
-				frame.mirrorQuiver = sheaths.quiver;
+				frame.sheaths = sheaths;
 			}
 			static const long long ticksPerSecond = ReadPerformanceFrequency();
 			const long long before = ReadPerformanceCounter();

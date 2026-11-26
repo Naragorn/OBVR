@@ -88,7 +88,7 @@ void StepKeptOnBodyFrame(const Config& config, const UInt8* equippedWeaponForm, 
 		const vr::SheathMirror mirror =
 			vr::SheathMirrorFor(hands.holster, hands.archery.quiverZone.x, hands.leftHanded, equippedForBody,
 			                    game::SlotKeeping(ids, in.equippedWeapon));
-		in.gameSheathHip = game::GameSheathHip(equippedForBody, mirror.side);
+		in.gameSheathHip = game::GameSheathHip(equippedForBody, mirror.side, mirror.hideSide);
 	} else {
 		f.counted = false;
 	}

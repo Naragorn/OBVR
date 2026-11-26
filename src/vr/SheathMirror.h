@@ -31,7 +31,18 @@ struct SheathMirror {
 	bool side = false;    // SideWeapon, the one-hander at the hip
 	bool back = false;    // BackWeapon, the two-hander, staff or bow
 	bool quiver = false;  // Quiver
+	// SideWeapon hidden: the equipped one-hander is kept at a shoulder, so the
+	// hip's sheath would show a sword that is not there (HideHipSheath).
+	bool hideSide = false;
 };
+
+// The tester, 2026-11-26: a one-hander may be kept at a shoulder. The game
+// hangs a one-hander on the hip's SideWeapon only; kept at a shoulder it would
+// still show there, so that node is hidden while the equipped one-hander is
+// kept at either shoulder (the shoulder shows no model - the tester allows it).
+inline bool HideHipSheath(EquippedKind equipped, HolsterSlot keptAt) {
+	return equipped == EquippedKind::OneHand && SlotIsBack(keptAt);
+}
 
 // The place's side this frame: right of the body, or not.
 inline bool PlaceOnRight(const NiPoint3& zone, HolsterSide side, bool leftHanded) {
@@ -46,6 +57,7 @@ inline bool PlaceOnRight(const NiPoint3& zone, HolsterSide side, bool leftHanded
 inline SheathMirror SheathMirrorFor(const HolsterSettings& holster, float quiverX, bool leftHanded,
                                     EquippedKind equipped, HolsterSlot keptAt = HolsterSlot::None) {
 	SheathMirror m;
+	m.hideSide = HideHipSheath(equipped, keptAt);
 	const bool atAHip = equipped == EquippedKind::OneHand && SlotIsHip(keptAt);
 	if (!leftHanded) {
 		m.side = atAHip && keptAt == HolsterSlot::HipRight;

@@ -177,7 +177,7 @@ Holsters & items|Show the inventory ring|The gold ring shows faintly when what y
 Holsters & items|Show weapon spots|A faint circle shows a weapon spot when your drawn weapon gets close to it|Hands|HolsterNear|||0|0|1|1|0|0|1|1|1|0|0|RW
 Holsters & items|Spot brightness|How strongly the weapon spots and the inventory ring show when you get close|Hands|PlaceHintOpacity|||1|0.05|1|0.05|2|0|1|0.25|0.25|0|0|RW
 Holsters & items|Show what your hips keep|Swords, shields, torches and potions you keep at your hips hang there|Hands|ShowKeptWeapons|||0|0|1|1|0|0|1|1|1|0|0|RW
-Holsters & items|Draw from your body|Reach to your hips or back to draw. Weapons in your sword hand, the rest in the other|Hands|Holsters|||0|0|1|1|0|0|1|1|1|0|0|RW
+Holsters & items|Draw from your body|Reach to your hips or shoulders to draw. Weapons in your sword hand, the rest in the other|Hands|Holsters|||0|0|1|1|0|0|1|1|1|0|0|RW
 Holsters & items|Potion belt|Let go of a potion at a free weapon spot to keep it there. Grab it to take it out|Hands|PotionBelt|||0|0|1|1|0|0|1|1|1|0|0|RW
 Holsters & items|Eat and drink by hand|Bring food or a potion to your mouth and let go|Hands|EatAtMouth|||0|0|1|1|0|0|1|1|1|0|0|RW
 Holsters & items|One-hander side|Which hip your one-hander hangs on. Auto picks the side away from your sword hand|Hands|HolsterOneHandSide|||1|0|2|1|0|0|1|0|0|0|3|auto|right|left|RW

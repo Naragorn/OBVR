@@ -98,8 +98,10 @@ void TestPlaces() {
 	          !SlotAccepts(HolsterSlot::HipLeft, SlotItem::TwoHand) && !SlotAccepts(HolsterSlot::HipRight, SlotItem::Bow),
 	      "the hips: one-handers and the torch, no two-hander, no bow");
 	Check(SlotAccepts(HolsterSlot::BackLeft, SlotItem::TwoHand) && SlotAccepts(HolsterSlot::BackRight, SlotItem::Bow) &&
-	          !SlotAccepts(HolsterSlot::BackLeft, SlotItem::OneHand) && !SlotAccepts(HolsterSlot::BackRight, SlotItem::Torch),
-	      "the back: two-handers, staffs and the bow, no one-hander, no torch");
+	          SlotAccepts(HolsterSlot::BackLeft, SlotItem::OneHand) && SlotAccepts(HolsterSlot::BackRight, SlotItem::OneHand) &&
+	          !SlotAccepts(HolsterSlot::BackRight, SlotItem::Torch) && !SlotAccepts(HolsterSlot::BackLeft, SlotItem::Torch),
+	      "the shoulders: two-handers, staffs, the bow and one-handers (2026-11-26); no torch");
+	Check(!SlotAccepts(HolsterSlot::None, SlotItem::OneHand), "no place: no one-hander");
 	bool shieldEverywhere = true;
 	for (UInt32 i = 1; i < kHolsterSlotCount; ++i) {
 		shieldEverywhere = shieldEverywhere && SlotAccepts(static_cast<HolsterSlot>(i), SlotItem::Shield);
@@ -133,7 +135,15 @@ void TestPlaces() {
 		      "its home keeps another sword: the other hip, the first one stays kept");
 		kept[kHipR] = SlotItem::Torch;
 		Check(PlaceForUnkept(SlotItem::OneHand, HolsterSlot::HipLeft, kept) == HolsterSlot::HipLeft,
-		      "both hips taken: its home, in the place of what was kept there");
+		      "both hips taken: its home, in the place of what was kept there - not a free shoulder (2026-11-26)");
+		kept[kBackR] = SlotItem::OneHand;
+		Check(PlaceForUnkept(SlotItem::TwoHand, HolsterSlot::BackRight, kept) == HolsterSlot::BackLeft,
+		      "a two-hander whose home keeps a one-hander: the other free shoulder");
+		kept[kBackL] = SlotItem::Bow;
+		Check(PlaceForUnkept(SlotItem::TwoHand, HolsterSlot::BackRight, kept) == HolsterSlot::BackRight,
+		      "both shoulders taken: its home, in the place of the one-hander");
+		kept[kBackR] = SlotItem::Nothing;
+		kept[kBackL] = SlotItem::Nothing;
 		Check(PlaceForUnkept(SlotItem::TwoHand, HolsterSlot::BackRight, kept) == HolsterSlot::BackRight &&
 		          PlaceForUnkept(SlotItem::TwoHand, HolsterSlot::HipLeft, kept) == HolsterSlot::None &&
 		          PlaceForUnkept(SlotItem::OneHand, HolsterSlot::None, kept) == HolsterSlot::None,
@@ -162,10 +172,17 @@ void TestWeaponHand() {
 	v = Press(t, in, false, HolsterSlot::HipLeft);
 	Check(v.readyClick && v.outcome == SlotOutcome::Sheathe && v.assign == HolsterSlot::HipLeft,
 	      "drawn, at the other hip: sheathed there, kept there");
-	// Drawn, over the shoulder: a one-hander does not go there.
+	// Drawn, over the shoulder: a one-hander goes there too (2026-11-26).
 	HolsterState u;
 	v = Press(u, in, false, HolsterSlot::BackRight);
-	Check(!v.readyClick && v.outcome == SlotOutcome::DoesNotFit && v.rightClaimed, "a sword at the back: does not fit");
+	Check(v.readyClick && v.outcome == SlotOutcome::Sheathe && v.assign == HolsterSlot::BackRight && v.rightClaimed,
+	      "a sword at a free shoulder: sheathed there, kept there");
+	// Drawn, at a shoulder keeping a two-hander: it goes back first, as at a hip.
+	in.slotItem[kBackR] = SlotItem::TwoHand;
+	HolsterState u2;
+	v = Press(u2, in, false, HolsterSlot::BackRight);
+	Check(!v.readyClick && v.outcome == SlotOutcome::OtherDrawn, "a sword at a shoulder keeping a two-hander: put it away first");
+	in.slotItem[kBackR] = SlotItem::Nothing;
 	// Drawn, at a hip that keeps a torch: taken.
 	in.slotItem[kHipL] = SlotItem::Torch;
 	HolsterState w;
@@ -237,8 +254,8 @@ void TestWeaponHand() {
 	      "a sword equipped in the inventory, kept nowhere: drawn from the hip reached, kept there");
 	HolsterState b;
 	v = Press(b, in, false, HolsterSlot::BackLeft);
-	Check(!v.readyClick && v.outcome == SlotOutcome::Empty && !v.rightClaimed,
-	      "the same at the back: nothing, the grip left to grab");
+	Check(v.readyClick && v.outcome == SlotOutcome::Draw && v.assign == HolsterSlot::BackLeft,
+	      "the same at a shoulder: drawn from there, kept there (2026-11-26)");
 	in.equippedSlot = HolsterSlot::HipLeft;
 	in.slotItem[kHipL] = SlotItem::OneHand;
 	in.slotWorn[kHipL] = true;
@@ -585,9 +602,10 @@ void TestGates() {
 
 void TestSign() {
 	std::printf("The sign's hint before a reach\n");
-	Check(SignOutcomeFor(false, HolsterSlot::BackRight, SlotItem::OneHand, SlotItem::Nothing, false) ==
-	          SlotOutcome::DoesNotFit,
-	      "a drawn sword at the back: does not fit");
+	Check(SignOutcomeFor(false, HolsterSlot::BackRight, SlotItem::OneHand, SlotItem::Nothing, false) == SlotOutcome::None,
+	      "a drawn sword at a free shoulder: fine");
+	Check(SignOutcomeFor(false, HolsterSlot::BackLeft, SlotItem::OneHand, SlotItem::Shield, false) == SlotOutcome::Full,
+	      "a drawn sword at a shoulder keeping a shield: taken");
 	Check(SignOutcomeFor(false, HolsterSlot::HipLeft, SlotItem::OneHand, SlotItem::Torch, false) == SlotOutcome::Full,
 	      "at a hip keeping a torch: taken");
 	Check(SignOutcomeFor(false, HolsterSlot::BackRight, SlotItem::OneHand, SlotItem::TwoHand, false) ==
@@ -713,6 +731,36 @@ void TestSheathMirror() {
 	Check(!SheathMirrorFor(h, quiverX, false, EquippedKind::TwoHand, HolsterSlot::HipRight).side &&
 	          !SheathMirrorFor(h, quiverX, false, EquippedKind::OneHand, HolsterSlot::BackRight).side,
 	      "only a one-hander at a hip moves the hip's node");
+}
+
+// The hip's sheath hidden while the equipped one-hander is kept at a shoulder (2026-11-26).
+void TestHideHipSheath() {
+	std::printf("The hip's sheath while the one-hander is kept at a shoulder\n");
+	const HolsterSlot places[] = {HolsterSlot::None, HolsterSlot::HipLeft, HolsterSlot::HipRight, HolsterSlot::BackLeft,
+	                              HolsterSlot::BackRight};
+	const EquippedKind kinds[] = {EquippedKind::Nothing, EquippedKind::OneHand, EquippedKind::TwoHand, EquippedKind::Bow};
+	bool onlyShoulderOneHander = true;
+	for (EquippedKind kind : kinds) {
+		for (HolsterSlot place : places) {
+			const bool want = kind == EquippedKind::OneHand && SlotIsBack(place);
+			onlyShoulderOneHander = onlyShoulderOneHander && HideHipSheath(kind, place) == want;
+		}
+	}
+	Check(onlyShoulderOneHander, "hidden for a one-hander at a shoulder, in no other case");
+	Check(HideHipSheath(EquippedKind::OneHand, HolsterSlot::BackLeft) && HideHipSheath(EquippedKind::OneHand, HolsterSlot::BackRight),
+	      "either shoulder");
+	Check(!HideHipSheath(EquippedKind::OneHand, HolsterSlot::None), "kept at no place: the game's sheath shows");
+	HolsterSettings h;
+	for (bool leftHanded : {false, true}) {
+		const SheathMirror m = SheathMirrorFor(h, 0.15f, leftHanded, EquippedKind::OneHand, HolsterSlot::BackRight);
+		const SheathMirror hip = SheathMirrorFor(h, 0.15f, leftHanded, EquippedKind::OneHand, HolsterSlot::HipLeft);
+		const SheathMirror bow = SheathMirrorFor(h, 0.15f, leftHanded, EquippedKind::Bow, HolsterSlot::BackRight);
+		Check(m.hideSide && !hip.hideSide && !bow.hideSide,
+		      leftHanded ? "left-handed: the mirror carries the hide for a shoulder only"
+		                 : "right-handed: the mirror carries the hide for a shoulder only");
+	}
+	Check(!SheathMirrorFor(h, 0.15f, false, EquippedKind::OneHand, HolsterSlot::BackRight).side,
+	      "a hidden sheath is not mirrored on top (right-handed)");
 }
 
 // Nadi, 2026-10-28: "die waffen tafeln sollen nicht kommen wenn sie eh leer
@@ -1057,6 +1105,7 @@ int main() {
 	TestSign();
 	TestWords();
 	TestSheathMirror();
+	TestHideHipSheath();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

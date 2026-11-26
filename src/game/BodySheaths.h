@@ -14,6 +14,7 @@
 // StepBodySheaths hands it the bones of its frame.
 
 #include "game/GameTypes.h"
+#include "vr/SheathMirror.h"
 
 namespace obvr::game {
 
@@ -29,9 +30,11 @@ struct BodySheathBones {
 	const NiAVObject* clavicleLeft = nullptr;
 };
 
-// This frame's writes: `side`, `back`, `quiver` mirrored when true; every node
-// still while the player's action is the draw or the sheathe.
-void StepSheaths(const BodySheathBones& bones, bool side, bool back, bool quiver, float dtSeconds);
+// This frame's writes: `side`, `back`, `quiver` mirrored when true; the hip's
+// node hidden when `hideSide` (a one-hander kept at a shoulder, game/
+// SheathHideLogic.h); every node still while the player's action is the draw
+// or the sheathe.
+void StepSheaths(const BodySheathBones& bones, const vr::SheathMirror& sheaths, float dtSeconds);
 
 // After the world is drawn: the writes given back where the nodes still hold them.
 void GiveBackSheathsAfterDraw();

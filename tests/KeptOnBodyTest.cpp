@@ -2,6 +2,7 @@
 #include <cstdio>
 
 #include "game/KeptOnBodyLogic.h"
+#include "game/SheathHideLogic.h"
 
 using namespace obvr;
 using namespace obvr::game;
@@ -125,6 +126,36 @@ void TestShown() {
 	Check(KeptShownAt(back, HolsterSlot::BackRight) == KeptShown::Empty, "a shoulder place: not shown (the hips only)");
 }
 
+// The equipped one-hander kept at a shoulder: the game's sheath is hidden, so a weapon the left hip keeps shows there.
+void TestShoulderKeepsFreeTheHip() {
+	std::printf("A one-hander kept at a shoulder frees the hip\n");
+	KeptOnBodyInput in = TwoSwords();
+	in.equippedWeapon = kIron;
+	in.gameSheathHip = GameSheathHip(vr::EquippedKind::OneHand, false, false);
+	Check(KeptShownAt(in, HolsterSlot::HipLeft) == KeptShown::GameSheathThere, "the sheath shown at the left hip: the copy waits");
+	in.gameSheathHip = GameSheathHip(vr::EquippedKind::OneHand, false, true);
+	Check(KeptShownAt(in, HolsterSlot::HipLeft) == KeptShown::Shown, "the sheath hidden: the left hip shows its own copy");
+	in.kept[Index(HolsterSlot::BackRight)] = kIron;
+	in.item[Index(HolsterSlot::BackRight)] = SlotItem::OneHand;
+	in.inPack[Index(HolsterSlot::BackRight)] = true;
+	Check(KeptShownAt(in, HolsterSlot::BackRight) == KeptShown::Empty, "a shoulder shows no model (not for a hip)");
+}
+
+void TestHiddenSheathLocal() {
+	std::printf("The hidden sheath's transform\n");
+	NiTransform t{};
+	t.pos = NiPoint3{8.6f, 3.6f, -14.6f};
+	t.scale = 1.0f;
+	t.rot.data[0][0] = 0.0f;
+	t.rot.data[0][1] = 1.0f;
+	const NiTransform h = HiddenSheathLocal(t);
+	Check(h.scale > 0.0f && h.scale < 0.01f, "the scale is tiny but not zero (a singular matrix reads back badly)");
+	Check(Near(h.pos.x, t.pos.x) && Near(h.pos.y, t.pos.y) && Near(h.pos.z, t.pos.z) && Near(h.rot.data[0][1], 1.0f),
+	      "the place and the turn stay, so the node is where the game put it when it shows again");
+	t.scale = 0.9f;
+	Check(Near(HiddenSheathLocal(t).scale, 0.9f * kHiddenSheathScale), "a node already scaled: shrunk from there");
+}
+
 void TestGameSheathHip() {
 	std::printf("Where the game's sheath hangs\n");
 	Check(GameSheathHip(vr::EquippedKind::OneHand, false) == HolsterSlot::HipLeft, "a one-hander: the left hip");
@@ -132,6 +163,10 @@ void TestGameSheathHip() {
 	Check(GameSheathHip(vr::EquippedKind::TwoHand, false) == HolsterSlot::None, "a two-hander: on the back");
 	Check(GameSheathHip(vr::EquippedKind::Bow, true) == HolsterSlot::None, "a bow: on the back");
 	Check(GameSheathHip(vr::EquippedKind::Nothing, false) == HolsterSlot::None, "nothing equipped: no sheath");
+	Check(GameSheathHip(vr::EquippedKind::OneHand, false, true) == HolsterSlot::None &&
+	          GameSheathHip(vr::EquippedKind::OneHand, true, true) == HolsterSlot::None,
+	      "a one-hander kept at a shoulder: its hip sheath is hidden, so no sheath hangs at a hip");
+	Check(GameSheathHip(vr::EquippedKind::OneHand, false, false) == HolsterSlot::HipLeft, "not hidden: as before");
 }
 
 void TestNames() {
@@ -229,6 +264,8 @@ void TestPoses() {
 int main() {
 	TestShown();
 	TestGameSheathHip();
+	TestHiddenSheathLocal();
+	TestShoulderKeepsFreeTheHip();
 	TestNames();
 	TestHipLocal();
 	TestPoses();
