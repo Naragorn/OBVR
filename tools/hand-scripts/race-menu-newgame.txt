@@ -27,6 +27,10 @@
 # behind the menu after all (read as not). And the once-after-a-load switch
 # ([Hands] FirstPersonAfterLoad) must not fire at the race menu's own third
 # person: the new game is a load too.
+# The race menu in its colours (Nadi, 2026-11-26: "beim racemenu am anfang
+# ist das bild grau ... man muss den char ja sehen"): the game draws the
+# world live behind it and never tints it (game/MenuSnapshotRule.h), so the
+# menu shade must not either - "skip", not "carry".
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/race-menu-newgame.txt --save continue --run-timeout 360 --headless
 
 start main-menu
@@ -41,6 +45,9 @@ expect Chargen view: the race menu is up - the eyes
 expect Render: the eye pictures at the mark written
 reject HandScript: WARNING
 reject Hands: the save was made in third person
+expect Menu background: behind RaceSex (0x40C) the game shows the world as it is
+expect Render: live stereo menu frames skip the sepia dressing
+reject Render: live stereo menu frames carry the sepia dressing
 
 wait 6
 mark menu

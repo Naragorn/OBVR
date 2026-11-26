@@ -36,6 +36,11 @@ bool ReadScreenFaderOpacities(float (&out)[3]) {
 	return true;
 }
 
+bool ScreenFaderOn(UInt32 index) {
+	constexpr UInt32 kOnOffset = 0x08;
+	return index < addr::kScreenFaderCount && NodeOf(index) != 0 && Record(index)[kOnOffset] != 0;
+}
+
 void CullScreenFaders(bool cull) {
 	for (UInt32 i = 0; i < addr::kScreenFaderCount; ++i) {
 		const UInt32 node = NodeOf(i);

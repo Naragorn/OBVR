@@ -6375,10 +6375,10 @@ void OnFrameEnd() {
 
 	const UInt32 menuAge = menuIsUp ? g_presentedFrame - g_menuOpenedFrame
 	                                : kMenuDressingWindowFrames + 1;
-	// No shade behind a container's panel over the container: the world runs
-	// behind it and is meant to be seen as it is (the tester, 2026-10-08:
-	// "der orange shader muss weg").
-	const bool shadeWanted = config.tracker.menuShade && !ContainerPanelUp(config) && !g_hand.menuOnTablet;
+	// Only where the game shows its own tinted snapshot (game/MenuSnapshotRule.h: not the race menu), not behind
+	// a container's panel: the world runs on there (the tester, 2026-10-08: "der orange shader muss weg").
+	const bool shadeWanted = game::StepGameMenuSnapshot() && config.tracker.menuShade && !ContainerPanelUp(config) &&
+	                         !g_hand.menuOnTablet;
 	const MenuFrameDressing menuDressing = MenuDressingForFrame(
 		delivery, menuIsUp, liveMenuFrame, menuAge, shadeWanted,
 		config.tracker.menuSingleBorder, g_dialogMenuEpisode);

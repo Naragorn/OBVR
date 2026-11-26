@@ -5157,6 +5157,36 @@ the engine's face point, now read as it reads it); the drag's angle, medium (a d
 to read the angle and recompute, or the laser's own drag mapped to it, both unmeasured); the hook
 path if the probe fires, small.
 
+### The race menu's colours: the character grey (fixed 2026-11-26)
+
+Nadi, 2026-11-26: "beim racemenu am anfang ist das bild grau. glaube das istn bug. mann muss den
+char ja sehen."
+
+**Cause.** OBVR's menu shade (`[Render] MenuShade`, the sepia of the game's paused menus) went on
+every live menu frame except a conversation's, a container's panel and the tablet's. The race menu
+is a live menu frame: the game draws the world behind it every frame. So the new character was
+shown grey-beige (`MenuShadeColor` FFE3B2 at strength 1). Nadi's Windows log of 2026-11-23 says so
+at the race menu: "Render: live stereo menu frames carry the sepia dressing". The game itself never
+tints the race menu.
+
+**The game's rule (read in Oblivion.exe with objdump, 2026-11-26).** The main loop (0x0040D9D4)
+takes its tinted snapshot only in menu mode, with the interface manager's byte at +0x08 not 4, no
+conversation (0x0057AB70), none of the race menu, the main menu, a Generic menu or a message box
+open (0x005790E0 for each), the console closed (0x00579BC0) and the player in a cell with 3D (the
+checks at the top of 0x0040D160). It lets a kept snapshot go when menu mode ends or the main menu, a
+conversation, the race menu or the console comes up, but not while the screen fader 2 is on. So a
+message box over the inventory keeps the inventory's tint, and one over the walking world shows the
+world as it is. What the byte's 4 stands for is unread. The console check is derived, not proven:
+0x00579BC0 reads a byte that the console's print (0x00579B60) also asks before it prints. OBVR calls
+the same functions, so neither needs to be known for the rule to match.
+
+**Fix.** `game/MenuSnapshotRule.h` is that rule as a pure step (menu_snapshot_rule_test, red first).
+`game::StepGameMenuSnapshot` asks the engine's own functions once a frame and keeps the answer the
+way the game keeps its snapshot; the shade is wanted only where it says yes. The container panel and
+the tablet keep their own exceptions. It also takes the tint off the console and off a message box
+over the walking world, where the game does not tint either. Logged: "Menu background: behind
+RaceSex (0x40C) the game shows the world as it is (the race menu) - no menu shade".
+
 ## Open wish, 2026-10-23: the crosshair at the weapon hand off, shown only when it is wanted
 
 The tester, 2026-10-23, at the end of the evening: "note for future: crosshair an haupthand ausschalten endlich und es soll nur situational kommen". The crosshair that follows the weapon hand (AimAtSource, the head-based crosshair of #23 and its quad) is to be off in play by default, and to appear only in the situations that need an aim - a bow drawn, a spell held ready, the laser on a menu or a far activator - and go again after. Not built; the situations and their gates are to be listed with the tester first.

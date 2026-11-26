@@ -138,7 +138,12 @@ Open question: why the second render leaves the pass unable to draw. See
   common border (each eye trimmed to the window both show, so the frozen pair's edges
   fuse); a dialogue's exit fade, minutes after the DialogMenu opened, must not be dressed
   (it read as a half-second washed-grey picture), hence the ten-frame age gate and the
-  dialogue-episode latch (`MenuDressingWanted`, `DialogMenuEpisode`).
+  dialogue-episode latch (`MenuDressingWanted`, `DialogMenuEpisode`). Since 2026-11-26 the
+  shade is wanted only where the game itself would show its tinted snapshot, by the main
+  loop's own rule read at `0x0040D9D4` (`game/MenuSnapshotRule.h`, stepped by
+  `game::StepGameMenuSnapshot`): not behind the race menu, the main menu, a conversation,
+  the console, or a message box or Generic menu over the walking world. Before, every live
+  menu frame got it, and the race menu showed the new character grey.
 - **Live** (`LiveMenuBackground=1`, shipped, `EXPERIMENTAL`): the engine's own static
   menu background is switched off through the process-local copy at `0x00B33396`, the
   engine renders the world behind every pause menu itself, and `MenuStandIn` supplies the

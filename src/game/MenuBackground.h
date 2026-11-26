@@ -49,4 +49,14 @@ void ApplyLiveMenuBackground(bool wantLive);
 // that the live path is the one being taken.
 bool MenuSnapshotIsValid();
 
+// Whether the game would show its tinted snapshot behind the menus up now,
+// by its own rule (game/MenuSnapshotRule.h): the main loop's checks asked of
+// the engine's own functions, the answer kept from frame to frame as the
+// main loop keeps its snapshot. The same with the static background on or
+// turned off by LiveMenuBackground: OBVR's menu shade stands in for that
+// picture, so it is wanted only where this says yes. Call it once a frame,
+// on the render thread; each change of the answer or of the top menu is
+// logged ("Menu background: behind ...", bounded).
+bool StepGameMenuSnapshot();
+
 }  // namespace obvr::game
