@@ -119,6 +119,13 @@ public:
 	// the wrist; the layer's own bounds come back as it goes.
 	void SetTabletPlacement(UInt32 deviceIndex, const vr::openvr::HmdMatrix34& deviceToOverlay, float widthMetres,
 	                        const vr::openvr::VRTextureBounds& bounds, bool hidden);
+	// The tablet's place kept and nothing shown: the frames its menus close on
+	// (vr/TabletClose.h) - their fading pictures hang in no quad of the room.
+	void HideTablet() {
+		m_wristSet = true;
+		m_tabletSet = true;
+		m_tabletHidden = true;
+	}
 
 	// The rectangle of the layer texture the overlay shows, in texture
 	// pixels - the 2D's believed size, or the whole texture when belief and

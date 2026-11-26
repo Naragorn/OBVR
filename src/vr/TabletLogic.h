@@ -391,6 +391,7 @@ inline float PageLiftMetres(const HandReach& reach, bool holderPhysicalLeft) {
 // rectangles were read, both in the layer's pixels.
 struct TabletFrame {
 	bool up = false;
+	bool menusGone = false;  // menu mode on, only the HUD's menus in the stack: they close (vr/TabletClose.h)
 	UiRect paper;
 	// The tablet's whole face, in the layer's pixels: what the quad shows and
 	// the beam and the finger are mapped through (SurfaceToLayer).

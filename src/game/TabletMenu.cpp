@@ -8,6 +8,7 @@
 #include "game/MenuPause.h"
 #include "game/MenuType.h"
 #include "platform/Win32Min.h"
+#include "vr/TabletClose.h"
 
 namespace obvr::game {
 namespace {
@@ -285,6 +286,7 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 		state.loggedPage = kMenuIdNone;
 		state.loggedMissing = false;
 		PutBackBoxes(state, stack, count, nullptr, 0);
+		frame.menusGone = asked && vr::OnlyHudMenus(stack, count);
 		return frame;
 	}
 	const float screenWidth = vr::kHudUiHeightUnits * layerPixelsWidth / layerPixelsHeight;

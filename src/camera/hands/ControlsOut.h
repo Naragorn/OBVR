@@ -25,6 +25,7 @@
 #include "render/HudLayer.h"
 #include "render/VignetteLayer.h"
 #include "vr/MenuHaptics.h"
+#include "vr/TabletClose.h"
 
 namespace obvr::camera::hands {
 
@@ -73,6 +74,7 @@ struct ControlsOutState {
 	// How long the tablet has been up (vr::TabletUnrollShare), and its lines.
 	float tabletSeconds = 0.0f;
 	bool tabletWasUp = false;
+	vr::TabletCloseState tabletClose;  // the frames its menus close on (vr/TabletClose.h)
 	bool tabletShowedFigure = false;  // the figure's tab, as last said
 	bool tabletWasBetween = false;     // the scroll between the hands, as last said
 	bool tabletWasRight = false;       // kept by the right hand, as last said
@@ -104,6 +106,9 @@ struct ControlsOutLinks {
 	bool rolesSwapped;                     // the hands' roles swapped (left-handed)
 	float deltaSeconds;                    // the frame's (g_deltaSeconds)
 };
+
+// The hand mode stopped: the keys OBVR holds let go, a tablet's close forgotten.
+void ResetControlsOut(ControlsOutState& state, const Config& config);
 
 void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandShared& shared,
                      const vr::HandModeFrame& frame, const ControlsOutLinks& links);

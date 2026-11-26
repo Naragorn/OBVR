@@ -4512,10 +4512,7 @@ void ResetHandFeatures(const Config& config, bool headset, const hands::HandStep
 		         "headset %d)",
 		         config.fullVrMode ? 1 : 0, headset ? 1 : 0);
 	}
-	if (g_controlsOut.controlsHeld) {
-		game::ReleaseHandControls(config.handKeys);
-		g_controlsOut.controlsHeld = false;
-	}
+	hands::ResetControlsOut(g_controlsOut, config);
 	game::SetPlayerWalksUnderMenu(false);
 	game::SetMenuCursorWanted(false, 0.0f, 0.0f);
 	g_hudLayer.ClearWristPlacement();
@@ -6289,7 +6286,7 @@ void OnFrameEnd() {
 	// Only where the game shows its own tinted snapshot (game/MenuSnapshotRule.h: not the race menu), not behind
 	// a container's panel: the world runs on there (the tester, 2026-10-08: "der orange shader muss weg").
 	const bool shadeWanted = game::StepGameMenuSnapshot() && config.tracker.menuShade && !ContainerPanelUp(config) &&
-	                         !g_hand.menuOnTablet;
+	                         !g_hand.menuOnTablet && !g_controlsOut.tabletClose.closing;  // nor as it closes
 	const MenuFrameDressing menuDressing = MenuDressingForFrame(
 		delivery, menuIsUp, liveMenuFrame, menuAge, shadeWanted,
 		config.tracker.menuSingleBorder, g_dialogMenuEpisode);

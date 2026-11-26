@@ -287,6 +287,13 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 		                                                                       : "in the off hand, as an overlay")
 		                                         : "put down - the menus as before");
 	}
+	// The frames its menus close on are the tablet's still (vr/TabletClose.h).
+	const UInt32 fadeFrames = state.tabletClose.frames;
+	const bool closing = vr::StepTabletClose(state.tabletClose, hand.menuOnTablet, frame.tablet.menusGone);
+	if (!closing && fadeFrames > 0) {
+		OBVR_LOG("Tablet: %s - the menus' fade kept out of the room and the eyes (%u frame(s))",
+		         hand.menuOnTablet ? "the pages back" : "closed", fadeFrames);
+	}
 	if (hand.menuOnTablet && textureWidth > 0.0f && textureHeight > 0.0f) {
 		const vr::openvr::VRTextureBounds bounds{frame.tablet.crop.left / textureWidth, frame.tablet.crop.top / textureHeight,
 		                                         frame.tablet.crop.right / textureWidth,
@@ -294,6 +301,8 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 		links.hudLayer.SetTabletPlacement(backend.HandDeviceIndex(vr::HandDeviceForRole(false, links.rolesSwapped)),
 		                                  hand.menuTransform, hand.tabletWidth, bounds,
 		                                  config.hands.tablet.inScene && drawnBoth);
+	} else if (closing) {
+		links.hudLayer.HideTablet();
 	} else if (hand.menuOnWrist) {
 		links.hudLayer.SetWristPlacement(backend.HandDeviceIndex(vr::HandDeviceForRole(hand.menuWristRight, links.rolesSwapped)),
 		                             hand.menuTransform, config.hands.wristMenuWidth);
@@ -410,6 +419,14 @@ void LogTabletWalk(ControlsOutState& state, const vr::HandModeResult& hand, cons
 
 
 }  // namespace
+
+void ResetControlsOut(ControlsOutState& state, const Config& config) {
+	if (state.controlsHeld) {
+		game::ReleaseHandControls(config.handKeys);
+		state.controlsHeld = false;
+	}
+	state.tabletClose = vr::TabletCloseState{};
+}
 
 void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandShared& shared,
                      const vr::HandModeFrame& frame, const ControlsOutLinks& links) {

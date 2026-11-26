@@ -1,0 +1,52 @@
+# The frames a tablet closes on (Nadi's Windows run of 2026-11-26: "wenn
+# ich das tablet schließe dann kam es noch im cinema mode vor mir schwebend
+# kurz für paar frames"; docs/inventory-tablet-spec.md 24.2). The left B
+# opens the inventory on the left hand's tablet and closes it again; the
+# mark "closing" falls 0.05 s after the closing press, inside the menus'
+# fade (about 17 frames at 72 Hz with menu mode still on and the stack
+# empty). At a mark the log names the OpenVR overlays shown, and EyeDump
+# keeps the eye pictures. While the menus fade, the room's overlay must not
+# show them ahead of the head, nor the menu shade tint the eyes: at
+# "closing" no obvr.hud, at "closed" (the world) obvr.hud with the HUD as
+# always - so the line below is counted once, at "closed".
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet Unroll=vertical
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Tablet InScene=1
+ini Render UnpausedMenus=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: in the off hand, drawn into the eyes
+expect Tablet: put down - the menus as before
+expect Tablet: closed - the menus' fade kept out of the room and the eyes
+count 1 (at the mark, menu none): obvr.hud
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.25 -0.15
+right rot 40 32 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2.5
+mark open
+wait 1
+left b 1
+wait 0.05
+mark closing
+wait 0.15
+left b 0
+wait 1.5
+mark closed
+wait 1

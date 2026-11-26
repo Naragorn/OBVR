@@ -1580,3 +1580,65 @@ linken stick laufen. in der welt draußen ging es."
   section 20 (the open point of section 21), not this change.
 - Not run: the headset; a walk under a reached container with a torch; a
   shield or a bow in the off hand under the tablet [G: the same rule].
+
+### 24.2 The closing frames: the menus floated ahead and the world went sepia
+
+Nadi: "wenn ich das tablet schließe dann kam es noch im cinema mode vor mir
+schwebend kurz für paar frames. diese weg."
+
+- [R in the log] At every close: "Hands: menu none (0x000) - the hands
+  stay" (menu mode on, the stack empty), "Tablet: put down - the menus as
+  before", "Hud: the overlay 1.60 m wide - off the wrist again" (6240-6242,
+  6421-6423 and on), and only then "Menu trace: a menu just closed".
+- [R in the harness, a probe build, not committed, 20261126-160147-slot3]
+  From the menu key on, menu mode stays on for 17 frames (0.24 s at 72 Hz)
+  with the stack empty, and the 2D pass still draws 108 pictures a frame -
+  the menus fading out (the tablet's frames drew 227, the world's HUD 27);
+  the layer is captured each of those frames.
+- [R in the code] The tablet's frame needs the pages' entry in the stack
+  (vr::TabletMenusUp), so the tablet was put down at the first of those
+  frames. With it down: the room's overlay (render/HudLayer) was placed
+  "as before" - ahead of the head, 1.6 m wide, showing the layer, i.e. the
+  fading menus; and the menu shade, off only while the tablet is up
+  (CameraHook.cpp shadeWanted), tinted the eyes, since the world is paused
+  and the frame is the stand-in's live menu frame.
+- [R in the harness, the DLL of 8095bfd, tablet-close.txt,
+  20261126-160458-slot4] At the mark 0.05 s after the closing press:
+  "Render: OpenVR overlays shown (at the mark, menu none): obvr.hud", and
+  the left eye's picture sepia (the mean colour 52 46 36 against 54 53 43 at
+  the open and closed marks).
+- **Cause** [D]: the menus' fade after the close ran with the tablet put
+  down but menu mode still on, so it got the place and the dressing of the
+  menus without the tablet - "the cinema", in front, tinted.
+- **Changed** (vr/TabletClose.h, pure: `OnlyHudMenus`, `StepTabletClose`;
+  vr::TabletFrame `menusGone`, set by game/TabletMenu.cpp when menu mode is
+  on and only the HUD's menus are in the stack; camera/hands/ControlsOut
+  steps it and keeps the room's overlay hidden at the tablet's place,
+  render::HudLayer::HideTablet; CameraHook.cpp's shade also off while it
+  closes, the line count kept): the frames that follow a frame with the
+  tablet up, for as long as menu mode is on with only the HUD's menus left,
+  are the tablet's still - nothing in the room, no shade; the tablet itself
+  is gone from the hand at the menu key, as the menus are. Another menu in
+  the stack (the Esc menu over the pages) is no closing: it gets its own
+  panel as before. A stack read empty for a frame between two tablet frames
+  is held the same way ("the pages back"). Said as it ends: "Tablet: closed -
+  the menus' fade kept out of the room and the eyes (N frame(s))". Moved
+  with it: the hand mode's reset of ControlsOut's state
+  (hands::ResetControlsOut, three lines out of CameraHook.cpp), so a close
+  cut short by the hand mode stopping leaves no shade switched off.
+- Tests: tablet_close_test (the HUD's menus only, the closing frames and
+  their count, another menu taking the pages' place, a menu closing without
+  the tablet, the pages back after a frame). Written first: it did not build
+  before vr/TabletClose.h.
+- Harness, Linux, headless, the stand-in runtime (tablet-close.txt, new;
+  EyeDump at the marks): FAIL with 8095bfd (20261126-160458-slot4: "(at the
+  mark, menu none): obvr.hud" counted twice - at "closing" and at "closed" -
+  and the closing line missing), PASS with this change
+  (20261126-161104-slot3: at "closing" no overlay shown, "closed ... (12
+  frame(s))", the closing picture 54 53 43 as the others). The pictures side
+  by side: artifacts/hand-script/tablet-close/close-old-vs-new.png in the
+  worktree. tablet-pages.txt and tablet-message.txt PASS
+  (20261126-161231-slot2, 20261126-161401-slot2).
+- Not run: the headset - SteamVR's compositing is not in a harness run, so
+  the overlay is checked by the overlays the log names, not by a picture;
+  the tablet as an overlay (InScene=0).

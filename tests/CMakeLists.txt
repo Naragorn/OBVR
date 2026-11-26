@@ -2776,6 +2776,14 @@ if(NOT MSVC)
 endif()
 add_test(NAME tablet_boxes COMMAND tablet_boxes_test)
 
+# The frames the tablet's menus close on (vr/TabletClose.h): pure.
+add_executable(tablet_close_test TabletCloseTest.cpp)
+target_include_directories(tablet_close_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_close_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet_close COMMAND tablet_close_test)
+
 # How far ahead the poses are predicted when the wait comes late (vr/PosePrediction.h): pure.
 add_executable(pose_prediction_test PosePredictionTest.cpp)
 target_include_directories(pose_prediction_test PRIVATE ../src)
