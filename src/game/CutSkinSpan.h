@@ -1,10 +1,12 @@
 #pragma once
 
 // The engine side of game/CutSkeletonLogic.h's span: whether a skinned shape
-// taken whole to a limb's part would stretch between the part and the body.
+// taken whole to a limb's part would stretch between the part and the body;
+// and how much of a shape is the head, for a head cut.
 
 #include "core/Types.h"
 #include "game/CutSkeletonLogic.h"
+#include "game/GameTypes.h"
 
 namespace obvr::game {
 
@@ -17,5 +19,17 @@ namespace obvr::game {
 // `spanning` the vertices on both sides; None; Unread when any of it does not
 // read or the counts disagree.
 SpanRead ShapeSpansCut(UInt32 geometry, const bool* flies, UInt32 boneCount, UInt32& spanning);
+
+// A skinned shape's share of the head (CutSkeletonLogic.h HeadShareCopies):
+// `mostly` its vertices on `head` and the bones under it by half their weight
+// or more, of `vertices`. Read false when its skin does not read; a shape with
+// no bone of the head reads as none (both 0), its weights not walked.
+struct HeadShare {
+	bool read = true;
+	UInt32 mostly = 0;
+	UInt32 vertices = 0;
+};
+
+HeadShare ShapeHeadShare(UInt32 geometry, const NiAVObject* head);
 
 }  // namespace obvr::game

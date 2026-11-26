@@ -1,7 +1,7 @@
 #include "game/Dismember.h"
 
-// The necks, wrists and limb joints a blade is tested against, and two reads
-// of an actor's state (moved out of game/Dismember.cpp, 2026-11-26, the size
+// The necks, wrists and limb joints a blade is tested against, a part's bone
+// by its names, and three reads of an actor's state (moved out of game/Dismember.cpp, 2026-11-26, the size
 // ratchet). Declared in game/Dismember.h.
 
 #include "core/AddressSpace.h"
@@ -38,6 +38,22 @@ NiAVObject* ParentOf(const NiAVObject* node) {
 }
 
 }  // namespace
+
+NiAVObject* PartBoneOf(UInt32 root, CutPart part) {
+	if (part != CutPart::Head) {
+		return Named(root, BonesOfCut(part).part);
+	}
+	NiAVObject* head = nullptr;
+	for (UInt32 i = 0; head == nullptr && HeadBoneName(i) != nullptr; ++i) {
+		head = Named(root, HeadBoneName(i));
+	}
+	return head;
+}
+
+bool ActorIsCreature(UInt32 actor) {
+	const UInt32 base = LooksLikeObject(actor) ? Read(actor + addr::kRefBaseFormOffset) : 0;
+	return LooksLikeObject(base) && IsCreatureFormType(*reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset));
+}
 
 bool LoadedActorIsDead(UInt32 actor) {
 	RosterActor actors[64];
@@ -77,7 +93,7 @@ UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 mo
 		++rule.asked;
 		// The head first: most of those asked are out of reach by it, and
 		// every name is a walk.
-		NiAVObject* const head = Named(root, "Bip01 Head");
+		NiAVObject* const head = PartBoneOf(root, CutPart::Head);  // a rat's Skull too
 		if (head == nullptr || (head->worldTransform.pos - around).LengthSquared() > within * within) {
 			continue;
 		}

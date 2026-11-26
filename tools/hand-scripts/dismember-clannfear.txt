@@ -1,0 +1,54 @@
+# A clannfear's head comes off (docs/dismemberment-spec.md "2026-11-26: beasts"):
+# its head bone is "Bip01 Skull" (under Neck1), not "Bip01 Head" - no neck was
+# found before. Its head is a rigid mesh of its own under the skull (2173
+# vertices); its body clannfear.nif has 31 of 2688 vertices mostly on the
+# skull (1/87), left to the stump. CreatureClannfear (00034EA3) placed 200
+# units ahead and killed, its head cut by [Debug] TestCut.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/dismember-clannfear.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Hands Dismemberment=1
+ini Debug TestCut=1
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme 00034EA3 1 200 0
+console-at kill killall
+
+expect HandScript: finished
+expect Dismember: the engine's joint and list functions as read
+expect Dismember: test cut at the mark - cut
+expect 's head cut - 1 neck joint(s) released
+expect woken and sent off
+expect Dismember: at the mark "cut_07"
+expect Dismember: test cut at the mark - cut
+reject Dismember: test cut at the mark - no dead actor
+reject HandScript: WARNING
+reject Necks: the bound left out
+reject - its cut forgotten
+reject NOT copied
+reject CRASH
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 0.5
+mark placed
+wait 1
+mark kill
+wait 3
+head pitch -30
+wait 0.5
+mark lying
+wait 0.5
+mark cut
+wait 0.2
+mark cut_02
+wait 0.5
+mark cut_07
+wait 1.5
+mark end

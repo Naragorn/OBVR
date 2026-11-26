@@ -58,6 +58,7 @@ struct Cut {
 	NiAVObject* neckTop = nullptr;   // Bip01 Neck1, or null (counted as the head's bones)
 	NiAVObject* neckBase = nullptr;  // Bip01 Neck, or null
 	NiAVObject* other = nullptr;  // a hand cut: the other hand (its bones stay; SwapBoneOnPartSide)
+	bool creature = false;  // a head cut of a creature: its head may lie in its body's mesh (HeadShareCopies)
 	NiPoint3 cutInNeck{0.0f, 0.0f, 0.0f};  // the head's origin in the neck's frame at the cut
 	FakeNode bodySide{};  // the body's shapes' head bone: at the cut, following the neck
 	FakeNode headSide{};  // the head's shapes' other bones: at the head's origin
@@ -411,6 +412,38 @@ ShapeSide SideOfShape(const NiAVObject* node, bool inHead, const Cut& c, const N
 	return side;
 }
 
+// Whether a shape is drawn again for the part: a limb cut's body shape with
+// bones of the part (CutSideLogic.h PartCopyWanted), a head cut's body shape
+// of a creature holding enough of the head by its weights (CutSkeletonLogic.h
+// HeadShareCopies: a troll's head in its body's mesh) - never a decal shape.
+bool CopyWantedFor(const NiAVObject* node, ShapeSide side, UInt32 partBones, bool skinned, bool holdsCutNode,
+                   const Cut& c, const char* shapeName) {
+	const bool headCut = c.part == CutPart::Head;
+	const bool decal = IsDecalShapeName(shapeName);
+	if (decal && PartCopyWanted(headCut, side, partBones, false)) {
+		static UInt32 s_decalLines = 64;  // every cut of dismember-marked-body.txt says its own (25 lines there)
+		if (s_decalLines > 0) {
+			--s_decalLines;
+			OBVR_LOG("Dismember: the decal shape \"%s\" is not drawn again for the part - a decal shape's copy holds no "
+			         "decal and the decal shader reads one; the marks on the limb's skin stay off the limb",
+			         shapeName);
+		}
+	}
+	if (!HeadShareWanted(headCut, c.creature, side, holdsCutNode, skinned, decal)) {
+		return PartCopyWanted(headCut, side, partBones, decal);
+	}
+	const HeadShare share = ShapeHeadShare(reinterpret_cast<UInt32>(node), c.head);
+	const bool copy = share.read && HeadShareCopies(share.mostly, share.vertices);
+	static UInt32 s_shareLines = 32;
+	if (share.mostly > 0 && s_shareLines > 0) {
+		--s_shareLines;
+		OBVR_LOG("Dismember: %08X's head - \"%s\": %u of its %u vertices mostly on the head (1/%u or more wanted) - %s",
+		         c.actor, shapeName != nullptr ? shapeName : "?", share.mostly, share.vertices, kHeadCopyShareParts,
+		         copy ? "drawn again for the head" : "left to the stump");
+	}
+	return copy;
+}
+
 void SwapSkins(const NiAVObject* node, bool underHead, Cut& c, const NiPoint3& spine2, SwapCount& n,
                UInt32 depth) {
 	if (!LooksLikeObject(reinterpret_cast<UInt32>(node)) || depth > kMaxDepth) {
@@ -438,17 +471,8 @@ void SwapSkins(const NiAVObject* node, bool underHead, Cut& c, const NiPoint3& s
 		const char* const shapeName = LooksLikeObject(reinterpret_cast<UInt32>(node->name) & ~3u) ? node->name : nullptr;
 		const ShapeSide side = SideOfShape(node, inHead, c, spine2, headBones, bones, holdsPart, holdsStump, shapeName);
 		const bool headSide = side == ShapeSide::Part;
-		const bool decal = IsDecalShapeName(shapeName);
-		if (PartCopyWanted(c.part == CutPart::Head, side, headBones, decal)) {
+		if (CopyWantedFor(node, side, headBones, bones > 0, holdsPart || holdsStump, c, shapeName)) {
 			AddPartCopy(n.copies, node, c.head, reinterpret_cast<UInt32>(c.headSide.bytes));  // before the swap: its bones still real
-		} else if (decal && PartCopyWanted(c.part == CutPart::Head, side, headBones, false)) {
-			static UInt32 s_lines = 64;  // every cut of dismember-marked-body.txt says its own (25 lines there)
-			if (s_lines > 0) {
-				--s_lines;
-				OBVR_LOG("Dismember: the decal shape \"%s\" is not drawn again for the part - a decal shape's copy holds no "
-				         "decal and the decal shader reads one; the marks on the limb's skin stay off the limb",
-				         shapeName);
-			}
 		}
 		const UInt32 before = n.shapes;
 		SwapShape(reinterpret_cast<UInt32>(node), headSide, c, n);
@@ -617,7 +641,7 @@ static const char* CutRefusedBefore(UInt32 actor, CutPart part) {
 // to join it to is not there.
 static bool CutBonesOf(UInt32 root, CutPart part, NiAVObject*& head, NiAVObject*& joint, NiAVObject*& stump) {
 	const CutPartBones bones = BonesOfCut(part);
-	head = Named(root, bones.part);
+	head = PartBoneOf(root, part);  // a rat's head bone is its Skull
 	if (head == nullptr) {
 		return false;
 	}
@@ -677,6 +701,7 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 	c.neckTop = isHead ? Named(root, "Bip01 Neck1") : nullptr;
 	c.neckBase = isHead ? Named(root, "Bip01 Neck") : nullptr;
 	c.other = bones.other != nullptr ? Named(root, bones.other) : nullptr;
+	c.creature = isHead && ActorIsCreature(actor);
 	const NiTransform& nw = neck->worldTransform;
 	const NiPoint3 rel = head->worldTransform.pos - nw.pos;
 	const float inv = nw.scale > 0.0f ? 1.0f / nw.scale : 1.0f;
@@ -884,7 +909,7 @@ void StepCuts(const CutSettings& settings, float dtSeconds) {
 			LooksLikeObject(reinterpret_cast<UInt32>(c.head)) && LooksLikeObject(reinterpret_cast<UInt32>(c.neck));
 		// Only when the check is gone (rare): the part's bone still the skeleton's, and who still points at the cut.
 		const bool held = skinsRebuilt && bonesThere && root == c.root &&
-		                  Named(root, BonesOfCut(c.part).part) == c.head &&
+		                  PartBoneOf(root, c.part) == c.head &&
 		                  ShapesHoldBoneIn(root, reinterpret_cast<UInt32>(&c), sizeof(Cut));
 		const CutFate fate = CutFateFor(root == c.root, bonesThere, skinsRebuilt, held);
 		if (fate == CutFate::Reswap) {

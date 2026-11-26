@@ -51,8 +51,10 @@ inline ShapeSide ShapeSideFor(bool holdsPartNode, bool holdsStumpNode, UInt32 pa
 // One copy a shape: once swapped, the original has no real bone of the part
 // left (partBones counts the real ones only), and a copy itself holds the
 // cut's part node, so it is the part's side at every later reading.
-// Not for a head: the face is the part's own shape already, and a collar
-// weighted on the head bone is no part of the head.
+// Not for a head by this rule: the face is the part's own shape already, and
+// a collar weighted on the head bone is no part of the head. A creature's
+// head lying in its body's mesh is copied by its weights instead
+// (CutSkeletonLogic.h HeadShareCopies).
 // Never one of the engine's decal shapes (IsDecalShapeName): the clone of a
 // decal shape has a decal property with no decal in it, and the decal
 // shader's draw (0x00805F20) takes the property's first decal unasked -

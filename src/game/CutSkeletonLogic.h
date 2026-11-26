@@ -169,4 +169,94 @@ inline bool SpanWanted(ShapeSide byBones, bool headCut, bool holdsCutNode, bool 
 // some staying (a hand's own mesh on a forearm cut goes whole).
 inline bool SpanPossible(bool anyFlies, bool anyStays) { return anyFlies && anyStays; }
 
+// The head bone's names, asked in this order: "Bip01 Head", else "Bip01
+// Skull" - the rat's, the clannfear's and the daedroth's head bone (pyffi on
+// their skeleton.nif, docs/dismemberment-spec.md "2026-11-26: beasts"), whose
+// neck was never found (the tester's rats: "its sweep on misses the neck").
+// Null past the last.
+inline const char* HeadBoneName(UInt32 i) {
+	switch (i) {
+	case 0: return "Bip01 Head";
+	case 1: return "Bip01 Skull";
+	default: return nullptr;
+	}
+}
+
+// The vertices of a shape that hang on the bones going with the part (the
+// head and what hangs under it) by at least half of their weight, summed:
+// `sums` holds a UInt16 a vertex, `vertexCount` of them, zeroed here, each
+// weight added in thousandths (rounded; saturating). A weight naming a vertex
+// past the count, or not above 0, is not counted.
+inline constexpr UInt32 kMostlyThousandths = 500;
+
+inline UInt32 VerticesMostlyOnPart(const CutBoneWeights* bones, UInt32 boneCount, UInt32 vertexCount, UInt16* sums) {
+	for (UInt32 v = 0; v < vertexCount; ++v) {
+		sums[v] = 0;
+	}
+	UInt32 mostly = 0;
+	for (UInt32 b = 0; b < boneCount; ++b) {
+		if (!bones[b].flies) {
+			continue;
+		}
+		for (UInt32 k = 0; k < bones[b].count; ++k) {
+			const CutWeight& w = bones[b].weights[k];
+			if (w.vertex >= vertexCount || !(w.weight > 0.0f)) {
+				continue;
+			}
+			const UInt32 add = w.weight < 1.0f ? static_cast<UInt32>(w.weight * 1000.0f + 0.5f) : 1000u;
+			const UInt32 before = sums[w.vertex];
+			const UInt32 after = before + add < 0xFFFFu ? before + add : 0xFFFFu;
+			sums[w.vertex] = static_cast<UInt16>(after);
+			mostly += before < kMostlyThousandths && after >= kMostlyThousandths ? 1 : 0;
+		}
+	}
+	return mostly;
+}
+
+// A head cut's shape of the body that holds part of the head, drawn again for
+// the head (the tester, 2026-11-26: "go" to more creatures losing their
+// heads). A troll's, an imp's, a deer's head is no mesh of its own but part of
+// the body's one skinned mesh: the body's by its bones (a troll's 13 of 61),
+// its head's vertices collapsed into the stump and only the rigid hair, horns
+// or eyes flew. Such a shape is copied before the swap, as a limb's is
+// (CutSideLogic.h PartCopyWanted), the copy keeping the head's bones and
+// sending every other to the head's own node.
+// Which shapes: on a creature, those whose vertices hang on the head bone
+// or under it by at least half their weight, as a share of all its vertices
+// - measured with pyffi (tools/nif-head-share.py) on every vanilla, Shivering
+// Isles and installed creature mesh (docs/dismemberment-spec.md "2026-11-26:
+// beasts"): a head in the body's mesh from 0.050 (the elytra, 219 of 4340
+// vertices) and 0.060 (a mod's centurion) to 0.61; the rest of a body around
+// a rigid head of its own from 0.003 to 0.029 (a boar's neck) - and to 0.13
+// (a wolf's head's back and neck, the bear's, the minotaur's, the rat's skull
+// and ears), which go with the head too. A fortieth (0.025): half the
+// elytra's.
+// Never on an NPC: its head is its own mesh (FaceGenFace, the head's side
+// already), and no share tells a collar from a head - the middleclass/02
+// shirt's collar is 0.151 (116 of 769), the installed robe hoods' (9 bones,
+// the body's by the bone rule) 0.416, the Chorrol guard's helmet 0.87, the
+// emperor's dress collar 0.58, a frost atronach's head 0.102. Their head
+// vertices collapse into the stump as before.
+inline constexpr UInt32 kHeadCopyShareParts = 40;  // a share of 1/40 or more
+
+// Whether a shape's skin is read for its share of the head: a skinned shape
+// of the body's side at a creature's head cut, holding no cut node (a rescan:
+// the original's head bones point at the stump, the copy's other bones at the
+// part), and no decal shape (PartCopyWanted).
+inline bool HeadShareWanted(bool headCut, bool creature, ShapeSide side, bool holdsCutNode, bool skinned, bool decal) {
+	return headCut && creature && side == ShapeSide::Body && !holdsCutNode && skinned && !decal;
+}
+
+// And whether the share read copies it: at least one vertex, and its share
+// a fortieth or more (counted in whole numbers: 25 of 1000 is).
+inline bool HeadShareCopies(UInt32 mostly, UInt32 vertices) {
+	return mostly > 0 && mostly <= vertices && mostly * kHeadCopyShareParts >= vertices;
+}
+
+// The base form's type (TESForm +0x04, xOBSE GameForms.h FormType): a
+// creature's (an NPC's is 0x23).
+inline constexpr UInt8 kCreatureFormType = 0x24;
+
+inline bool IsCreatureFormType(UInt8 type) { return type == kCreatureFormType; }
+
 }  // namespace obvr::game

@@ -1,12 +1,10 @@
-# A probe, not a pass/fail of a fix: a troll's head is part of its body's one
-# skinned mesh (troll.nif: 1088 of its 5476 vertices mostly on the head bone or
-# under it, pyffi) and its joint goes to Spine2, so it was cut before
-# 2026-11-26 as now: the joint released, the head bone sent off - and the
-# body's shape, the body's by its bones, collapses the head's vertices into the
-# stump (docs/dismemberment-spec.md, "2026-11-26: creatures", open). The
-# pictures at cut_07 and end show what is left. CreatureTroll (00002DBC)
-# placed 250 units ahead, killed, its head cut by [Debug] TestCut.
-# Run with: python3 tools/hand-script-run.py tools/hand-scripts/dismember-troll-probe.txt --headless --no-steamvr --parallel
+# A daedroth's head comes off with its skin (docs/dismemberment-spec.md
+# "2026-11-26: beasts"): both fixes at once - its head bone is "Bip01 Skull"
+# (under Neck2; before, no neck was found), and daedroth.nif's one skinned
+# shape "Daedroth" holds the head, 1594 of its 5948 vertices mostly on the
+# skull or under it (pyffi). CreatureDaedroth (0002B19A) placed 250 units ahead
+# and killed, its head cut by [Debug] TestCut.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/dismember-daedroth.txt --headless --no-steamvr --parallel
 
 ini Hands Enabled=1
 ini Hands Dismemberment=1
@@ -16,7 +14,7 @@ ini Debug EyeDump=1
 console-at ready CloseAllMenus
 console-at ready tgm
 console-at ready player.setangle z 0
-console-at placed player.placeatme 00002DBC 1 250 0
+console-at placed player.placeatme 0002B19A 1 250 0
 console-at kill killall
 
 expect HandScript: finished
@@ -25,10 +23,13 @@ expect Dismember: test cut at the mark - cut
 expect 's head cut - 1 neck joint(s) released
 expect woken and sent off
 expect Dismember: at the mark "cut_07"
-expect Troll01:0(body
+expect vertices mostly on the head (1/40 or more wanted) - drawn again for the head
+expect its skin going with it: Daedroth
+reject Dismember: test cut at the mark - no dead actor
 reject HandScript: WARNING
 reject Necks: the bound left out
 reject - its cut forgotten
+reject NOT copied
 reject CRASH
 
 wait 12

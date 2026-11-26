@@ -1,0 +1,58 @@
+# A troll's head comes off with its skin (the tester's "go", 2026-11-26, to more
+# creatures losing their heads; docs/dismemberment-spec.md "2026-11-26: beasts").
+# The troll's head is no mesh of its own: troll.nif's one skinned shape
+# Troll01:0 holds it, 1064 of its 5476 vertices mostly on the head bone or under
+# it (pyffi, tools/nif-head-share.py). The shape is the body's by its bones (13 of
+# 61), so the cut collapsed those vertices into the stump and the head bone flew
+# bare (the probe of 2026-11-26, 20261126-165112-slot2: "Troll01:0(body, 13/61)",
+# nothing drawn again). Now the shape is drawn again for the head (a creature,
+# 1/40 or more of its vertices mostly on the head). CreatureTroll (00002DBC)
+# placed 250 units ahead, killed, its head cut by [Debug] TestCut at "cut".
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/dismember-troll.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Hands Dismemberment=1
+ini Debug TestCut=1
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme 00002DBC 1 250 0
+console-at kill killall
+
+expect HandScript: finished
+expect Dismember: the engine's joint and list functions as read
+expect Dismember: test cut at the mark - cut
+expect 's head cut - 1 neck joint(s) released
+expect woken and sent off
+expect vertices mostly on the head (1/40 or more wanted) - drawn again for the head
+expect of the body's shape(s) drawn again for the part, its skin going with it: Troll01:0
+expect Dismember: at the mark "cut_07"
+reject HandScript: WARNING
+reject Necks: the bound left out
+reject - its cut forgotten
+reject NOT copied
+reject CRASH
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 0.5
+mark placed
+wait 1
+mark kill
+wait 3
+head pitch -25
+wait 0.5
+mark lying
+wait 0.5
+mark cut
+wait 0.2
+mark cut_02
+wait 0.5
+mark cut_07
+wait 1.5
+mark end

@@ -4,6 +4,10 @@
 #include "game/DismemberLogic.h"
 #include "game/NiMath.h"
 
+namespace obvr {
+struct NiAVObject;
+}
+
 namespace obvr::game {
 
 // The engine side of the cut (game/DismemberLogic.h for the rule; read
@@ -51,6 +55,15 @@ enum class NeckParts : UInt8 { NeckOnly, All };
 // with their necks; up to `most`. An actor is asked for its bones only when
 // its 3D's bound can hold one in reach (game/NeckReachLogic.h).
 UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 most, NeckParts parts = NeckParts::All);
+
+// The part's bone under `root`: the head by its names in order
+// (CutSkeletonLogic.h HeadBoneName: a rat's is "Bip01 Skull"), a limb by the
+// one BonesOfCut names; null when the skeleton has none.
+NiAVObject* PartBoneOf(UInt32 root, CutPart part);
+
+// Whether `actor`'s base form is a creature's (CutSkeletonLogic.h
+// IsCreatureFormType); false when it cannot be read.
+bool ActorIsCreature(UInt32 actor);
 
 // Whether `actor` is among the loaded actors and dead; false when it is
 // not loaded any more (the killing blow's wait never cuts a vanished one).

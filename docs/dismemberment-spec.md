@@ -1126,6 +1126,88 @@ to TestCutHeadAtMark (201 -> 184 lines, the table lowered).
      not the human plug at the head's scale. Small-medium, the pictures decide.
   The horse (Bip02 bones) and the skeleton (no head joint: its bones fall apart anyway) stay out.
 
+### 2026-11-26: beasts - the head drawn again from the body's mesh, the skull
+
+The tester said "go" to 1 and 2 of the list above; 3 (the caps' size per creature) waits for the
+tester's look. One part a swing stays as built, for corpses too (confirmed by the tester).
+
+**Cause 1: a head inside the body's one mesh collapsed into the stump.** (Read, the code) A head
+cut swaps the head bone of every body-side shape to the stump node; a troll's, an imp's, a deer's
+head is part of the body's one skinned shape (the body's by the bone rule: Troll01:0 13 of 61), so
+its head vertices collapsed into the stump and only rigid parts (hair, horns, antlers, eyes) flew.
+`PartCopyWanted` never copied a shape for a head.
+
+**The threshold, measured** (pyffi, `tools/nif-head-share.py`, new): for every skinned shape the
+vertices whose weights on the head bone and the nodes under it (by the skeleton.nif) sum to 0.5 or
+more, as a share of its vertices. Run on every creature folder of the vanilla and the Shivering
+Isles BSA against its own skeleton, the Linux install's loose creature folders (mods among them),
+every vanilla `meshes/armor`, `clothes`, `characters` file (1143 shapes) and the Linux install's
+loose Clothes, Armor and Characters/_male, _female (1035 files, 4921 shapes). The tables are in
+the OBNG knowledge file (`dismemberment.md`, "How much of a body's mesh is the head") and the raw
+TSVs in artifacts/beasts-1126/ (not in Git). Only shapes that are the body's by the bone rule count:
+- (read) a creature's head in its body: from 0.050 (the elytra) and 0.102 (the frost atronach) up
+  to 0.42 (grummite); troll 0.194, imp 0.156, deer 0.262, sheep 0.397, daedroth 0.268;
+- (read) a creature's body around a rigid head of its own: 0.004 (land dreugh) to 0.029 (boar),
+  and up to 0.133 where the head's back, neck fur or ears hang on the head (minotaur, rat, bear,
+  wolf);
+- (read) human clothing and armour: up to 0.151 (the vanilla middleclass/02 shirt's collar) and
+  0.123 (chainmail cuirass) - above the frost atronach's head. Mostly-head shapes the bone rule
+  gives the body: the Chorrol guard's helmet 0.873, the installed robe hoods (9 bones) 0.416, a
+  Dark Brotherhood helmet 0.492, the emperor's dress collar 0.580.
+- (derived) No share separates a creature's head from an NPC's collar. The actor's kind does: an
+  NPC's head is always its own mesh (FaceGenFace, the head's side already). So the copy is for
+  creatures only (the base form's type 0x24, `ActorIsCreature`), at a share of 1/40 or more - half
+  the lowest head in a body (the elytra). On NPCs nothing changes: collars and hoods are not
+  copied.
+
+**Fix 1 (built):** `game/CutSkeletonLogic.h` `HeadShareWanted`, `HeadShareCopies`,
+`VerticesMostlyOnPart`; the skin read in place by `game/CutSkinSpan.cpp` `ShapeHeadShare` (the
+span's reading shared, `ReadWeights`); `Dismember.cpp` `CopyWantedFor` copies such a shape before
+the swap with the limbs' copy (`AddPartCopy`: the head's bones kept, every other to the head's own
+node). A rescan reads nothing again: the original holds the stump node, the copy the part node.
+Logged per shape: `"Troll01:0": 1064 of its 5476 vertices mostly on the head (1/40 or more wanted)
+- drawn again for the head`. The counts in the game equal pyffi's (troll 1064/5476, sheep
+802/2021, the fleeces 2/50 and 2/56).
+
+**Cause 2: the skull.** (Read) The rat's, the clannfear's and the daedroth's head bone is `Bip01
+Skull` (under Neck, Neck1, Neck2); CollectNecks and the cut asked for `Bip01 Head` only - no neck
+was found. **Fix 2:** `HeadBoneName` lists both, `PartBoneOf` (Necks.cpp) asks them in order, used
+by CollectNecks, CutBonesOf and the cut's check in StepCuts.
+
+**Runs** (Linux, headless, `--no-steamvr --parallel`; old DLL dll-int3-7bc5f795 = main with the
+goblin and ogre fix, new md5 32dfc0a6; the run folders under artifacts/hand-script/<scenario>/,
+not in Git; picture crops old | new in artifacts/beasts-1126/<creature>-head-old-new.png):
+
+| Scenario | Old | New |
+|---|---|---|
+| dismember-troll (was -troll-probe) | FAIL 20261126-221908-slot1: no copy, Troll01:0 collapsed | PASS -220935-slot1: Troll01:0 and :1 drawn again, head 44 units off; the picture shows the head's skin |
+| dismember-imp | FAIL -222030-slot1 | PASS -221109-slot1: "Imp" drawn again |
+| dismember-deer | FAIL -222157-slot1: only antlers and eyes fly | PASS -221227-slot1: "Buck" drawn again (the head half behind the body in the picture) |
+| dismember-sheep | FAIL -222316-slot1: no head seen | PASS -222855-slot2: "sheep" and both fleeces drawn again; the picture (cut_07) shows the head with its face beside the body |
+| dismember-rat | FAIL -222435-slot1: "no dead actor within 400 units" | PASS -221513-slot1: 1 neck joint released, "Rat" drawn again, the head with its ears beside the body |
+| dismember-daedroth | FAIL -222558-slot1: no neck found | PASS -221631-slot1: skull and "Daedroth" drawn again |
+| dismember-clannfear | FAIL -222717-slot1: no neck found | PASS -221749-slot1: its rigid head off; its body (31 of 2688, 1/87) left to the stump |
+
+The first new sheep run (-221350-slot1) failed only on its own expect line naming the copies
+("sheep" alone - the two fleeces are copied too); the cut was as wanted. Fixed in the scenario.
+
+**Regressions, the new DLL:** dismember-goblin PASS (-223017-slot2; "GoblinChest01": 10 of 615,
+left to the stump), dismember-ogre PASS (-223137-slot2; "Ogre:0" 35 of 4530, left), dismember-limbs
+PASS (-223302-slot2), dismember-one-a-swing PASS (-223444-slot2: the beggar's head cut, the human
+beheading - no shape read for its share, an NPC). dismember-blade-corpse FAIL (-223621-slot2): the
+low sweep meets the corpse's left arm first, the arm comes off and the swing takes nothing more -
+the old DLL fails it the same way (-223830-slot2), one part a swing at work in an older scenario
+(its expectations predate it), not this change. ctest: 304 of 304 passed, plain and under
+ASan/UBSan (cut_skeleton_test: TestHeadBoneNames, TestMostlyOnPart, TestHeadCopy).
+
+**Not covered:** xivilai, lich, spriggan, atronachs, spider daedra and the SI creatures were not
+run (same path, read by pyffi only). The copy's taper at the neck (vertices partly on the neck
+pulled to the head's origin) is seen only at harness distance; the headset decides. Head-slot
+items the bone rule gives the body (the Chorrol helmet, the installed 9-bone hoods) still collapse
+into the stump at an NPC's head cut (derived from the rule and pyffi, not run) - a rule by the item's slot would send them with the head; not
+built, a decision for Nadi. The enemy bars still say "no head bone" for skull creatures
+(EnemyHealth, not touched).
+
 ## 6. Unknowns that gated the build (answered 2026-10-30, below)
 
 1. The Havok call that removes one constraint from the world, and how to

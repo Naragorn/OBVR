@@ -2,7 +2,9 @@
 // tester, 2026-11-26: goblins kept their heads, a goblin's arm stretched), and
 // the limb cut's shapes that must not go whole to the part.
 
+#include <cmath>
 #include <cstdio>
+#include <cstring>
 
 #include "game/CutSkeletonLogic.h"
 
@@ -157,6 +159,73 @@ void TestLimbSide() {
 	Check(!SpanPossible(false, true) && !SpanPossible(false, false), "no bone going: nothing to stretch");
 }
 
+void TestHeadBoneNames() {
+	std::printf("the head bone's names, in order\n");
+	Check(std::strcmp(HeadBoneName(0), "Bip01 Head") == 0, "first Bip01 Head (the human skeletons, most creatures)");
+	Check(std::strcmp(HeadBoneName(1), "Bip01 Skull") == 0, "then Bip01 Skull (the rat, the clannfear, the daedroth)");
+	Check(HeadBoneName(2) == nullptr && HeadBoneName(100) == nullptr, "then none");
+}
+
+void TestMostlyOnPart() {
+	std::printf("the vertices hanging mostly on the head\n");
+	// vertex 0 whole on the head, 1 half on it, 2 just under half, 3 on the jaw and the head together, 4 on the
+	// neck only; 9 is past the shape's 8 vertices
+	const CutWeight head[] = {{0, 0, 1.0f}, {1, 0, 0.5f}, {2, 0, 0.499f}, {3, 0, 0.3f}, {9, 0, 1.0f}};
+	const CutWeight jaw[] = {{3, 0, 0.3f}};
+	const CutWeight neck[] = {{1, 0, 0.5f}, {2, 0, 0.501f}, {3, 0, 0.4f}, {4, 0, 1.0f}};
+	UInt16 sums[8] = {};
+	CutBoneWeights bones[] = {{head, 5, true}, {jaw, 1, true}, {neck, 4, false}};
+	Check(VerticesMostlyOnPart(bones, 3, 8, sums) == 3,
+	      "whole, exactly half and 0.3 + 0.3 on two head bones: 3 (0.499, the neck's own and one past the shape not)");
+	Check(sums[4] == 0 && sums[3] == 600, "a bone staying adds nothing; two going add up, in thousandths");
+	CutBoneWeights neckOnly[] = {{neck, 4, false}};
+	UInt16 dirty[8] = {900, 900, 900, 900, 900, 900, 900, 900};
+	Check(VerticesMostlyOnPart(neckOnly, 1, 8, dirty) == 0 && dirty[7] == 0, "no bone going: none, the sums zeroed first");
+	const CutWeight odd[] = {{0, 0, -1.0f}, {1, 0, 0.0f}, {2, 0, std::nanf("")}, {3, 0, 7.0f}};
+	CutBoneWeights strange[] = {{odd, 4, true}};
+	Check(VerticesMostlyOnPart(strange, 1, 8, sums) == 1 && sums[3] == 1000,
+	      "a weight under or at nothing, or not a number: not counted; one over 1 counts as 1");
+	const CutWeight twice[] = {{0, 0, 0.6f}, {0, 0, 0.6f}};
+	CutBoneWeights again[] = {{twice, 2, true}};
+	Check(VerticesMostlyOnPart(again, 1, 8, sums) == 1, "a vertex counted once, however often it is named");
+	UInt16 full[1] = {};
+	const CutWeight many[] = {{0, 0, 1.0f}};
+	CutBoneWeights lots[70];
+	for (CutBoneWeights& b : lots) {
+		b = {many, 1, true};
+	}
+	Check(VerticesMostlyOnPart(lots, 70, 1, full) == 1 && full[0] == 0xFFFFu, "the sum saturates, never wraps");
+	Check(VerticesMostlyOnPart(bones, 0, 8, sums) == 0 && VerticesMostlyOnPart(bones, 3, 0, sums) == 0,
+	      "no bones, no vertices: none");
+}
+
+void TestHeadCopy() {
+	std::printf("a creature's head drawn again from its body's mesh\n");
+	Check(HeadShareWanted(true, true, ShapeSide::Body, false, true, false),
+	      "a creature's head cut, a skinned shape of the body's side: its share read");
+	Check(!HeadShareWanted(true, false, ShapeSide::Body, false, true, false),
+	      "an NPC: not read - its head is its own mesh, a collar is no head");
+	Check(!HeadShareWanted(false, true, ShapeSide::Body, false, true, false), "a limb cut: not read (PartCopyWanted)");
+	Check(!HeadShareWanted(true, true, ShapeSide::Part, false, true, false), "the head's side already: not read");
+	Check(!HeadShareWanted(true, true, ShapeSide::Body, true, true, false),
+	      "holding a cut node (swapped at the cut, or a copy): not read again");
+	Check(!HeadShareWanted(true, true, ShapeSide::Body, false, false, false), "a rigid shape: not read");
+	Check(!HeadShareWanted(true, true, ShapeSide::Body, false, true, true), "a decal shape: not read");
+	// pyffi, tools/nif-head-share.py: vertices mostly on the head of all the shape's
+	Check(HeadShareCopies(1064, 5476), "the troll's body (0.194): drawn again");
+	Check(HeadShareCopies(944, 9217), "the frost atronach's (0.102): drawn again");
+	Check(HeadShareCopies(219, 4340), "the elytra's, the least of the heads in a body (0.050): drawn again");
+	Check(HeadShareCopies(164, 2140), "the rat's body - its skull's back and ears (0.077): drawn again");
+	Check(!HeadShareCopies(10, 615), "the goblin's chest under its rigid head (0.016): left to the stump");
+	Check(!HeadShareCopies(19, 4331), "the land dreugh's body (0.004): left to the stump");
+	Check(HeadShareCopies(25, 1000) && !HeadShareCopies(24, 1000), "a fortieth exactly: drawn again; under it not");
+	Check(!HeadShareCopies(0, 100) && !HeadShareCopies(0, 0), "no vertex on the head: none");
+	Check(!HeadShareCopies(5, 4), "more vertices on the head than the shape has (a misread): none");
+	std::printf("a creature by its base form's type\n");
+	Check(IsCreatureFormType(0x24), "0x24: a creature");
+	Check(!IsCreatureFormType(0x23) && !IsCreatureFormType(0), "0x23 (an NPC), anything else: not");
+}
+
 }  // namespace
 
 int main() {
@@ -167,6 +236,9 @@ int main() {
 	TestBonesGoing();
 	TestSpanning();
 	TestLimbSide();
+	TestHeadBoneNames();
+	TestMostlyOnPart();
+	TestHeadCopy();
 	if (g_failures > 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;
