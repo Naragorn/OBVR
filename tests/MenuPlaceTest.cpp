@@ -506,6 +506,7 @@ void TestSword() {
 	std::printf("Held like the sword\n");
 	HandSettings s = PlainSettings();
 	s.tablet.unroll = TabletUnroll::Sideways;
+	s.tablet.held.turnDegrees = 0.0f;  // the sword's own flat first; the quarter turn at the end
 	HandModeFrame f = TabletFrameUp();
 	HeldAxes left;
 	left.valid = true;
@@ -523,8 +524,8 @@ void TestSword() {
 	Check(r.menuOnTablet && NearPoint(t.quad.up, left.blade) && NearPoint(t.quad.right, left.edge),
 	      "the off hand's node read: the page's up the blade, its right towards the knuckles");
 	const NiPoint3 face = Cross(left.edge, left.blade);
-	Check(NearPoint(t.quad.centre, f.left.position + left.edge * 0.2f + face * (0.03f + kPageClearMetres)),
-	      "held at its side across the knuckles, before the hand as it is drawn - the hand behind the page");
+	Check(NearPoint(t.quad.centre, f.left.position + face * (0.03f + kPageClearMetres)),
+	      "its middle on the hand (section 24.4), before the hand as it is drawn - the hand behind the page");
 	// A quarter turn about y: the page goes with the hand.
 	f.left.orientation = Quaternion{0.0f, 0.7071068f, 0.0f, 0.7071068f};
 	r = MenuPlaceResult{};
@@ -556,11 +557,43 @@ void TestSword() {
 	                     further.transform.m[2][3] - kept.transform.m[2][3]};
 	Check(NearPoint(moved, Cross(keptRight, keptUp) * 0.03f),
 	      "and before the right hand as it is drawn: its own reach, on its own side");
+	// Turned a quarter, as by default (Nadi, 2026-11-26; section 24.4): the face
+	// away from the knuckles, the page across the palm, its middle on the hand.
+	s.tablet.held = HeldPlace{};
+	r = MenuPlaceResult{};
+	t = PlaceMenu(f, s, true, r);
+	Check(r.menuOnTablet && NearPoint(t.quad.up, left.blade) && NearPoint(t.quad.right, face) &&
+	          NearPoint(t.quad.centre, f.left.position + left.edge * -(0.03f + kPageClearMetres)),
+	      "turned a quarter by default: the face away from the knuckles, the middle on the hand");
 	f.tablet.held[0].valid = false;
 	r = MenuPlaceResult{};
 	t = PlaceMenu(f, s, true, r);
 	Check(NearPoint(t.quad.right, NiPoint3{1.0f, 0.0f, 0.0f}) && NearPoint(t.quad.up, NiPoint3{0.0f, 1.0f, 0.0f}),
 	      "the off hand's node not read: on the controller as before");
+}
+
+// How far the page's face looks off the eyes, for the log Nadi tunes the
+// page by (section 24.4): the face's column and the middle in the holding
+// controller's frame, the controller's pose, the eyes in tracking space.
+void TestFaceOffEyes() {
+	std::printf("The face off the eyes\n");
+	HandPose holder;
+	holder.valid = true;
+	openvr::HmdMatrix34 m{};
+	m.m[0][0] = 1.0f;
+	m.m[2][1] = -1.0f;
+	m.m[1][2] = 1.0f;   // the face up the controller's y
+	m.m[2][3] = -0.3f;  // 30 cm ahead of it
+	Check(Near(FaceOffEyesDegrees(m, holder, NiPoint3{0.0f, 0.3f, 0.0f}), 45.0f, 0.01f),
+	      "the face up, the eyes 30 cm above and behind the page: 45 degrees off");
+	Check(Near(FaceOffEyesDegrees(m, holder, NiPoint3{0.0f, 1.0f, -0.3f}), 0.0f, 0.01f), "the eyes straight above it: none");
+	Check(Near(FaceOffEyesDegrees(m, holder, NiPoint3{0.0f, -1.0f, -0.3f}), 180.0f, 0.01f), "straight below: its back to them");
+	holder.orientation = Quaternion{0.7071068f, 0.0f, 0.0f, 0.7071068f};  // pitched a quarter about x: up to back
+	Check(Near(FaceOffEyesDegrees(m, holder, NiPoint3{0.0f, 0.0f, 0.0f} + Rotate(holder.orientation, NiPoint3{0.0f, 0.3f, -0.3f})),
+	           0.0f, 0.01f),
+	      "the controller turned: the face and the page turn with it");
+	Check(FaceOffEyesDegrees(m, holder, Rotate(holder.orientation, NiPoint3{0.0f, 0.0f, -0.3f})) < 0.0f,
+	      "the eyes in the page's middle: no direction, none said");
 }
 
 void TestScrollUpright() {
@@ -688,6 +721,7 @@ int main() {
 	TestScroll();
 	TestHolds();
 	TestSword();
+	TestFaceOffEyes();
 	TestScrollUpright();
 	std::printf("%d failure(s)\n", g_failures);
 	return g_failures == 0 ? 0 : 1;

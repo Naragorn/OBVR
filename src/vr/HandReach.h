@@ -24,31 +24,35 @@ inline constexpr float kHandReachMostMetres = 0.20f;
 // One hand's reach from where it is drawn: `points` its vertices, `palm` its
 // palm's middle (vr::PalmBetween) and `held` its held-item node's axes, all
 // in one frame - the world's as the bones stand - of `unitsPerMetre`. Along
-// the face the page shows in a physical left hand, and the other way for a
-// right one's. The palm's middle lies in the flat, so neither is below
-// nought. Not read without vertices, a scale or a flat between the axes, or
-// with a vertex no hand reaches.
+// the face the page shows in a physical left hand, turned by `place`
+// (TurnHeldPage), and along the face it shows in a right one's: unturned the
+// hand's two sides, turned a quarter both away from the knuckles. The
+// palm's middle lies in the flat, so neither is below nought. Not read
+// without vertices, a scale or a flat between the axes, or with a vertex no
+// hand reaches.
 inline HandReach ReachOfHand(const NiPoint3* points, UInt32 count, const NiPoint3& palm, const HeldAxes& held,
-                             float unitsPerMetre) {
+                             const HeldPlace& place, float unitsPerMetre) {
 	HandReach reach;
-	const PageAxes page = PageLikeTheSword(held, true);
-	if (points == nullptr || count == 0 || !page.valid || !(unitsPerMetre > 0.0f)) {
+	const PageAxes left = TurnHeldPage(PageLikeTheSword(held, true), place, true);
+	const PageAxes right = TurnHeldPage(PageLikeTheSword(held, false), place, false);
+	if (points == nullptr || count == 0 || !left.valid || !right.valid || !(unitsPerMetre > 0.0f)) {
 		return reach;
 	}
-	float most = 0.0f;
-	float least = 0.0f;
+	float leftMost = 0.0f;
+	float rightMost = 0.0f;
 	for (UInt32 i = 0; i < count; ++i) {
-		const float out = game::DotOf3(points[i] - palm, page.front);
-		most = out > most ? out : most;
-		least = out < least ? out : least;
+		const float outLeft = game::DotOf3(points[i] - palm, left.front);
+		const float outRight = game::DotOf3(points[i] - palm, right.front);
+		leftMost = outLeft > leftMost ? outLeft : leftMost;
+		rightMost = outRight > rightMost ? outRight : rightMost;
 	}
 	const float limit = kHandReachMostMetres * unitsPerMetre;
-	if (!(most <= limit) || !(-least <= limit)) {
+	if (!(leftMost <= limit) || !(rightMost <= limit)) {
 		return reach;
 	}
 	reach.valid = true;
-	reach.beforeLeft = most / unitsPerMetre;
-	reach.beforeRight = -least / unitsPerMetre;
+	reach.beforeLeft = leftMost / unitsPerMetre;
+	reach.beforeRight = rightMost / unitsPerMetre;
 	return reach;
 }
 
@@ -64,9 +68,9 @@ struct HandForemost {
 };
 
 inline HandForemost ForemostOfHand(const NiPoint3* points, UInt32 count, const NiPoint3& palm, const HeldAxes& held,
-                                   bool holderPhysicalLeft, float unitsPerMetre) {
+                                   const HeldPlace& place, bool holderPhysicalLeft, float unitsPerMetre) {
 	HandForemost foremost;
-	const PageAxes page = PageLikeTheSword(held, holderPhysicalLeft);
+	const PageAxes page = TurnHeldPage(PageLikeTheSword(held, holderPhysicalLeft), place, holderPhysicalLeft);
 	if (points == nullptr || count == 0 || !page.valid || !(unitsPerMetre > 0.0f)) {
 		return foremost;
 	}

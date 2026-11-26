@@ -43,7 +43,7 @@ RoleNow ReadRole(bool right) {
 // With it, where on the page the foremost point lies on either side: what
 // the page rests on.
 void SayReading(HandReachState& state, int role, const std::vector<NiPoint3>& vertices, const RoleNow& hand,
-                float unitsPerMetre, float indexCurl) {
+                float unitsPerMetre, float indexCurl, const vr::HeldPlace& place) {
 	const vr::HandReach& now = state.read[role];
 	vr::HandReach& said = state.said[role];
 	const auto apart = [](float a, float b) { return a - b > 0.002f || b - a > 0.002f; };
@@ -62,8 +62,9 @@ void SayReading(HandReachState& state, int role, const std::vector<NiPoint3>& ve
 		         static_cast<double>(vr::kHandReachUnreadMetres * 100.0f));
 		return;
 	}
-	const vr::HandForemost left = vr::ForemostOfHand(vertices.data(), count, hand.palm, hand.held, true, unitsPerMetre);
-	const vr::HandForemost right = vr::ForemostOfHand(vertices.data(), count, hand.palm, hand.held, false, unitsPerMetre);
+	const vr::HandForemost left = vr::ForemostOfHand(vertices.data(), count, hand.palm, hand.held, place, true, unitsPerMetre);
+	const vr::HandForemost right =
+		vr::ForemostOfHand(vertices.data(), count, hand.palm, hand.held, place, false, unitsPerMetre);
 	OBVR_LOG("Tablet: the %s hand as drawn reaches %.1f cm out of the page's flat on a left hand's side (its foremost "
 	         "point %.1f cm across the page from the palm's middle, %.1f cm up it) and %.1f cm on a right hand's (%.1f "
 	         "across, %.1f up; %u vertices, the index finger's curl %.2f) - the page stands before it, the hand behind",
@@ -92,7 +93,8 @@ void SayAtMark(HandReachState& state, bool holderRight) {
 
 }  // namespace
 
-void StepHandReachRead(HandReachState& state, bool tabletUp, const vr::HandModeResult& hand, float unitsPerMetre) {
+void StepHandReachRead(HandReachState& state, bool tabletUp, const vr::HandModeResult& hand, float unitsPerMetre,
+                       const vr::HeldPlace& place) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long before = tabletUp ? ReadPerformanceCounter() : 0;
 	const bool holderRight = hand.tabletHolderRight;
@@ -115,8 +117,8 @@ void StepHandReachRead(HandReachState& state, bool tabletUp, const vr::HandModeR
 			const std::vector<NiPoint3>& vertices = state.vertices[role == 1 ? 0 : 1];
 			const RoleNow now = got ? ReadRole(role == 1) : RoleNow{};
 			state.read[role] = vr::ReachOfHand(vertices.data(), static_cast<UInt32>(vertices.size()), now.palm,
-			                                   now.held, unitsPerMetre);
-			SayReading(state, role, vertices, now, unitsPerMetre, role == 1 ? hand.rightCurl[1] : hand.leftCurl[1]);
+			                                   now.held, place, unitsPerMetre);
+			SayReading(state, role, vertices, now, unitsPerMetre, role == 1 ? hand.rightCurl[1] : hand.leftCurl[1], place);
 		}
 		++state.readsSinceMark;
 	}

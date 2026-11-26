@@ -5982,9 +5982,23 @@ void DumpEyeFrames(const Config& config, bool marked) {
 	}
 }
 
+void MaybeReloadConfig() {
+	Config& config = GetConfig();
+	if (!IsDue(g_presentedFrame, config.reloadEveryFrames)) {
+		return;
+	}
+
+	if (config.Reload("OBVR.ini")) {
+		perf::Profiler::Instance().Configure(config.performance);
+		g_headTracker.Configure(config.tracker);
+		g_lookControl.Configure(config.look);
+	}
+}
+
 void OnPresent() {
 	watchdog::Start();
 	watchdog::NoteFrame();
+	MaybeReloadConfig();  // each presented frame's - a menu's too, so the page in the hand is tuned while it is up
 	// The crash report's filter, set on the first frame - after every
 	// plugin's own (core/CrashHandler.h).
 	crash::InstallOnce();
@@ -6739,19 +6753,6 @@ bool RunHudPassWithCrosshairView() {
 		OBVR_LOG("Crosshair: the isolated third-person HUD draw uses its first-person centre");
 	}
 	return captured;
-}
-
-void MaybeReloadConfig() {
-	Config& config = GetConfig();
-	if (!IsDue(g_state.frameCount, config.reloadEveryFrames)) {
-		return;
-	}
-
-	if (config.Reload("OBVR.ini")) {
-		perf::Profiler::Instance().Configure(config.performance);
-		g_headTracker.Configure(config.tracker);
-		g_lookControl.Configure(config.look);
-	}
 }
 
 // Polls the recenter key once per frame.
@@ -10178,7 +10179,6 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	}
 
 	++g_state.frameCount;
-	MaybeReloadConfig();
 
 	// Asked per frame, acted on only when the wish and the patch disagree -
 	// which is the first frame, and any frame after the INI hot-reloads the

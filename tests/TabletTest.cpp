@@ -400,6 +400,7 @@ void TestHeldLikeTheSword() {
 	s.gripForward = 0.02f;
 	s.tiltDegrees = 30.0f;
 	s.gripShare = 0.25f;
+	s.held.turnDegrees = 0.0f;  // the sword's own flat; the turn: TestHeldTurnedAndCentred
 	const UiRect paper = Rect(100.0f, 200.0f, 900.0f, 1000.0f);  // 800 x 800 pixels: 0.0005 m a pixel
 	const TabletFrame f = FrameOf(paper, paper);
 	// The left fist round its controller, the palm at +x against the handle:
@@ -420,8 +421,7 @@ void TestHeldLikeTheSword() {
 	Check(p.valid && NearPoint(Column(p, 1), left.blade), "the page's up is the blade's way out of the fist");
 	Check(NearPoint(Column(p, 0), left.edge), "its right towards the knuckles - to the body's middle, the palm to the eyes");
 	Check(NearPoint(Column(p, 2), palmSide), "its face the blade's flat on the palm's side");
-	Check(NearPoint(Column(p, 3), palm + left.edge * 0.20f + out),
-	      "held at its side: its left edge's middle before the palm, the page across the knuckles");
+	Check(NearPoint(Column(p, 3), palm + out), "its middle before the palm's (section 24.4: no longer at its left edge)");
 	Check(Near(p.width, 0.40f) && Near(p.height, 0.40f), "its size as before");
 
 	s.tiltDegrees = 0.0f;
@@ -430,12 +430,10 @@ void TestHeldLikeTheSword() {
 	s.tiltDegrees = 30.0f;
 
 	p = PlaceTablet(f, s, true, palm, TabletHold::Bottom, left);
-	Check(NearPoint(Column(p, 1), left.blade) && NearPoint(Column(p, 0), left.edge),
-	      "held at its bottom edge: the same way round");
-	Check(NearPoint(Column(p, 3), palm + left.edge * 0.10f + left.blade * 0.20f + out),
-	      "the grip a quarter along the lower edge, the page rising along the blade - no clipboard offsets");
+	Check(NearPoint(Column(p, 1), left.blade) && NearPoint(Column(p, 0), left.edge) && NearPoint(Column(p, 3), palm + out),
+	      "the scroll's bottom hold: the same way round, its middle before the palm - no clipboard offsets");
 	p = PlaceTablet(f, s, true, palm, TabletHold::Top, left);
-	Check(NearPoint(Column(p, 3), palm - left.blade * 0.20f + out), "held at its top edge: hanging below the fist");
+	Check(NearPoint(Column(p, 3), palm + out), "and its top hold");
 
 	// The right hand: the mirror image of the left, the page read the right
 	// way round - its right turned back, its up and face mirrored.
@@ -497,6 +495,112 @@ void TestHeldLikeTheSword() {
 	both.held[1] = right;
 	Check(NearPoint(TabletHeldAxes(both, false).blade, left.blade) && NearPoint(TabletHeldAxes(both, true).blade, right.blade),
 	      "each role's own hand");
+}
+
+// Turned towards the head and held at its middle (Nadi, Windows 2026-11-26:
+// "inventory tablet muss 90 grad nach richtung kopf des spielers und mittig
+// in der hand. lass diese werte einstellbar"; docs/inventory-tablet-spec.md
+// 24.4): a quarter turn about the blade by default, the page's middle on the
+// palm's, and the turn, a lean, a roll and the place in centimetres set in
+// [Tablet].
+void TestHeldTurnedAndCentred() {
+	std::printf("Turned towards the head, held at its middle:\n");
+	TabletSettings s;
+	s.enabled = true;
+	s.widthMetres = 0.40f;
+	const UiRect paper = Rect(100.0f, 200.0f, 900.0f, 1000.0f);  // 800 x 800 pixels: 0.0005 m a pixel
+	const TabletFrame f = FrameOf(paper, paper);
+	HeldAxes left;
+	left.valid = true;
+	left.blade = TurnAboutY(NiPoint3{0.0f, 0.6f, -0.8f}, 15.0f);
+	left.edge = TurnAboutY(NiPoint3{0.0f, -0.8f, -0.6f}, 15.0f);
+	const NiPoint3 palm{-0.04f, 0.01f, 0.13f};
+	const NiPoint3 palmSide = CrossOf(left.edge, left.blade);
+	const NiPoint3 away = left.edge * -1.0f;  // away from the knuckles: the thumb's and the wrist's way
+	const float lift = PageLiftMetres(HandReach{}, true);
+	Check(Near(s.held.turnDegrees, 90.0f) && Near(s.held.leanDegrees, 0.0f) && Near(s.held.rollDegrees, 0.0f) &&
+	          Near(s.held.acrossCm, 0.0f) && Near(s.held.upCm, 0.0f) && Near(s.held.outCm, 0.0f),
+	      "the defaults: a quarter turn, nothing else");
+
+	TabletPlace p = PlaceTablet(f, s, true, palm, TabletHold::Side, left);
+	Check(p.valid && NearPoint(Column(p, 1), left.blade), "its up still the blade's way out of the fist");
+	Check(NearPoint(Column(p, 2), away),
+	      "its face turned a quarter from the palm's side, away from the knuckles - to the head in a relaxed grip");
+	Check(NearPoint(Column(p, 0), palmSide), "its right where the face was: out of the palm, to the body's middle");
+	Check(NearPoint(Column(p, 3), palm + away * lift),
+	      "its middle on the palm's, before the hand along the face it now shows - the hand behind it");
+	const TabletHold holds[3] = {TabletHold::Side, TabletHold::Bottom, TabletHold::Top};
+	bool middle = true;
+	for (const TabletHold hold : holds) {
+		middle = middle && SamePlace(PlaceTablet(f, s, true, palm, hold, left), p);
+	}
+	Check(middle, "held at its side, its bottom or its top: its middle in the hand all the same");
+
+	// Nadi's own left hand (his log of 2026-11-26, the Torch node in the
+	// Index's frame, -z ahead, +y up, +z back to him).
+	HeldAxes his;
+	his.valid = true;
+	his.blade = NiPoint3{0.322f, 0.302f, -0.897f};
+	his.edge = NiPoint3{-0.241f, -0.890f, -0.386f};
+	p = PlaceTablet(f, s, true, palm, TabletHold::Side, his);
+	Check(Column(p, 2).y > 0.85f && Column(p, 2).z > 0.3f && Column(p, 0).x > 0.9f,
+	      "his hand: the face to the controller's top and back to him, the page across the palm to his middle");
+
+	HeldAxes right;
+	right.valid = true;
+	right.blade = MirrorX(left.blade);
+	right.edge = MirrorX(left.edge);
+	const TabletPlace l = PlaceTablet(f, s, true, palm, TabletHold::Side, left);
+	TabletPlace r = PlaceTablet(f, s, false, MirrorX(palm), TabletHold::Side, right);
+	Check(r.valid && NearPoint(Column(r, 0), MirrorX(Column(l, 0)) * -1.0f) && NearPoint(Column(r, 1), MirrorX(Column(l, 1))) &&
+	          NearPoint(Column(r, 2), MirrorX(Column(l, 2))) && NearPoint(Column(r, 3), MirrorX(Column(l, 3))),
+	      "in the right hand: the left's mirror image, read the right way round");
+	Check(NearPoint(Column(r, 2), right.edge * -1.0f), "its face away from its own knuckles too");
+
+	s.held.acrossCm = 2.0f;
+	s.held.upCm = 3.0f;
+	s.held.outCm = 1.0f;
+	p = PlaceTablet(f, s, true, palm, TabletHold::Side, left);
+	Check(NearPoint(Column(p, 3), palm + palmSide * 0.02f + left.blade * 0.03f + away * (lift + 0.01f)),
+	      "moved by the place in centimetres: across to the body's middle, up the page, out of its face");
+	r = PlaceTablet(f, s, false, MirrorX(palm), TabletHold::Side, right);
+	Check(NearPoint(Column(r, 3), MirrorX(Column(p, 3))), "the right hand's the mirror image: across is to the middle for either");
+	s.held.acrossCm = 0.0f;
+	s.held.upCm = 0.0f;
+	s.held.outCm = 0.0f;
+
+	const float c20 = std::cos(20.0f * 3.14159265f / 180.0f);
+	const float s20 = std::sin(20.0f * 3.14159265f / 180.0f);
+	s.held.leanDegrees = 20.0f;
+	p = PlaceTablet(f, s, true, palm, TabletHold::Side, left);
+	Check(NearPoint(Column(p, 1), left.blade * c20 - away * s20) && NearPoint(Column(p, 2), away * c20 + left.blade * s20) &&
+	          NearPoint(Column(p, 0), palmSide),
+	      "leant back 20 degrees: the top away from the face, the face up, the right as it was");
+	s.held.leanDegrees = 0.0f;
+
+	const float c10 = std::cos(10.0f * 3.14159265f / 180.0f);
+	const float s10 = std::sin(10.0f * 3.14159265f / 180.0f);
+	s.held.rollDegrees = 10.0f;
+	p = PlaceTablet(f, s, true, palm, TabletHold::Side, left);
+	Check(NearPoint(Column(p, 1), left.blade * c10 + palmSide * s10) && NearPoint(Column(p, 2), away),
+	      "rolled 10 degrees: the top towards the body's middle in its own flat");
+	r = PlaceTablet(f, s, false, MirrorX(palm), TabletHold::Side, right);
+	Check(NearPoint(Column(r, 1), MirrorX(Column(p, 1))), "the right hand's roll the mirror image: its top to the middle too");
+	s.held.rollDegrees = 0.0f;
+
+	s.held.turnDegrees = 0.0f;
+	p = PlaceTablet(f, s, true, palm, TabletHold::Side, left);
+	Check(NearPoint(Column(p, 2), palmSide) && NearPoint(Column(p, 0), left.edge) && NearPoint(Column(p, 3), palm + palmSide * lift),
+	      "no turn: the face on the palm's side as the sword's flat, its middle on the palm");
+	s.held.turnDegrees = 90.0f;
+
+	const TabletFrame box = FrameOf(paper, Rect(100.0f, 200.0f, 1300.0f, 1000.0f));
+	p = PlaceTablet(box, s, true, palm, TabletHold::Side, left);
+	Check(NearPoint(Column(p, 3), palm + palmSide * 0.10f + away * lift) && Near(p.width, 0.60f),
+	      "a box beside the page: the page's middle stays on the palm, the face reaches out past it");
+	p = PlaceTablet(box, s, false, MirrorX(palm), TabletHold::Side, right);
+	Check(NearPoint(Column(p, 3), MirrorX(palm) + Column(p, 0) * 0.10f + right.edge * -lift),
+	      "in the right hand too: the face's middle off the page's by the box, the page's middle on the palm");
 }
 
 void TestCorners() {
@@ -901,14 +1005,15 @@ void TestHeldByItsOutline() {
 	          SameRect(HoldFace(unread), 100.0f, 200.0f, 1300.0f, 1000.0f),
 	      "what the hand holds: the outline, with the figure's page, or the face when no outline was read");
 
-	// Like the sword: along the page's own right, whichever way it is turned.
+	// Like the sword: along the page's own right, whichever way it is turned -
+	// its middle in the hand since section 24.4, the box out past its edge.
 	HeldAxes right;
 	right.valid = true;
 	right.blade = NiPoint3{0.0f, 0.6f, -0.8f};
 	right.edge = NiPoint3{0.0f, -0.8f, -0.6f};
 	p = PlaceTablet(box, s, false, hand, TabletHold::Side, right);
-	Check(Near(AcrossFromHand(p, box, hand, 900.0f), 0.0f) && Near(AcrossFromHand(p, box, hand, 1300.0f), 0.20f),
-	      "held like the sword: the same");
+	Check(Near(AcrossFromHand(p, box, hand, 500.0f), 0.0f) && Near(AcrossFromHand(p, box, hand, 1300.0f), 0.40f),
+	      "held like the sword: the page's middle in the hand, the box out past the page's edge");
 	p = PlaceTablet(box, s, false, hand, TabletHold::Bottom);
 	const TabletPlace q = PlaceTablet(plain, s, false, hand, TabletHold::Bottom);
 	Check(Near(AcrossFromHand(p, box, hand, 900.0f), AcrossFromHand(q, plain, hand, 900.0f)),
@@ -926,6 +1031,7 @@ int main() {
 	TestPlace();
 	TestHeldByItsOutline();
 	TestHeldLikeTheSword();
+	TestHeldTurnedAndCentred();
 	TestCorners();
 	TestFigurePage();
 	TestFigureTab();

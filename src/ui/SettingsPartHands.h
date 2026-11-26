@@ -458,6 +458,50 @@ inline constexpr SettingDefinition kHandsRows[] = {
 		+[](const Config& c) { return c.hands.tablet.widthMetres; },
 		+[](Config& c, float v) { c.hands.tablet.widthMetres = v; },
 	},
+	// How the menu in the hand sits there (vr::HeldPlace; Nadi, 2026-11-26:
+	// "lass diese werte einstellbar dann kann ich ingame das justieren").
+	{
+		"Laser & wrist menus", "Hand menu turn", "Turn the menu in your hand to face you. 90 faces you, 0 faces out of your palm",
+		ItemKind::Number, -180.0f, 180.0f, 5.0f, 0, false,
+		"Tablet", "HeldTurnDegrees",
+		+[](const Config& c) { return c.hands.tablet.held.turnDegrees; },
+		+[](Config& c, float v) { c.hands.tablet.held.turnDegrees = v; },
+	},
+	{
+		"Laser & wrist menus", "Hand menu lean", "Lean the top of the menu in your hand back, or towards you",
+		ItemKind::Number, -90.0f, 90.0f, 5.0f, 0, false,
+		"Tablet", "HeldLeanDegrees",
+		+[](const Config& c) { return c.hands.tablet.held.leanDegrees; },
+		+[](Config& c, float v) { c.hands.tablet.held.leanDegrees = v; },
+	},
+	{
+		"Laser & wrist menus", "Hand menu tilt", "Tilt the menu in your hand sideways",
+		ItemKind::Number, -90.0f, 90.0f, 5.0f, 0, false,
+		"Tablet", "HeldRollDegrees",
+		+[](const Config& c) { return c.hands.tablet.held.rollDegrees; },
+		+[](Config& c, float v) { c.hands.tablet.held.rollDegrees = v; },
+	},
+	{
+		"Laser & wrist menus", "Hand menu sideways", "Move the menu in your hand towards your middle, or away",
+		ItemKind::Number, -20.0f, 20.0f, 1.0f, 0, false,
+		"Tablet", "HeldAcrossCm",
+		+[](const Config& c) { return c.hands.tablet.held.acrossCm; },
+		+[](Config& c, float v) { c.hands.tablet.held.acrossCm = v; },
+	},
+	{
+		"Laser & wrist menus", "Hand menu height", "Move the menu in your hand up or down",
+		ItemKind::Number, -20.0f, 20.0f, 1.0f, 0, false,
+		"Tablet", "HeldUpCm",
+		+[](const Config& c) { return c.hands.tablet.held.upCm; },
+		+[](Config& c, float v) { c.hands.tablet.held.upCm = v; },
+	},
+	{
+		"Laser & wrist menus", "Hand menu distance", "Move the menu in your hand closer to your eyes, or back to your palm",
+		ItemKind::Number, -10.0f, 20.0f, 1.0f, 0, false,
+		"Tablet", "HeldOutCm",
+		+[](const Config& c) { return c.hands.tablet.held.outCm; },
+		+[](Config& c, float v) { c.hands.tablet.held.outCm = v; },
+	},
 	{
 		"Laser & wrist menus", "Hand menu in the world",
 		"Your finger shows in front of it. Off, it floats over your hand",

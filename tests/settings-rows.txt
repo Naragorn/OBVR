@@ -219,6 +219,12 @@ Laser & wrist menus|Traditional inventory|Off: inventory, magic and map sit in y
 Laser & wrist menus|Figure on the hand menu|Your character beside the menu in your hand, not shown, or behind a tab of its own|Tablet|Figure|||1|0|2|1|0|0|1|2|2|0|3|beside|off|tab|RW
 Laser & wrist menus|Unroll the hand menu|Grab with both empty hands in the inventory ring and pull them apart: sideways, or up and down|Tablet|Unroll|||1|0|1|1|0|0|1|0|0|0|2|sideways|vertical|RW
 Laser & wrist menus|Hand menu size|How wide the menus in your hand are|Tablet|WidthMetres|||1|0.15|0.8|0.02|2|0|1|0.34|0.34|0|0|RW
+Laser & wrist menus|Hand menu turn|Turn the menu in your hand to face you. 90 faces you, 0 faces out of your palm|Tablet|HeldTurnDegrees|||1|-180|180|5|0|0|1|90|90|0|0|RW
+Laser & wrist menus|Hand menu lean|Lean the top of the menu in your hand back, or towards you|Tablet|HeldLeanDegrees|||1|-90|90|5|0|0|1|0|0|0|0|RW
+Laser & wrist menus|Hand menu tilt|Tilt the menu in your hand sideways|Tablet|HeldRollDegrees|||1|-90|90|5|0|0|1|0|0|0|0|RW
+Laser & wrist menus|Hand menu sideways|Move the menu in your hand towards your middle, or away|Tablet|HeldAcrossCm|||1|-20|20|1|0|0|1|0|0|0|0|RW
+Laser & wrist menus|Hand menu height|Move the menu in your hand up or down|Tablet|HeldUpCm|||1|-20|20|1|0|0|1|0|0|0|0|RW
+Laser & wrist menus|Hand menu distance|Move the menu in your hand closer to your eyes, or back to your palm|Tablet|HeldOutCm|||1|-10|20|1|0|0|1|0|0|0|0|RW
 Laser & wrist menus|Hand menu in the world|Your finger shows in front of it. Off, it floats over your hand|Tablet|InScene|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Hands stay in menus|Keep your hands in inventory, chests, map, books and talks. Only the pause menu hides them|Hands|HandsInMenus|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Menu buzz|Feel a tick as the laser crosses a button and a click when you press|Hands|MenuHaptics|||0|0|1|1|0|0|1|1|1|0|0|RW

@@ -34,6 +34,7 @@ struct HandReachState {
 
 // Once a frame. `tabletUp`: the tablet's menus are up; `hand`: the fingers'
 // curls and which hand holds the tablet; `unitsPerMetre`: the world's.
-void StepHandReachRead(HandReachState& state, bool tabletUp, const vr::HandModeResult& hand, float unitsPerMetre);
+void StepHandReachRead(HandReachState& state, bool tabletUp, const vr::HandModeResult& hand, float unitsPerMetre,
+                       const vr::HeldPlace& place);
 
 }  // namespace obvr::camera::hands

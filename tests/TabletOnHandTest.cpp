@@ -76,10 +76,12 @@ void TestReach() {
 	          NearPoint(PageLikeTheSword(held, false).front, face * -1.0f),
 	      "(a right hand's page faces the other way than a left's on the same axes: the hand's two sides)");
 	const NiPoint3 palm{10.0f, 20.0f, 30.0f};
+	HeldPlace unturned;  // the sword's own flat (section 21); turned: below
+	unturned.turnDegrees = 0.0f;
 	// A thumb's ball 4 cm before the flat, a knuckle 2 cm behind it, a finger between.
 	const NiPoint3 hand[] = {palm + NiPoint3{2.0f, 1.0f, 2.8f}, palm + NiPoint3{-3.0f, 0.0f, -1.4f},
 	                         palm + NiPoint3{5.0f, -2.0f, 0.7f}};
-	HandReach r = ReachOfHand(hand, 3, palm, held, kUnits);
+	HandReach r = ReachOfHand(hand, 3, palm, held, unturned, kUnits);
 	Check(r.valid && Near(r.beforeLeft, 0.04f), "before the face a left hand shows: its foremost vertex, in metres");
 	Check(Near(r.beforeRight, 0.02f), "before the face a right hand shows: its foremost the other way");
 
@@ -87,7 +89,7 @@ void TestReach() {
 	HeldAxes rough = held;
 	rough.blade = held.blade * 0.9f;
 	rough.edge = held.edge * 1.2f + held.blade * 0.4f;
-	r = ReachOfHand(hand, 3, palm, rough, kUnits);
+	r = ReachOfHand(hand, 3, palm, rough, unturned, kUnits);
 	Check(r.valid && Near(r.beforeLeft, 0.04f) && Near(r.beforeRight, 0.02f), "axes read long or skew: squared as the page's are");
 
 	// Turned in the world with the hand: the same reach.
@@ -99,46 +101,59 @@ void TestReach() {
 	for (int i = 0; i < 3; ++i) {
 		turnedHand[i] = palm + TurnAboutY(hand[i] - palm, 40.0f);
 	}
-	r = ReachOfHand(turnedHand, 3, palm, turned, kUnits);
+	r = ReachOfHand(turnedHand, 3, palm, turned, unturned, kUnits);
 	Check(Near(r.beforeLeft, 0.04f) && Near(r.beforeRight, 0.02f), "the hand turned in the world: the same, it is the hand's own");
 
 	const NiPoint3 before[] = {palm + NiPoint3{1.0f, 0.0f, 1.4f}, palm + NiPoint3{0.0f, 2.0f, 0.7f}};
-	r = ReachOfHand(before, 2, palm, held, kUnits);
+	r = ReachOfHand(before, 2, palm, held, unturned, kUnits);
 	Check(r.valid && Near(r.beforeLeft, 0.02f) && Near(r.beforeRight, 0.0f),
 	      "nothing behind the flat: none that way - the palm's middle is in it");
 	const NiPoint3 behind[] = {palm + NiPoint3{1.0f, 0.0f, -2.1f}};
-	r = ReachOfHand(behind, 1, palm, held, kUnits);
+	r = ReachOfHand(behind, 1, palm, held, unturned, kUnits);
 	Check(r.valid && Near(r.beforeLeft, 0.0f) && Near(r.beforeRight, 0.03f), "nothing before it: none this way");
 
-	Check(!ReachOfHand(nullptr, 3, palm, held, kUnits).valid && !ReachOfHand(hand, 0, palm, held, kUnits).valid,
+	Check(!ReachOfHand(nullptr, 3, palm, held, unturned, kUnits).valid && !ReachOfHand(hand, 0, palm, held, unturned, kUnits).valid,
 	      "no vertices: not read");
-	Check(!ReachOfHand(hand, 3, palm, held, 0.0f).valid, "no scale: not read");
+	Check(!ReachOfHand(hand, 3, palm, held, unturned, 0.0f).valid, "no scale: not read");
 	HeldAxes none = held;
 	none.valid = false;
-	Check(!ReachOfHand(hand, 3, palm, none, kUnits).valid, "the hand's node not read: not read");
+	Check(!ReachOfHand(hand, 3, palm, none, unturned, kUnits).valid, "the hand's node not read: not read");
 	HeldAxes flat = held;
 	flat.edge = held.blade;
-	Check(!ReachOfHand(hand, 3, palm, flat, kUnits).valid, "no flat between the axes: not read");
+	Check(!ReachOfHand(hand, 3, palm, flat, unturned, kUnits).valid, "no flat between the axes: not read");
 
 	// A vertex of some other part, or skinned by a bone that went: no hand is that thick.
 	const float beyond = (kHandReachMostMetres + 0.01f) * kUnits;
 	const NiPoint3 misread[] = {hand[0], palm + NiPoint3{0.0f, 0.0f, beyond}};
-	Check(!ReachOfHand(misread, 2, palm, held, kUnits).valid, "a vertex farther out than any hand is thick: a misread, not read");
+	Check(!ReachOfHand(misread, 2, palm, held, unturned, kUnits).valid, "a vertex farther out than any hand is thick: a misread, not read");
 	const NiPoint3 misreadBehind[] = {hand[0], palm + NiPoint3{0.0f, 0.0f, -beyond}};
-	Check(!ReachOfHand(misreadBehind, 2, palm, held, kUnits).valid, "the same behind it");
+	Check(!ReachOfHand(misreadBehind, 2, palm, held, unturned, kUnits).valid, "the same behind it");
 	const float thick = (kHandReachMostMetres - 0.01f) * kUnits;
 	const NiPoint3 gauntlet[] = {palm + NiPoint3{0.0f, 0.0f, thick}};
-	Check(ReachOfHand(gauntlet, 1, palm, held, kUnits).valid, "a thick gauntlet under that: read");
+	Check(ReachOfHand(gauntlet, 1, palm, held, unturned, kUnits).valid, "a thick gauntlet under that: read");
+
+	// Turned a quarter towards the head (section 24.4, the default): the two
+	// hands' faces both look away from their knuckles - here -x - and each
+	// hand's reach is taken that way: the knuckle 3 units out of the palm's middle.
+	const HeldPlace quarter;
+	Check(NearPoint(TurnHeldPage(PageLikeTheSword(held, true), quarter, true).front, NiPoint3{-1.0f, 0.0f, 0.0f}) &&
+	          NearPoint(TurnHeldPage(PageLikeTheSword(held, false), quarter, false).front, NiPoint3{-1.0f, 0.0f, 0.0f}),
+	      "(turned a quarter, a left and a right hand's page face the same way: away from the knuckles)");
+	r = ReachOfHand(hand, 3, palm, held, quarter, kUnits);
+	Check(r.valid && Near(r.beforeLeft, 3.0f / kUnits) && Near(r.beforeRight, 3.0f / kUnits),
+	      "turned: each hand's reach along the face it now shows - the knuckle's, for either");
+	HandForemost q = ForemostOfHand(hand, 3, palm, held, quarter, true, kUnits);
+	Check(q.valid && Near(q.out, 3.0f / kUnits), "and the foremost point that way");
 
 	// What the page rests on, for the log: the foremost point's place on the page.
-	HandForemost f = ForemostOfHand(hand, 3, palm, held, true, kUnits);
+	HandForemost f = ForemostOfHand(hand, 3, palm, held, unturned, true, kUnits);
 	Check(f.valid && Near(f.out, 0.04f) && Near(f.across, 2.0f / kUnits) && Near(f.up, 1.0f / kUnits),
 	      "the foremost point before a left hand's page: how far out, and where across the page and up it");
-	f = ForemostOfHand(hand, 3, palm, held, false, kUnits);
+	f = ForemostOfHand(hand, 3, palm, held, unturned, false, kUnits);
 	Check(f.valid && Near(f.out, 0.02f) && Near(f.across, 3.0f / kUnits) && Near(f.up, 0.0f),
 	      "before a right hand's page: the other side's, its place counted the right hand's way across");
-	Check(!ForemostOfHand(nullptr, 3, palm, held, true, kUnits).valid && !ForemostOfHand(hand, 0, palm, held, true, kUnits).valid &&
-	          !ForemostOfHand(hand, 3, palm, none, true, kUnits).valid && !ForemostOfHand(hand, 3, palm, held, true, 0.0f).valid,
+	Check(!ForemostOfHand(nullptr, 3, palm, held, unturned, true, kUnits).valid && !ForemostOfHand(hand, 0, palm, held, unturned, true, kUnits).valid &&
+	          !ForemostOfHand(hand, 3, palm, none, unturned, true, kUnits).valid && !ForemostOfHand(hand, 3, palm, held, unturned, true, 0.0f).valid,
 	      "no vertices, no node or no scale: none");
 }
 
@@ -259,6 +274,7 @@ void TestOnTheHand() {
 	s.enabled = true;
 	s.widthMetres = 0.40f;
 	s.gripShare = 0.25f;
+	s.held.turnDegrees = 0.0f;  // the sword's own flat; turned: tablet_test's TestHeldTurnedAndCentred
 	TabletFrame f;
 	f.up = true;
 	f.paper = Rect(100.0f, 200.0f, 900.0f, 1000.0f);  // 800 x 800 pixels: 0.0005 m a pixel
@@ -277,16 +293,15 @@ void TestOnTheHand() {
 	const float lift = 0.031f + kPageClearMetres;
 	Check(Near(PageLiftMetres(reach, true), lift), "the page a hair before the hand's foremost part");
 	TabletPlace p = PlaceTablet(f, s, true, palm, TabletHold::Side, left, reach);
-	Check(p.valid && NearPoint(Column(p, 3), palm + left.edge * 0.20f + face * lift),
-	      "held at its side: where it was, moved out of the palm along its face - the hand behind it");
+	Check(p.valid && NearPoint(Column(p, 3), palm + face * lift),
+	      "its middle on the palm's (section 24.4), moved out of the palm along its face - the hand behind it");
 	Check(NearPoint(Column(p, 0), left.edge) && NearPoint(Column(p, 1), left.blade) && NearPoint(Column(p, 2), face),
-	      "turned as before, like the sword");
+	      "unturned: like the sword");
 	Check(Near(p.width, 0.40f) && Near(p.height, 0.40f), "its size as before");
 	p = PlaceTablet(f, s, true, palm, TabletHold::Bottom, left, reach);
-	Check(NearPoint(Column(p, 3), palm + left.edge * 0.10f + left.blade * 0.20f + face * lift),
-	      "held at its bottom edge: the same way out of the palm");
+	Check(NearPoint(Column(p, 3), palm + face * lift), "the scroll's bottom hold: the same, out of the palm");
 	p = PlaceTablet(f, s, true, palm, TabletHold::Top, left, reach);
-	Check(NearPoint(Column(p, 3), palm - left.blade * 0.20f + face * lift), "and at its top edge");
+	Check(NearPoint(Column(p, 3), palm + face * lift), "and its top hold");
 
 	// The right hand: the left's mirror image, its own side read.
 	HeldAxes right;
@@ -318,7 +333,7 @@ void TestOnTheHand() {
 	Check(Near(PageLiftMetres(HandReach{}, true), unread) && Near(PageLiftMetres(HandReach{}, false), unread),
 	      "the hand's model not read: an open hand's reach stands in");
 	p = PlaceTablet(f, s, true, palm, TabletHold::Side, left);
-	Check(NearPoint(Column(p, 3), palm + left.edge * 0.20f + face * unread), "and the page stands that far before the palm");
+	Check(NearPoint(Column(p, 3), palm + face * unread), "and the page stands that far before the palm");
 
 	// The node not read: the clipboard on the controller, as it was.
 	HeldAxes none = left;

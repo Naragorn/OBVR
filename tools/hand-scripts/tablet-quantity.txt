@@ -18,6 +18,11 @@ ini Hands Enabled=1
 ini Hands LeftHanded=0
 ini Tablet Enabled=1
 ini Tablet Unroll=sideways
+# Aimed for the page held like the sword at its side (sections 20-23): that
+# place pinned - unturned, its middle half the page's 0.34 m across from the
+# palm (section 24.4 turned and centred it by default).
+ini Tablet HeldTurnDegrees=0
+ini Tablet HeldAcrossCm=17
 ini Tablet Figure=tab
 ini Tablet InScene=1
 ini Render UnpausedMenus=0

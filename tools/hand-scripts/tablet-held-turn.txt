@@ -1,0 +1,61 @@
+# The page in the hand turned towards the head and held at its middle
+# (Nadi's Windows run of 2026-11-26: "inventory tablet muss 90 grad nach
+# richtung kopf des spielers und mittig in der hand. lass diese werte
+# einstellbar dann kann ich ingame das justieren danach";
+# docs/inventory-tablet-spec.md 24.4). The left controller held as a hand
+# rests holding it, pointing ahead below the eyes; the head looks down at it.
+# The B opens the tablet: at "held" the log says how it sits - turned 90 by
+# default - its face in the controller's frame and how far it looks off the
+# eyes. Then [Tablet] HeldTurnDegrees=0, the sword's flat as before, is
+# written with the tablet up, and later 45 and a lean: "Tablet: held turned
+# ..." says when the game took it up, and the off-eyes angle of each.
+# Films from each mark (--record 3) show the page; the head down, so the
+# hand is in the picture.
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet InScene=1
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Render UnpausedMenus=0
+ini Render MonitorMenusOnly=0
+ini-at held Tablet HeldTurnDegrees=0
+ini-at unturned Tablet HeldTurnDegrees=45
+ini-at half Tablet HeldLeanDegrees=20
+
+expect HandScript: finished
+expect Tablet: in the off hand, drawn into the eyes
+expect Tablet: held turned 90, leant 0, tilted 0 degrees, moved 0 0 0 cm (across, up, out)
+expect Tablet: held turned 0, leant 0, tilted 0 degrees
+expect Tablet: held turned 45, leant 20, tilted 0 degrees
+reject HandScript: WARNING
+
+wait 12
+head pitch -35
+left pos -0.08 -0.32 -0.30
+left rot 0 0 0
+right pos 0.25 -0.50 -0.10
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 3
+mark held
+wait 4
+mark unturned
+wait 4
+mark half
+wait 4
+mark leant
+wait 1
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark closed
+wait 1

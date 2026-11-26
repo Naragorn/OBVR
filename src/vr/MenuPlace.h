@@ -270,6 +270,24 @@ inline MenuTarget PlaceMenu(const HandModeFrame& f, const HandSettings& s, bool 
 	return target;
 }
 
+// How far the page's face looks off the eyes, in degrees - 0 straight at
+// them, 180 its back to them - for the log Nadi tunes the page in the hand by
+// (docs/inventory-tablet-spec.md 24.4): `place` the page in the holding
+// controller's frame (its face the third column, its middle the fourth),
+// `holder` that controller's pose and `eyes` the head's place, both in
+// tracking space. Negative with the eyes in the page's middle.
+inline float FaceOffEyesDegrees(const openvr::HmdMatrix34& place, const HandPose& holder, const NiPoint3& eyes) {
+	const NiPoint3 face = Rotate(holder.orientation, NiPoint3{place.m[0][2], place.m[1][2], place.m[2][2]});
+	const NiPoint3 middle =
+		holder.position + Rotate(holder.orientation, NiPoint3{place.m[0][3], place.m[1][3], place.m[2][3]});
+	const NiPoint3 to = eyes - middle;
+	if (!(to.LengthSquared() > 1e-8f)) {
+		return -1.0f;
+	}
+	const NiPoint3 across = game::CrossOf3(face, to);
+	return math::Atan2(math::Sqrt(across.LengthSquared()), game::DotOf3(face, to)) * (180.0f / math::kPi);
+}
+
 // A point on the tablet's face to the game's pixel under it: the figure's
 // page, the figure behind its tab, or a tab (nothing of the game's).
 inline bool FaceToLayer(const MenuTarget& t, float& x, float& y) {

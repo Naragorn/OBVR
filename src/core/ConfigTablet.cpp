@@ -33,6 +33,16 @@ void ReadTabletStep(Config& config, const char* path) {
 	// A page narrower than a hand or wider than both arms is no tablet.
 	t.widthMetres = t.widthMetres < 0.15f ? 0.15f : (t.widthMetres > 0.8f ? 0.8f : t.widthMetres);
 	t.gripShare = t.gripShare < 0.0f ? 0.0f : (t.gripShare > 1.0f ? 1.0f : t.gripShare);
+	// How it sits in the hand (vr::HeldPlace): half a turn either way at most,
+	// and within an arm's reach of the palm.
+	const auto within = [](float v, float most) { return v < -most ? -most : (v > most ? most : v); };
+	vr::HeldPlace& h = t.held;
+	h.turnDegrees = within(ReadFloat("Tablet", "HeldTurnDegrees", h.turnDegrees, path), 180.0f);
+	h.leanDegrees = within(ReadFloat("Tablet", "HeldLeanDegrees", h.leanDegrees, path), 180.0f);
+	h.rollDegrees = within(ReadFloat("Tablet", "HeldRollDegrees", h.rollDegrees, path), 180.0f);
+	h.acrossCm = within(ReadFloat("Tablet", "HeldAcrossCm", h.acrossCm, path), 40.0f);
+	h.upCm = within(ReadFloat("Tablet", "HeldUpCm", h.upCm, path), 40.0f);
+	h.outCm = within(ReadFloat("Tablet", "HeldOutCm", h.outCm, path), 40.0f);
 }
 
 }  // namespace obvr

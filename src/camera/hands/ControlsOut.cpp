@@ -21,6 +21,7 @@
 #include "vr/FlyCamLogic.h"
 #include "vr/HandInput.h"
 #include "vr/Holster.h"
+#include "vr/MenuPlace.h"
 #include "test/HandScriptRuntime.h"
 #include "vr/TabletPages.h"
 #include "vr/TabletPaper.h"
@@ -238,6 +239,37 @@ void LogScrollRefusal(ControlsOutState& state, const vr::HandModeResult& hand) {
 	OBVR_LOG("Tablet: both grips closed with the hands together, the scroll not begun - %s", reason);
 }
 
+// How the page sits in the hand (vr::HeldPlace), said when the setting
+// changes while it is up - Nadi tunes it in the game - and at a hand-script
+// mark: the face's way in the holding controller's frame and how far it
+// looks off the eyes (vr::FaceOffEyesDegrees).
+void LogHeldPlace(ControlsOutState& state, const vr::HeldPlace& place, const vr::HandModeResult& hand,
+                  const vr::HandModeFrame& frame) {
+	const auto same = [](const vr::HeldPlace& a, const vr::HeldPlace& b) {
+		return a.turnDegrees == b.turnDegrees && a.leanDegrees == b.leanDegrees && a.rollDegrees == b.rollDegrees &&
+		       a.acrossCm == b.acrossCm && a.upCm == b.upCm && a.outCm == b.outCm;
+	};
+	const bool mark = test::HandScriptMarkedThisFrame();
+	const bool changed = !state.heldSaidOnce || !same(place, state.heldSaid);
+	if (!mark && !(changed && state.heldLinesLeft > 0)) {
+		return;
+	}
+	if (changed && state.heldLinesLeft > 0) {
+		--state.heldLinesLeft;
+	}
+	state.heldSaidOnce = true;
+	state.heldSaid = place;
+	const vr::openvr::HmdMatrix34& m = hand.menuTransform;
+	const vr::HandPose& holder = hand.tabletHolderRight ? frame.right : frame.left;
+	OBVR_LOG("Tablet: held turned %.0f, leant %.0f, tilted %.0f degrees, moved %.0f %.0f %.0f cm (across, up, out) - "
+	         "its face %.2f %.2f %.2f in the %s controller's frame, %.0f degrees off the eyes%s",
+	         static_cast<double>(place.turnDegrees), static_cast<double>(place.leanDegrees),
+	         static_cast<double>(place.rollDegrees), static_cast<double>(place.acrossCm), static_cast<double>(place.upCm),
+	         static_cast<double>(place.outCm), static_cast<double>(m.m[0][2]), static_cast<double>(m.m[1][2]),
+	         static_cast<double>(m.m[2][2]), hand.tabletHolderRight ? "right" : "left",
+	         static_cast<double>(vr::FaceOffEyesDegrees(m, holder, frame.headPosition)), mark ? " (at the mark)" : "");
+}
+
 // The game's menus and the HUD on the hands: the tablet in the off hand -
 // drawn into the eyes (render/TabletQuad.h) or, when that is off or did not
 // reach both eyes last frame, the overlay on the holding controller showing
@@ -293,6 +325,9 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 	if (!closing && fadeFrames > 0) {
 		OBVR_LOG("Tablet: %s - the menus' fade kept out of the room and the eyes (%u frame(s))",
 		         hand.menuOnTablet ? "the pages back" : "closed", fadeFrames);
+	}
+	if (hand.menuOnTablet) {
+		LogHeldPlace(state, config.hands.tablet.held, hand, frame);
 	}
 	if (hand.menuOnTablet && textureWidth > 0.0f && textureHeight > 0.0f) {
 		const vr::openvr::VRTextureBounds bounds{frame.tablet.crop.left / textureWidth, frame.tablet.crop.top / textureHeight,

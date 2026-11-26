@@ -1,5 +1,6 @@
 #include "camera/hands/LaserTargets.h"
 
+#include "core/Config.h"
 #include "core/Log.h"
 #include "game/FirstPersonHide.h"
 #include "game/MenuCursor.h"
@@ -218,7 +219,7 @@ void StepIndexTips(LaserTargetsState& state, bool rightFollows, bool leftFollows
 	held(true, hand.rightHandValid, hand.rightHandRotation, state.rightHeld);
 	held(false, hand.leftHandValid, hand.leftHandRotation, state.leftHeld);
 	// And how far each hand as drawn reaches out of the flat the page lies in, while the tablet is up.
-	StepHandReachRead(state.reach, state.tabletUp, hand, unitsPerMetre);
+	StepHandReachRead(state.reach, state.tabletUp, hand, unitsPerMetre, GetConfig().hands.tablet.held);
 }
 
 }  // namespace obvr::camera::hands

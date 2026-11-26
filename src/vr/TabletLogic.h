@@ -64,6 +64,22 @@ inline TabletUnroll TabletUnrollFromIndex(float value) {
 	return value > 0.5f && value < 1.5f ? TabletUnroll::Vertical : TabletUnroll::Sideways;
 }
 
+// How the page sits in the hand that holds it, held like the sword (Nadi,
+// Windows 2026-11-26: "inventory tablet muss 90 grad nach richtung kopf des
+// spielers und mittig in der hand. lass diese werte einstellbar dann kann ich
+// ingame das justieren"): turned from the blade's flat (PageLikeTheSword) by
+// three angles in turn, each about the page's own axis as it then stands -
+// mirrored for a right hand, so a value means the same in either - and its
+// middle on the palm's, moved by the place (TurnHeldPage, PlaceTablet).
+struct HeldPlace {
+	float turnDegrees = 90.0f;  // about its upright, the blade: + the face away from the knuckles, to the head
+	float leanDegrees = 0.0f;   // about its width: + the top back, the face up
+	float rollDegrees = 0.0f;   // in its own flat: + the top towards the body's middle
+	float acrossCm = 0.0f;      // its middle off the palm's: + towards the body's middle
+	float upCm = 0.0f;          // + up the page
+	float outCm = 0.0f;         // + out of its face, past the hand's reach
+};
+
 // [Tablet].
 struct TabletSettings {
 	bool enabled = true;  // off is the onboarding's "Traditional inventory"
@@ -86,6 +102,7 @@ struct TabletSettings {
 	float gripForward = 0.02f;
 	float tiltDegrees = 30.0f;
 	float gripShare = 0.25f;
+	HeldPlace held;  // in the hand, held like the sword
 };
 
 // ------------------------------------------------------------- Which menus
@@ -705,6 +722,32 @@ inline PageAxes PageLikeTheSword(const HeldAxes& held, bool holderPhysicalLeft) 
 	return a;
 }
 
+// Two of a frame's axes turned in their plane by `degrees`: a towards b.
+inline void TurnAxisPair(NiPoint3& a, NiPoint3& b, float degrees) {
+	const float r = degrees * (math::kPi / 180.0f);
+	const float c = math::Cos(r);
+	const float s = math::Sin(r);
+	const NiPoint3 was = a;
+	a = was * c + b * s;
+	b = b * c - was * s;
+}
+
+// The page held like the sword, turned by the place's angles (HeldPlace):
+// first about its upright - positive turns the face from the palm's side
+// away from the knuckles, in either hand - then about its width, then in its
+// own flat.
+inline PageAxes TurnHeldPage(const PageAxes& sword, const HeldPlace& place, bool holderPhysicalLeft) {
+	PageAxes a = sword;
+	if (!a.valid) {
+		return a;
+	}
+	const float side = holderPhysicalLeft ? 1.0f : -1.0f;
+	TurnAxisPair(a.front, a.right, -side * place.turnDegrees);
+	TurnAxisPair(a.front, a.up, place.leanDegrees);
+	TurnAxisPair(a.up, a.right, side * place.rollDegrees);
+	return a;
+}
+
 // What a hand at the side holds by its outer edge: the page's outline and,
 // beside it, the figure's own page - not a popup, which comes and goes. The
 // edge was the whole face's: held by a physical right hand - left-handed, or
@@ -750,7 +793,7 @@ inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bo
 	place.width = cropWidth * metresPerPixel;
 	place.height = cropHeight * metresPerPixel;
 	place.valid = true;
-	const PageAxes sword = PageLikeTheSword(held, holderPhysicalLeft);
+	const PageAxes sword = TurnHeldPage(PageLikeTheSword(held, holderPhysicalLeft), s.held, holderPhysicalLeft);
 	if (sword.valid) {
 		const NiPoint3 axes[3] = {sword.right, sword.up, sword.front};
 		for (int c = 0; c < 3; ++c) {
@@ -758,8 +801,15 @@ inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bo
 			m.m[1][c] = axes[c].y;
 			m.m[2][c] = axes[c].z;
 		}
-		const NiPoint3 centre =
-			hand + sword.right * across + sword.up * along + sword.front * PageLiftMetres(reach, holderPhysicalLeft);
+		// The page's middle on the palm's, whatever the hold (Nadi: "mittig in
+		// der hand"); the face drawn round its own middle, a box beside the
+		// page reaching out past it.
+		const float faceAcross = (0.5f * (f.crop.left + f.crop.right) - 0.5f * (f.paper.left + f.paper.right)) * metresPerPixel;
+		const float faceAlong = (pageMiddleY - 0.5f * (f.crop.top + f.crop.bottom)) * metresPerPixel;
+		const float side = holderPhysicalLeft ? 1.0f : -1.0f;
+		const NiPoint3 centre = hand + sword.right * (faceAcross + side * 0.01f * s.held.acrossCm) +
+		                        sword.up * (faceAlong + 0.01f * s.held.upCm) +
+		                        sword.front * (PageLiftMetres(reach, holderPhysicalLeft) + 0.01f * s.held.outCm);
 		m.m[0][3] = centre.x;
 		m.m[1][3] = centre.y;
 		m.m[2][3] = centre.z;

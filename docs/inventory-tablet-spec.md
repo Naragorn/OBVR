@@ -1687,3 +1687,103 @@ abgeschnitten".
 - Not seen in a picture: the eye dumps of a harness run do not show the
   tablet; the rectangles in the log are the evidence. Not run: a Generic box
   in the harness (the unit test has the run's own rectangle), the headset.
+
+### 24.4 Turned towards the head, held at its middle, set in the game
+
+Nadi: "inventory tablet muss 90 grad nach richtung kopf des spielers und
+mittig in der hand. lass diese werte einstellbar dann kann ich ingame das
+justieren danach. ansonsten ging da alles."
+
+- [R in the code, sections 20 and 21] Held like the sword: the page's up the
+  held-item node's y (the blade), its right the node's x (the knuckles, to the
+  body's middle), its face right by up - the palm's side; held at its side
+  edge (Unroll=sideways, the default and Nadi's: his INI sets no Unroll), the
+  page across the knuckles.
+- [R in the log, 2381] His left hand's Torch node: blade 0.322 0.302 -0.897,
+  knuckles -0.241 -0.890 -0.386 in the Index's frame (-z ahead, +y up, +z
+  back to him). [D] So the page's top runs along the controller's pointing
+  way, its right edge down, its face +x - the palm's side. With the
+  controller held as a hand rests, pointing ahead below the eyes, the page
+  stands up out of the fist like a flag, its face to the body's middle: seen
+  edge-on. [R in the harness, tablet-held-turn.txt, that pose: the left
+  controller 32 cm under and 30 cm before the eyes, pointing ahead, the head
+  35 degrees down] the face 87 to 89 degrees off the eyes. To read it the
+  wrist turns a quarter, the palm to the eyes (the reading pose of section
+  20).
+- **The reading chosen** [D from the above; G as to what he meant - the
+  headset decides]: "90 degrees towards the head" is that quarter turn of
+  the wrist given to the page - about its upright, the blade, the face from
+  the palm's side away from the knuckles. In his hand the face then looks
+  along 0.24 0.89 0.39: the controller's top and back to him; the page lies
+  over the fist like a phone held in the palm, its top ahead, its face up to
+  the eyes. "mittig in der hand": its middle on the palm's middle, not its
+  edge. In the pose above: 45 to 47 degrees off the eyes (with the
+  controller level; [D] raising its tip 45 degrees, as one does to read
+  something in the hand, faces them). The other readings are the other two
+  angles below: a turn about the page's width (its top towards the head) is
+  the lean, one in its own flat the tilt; -90 turns the face the other way
+  (to the controller's bottom).
+- **Changed** (vr/TabletLogic.h `HeldPlace` in `TabletSettings::held`,
+  `TurnAxisPair`, `TurnHeldPage`, `PlaceTablet`'s sword path; vr/HandReach.h;
+  camera/hands/HandReachRead and LaserTargets; core/ConfigTablet.cpp,
+  Config.cpp's step list; OBVR.ini; ui/SettingsPartHands.h): held like the
+  sword, the page is turned in turn about its upright (HeldTurnDegrees, 90),
+  its width (HeldLeanDegrees, 0: + its top away from the side read, the face
+  up) and in its flat (HeldRollDegrees, 0: + its top to the body's middle),
+  each about the axis as it then stands and mirrored for a right hand, so a
+  value means the same in either; its middle stands on the palm's whatever
+  the hold, moved by HeldAcrossCm (to the body's middle), HeldUpCm and
+  HeldOutCm (out of its face, past the hand's reach) - six [Tablet] keys,
+  half a turn and 40 cm at most. A box beside the page reaches out past it;
+  the page's middle stays in the hand. The hand's reach (section 21) is now
+  taken along the face each hand's page shows as turned: unturned the hand's
+  two sides, turned a quarter both away from the knuckles. The other holds'
+  edges (the scroll's bottom and top) are used off the hand's bones only.
+- Six rows in the game's settings, Laser & wrist menus: "Hand menu turn",
+  "lean", "tilt", "sideways", "height", "distance" - numbers in steps of 5
+  degrees or 1 cm, written to the INI as they change.
+- **Live, also with the page up.** [R in the harness, the first build of
+  this change, 20261126-164006-slot4] HeldTurnDegrees written with the
+  tablet up was not taken while it stayed up - the harness doc had it since
+  2026-11-20: "`ini-at` taken in a menu is read only after the menu closes".
+  [R in the code] The INI's re-read (MaybeReloadConfig, every
+  ReloadEveryFrames frames) ran from the engine's camera update only, which
+  does not run in menu mode. **Changed** (CameraHook.cpp, the line count
+  kept): it runs at the start of every presented frame, a menu's too, counted
+  by the presented frames. When due it reads the files' time (one directory
+  read); the full re-read only after an edit, as before - 135 to 162 ms in
+  the harness, a stutter as in the world. The settings menu writes its
+  changes into the file, so a re-read agrees with it.
+- Logged: "Tablet: held turned T, leant L, tilted R degrees, moved A U O cm
+  (across, up, out) - its face x y z in the left controller's frame, N
+  degrees off the eyes" when the values change with the page up (40 lines)
+  and at each hand-script mark (vr::FaceOffEyesDegrees) - the values Nadi
+  settles on are in his log.
+- Tests: tablet_test (the defaults, the quarter turn, his own axes, the
+  right hand's mirror image, the place in centimetres, the lean, the roll, no
+  turn, a box beside the page; the old checks of the sword's flat pinned to
+  no turn, the edge holds' places now the middle), tablet_on_hand_test (the
+  reach along each hand's turned face; the placement checks as above),
+  menu_place_test (the default turn through PlaceMenu, FaceOffEyesDegrees),
+  settings_list_test (tests/settings-rows.txt: the six rows, rewritten with
+  --print). Written first: they did not build before `HeldPlace`.
+- Harness, Linux, headless, the stand-in runtime: tablet-held-turn.txt
+  (new) FAIL with 8095bfd (20261126-164537-slot3: no place said - it has no
+  such values), PASS with this change (20261126-164349-slot3): turned 90 the
+  face 0.04 0.99 0.10 in the controller's frame (the harness's left hand),
+  45 degrees off the eyes; HeldTurnDegrees=0 written with the tablet up,
+  "Config: OBVR.ini changed - re-read in 135.6 ms", the face 1.00 -0.05 0.07,
+  87 degrees off; 45, 56 degrees; 45 and a lean of 20, 71 degrees (the lean
+  tips this pose's face further from the eyes: here a negative lean faces
+  them). The scenarios aimed for the place of sections 20 to 23 pin it:
+  HeldTurnDegrees=0 and HeldAcrossCm=17 (half the 0.34 m page) are that place
+  exactly (tablet-boxes, -quantity, -stats-info, -info, -info-rest);
+  tablet-boxes.txt (20261126-164751-slot3), tablet-quantity.txt
+  (20261126-164917-slot3) and tablet-stats-info.txt (20261126-165037-slot3)
+  PASS so; tablet-info and tablet-info-rest not run again.
+- Open, for the headset: how it feels and which lean and place he settles
+  on; [G] a default lean of -20 to -45 may suit a level hand better - his log
+  will say. The scenarios that aim at the page held at its edge before
+  section 20 (tablet-open, tablet-touch*, tablet-book, tablet-walk's click)
+  miss as before (section 21's open point). The right hand's hold and a
+  left-handed player are covered by the unit tests, not run.
