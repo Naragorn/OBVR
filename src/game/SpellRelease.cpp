@@ -216,6 +216,10 @@ void InstallSpellRelease() {
 // clock +0x94) - the time a counter steps is its key's time.
 namespace {
 
+// ActorAnimData::animSequences[5] at +0xA0 (xOBSE; game/WeaponDrawSpeed.h). A sixth read is past the
+// array: a crash in a new game's chargen read "\bBip" there as a pointer (OBNG, 2026-11-26).
+constexpr UInt32 kAnimDataSequenceCount = 5;
+
 // The active spell's first effect's setting: the item's effect list (MagicItem +0x0C, its head
 // effect at +0x10), the EffectItem's setting (+0x1C) - xOBSE GameForms.h's offsets. nullptr when a
 // link is missing.
@@ -255,7 +259,7 @@ void LogCastAnimation(Probe& p) {
 		return;
 	}
 	const float clock = *reinterpret_cast<const float*>(animData + 0x94);
-	for (UInt32 slot = 0; slot < 6; ++slot) {
+	for (UInt32 slot = 0; slot < kAnimDataSequenceCount; ++slot) {
 		const UInt32 sequence = *reinterpret_cast<const UInt32*>(animData + 0xA0 + slot * 4);
 		const UInt32 group = mem::LooksLikeObjectAddress(sequence) ? *reinterpret_cast<const UInt32*>(sequence + 0x68) : 0;
 		const UInt32 code = mem::LooksLikeObjectAddress(group) ? *reinterpret_cast<const UInt8*>(group + 0x08) : 0xFF;
@@ -295,7 +299,7 @@ UInt32 CastSequenceOf(UInt32 animData, unsigned& code) {
 	if (!mem::LooksLikeObjectAddress(animData)) {
 		return 0;
 	}
-	for (UInt32 slot = 0; slot < 6; ++slot) {
+	for (UInt32 slot = 0; slot < kAnimDataSequenceCount; ++slot) {
 		const UInt32 sequence = *reinterpret_cast<const UInt32*>(animData + 0xA0 + slot * 4);
 		const UInt32 group = mem::LooksLikeObjectAddress(sequence) ? *reinterpret_cast<const UInt32*>(sequence + 0x68) : 0;
 		const unsigned c = mem::LooksLikeObjectAddress(group) ? *reinterpret_cast<const UInt8*>(group + 0x08) : 0xFF;
