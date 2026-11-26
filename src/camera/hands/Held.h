@@ -20,6 +20,7 @@
 #include "ui/CanvasOverlay.h"
 #include "ui/StowSpotPainter.h"
 #include "vr/HandInput.h"
+#include "vr/PlaceNear.h"
 #include "vr/Stow.h"
 #include "vr/StowPlace.h"
 
@@ -67,6 +68,8 @@ struct HeldLinks {
 	void (*forgetTaken)(UInt32 ref);
 	// The thrown thing's hits (CameraHook StepThrowHits).
 	void (*throwHits)(const Config& config, float dt, bool inWorld);
+	// Out, may be null: the potion held, for the places' circles (camera/hands/HolsterNear.cpp).
+	vr::PotionHeld* potionHeld;
 };
 
 void StepHeldObject(HeldState& state, const HandStep& step, const HandShared& shared,

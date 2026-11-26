@@ -78,30 +78,121 @@ inline bool PlaceNearShown(float alpha) { return alpha >= kPlaceNearShownFrom; }
 // are left (the weapon places' "Holster near" and the ring's "Stow ring near").
 inline bool PlaceNearToSay(bool shown, bool said, UInt32 linesLeft) { return shown != said && linesLeft > 0; }
 
-// What is held that belongs at a weapon place, and by which hand: the drawn
-// one- or two-hander by the weapon hand, the drawn bow by the other hand.
-// Nothing while sheathed or with the fists up.
-struct HeldForPlaces {
+// What each hand holds that a place could take - the same things the places'
+// sign names (camera/hands/Holster.cpp StepHolsterSign): the weapon hand's
+// drawn one- or two-hander; the other hand's drawn bow, else its shield or
+// torch; and a potion held in either hand, which a free place keeps
+// (vr/PotionBelt.h). Nadi, 2026-11-26: the torch showed the sign's words
+// where a weapon shows the circle - "hätte lieber kreis", and for potions
+// "vll ähnlich". Before, only the drawn weapon and the bow had a circle.
+struct HandHeldForPlace {
 	SlotItem item = SlotItem::Nothing;
-	bool otherHand = false;
+	bool potion = false;  // a potion (no poison) held in this hand, [Hands] PotionBelt on
 };
 
-inline HeldForPlaces HeldForPlacesOf(WeaponSeen seen, EquippedKind equipped) {
+inline constexpr UInt32 kPlaceWeaponHand = 0;
+inline constexpr UInt32 kPlaceOtherHand = 1;
+
+struct HeldForPlaces {
+	HandHeldForPlace hand[2];  // kPlaceWeaponHand, kPlaceOtherHand
+};
+
+// A potion held for the places: its base form id (0 none) and the hand
+// (kPlaceWeaponHand, kPlaceOtherHand), as the held object's step read it.
+struct PotionHeld {
+	UInt32 id = 0;
+	SInt32 hand = -1;
+};
+
+struct HeldForPlacesInput {
+	WeaponSeen seen = WeaponSeen::Unknown;
+	EquippedKind equipped = EquippedKind::Nothing;
+	OffHandItem offHand = OffHandItem::Nothing;  // the other hand's shield or torch, worn
+	SInt32 potionHand = -1;  // the hand holding a potion: kPlaceWeaponHand, kPlaceOtherHand, else none
+};
+
+inline HeldForPlaces HeldForPlacesOf(const HeldForPlacesInput& in) {
 	HeldForPlaces h;
-	if (seen != WeaponSeen::Drawn) {
-		return h;
+	const bool drawn = in.seen == WeaponSeen::Drawn;
+	const SlotItem equipped = SlotItemOf(in.equipped);
+	if (drawn && WeaponHandItem(equipped)) {
+		h.hand[kPlaceWeaponHand].item = equipped;
 	}
-	h.item = SlotItemOf(equipped);
-	h.otherHand = h.item == SlotItem::Bow;
-	if (!WeaponHandItem(h.item) && h.item != SlotItem::Bow) {
-		h = HeldForPlaces{};
+	h.hand[kPlaceOtherHand].item = drawn && equipped == SlotItem::Bow ? SlotItem::Bow : SlotItemOf(in.offHand);
+	if (in.potionHand == static_cast<SInt32>(kPlaceWeaponHand) || in.potionHand == static_cast<SInt32>(kPlaceOtherHand)) {
+		h.hand[in.potionHand].potion = true;
 	}
 	return h;
 }
 
-// Whether a place's circle may show for what is held: only a place that takes it.
-inline bool PlaceTakesHeld(HolsterSlot slot, const HeldForPlaces& held) {
-	return held.item != SlotItem::Nothing && SlotAccepts(slot, held.item);
+// Whether a place's circle may show for what a hand holds: only a place that
+// takes it - for a potion, a place a let go would keep it at (`potionFits`,
+// vr/PotionBelt.h PotionPlaceFor).
+inline bool PlaceTakesHeld(HolsterSlot slot, const HandHeldForPlace& held, bool potionFits) {
+	if (slot == HolsterSlot::None) {
+		return false;
+	}
+	return (held.item != SlotItem::Nothing && SlotAccepts(slot, held.item)) || (held.potion && potionFits);
+}
+
+// One place's hint from both hands: each counts while tracked and holding
+// what the place takes; the place shows the larger target and is lit while
+// such a hand is inside it (a let go or a grip there puts it away).
+struct PlaceNearHand {
+	bool tracked = false;
+	float distanceMetres = 0.0f;  // from the hand to the place's middle
+	bool takes = false;           // the place takes what this hand holds (PlaceTakesHeld)
+};
+
+struct PlaceNearOne {
+	float target = 0.0f;
+	bool lit = false;
+};
+
+inline PlaceNearOne PlaceNearFromHands(const PlaceNearSettings& s, const PlaceNearHand (&hands)[2], float radiusMetres) {
+	PlaceNearOne one;
+	for (const PlaceNearHand& h : hands) {
+		const bool mine = h.tracked && h.takes;
+		const float target = PlaceNearTarget(s, mine, h.distanceMetres, radiusMetres);
+		one.target = target > one.target ? target : one.target;
+		one.lit = one.lit || (mine && h.distanceMetres <= radiusMetres);
+	}
+	return one;
+}
+
+// The log's words for what the hands hold for the places: "the weapon hand's
+// weapon", "the other hand's torch", both joined; "the weapon hand's nothing"
+// for none, as the line has read since 2026-11-16.
+inline void PlaceNearHeldWords(const HeldForPlaces& held, char* out, UInt32 size) {
+	if (out == nullptr || size == 0) {
+		return;
+	}
+	out[0] = '\0';
+	UInt32 at = 0;
+	const auto add = [&](const char* text) {
+		for (; *text != '\0' && at + 1 < size; ++text) {
+			out[at++] = *text;
+		}
+		out[at] = '\0';
+	};
+	for (UInt32 i = 0; i < 2; ++i) {
+		const HandHeldForPlace& h = held.hand[i];
+		const char* const what = WeaponHandItem(h.item)          ? "weapon"
+		                         : h.item == SlotItem::Bow    ? "bow"
+		                         : h.item == SlotItem::Shield ? "shield"
+		                         : h.item == SlotItem::Torch  ? "torch"
+		                         : h.potion                   ? "potion"
+		                                                      : nullptr;
+		if (what == nullptr) {
+			continue;
+		}
+		add(at > 0 ? ", " : "");
+		add(i == kPlaceWeaponHand ? "the weapon hand's " : "the other hand's ");
+		add(what);
+	}
+	if (at == 0) {
+		add("the weapon hand's nothing");
+	}
 }
 
 }  // namespace obvr::vr

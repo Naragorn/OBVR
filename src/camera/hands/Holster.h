@@ -23,6 +23,7 @@
 #include "ui/StowSpotPainter.h"
 #include "vr/HolsterFit.h"
 #include "vr/HolsterPlace.h"
+#include "vr/PlaceNear.h"
 #include "vr/HolsterSign.h"
 
 namespace obvr::camera::hands {
@@ -84,6 +85,9 @@ struct HolsterState {
 	bool circlesUp = false;  // a circle may be on screen - the window's or the hint's - and is hidden when none is wanted
 	bool nearSaid = false;   // the log's last word on the hint
 	UInt32 nearLines = 8;
+	// A potion held, as the held object's step read it last frame (camera/hands/Held.cpp):
+	// the places a let go keeps it at show their circles too (vr/PlaceNear.h).
+	vr::PotionHeld potionHeld;
 
 	// The potions kept at the same places (camera/hands/PotionBelt.h).
 	PotionBeltState potionBelt;

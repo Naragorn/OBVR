@@ -5032,7 +5032,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// with the hand's speed when let go (game::GrabPhysics).
 	{
 		const hands::HeldLinks links{reach.key,        haveHoldPoint,  holdPoint,    g_grab.weaponPullTaking, g_handBackTaking,
-		                             g_handRolesSwapped, g_deltaSeconds, &ForgetTaken, &StepThrowHits};
+		                             g_handRolesSwapped, g_deltaSeconds, &ForgetTaken, &StepThrowHits, &g_holster.potionHeld};
 		hands::StepHeldObject(g_held, handStep, handShared, frame, links);
 	}
 

@@ -39,11 +39,18 @@ static UInt8 PotionPlaceOfHeld(const Config& config, const vr::StowInput& in, bo
 // Let go at the body, or a potion at a place: taken as activating takes it;
 // the potion's form then kept at the place (vr/PotionBelt.h).
 // What the hints read (camera/hands/Hints.h): an item held, and whether to
-// eat or drink - a poison is not.
-static void NoteHeldForHints(HeldState& state, const vr::StowInput& in, bool poison) {
+// eat or drink - a poison is not. And for the places' circles
+// (camera/hands/HolsterNear.cpp, read the next frame): a potion's form and
+// the hand that holds it.
+static void NoteHeldForHints(HeldState& state, const vr::StowInput& in, bool poison, vr::PotionHeld* places) {
 	state.holdingItem = in.keyDown && in.heldIsItem;
 	state.holdingEdible = state.holdingItem && in.heldIsEdible && !poison;
 	state.holdingPotion = state.holdingEdible && game::RefBaseFormType(in.heldRef) == addr::kFormTypePotion;
+	if (places != nullptr) {
+		const UInt32 base = state.holdingPotion ? game::RefBaseForm(in.heldRef) : 0;
+		places->id = mem::LooksLikeObjectAddress(base) ? *reinterpret_cast<const UInt32*>(base + addr::kFormIdOffset) : 0;
+		places->hand = static_cast<SInt32>(state.holdLeft ? vr::kPlaceOtherHand : vr::kPlaceWeaponHand);
+	}
 }
 
 static void TakeStowed(HeldState& state, const HeldLinks& links, const vr::StowVerdict& stow) {
@@ -149,7 +156,7 @@ void StepHeldObject(HeldState& state, const HandStep& step, const HandShared& sh
 	stowIn.heldIsItem = stowIn.heldRef != 0 && game::RefIsItem(stowIn.heldRef, nullptr);
 	bool heldIsPoison = false;
 	stowIn.heldIsEdible = stowIn.heldIsItem && game::RefIsEdible(stowIn.heldRef, &heldIsPoison);
-	NoteHeldForHints(state, stowIn, heldIsPoison);
+	NoteHeldForHints(state, stowIn, heldIsPoison, links.potionHeld);
 	stowIn.handValid = holding.valid && frame.headValid;
 	float toMouth = -1.0f;
 	bool nearMouth = false;

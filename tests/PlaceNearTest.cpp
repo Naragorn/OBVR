@@ -1,5 +1,6 @@
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <limits>
 
 #include "vr/PlaceNear.h"
@@ -71,27 +72,129 @@ void TestFade() {
 	Check(!PlaceNearShown(0.0f) && !PlaceNearShown(0.005f) && PlaceNearShown(0.01f) && PlaceNearShown(0.25f), "shown from a hundredth");
 }
 
+HeldForPlaces HeldOf(WeaponSeen seen, EquippedKind equipped, OffHandItem offHand = OffHandItem::Nothing,
+                     SInt32 potionHand = -1) {
+	HeldForPlacesInput in;
+	in.seen = seen;
+	in.equipped = equipped;
+	in.offHand = offHand;
+	in.potionHand = potionHand;
+	return HeldForPlacesOf(in);
+}
+
+constexpr UInt32 kWeapon = 0;
+constexpr UInt32 kOther = 1;
+
 void TestHeld() {
 	std::printf("What is held that belongs at a place\n");
-	HeldForPlaces h = HeldForPlacesOf(WeaponSeen::Drawn, EquippedKind::OneHand);
-	Check(h.item == SlotItem::OneHand && !h.otherHand, "a drawn one-hander: the weapon hand's");
-	Check(PlaceTakesHeld(HolsterSlot::HipLeft, h) && PlaceTakesHeld(HolsterSlot::HipRight, h) &&
-	          !PlaceTakesHeld(HolsterSlot::BackLeft, h) && !PlaceTakesHeld(HolsterSlot::BackRight, h),
+	HeldForPlaces h = HeldOf(WeaponSeen::Drawn, EquippedKind::OneHand);
+	Check(h.hand[kWeapon].item == SlotItem::OneHand && h.hand[kOther].item == SlotItem::Nothing,
+	      "a drawn one-hander: the weapon hand's");
+	const HandHeldForPlace& w = h.hand[kWeapon];
+	Check(PlaceTakesHeld(HolsterSlot::HipLeft, w, false) && PlaceTakesHeld(HolsterSlot::HipRight, w, false) &&
+	          !PlaceTakesHeld(HolsterSlot::BackLeft, w, false) && !PlaceTakesHeld(HolsterSlot::BackRight, w, false),
 	      "it shows the hips, not the back");
-	h = HeldForPlacesOf(WeaponSeen::Drawn, EquippedKind::TwoHand);
-	Check(h.item == SlotItem::TwoHand && !h.otherHand, "a drawn two-hander: the weapon hand's");
-	Check(!PlaceTakesHeld(HolsterSlot::HipLeft, h) && PlaceTakesHeld(HolsterSlot::BackLeft, h) && PlaceTakesHeld(HolsterSlot::BackRight, h),
+	h = HeldOf(WeaponSeen::Drawn, EquippedKind::TwoHand);
+	Check(h.hand[kWeapon].item == SlotItem::TwoHand, "a drawn two-hander: the weapon hand's");
+	Check(!PlaceTakesHeld(HolsterSlot::HipLeft, h.hand[kWeapon], false) &&
+	          PlaceTakesHeld(HolsterSlot::BackLeft, h.hand[kWeapon], false) &&
+	          PlaceTakesHeld(HolsterSlot::BackRight, h.hand[kWeapon], false),
 	      "it shows the back, not the hips");
-	h = HeldForPlacesOf(WeaponSeen::Drawn, EquippedKind::Bow);
-	Check(h.item == SlotItem::Bow && h.otherHand, "a drawn bow: the other hand's");
-	Check(PlaceTakesHeld(HolsterSlot::BackLeft, h) && !PlaceTakesHeld(HolsterSlot::HipRight, h), "it shows the back");
-	h = HeldForPlacesOf(WeaponSeen::Drawn, EquippedKind::Nothing);
-	Check(h.item == SlotItem::Nothing && !PlaceTakesHeld(HolsterSlot::HipLeft, h), "the fists up: nothing held for a place");
-	h = HeldForPlacesOf(WeaponSeen::Sheathed, EquippedKind::OneHand);
-	Check(h.item == SlotItem::Nothing && !PlaceTakesHeld(HolsterSlot::HipLeft, h), "sheathed: nothing held");
-	h = HeldForPlacesOf(WeaponSeen::Unknown, EquippedKind::TwoHand);
-	Check(h.item == SlotItem::Nothing, "not known (a menu): nothing held");
-	Check(!PlaceTakesHeld(HolsterSlot::None, HeldForPlacesOf(WeaponSeen::Drawn, EquippedKind::OneHand)), "no place: never");
+	h = HeldOf(WeaponSeen::Drawn, EquippedKind::Bow);
+	Check(h.hand[kOther].item == SlotItem::Bow && h.hand[kWeapon].item == SlotItem::Nothing, "a drawn bow: the other hand's");
+	Check(PlaceTakesHeld(HolsterSlot::BackLeft, h.hand[kOther], false) &&
+	          !PlaceTakesHeld(HolsterSlot::HipRight, h.hand[kOther], false),
+	      "it shows the back");
+	h = HeldOf(WeaponSeen::Drawn, EquippedKind::Nothing);
+	Check(h.hand[kWeapon].item == SlotItem::Nothing && !PlaceTakesHeld(HolsterSlot::HipLeft, h.hand[kWeapon], false),
+	      "the fists up: nothing held for a place");
+	h = HeldOf(WeaponSeen::Sheathed, EquippedKind::OneHand);
+	Check(h.hand[kWeapon].item == SlotItem::Nothing && !PlaceTakesHeld(HolsterSlot::HipLeft, h.hand[kWeapon], false),
+	      "sheathed: nothing held");
+	h = HeldOf(WeaponSeen::Unknown, EquippedKind::TwoHand);
+	Check(h.hand[kWeapon].item == SlotItem::Nothing, "not known (a menu): nothing held");
+	Check(!PlaceTakesHeld(HolsterSlot::None, HeldOf(WeaponSeen::Drawn, EquippedKind::OneHand).hand[kWeapon], true),
+	      "no place: never");
+}
+
+// Nadi, 2026-11-26: the torch showed the sign's words where a weapon shows the circle - the
+// circle wanted for it too, and maybe for potions.
+void TestOtherHandAndPotions() {
+	std::printf("The torch, the shield and potions get the circle as the weapons do\n");
+	HeldForPlaces h = HeldOf(WeaponSeen::Sheathed, EquippedKind::OneHand, OffHandItem::Torch);
+	Check(h.hand[kOther].item == SlotItem::Torch && h.hand[kWeapon].item == SlotItem::Nothing,
+	      "a torch in the other hand, the sword sheathed: the other hand's torch");
+	Check(PlaceTakesHeld(HolsterSlot::HipLeft, h.hand[kOther], false) &&
+	          PlaceTakesHeld(HolsterSlot::HipRight, h.hand[kOther], false) &&
+	          !PlaceTakesHeld(HolsterSlot::BackLeft, h.hand[kOther], false) &&
+	          !PlaceTakesHeld(HolsterSlot::BackRight, h.hand[kOther], false),
+	      "the torch shows the hips, not the back");
+	h = HeldOf(WeaponSeen::Drawn, EquippedKind::OneHand, OffHandItem::Torch);
+	Check(h.hand[kWeapon].item == SlotItem::OneHand && h.hand[kOther].item == SlotItem::Torch,
+	      "the sword drawn beside the torch: each hand its own");
+	h = HeldOf(WeaponSeen::Drawn, EquippedKind::Nothing, OffHandItem::Shield);
+	Check(h.hand[kOther].item == SlotItem::Shield, "a shield worn: the other hand's");
+	Check(PlaceTakesHeld(HolsterSlot::HipLeft, h.hand[kOther], false) &&
+	          PlaceTakesHeld(HolsterSlot::BackRight, h.hand[kOther], false),
+	      "the shield shows the hips and the back, as it is kept at all four");
+	h = HeldOf(WeaponSeen::Drawn, EquippedKind::Bow, OffHandItem::Shield);
+	Check(h.hand[kOther].item == SlotItem::Bow, "the bow drawn: the other hand's place is the bow's, as the sign says");
+	h = HeldOf(WeaponSeen::Sheathed, EquippedKind::Nothing, OffHandItem::Nothing, 1);
+	Check(h.hand[kOther].potion && !h.hand[kWeapon].potion && h.hand[kOther].item == SlotItem::Nothing,
+	      "a potion in the other hand: that hand's");
+	Check(PlaceTakesHeld(HolsterSlot::BackLeft, h.hand[kOther], true) &&
+	          !PlaceTakesHeld(HolsterSlot::HipLeft, h.hand[kOther], false),
+	      "a potion: the places a let go would keep it at, no other");
+	h = HeldOf(WeaponSeen::Sheathed, EquippedKind::Nothing, OffHandItem::Nothing, 0);
+	Check(h.hand[kWeapon].potion && !h.hand[kOther].potion, "a potion in the weapon hand: that hand's");
+	h = HeldOf(WeaponSeen::Sheathed, EquippedKind::Nothing, OffHandItem::Nothing, 5);
+	Check(!h.hand[kWeapon].potion && !h.hand[kOther].potion, "no hand read for the potion: nobody's");
+	Check(!PlaceTakesHeld(HolsterSlot::None, h.hand[kWeapon], true), "no place, a potion held: never");
+}
+
+void TestBothHands() {
+	std::printf("A place's circle from both hands\n");
+	const PlaceNearSettings s;
+	PlaceNearHand hands[2];
+	hands[kWeapon] = PlaceNearHand{true, 1.0f, true};
+	hands[kOther] = PlaceNearHand{true, 0.1f, true};
+	PlaceNearOne one = PlaceNearFromHands(s, hands, 0.2f);
+	Check(Near(one.target, 0.25f) && one.lit, "the other hand's torch inside: shown and lit, the sword far away");
+	hands[kOther].takes = false;
+	one = PlaceNearFromHands(s, hands, 0.2f);
+	Check(Near(one.target, 0.0f) && !one.lit, "the hand inside holds nothing the place takes: nothing");
+	hands[kWeapon] = PlaceNearHand{true, 0.2f + kPlaceNearMarginMetres * 0.5f, true};
+	hands[kOther] = PlaceNearHand{true, 0.25f, true};
+	one = PlaceNearFromHands(s, hands, 0.2f);
+	Check(Near(one.target, 0.25f * (1.0f - 0.05f / kPlaceNearMarginMetres)) && !one.lit,
+	      "both outside: the nearer one's fade, not lit");
+	hands[kWeapon] = PlaceNearHand{false, 0.0f, true};
+	hands[kOther] = PlaceNearHand{false, 0.0f, true};
+	one = PlaceNearFromHands(s, hands, 0.2f);
+	Check(Near(one.target, 0.0f) && !one.lit, "neither hand tracked: nothing");
+	hands[kWeapon] = PlaceNearHand{true, kNaN, true};
+	hands[kOther] = PlaceNearHand{true, 0.05f, true};
+	one = PlaceNearFromHands(s, hands, 0.2f);
+	Check(Near(one.target, 0.25f) && one.lit, "one hand's distance unread: the other still counts");
+}
+
+void TestHeldWords() {
+	std::printf("What the log names as held\n");
+	char words[96];
+	PlaceNearHeldWords(HeldOf(WeaponSeen::Drawn, EquippedKind::OneHand), words, sizeof(words));
+	Check(std::strcmp(words, "the weapon hand's weapon") == 0, "the drawn sword: as the log has said since 2026-11-16");
+	PlaceNearHeldWords(HeldOf(WeaponSeen::Sheathed, EquippedKind::OneHand), words, sizeof(words));
+	Check(std::strcmp(words, "the weapon hand's nothing") == 0, "nothing: the weapon hand's nothing, as before");
+	PlaceNearHeldWords(HeldOf(WeaponSeen::Drawn, EquippedKind::Bow), words, sizeof(words));
+	Check(std::strcmp(words, "the other hand's bow") == 0, "the drawn bow: the other hand's, as before");
+	PlaceNearHeldWords(HeldOf(WeaponSeen::Drawn, EquippedKind::OneHand, OffHandItem::Torch), words, sizeof(words));
+	Check(std::strcmp(words, "the weapon hand's weapon, the other hand's torch") == 0, "both: both named");
+	PlaceNearHeldWords(HeldOf(WeaponSeen::Sheathed, EquippedKind::Nothing, OffHandItem::Shield, 0), words,
+	                   sizeof(words));
+	Check(std::strcmp(words, "the weapon hand's potion, the other hand's shield") == 0, "a potion and a shield");
+	char tiny[8];
+	PlaceNearHeldWords(HeldOf(WeaponSeen::Drawn, EquippedKind::OneHand, OffHandItem::Torch), tiny, sizeof(tiny));
+	Check(std::strlen(tiny) < sizeof(tiny), "a short buffer: cut, still ended");
 }
 
 void TestSaid() {
@@ -109,6 +212,9 @@ int main() {
 	TestTarget();
 	TestFade();
 	TestHeld();
+	TestOtherHandAndPotions();
+	TestBothHands();
+	TestHeldWords();
 	TestSaid();
 	std::printf(g_failures == 0 ? "All place near checks passed\n" : "%d place near checks FAILED\n", g_failures);
 	return g_failures == 0 ? 0 : 1;

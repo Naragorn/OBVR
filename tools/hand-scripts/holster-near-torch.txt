@@ -1,0 +1,61 @@
+# A place's circle for the torch and for a potion, as for a drawn weapon (vr/PlaceNear.h,
+# camera/hands/HolsterNear.cpp; Nadi, 2026-11-26: "bei torch der schriftzug statt dem kreis wie
+# bei waffen, hätte lieber kreis. bei tränke vll ähnlich"). A torch (0002CF9F) in the other hand,
+# brought to the right hip - a place that takes a torch, keeping nothing in the harness save - shows
+# the hips' circles; taken away, they go. A Restore Health potion (00009311) dropped at the feet and
+# pulled to the weapon hand, carried to the right hip, shows its circle too (a let go there would
+# keep it, vr/PotionBelt.h); taken away, it goes. Before 2026-11-26 neither showed a circle.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/holster-near-torch.txt --headless --no-steamvr --parallel
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands HolsterNear=1
+ini Hands PlaceHintOpacity=0.25
+ini Hands HolsterShieldTorch=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+ini Hands PotionBelt=1
+ini Hands WeaponHold=1
+ini Hands WeaponReleaseSeconds=0
+ini Hands TorchDrop=0
+ini Hands TorchGraceSeconds=0
+console player.additem 0002CF9F 1
+console player.equipitem 0002CF9F
+console player.additem 00009311 3
+console player.drop 00009311 1
+console-at settle CloseAllMenus
+expect HandScript: finished
+expect Holster near: the places shown (the other hand's torch, opacity 0.25)
+expect Holster near: the places shown (the weapon hand's potion
+count 2 Holster near: the places hidden
+reject HandScript: WARNING
+reject CRASH
+wait 15
+mark settle
+wait 1
+# The torch in the other hand, the grip open, into the right hip's place: its circles come.
+left pos 0.18 -0.62 -0.02
+wait 1
+mark torch_at_hip
+# Away from every place: they go.
+left pos -0.20 -0.10 -0.45
+wait 1.5
+mark torch_away
+# The potion at the feet pulled to the weapon hand.
+head pitch -50
+right pos 0.00 -1.22 -0.73
+right rot -80 0 0
+wait 1.5
+mark potion_near
+right grip 0.9
+wait 4
+head pitch 0
+right rot 0 0 0
+# Held at the right hip's place: its circle comes.
+right pos 0.18 -0.62 -0.02
+wait 1.5
+mark potion_at_hip
+# Held up and away: it goes.
+right pos 0.20 0.10 -0.50
+wait 1.5
+mark potion_away
+wait 1

@@ -951,6 +951,27 @@ holster_slot_record_test; ui/HolsterSignPainter, holster_sign_painter_test):
     sword); the tester's own ring sits 0.16 m further back than the default, so the scenario
     sets the ring; and the ring is measured at the drawn hand, 0.22 m above this script's
     controller.
+- *The torch, the shield and a potion get the circle too (built 2026-11-26, harness; headset
+  open).* Nadi, Windows 2026-11-26 (DLL of 8095bfd): "bei torch der schriftzug statt dem kreis
+  wie bei waffen, hätte lieber kreis. bei tränke vll ähnlich, nicht getestet". [R] The circles
+  came only for the weapon hand's drawn weapon and the other hand's drawn bow
+  (`HeldForPlacesOf`); a torch or shield had only the sign's words ("Holster torch",
+  `EmptyPlaceSign`), a held potion had neither. Now each hand counts on its own
+  (`vr/PlaceNear.h`, place_near_test): the weapon hand's drawn weapon; the other hand's drawn
+  bow, else its worn shield or torch - the things the sign names; and a potion held in either
+  hand ([Hands] PotionBelt), at the places a let go keeps it at (`vr::PotionPlaceFor`). A place
+  shows the larger of the two hands' fades and is lit while such a hand is inside it
+  (`PlaceNearFromHands`). The potion is read by the held object's step and taken by the
+  circles the next frame (`HolsterState::potionHeld`). The sign is as it was for all of them.
+  The log names what each hand holds: "Holster near: the places shown (the other hand's torch,
+  opacity 0.25)". Harness `holster-near-torch.txt` (headless, the stand-in runtime): the old
+  DLL (8095bfd) FAIL - at the right hip the torch got only "Holster sign: ... "Holster
+  torch"" and the held potion nothing (20261126-165605-slot3); the new one (DLL 225e799d) PASS
+  - "the places shown (the other hand's torch ...)", then with the potion held at the right
+  hip "(the weapon hand's potion, the other hand's torch ...)", hidden each time the hand left
+  (-165713-slot3). In that run the torch's circles were up before the script's step, from the
+  left hand's starting place near a hip; the next run should move it away first. holster-near
+  PASS beside it (-165849-slot2). Not run: the shield's circle, the headset.
 - *The seen weapon is always taken at its hilt (built 2026-11-16, run in the harness the same day).* Nadi: "die
   ingame gezeichnete waffe am player body [muss] immer greifbar sein egal wie der body
   ausgerichtet ist oder ob er nicht im holster spot ist". The places are where the settings
