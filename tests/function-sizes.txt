@@ -23,7 +23,7 @@ src/camera/hands/Archery.cpp	StepArchery	137
 src/camera/hands/ControlsOut.cpp	StepControlsOut	268
 src/camera/hands/Dismember.cpp	StepDismember	184
 src/camera/hands/Gestures.cpp	UpdateYield	104
-src/camera/hands/Grab.cpp	StepGrab	663
+src/camera/hands/Grab.cpp	StepGrab	650
 src/camera/hands/Handover.cpp	StepHandover	102
 src/camera/hands/Held.cpp	StepHeldObject	195
 src/camera/hands/Holster.cpp	StepHolsterReach	162

@@ -69,6 +69,7 @@ struct GrabState {
 	game::WeaponPullState torchPull;
 	bool torchPullGrab = false;    // the current grab began as a torch's pull by the other hand
 	bool torchPalmToSay = false;   // a taken torch: say once where the palm sits on it
+	bool bowPalmToSay = false;     // a taken bow: the same
 	game::WeaponTakeState weaponTake;
 	// The inventory's grab: the hold's edge in the inventory, and the take
 	// waiting for the first world frame after the close.

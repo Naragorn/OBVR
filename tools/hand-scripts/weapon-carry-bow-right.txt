@@ -1,0 +1,42 @@
+# The weapon hand only carries a bow (game/BowHand.h; the tester, 2026-11-26, free-weapons-spec "A
+# bow is the other hand's"): the bow lies at the feet, the RIGHT hand's grip pulls it as an object
+# and holds it - it is not taken into the inventory, not equipped, not pulled to the other hand.
+# Before the change the weapon hand took it from the world (flew to the weapon hand, equipped in the
+# other). The hand at -1.31, where weapon-pull.txt pulls a sword (the Weapon grab line says the
+# distance).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-carry-bow-right.txt --run-timeout 120 --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Hands GrabEquipsWeapons=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+console player.additem 00025231 1
+console player.drop 00025231 1
+
+expect HandScript: finished
+expect (type 5)
+expect a grip pulls it to the hand
+expect Hands: the held thing is in the weapon hand
+reject HandScript: WARNING
+reject pulled to the hand and taken
+reject taken at its grip
+reject a hold takes it
+reject Weapon grab: equipped
+reject Weapon grab: at once
+reject Hands: the pulled bow
+reject the held thing is in the other hand
+
+wait 15
+head pitch -50
+right pos 0.05 -1.31 -0.80
+right rot -80 0 0
+wait 1.5
+mark near
+right grip 0.9
+wait 4
+mark arrived
+wait 2
+mark held
+right grip 0
+wait 2
+mark dropped

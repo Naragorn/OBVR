@@ -171,9 +171,13 @@ inline bool PullTurnCaughtClose(float angleAtCatch) { return angleAtCatch < kPul
 // other hand (its Torch node, game/TorchGrab.h; the tester, 2026-11-26:
 // "fackel richtet sich nun auch passend in die endposition in der hand aus
 // während des flugs, so wie schwert" - the torch came in as it lay, then
-// snapped). A weapon the other hand carries, a torch the weapon hand carries,
+// snapped), a bow in the other hand to that hand's Torch node too - the game
+// holds a bow there (the tester, 2026-11-26: a bow is the other hand's). A
+// weapon the other hand carries, a torch or a bow the weapon hand carries,
 // anything else: held as it lay.
-inline bool PullTurnsToGrip(bool weaponHand, bool isWeapon, bool isTorch) { return weaponHand ? isWeapon : isTorch; }
+inline bool PullTurnsToGrip(bool weaponHand, bool isWeapon, bool isTorch, bool isBow) {
+	return weaponHand ? isWeapon && !isBow : isTorch || (isWeapon && isBow);
+}
 
 // Where the held point floats to. A thing that turns: where the equip will
 // put that point - the grip node's place plus the point (in the model's frame,

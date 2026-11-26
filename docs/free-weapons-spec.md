@@ -2409,7 +2409,7 @@ wie schwert. same für bogen und alle anderen ausrüstbare dinge."
   RealHeight it closed 0.12 m from the grip, a take, no pull (20261126-160126-slot2) - the same
   as weapon-pull.txt's. weapon-pull-turn PASS with the exact catch point (0.0 degrees).
 - Staffs and two-handers are weapons: they turned already. Shields are not taken from the
-  world. The bow: open, the tester's choice (below).
+  world. The bow: the other hand's, built later the same day (below).
 
 ### A throw leaves the hand in the frame the hand opens (changed 2026-11-26)
 
@@ -2436,16 +2436,46 @@ wegfliegt? nervt..."
   loaded at" one frame after "off the hand"): one frame without the weapon between the hand and
   the world. Not filmed.
 
-### Open: which hand catches a bow (the tester's choice)
+### A bow is the other hand's (built 2026-11-26, the tester said yes to (a))
 
-The game holds a bow in the other hand (its Torch node), but the weapon hand takes it from the
-world: it flies to the weapon hand, turns to that hand's Weapon node, and appears in the other
-hand at the take. And the other hand's grip only carries a bow (line 16968: "88236520 is in the
-grab and NOT taken - ... the weapon hand's 0").
-- (a) A bow is the other hand's, like a torch: that grip pulls it, it turns on the way into
-  that hand's Torch node, and the take equips it there; the weapon hand only carries a bow.
-  Small (IsTakingHand, PullTurnsToGrip, weapon-pull-bow.txt to the other hand).
-- (b) Either hand pulls it, and it always flies to the other hand. Medium: the engine's grab
-  stays with the hand that pulled while the model goes to the other.
-- (c) The hand that pulls keeps it: the sides switch at the take (the handover's switch,
-  5.16). Medium to large, and the switch's open points come with it.
+The game holds a bow in the other hand (its Torch node), but the weapon hand took it from the
+world: it flew to the weapon hand, turned to that hand's Weapon node, and appeared in the other
+hand at the take. And the other hand's grip only carried a bow (line 16968: "88236520 is in the
+grab and NOT taken - ... the weapon hand's 0"). Now, as a torch (5.10):
+- **The other hand takes and pulls a bow** - at its grip, or pulled in from out of touch; the
+  weapon hand only carries it, as the other hand carries a sword. Pure decisions in game/BowHand.h
+  (bow_hand_test): `IsOtherHandsItem` (a torch or weapon type 5) feeds `IsTakingHand`;
+  `TakingHoldClosed` picks the hold whose closing takes (the other hand's for a bow, with the
+  torch's latch, `torchHoldLatch`); `GrabHandTakes` says which hand's grab is a weapon's pull
+  (a bow: the other hand's; the pull's steps then wait for that hand's hold, `pin.holdClosed`).
+  The ring, the reach, the holster's claim and the controller the reach is measured from are the
+  other hand's for a bow (camera/hands/Grab.cpp).
+- **The turn:** `PullTurnsToGrip(weaponHand, isWeapon, isTorch, isBow)` - a bow in the other hand
+  turns to that hand's Torch node on the way, where the take equips it (the weapon hand's bow is
+  held as it lay, as every carried thing). The held point floats to where the equip puts it
+  (`PullHoldTarget`, as the torch). Logged as "Hands: the pulled bow ...".
+- **The bow's grip point, measured [M]:** the equipped bow in the other hand has the palm at
+  -0.8 -2.7 -1.4 on its model ("Bow grab: in the hand the palm sits at", weapon-pull-bow
+  20261126-221901-slot2) - the same numbers as the torch's, because both models hang on the Torch
+  node unturned. `kGripAxialBow` is -2.7 now (was the blade's -0.9, "unmeasured"); the sideways
+  -0.8 and -1.4 are not used, as for the torch. Where the hand's real grip on a bow looks right
+  is a headset look [not seen].
+- **Not changed:** the take itself is the weapon's (`BeginWeaponTake`, drawn at once, the game puts
+  the bow on the Torch node); the handover (5.16) as it was; the gates of a bow take are a weapon's
+  (nothing drawn, the setting, the holster) - a shield or a torch worn on the other hand is not a
+  gate, as it was not for the weapon hand's take of a bow.
+- **Harness [M]** (Linux, headless, no SteamVR, one slot):
+  | scenario | old DLL (the deployed one, md5 28c95223) | new |
+  | --- | --- | --- |
+  | weapon-pull-bow (the left hand pulls it) | FAIL 20261126-222247-slot2: no "pulled bow", no take; "is in the grab and NOT taken - ... the weapon hand's 0" | PASS 20261126-222442-slot2: 112.9 degrees off as it lay, 96.6, 66.9, 37.0, 7.0, 0.0 at the catch, never turned away, taken, equipped and drawn |
+  | weapon-carry-bow-right (the right hand only carries it) | FAIL 20261126-222344-slot2: "pulled to the hand and taken", "equipped and drawn" | PASS 20261126-222546-slot2 |
+  Regressions, all PASS with the new DLL (20261126-2226 to -2244, slots 1 and 2): weapon-pull,
+  weapon-pull-turn, torch-pull-turn, torch-pull, torch-grab, handover-bow, handover-torch,
+  handover-sword, spell-orb-fingers, spell-charge, spell-charge-strength, spell-charge-touch,
+  spell-ring, weapon-grab, weapon-pull-claymore, bow-hand, inventory-grab-bow, sheath-grab-bow.
+  Unit tests (bow_hand_test, pull_turn_test, weapon_grab_test, finger_test and the rest): 305 of 305,
+  plain and under ASan/UBSan. Not filmed; not run in the headset.
+- **Open [guess]:** how the pulled bow reads in the headset (its turn is derived from the Torch node,
+  as the torch's); the grip at -2.7 along +y against the bow's real handle; a bow pulled while a
+  torch or a shield is on the other hand (the game's equip decides what goes).
+

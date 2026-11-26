@@ -4,6 +4,7 @@
 #include "core/Log.h"
 #include "game/AnchoredRef.h"
 #include "game/BonePin.h"
+#include "game/BowHand.h"
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
 #include "game/GameTypes.h"
@@ -35,6 +36,7 @@ struct Hold {
 	// the grip's turn (PullTurnLogic.h, PullTurnsToGrip); read at the new hold.
 	bool turns = false;
 	bool isTorch = false;
+	bool isBow = false;
 	PullTurn turn;
 	PullTurnWatch watch;
 	UInt32 turnLines = 0;
@@ -44,6 +46,14 @@ Hold g_hold;
 bool g_arrivedEvent = false;
 bool g_arrivedRightHand = true;
 UInt32 g_reportsLeft = 6;
+
+// What the new hold is - a torch, a bow - and whether it turns to the grip on the way.
+void ReadKindOfHold(Hold& h, UInt32 ref, UInt8 type, bool weaponHand) {
+	const bool isWeapon = type == addr::kFormTypeWeapon;
+	h.isTorch = RefIsTorch(ref);
+	h.isBow = isWeapon && IsBowType(RefWeaponType(ref));
+	h.turns = PullTurnsToGrip(weaponHand, isWeapon, h.isTorch, h.isBow);
+}
 
 // The weapon's or torch's turn against the hand this frame (PullTurnLogic.h):
 // begun at the first placed frame from its lay, towards the grip's turn while
@@ -65,7 +75,7 @@ const HeldAttachment& TurnHeldWeapon(Hold& h, const NiMatrix33& handRot, const H
 		--h.turnLines;
 		const bool caught = floated >= 1.0f;
 		OBVR_LOG("Hands: the pulled %s %08X %.0f%% of the way, %.1f degrees from the grip's turn%s%s",
-		         h.isTorch ? "torch" : "weapon", h.ref, static_cast<double>(floated * 100.0f),
+		         h.isTorch ? "torch" : h.isBow ? "bow" : "weapon", h.ref, static_cast<double>(floated * 100.0f),
 		         static_cast<double>(angle * 57.29578f),
 		         !caught ? "" : PullTurnCaughtClose(angle) ? " - at the catch, close to the grip's turn"
 		                                                   : " - at the catch, STILL OFF the grip's turn",
@@ -126,8 +136,7 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 		}
 		g_hold.node = reinterpret_cast<NiAVObject*>(node);
 		const UInt8 type = *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset);
-		g_hold.isTorch = RefIsTorch(ref);
-		g_hold.turns = PullTurnsToGrip(hand.rightHand, type == addr::kFormTypeWeapon, g_hold.isTorch);
+		ReadKindOfHold(g_hold, ref, type, hand.rightHand);
 		const float radius = g_hold.node->worldBound.radius;
 		const bool small = IsSmallHeldObject(type, radius);
 		const NiTransform& world = g_hold.node->worldTransform;

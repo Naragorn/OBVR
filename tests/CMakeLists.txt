@@ -936,6 +936,13 @@ if(NOT MSVC)
 endif()
 add_test(NAME torch_grab COMMAND torch_grab_test)
 
+add_executable(bow_hand_test BowHandTest.cpp ../src/vr/Quaternion.cpp)
+target_include_directories(bow_hand_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(bow_hand_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME bow_hand COMMAND bow_hand_test)
+
 add_executable(holster_slot_record_test HolsterSlotRecordTest.cpp ../src/vr/Quaternion.cpp)
 target_include_directories(holster_slot_record_test PRIVATE ../src)
 if(NOT MSVC)

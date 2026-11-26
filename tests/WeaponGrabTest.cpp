@@ -33,7 +33,7 @@ void TestGripPoint() {
 	          Near(GripAxialFor(3), -0.9f),
 	      "blades and blunts: the palm 0.9 below the model's origin");
 	Check(Near(GripAxialFor(4), -37.6f), "a staff: 37.6 below");
-	Check(Near(GripAxialFor(5), -0.9f), "a bow: as a blade (unmeasured)");
+	Check(Near(GripAxialFor(5), -2.7f), "a bow: 2.7 below, where its palm sits on the other hand's Torch node");
 	const NiPoint3 origin{100.0f, 200.0f, 50.0f};
 	Check(Near(GripPointOf(NiMatrix33::Identity(), origin, -0.9f), NiPoint3{100.0f, 199.1f, 50.0f}),
 	      "upright model: 0.9 down its y");

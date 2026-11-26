@@ -1,14 +1,16 @@
 # weapon-pull.txt with the form 00025231 (bow), taken straight into the hand.
-# The bow goes to the left hand, so the right hand opening lets nothing go:
-# no drop, no fists lowered, no ready click at all.
+# A bow is the other hand's (game/BowHand.h; the tester, 2026-11-26, free-weapons-spec "A bow is the
+# other hand's"): the LEFT hand's grip pulls it, it turns on the way into that hand's Torch node, and
+# the take equips it there; the weapon hand only carries a bow (weapon-carry-bow-right.txt). The
+# right hand opening lets nothing go: no drop, no fists lowered, no ready click at all.
 # A weapon pulled to the hand and equipped on arrival ([Hands] PullToHand,
 # game/WeaponGrab.h): an Iron Longsword dropped at the feet, the weapon hand
 # held off its grip - beyond the grab's reach,
 # within the pull's - the fingers closed: the sword floats to the hand as
 # every item does, and in the hand it is taken, equipped and drawn (the
 # tester, 2026-10-24: "sofort ausrüsten").
-# The hand at -1.31, as in weapon-pull.txt: [Head] RealHeight puts the hands 5.9 units lower in the
-# harness since 2026-11-08, and at -1.40 the hold took the weapon at once, no pull.
+# The hand at -1.25, as in torch-pull.txt (the other hand's pull): [Head] RealHeight puts the hands
+# 5.9 units lower in the harness since 2026-11-08, and nearer the hold takes it at the grip, no pull.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-pull-bow.txt --run-timeout 120 --headless
 
 ini Hands Enabled=1
@@ -20,10 +22,15 @@ console player.drop 00025231 1
 
 expect HandScript: finished
 expect a grip pulls it to the hand
+expect Hands: the pulled bow
+expect - at the catch, close to the grip's turn, it never turned away
 expect pulled to the hand and taken
 expect Weapon grab: equipped and drawn - straight into the hand
 expect Weapon grab: timeline - the weapon out of sight
 reject HandScript: WARNING
+reject STILL OFF the grip's turn
+reject TURNED AWAY on the way
+reject is in the grab and NOT taken
 reject straight into the hand did not hold
 reject the weapon-out flag could not be set
 reject Weapon grab: given up
@@ -33,14 +40,14 @@ reject the weapon was not on the hand
 
 wait 15
 head pitch -50
-right pos 0.05 -1.31 -0.80
-right rot -80 0 0
+left pos 0.05 -1.25 -0.80
+left rot -80 0 0
 wait 1.5
 mark near
-right grip 0.9
+left grip 0.9
 wait 4
 mark arrived
-right grip 0
+left grip 0
 wait 2
 mark drawn
 wait 1

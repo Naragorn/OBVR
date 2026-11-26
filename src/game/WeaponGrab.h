@@ -21,6 +21,7 @@
 // the calls.
 
 #include "core/Types.h"
+#include "game/BowHand.h"
 #include "game/NiMath.h"
 #include "vr/Holster.h"
 
@@ -36,9 +37,13 @@ namespace obvr::game {
 inline constexpr float kGripAxialBlade = -0.9f;
 inline constexpr float kGripAxialStaff = -37.6f;
 inline constexpr SInt32 kWeaponTypeStaff = 4;
+// The bow's hold point on its model: the palm sits at -0.8 -2.7 -1.4 on it in the other hand (the Torch
+// node holds it as it holds a torch; weapon-pull-bow 20261126-221901-slot2, "Bow grab: in the hand the palm
+// sits at"), so the grip is taken 2.7 below the origin along +y, as the torch's.
+inline constexpr float kGripAxialBow = -2.7f;
 
 inline float GripAxialFor(SInt32 weaponType) {
-	return weaponType == kWeaponTypeStaff ? kGripAxialStaff : kGripAxialBlade;
+	return weaponType == kWeaponTypeStaff ? kGripAxialStaff : IsBowType(weaponType) ? kGripAxialBow : kGripAxialBlade;
 }
 
 // The grip point in the world from the model's world transform.

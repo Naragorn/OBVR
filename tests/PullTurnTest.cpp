@@ -165,11 +165,13 @@ void TestWatch() {
 // the torch "so wie schwert").
 void TestWhatTurns() {
 	std::printf("What turns on the way, and where it is caught\n");
-	Check(PullTurnsToGrip(true, true, false), "a weapon in the weapon hand turns to its Weapon node");
-	Check(PullTurnsToGrip(false, false, true), "a torch in the other hand turns to its Torch node");
-	Check(!PullTurnsToGrip(false, true, false), "a weapon the other hand carries: held as it lay");
-	Check(!PullTurnsToGrip(true, false, true), "a torch the weapon hand carries: held as it lay");
-	Check(!PullTurnsToGrip(true, false, false) && !PullTurnsToGrip(false, false, false),
+	Check(PullTurnsToGrip(true, true, false, false), "a weapon in the weapon hand turns to its Weapon node");
+	Check(PullTurnsToGrip(false, false, true, false), "a torch in the other hand turns to its Torch node");
+	Check(!PullTurnsToGrip(false, true, false, false), "a weapon the other hand carries: held as it lay");
+	Check(!PullTurnsToGrip(true, false, true, false), "a torch the weapon hand carries: held as it lay");
+	Check(PullTurnsToGrip(false, true, false, true), "a bow in the other hand turns to its Torch node");
+	Check(!PullTurnsToGrip(true, true, false, true), "a bow the weapon hand carries: held as it lay");
+	Check(!PullTurnsToGrip(true, false, false, false) && !PullTurnsToGrip(false, false, false, false),
 	      "anything else: held as it lay");
 
 	NiTransform grip{AboutZ(90.0f), NiPoint3{100.0f, 0.0f, 50.0f}, 1.0f};
