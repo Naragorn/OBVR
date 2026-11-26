@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Types.h"
+#include "game/GameTypes.h"
 
 namespace obvr::game {
 
@@ -24,5 +25,8 @@ void WantSpellOrb(bool shown, float scale, bool full);
 // Once a frame: shows, sizes or hides the copy; `modelPath` is the active spell's model (nullptr or
 // empty when it has none).
 void StepSpellOrb(const char* modelPath);
+
+// Whether `node` is the orb's copy (shown or hidden): what the hand's held-item read leaves out.
+bool IsSpellOrbNode(const NiAVObject* node);
 
 }  // namespace obvr::game

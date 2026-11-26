@@ -356,14 +356,16 @@ inline constexpr UInt16 kNiAppCulledFlag = 0x0001;
 // Hand between charges, culled, and was taken for a held item - from the
 // first charge on, the left fingers stayed as the animation had them. The
 // game's own holders ("Weapon", "Torch") are not culled; their models go
-// when the item goes.
-inline bool HandChildHoldsItem(bool fingerLink, bool isNode, UInt16 flags, bool somethingHung) {
-	return !fingerLink && isNode && (flags & kNiAppCulledFlag) == 0 && somethingHung;
+// when the item goes. The spell orb is never a held item, shown or not (the
+// tester, 2026-11-26: while a spell charges the fingers follow the controller
+// too): it is a show of the charge, not something the hand grips.
+inline bool HandChildHoldsItem(bool fingerLink, bool isNode, UInt16 flags, bool somethingHung, bool spellOrb) {
+	return !fingerLink && isNode && (flags & kNiAppCulledFlag) == 0 && somethingHung && !spellOrb;
 }
 
 // Whether the named hand holds a thing of its own: a child of the hand bone
 // that holds one (HandChildHoldsItem) - the drawn weapon's "Weapon" node, the
-// "Torch" node with the torch or the bow, the spell orb while it is shown.
+// "Torch" node with the torch or the bow; never the spell orb.
 bool HandHoldsItem(bool rightHand, const char* handBoneName);
 
 // The first thing hung that way (the weapon's model under "Weapon"), 0 for

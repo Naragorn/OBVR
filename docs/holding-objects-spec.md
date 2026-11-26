@@ -119,9 +119,7 @@ With nothing held, each finger of a hand follows the controller's finger
     left fingers tracked - a load rebuilds the skeleton and the orb is gone.
   - Fix: a hidden child is no held item (`HandChildHoldsItem`, finger_test
     every combination). The game's own holders are not culled: a torch or
-    bow leaves the hand by its model going. The orb while shown still counts,
-    so the fingers stay as the animation has them while a spell is charged,
-    as before. A hand script's mark now logs each hand's finger pose
+    bow leaves the hand by its model going. A hand script's mark now logs each hand's finger pose
     ("Hands: at the mark ... - the left fingers follow the controller").
   - Harness `tools/hand-scripts/spell-orb-fingers.txt` (Flare charged and let
     go, then the left hand curled and opened): Linux
@@ -137,8 +135,23 @@ With nothing held, each finger of a hand follows the controller's finger
     Filmed with `--record 1.5` (old 214300-slot1, new 214401-slot1, hand
     turned and centred): the fingers point away from the eye, so the films do
     not show the fist either way - the log lines are the evidence.
-  - Open: the headset. Whether the fingers should follow the controller
-    while a spell is charged too (the orb shown) is a choice not made here.
+  - Open: the headset.
+- **Changed 2026-11-26 (the tester said yes): the fingers follow the controller
+  while a spell charges too.** The orb is never a held item, shown or hidden
+  (`game::HandChildHoldsItem` takes `spellOrb`, set by `game::IsSpellOrbNode`
+  for the node `game/SpellOrb.cpp` owns). Everything else `HandHoldsItem`
+  gates - the torch's and the bow's "Torch" node, the weapon - reads as before.
+  - Unit: `finger_test` every combination of the five inputs.
+  - Harness `spell-orb-fingers.txt` (now also a fist at the charged mark),
+    Linux headless, no SteamVR, 2026-11-26. Old DLL (the deployed one, md5
+    28c95223): FAIL, 20261126-221341-slot2 - the orb shown counted: "the left
+    hand holds ... Fireball.NIF - its fingers stay as the animation has them",
+    "holds nothing" twice, no "follow the controller" at the charged-fist mark.
+    New DLL: PASS, 20261126-221453-slot2 - "holds nothing" once, the fingers
+    follow the controller at the charged-fist mark and after the cast. Not
+    filmed: the fingers point away from the eye in the harness, as above.
+  - Open: the headset - whether the fist during a charge looks right with the
+    orb in the palm. [guess]
 - When OBVR lets go, a link gets the animation's rotation back, unless the
   animation has written it since.
 - The first tracked frame logs the index finger's first link as the

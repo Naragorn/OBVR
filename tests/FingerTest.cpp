@@ -299,26 +299,30 @@ void TestHandle() {
 }
 
 // Which child of a hand bone holds a thing (HandChildHoldsItem): every
-// combination of its four inputs, then the cases by name - the culled spell
-// orb of Nadi's Windows run (2026-11-26) among them.
+// combination of its five inputs, then the cases by name - the spell orb of
+// Nadi's Windows run (2026-11-26) among them, never a held item: hidden
+// between charges, and shown while one charges, the fingers follow the
+// controller (the tester, 2026-11-26: yes).
 void TestHeldChild() {
-	for (int bits = 0; bits < 16; ++bits) {
+	for (int bits = 0; bits < 32; ++bits) {
 		const bool fingerLink = (bits & 1) != 0;
 		const bool isNode = (bits & 2) != 0;
 		const bool culled = (bits & 4) != 0;
 		const bool hung = (bits & 8) != 0;
-		const bool want = !fingerLink && isNode && !culled && hung;
-		if (HandChildHoldsItem(fingerLink, isNode, culled ? kNiAppCulledFlag : 0, hung) != want) {
+		const bool orb = (bits & 16) != 0;
+		const bool want = !fingerLink && isNode && !culled && hung && !orb;
+		if (HandChildHoldsItem(fingerLink, isNode, culled ? kNiAppCulledFlag : 0, hung, orb) != want) {
 			Check(false, "a held child: a combination off the rule");
 			return;
 		}
 	}
-	Check(HandChildHoldsItem(false, true, 0x000E, true), "the Torch node with the torch, flags without the cull bit: held");
-	Check(!HandChildHoldsItem(false, true, 0x000F, true), "the spell orb hidden between charges (cull bit set): not held");
-	Check(HandChildHoldsItem(false, true, 0x0000, true), "the spell orb shown while charging: held");
-	Check(!HandChildHoldsItem(false, true, 0, false), "an empty Torch node: not held");
-	Check(!HandChildHoldsItem(true, true, 0, true), "a finger link with its next link under it: not held");
-	Check(!HandChildHoldsItem(false, false, 0, true), "a shape, not a node: not held");
+	Check(HandChildHoldsItem(false, true, 0x000E, true, false), "the Torch node with the torch, flags without the cull bit: held");
+	Check(!HandChildHoldsItem(false, true, 0x000F, true, true), "the spell orb hidden between charges (cull bit set): not held");
+	Check(!HandChildHoldsItem(false, true, 0x0000, true, true), "the spell orb shown while charging: not held either");
+	Check(HandChildHoldsItem(false, true, 0x0000, true, false), "another shown node with a model under it, not the orb: held");
+	Check(!HandChildHoldsItem(false, true, 0, false, false), "an empty Torch node: not held");
+	Check(!HandChildHoldsItem(true, true, 0, true, false), "a finger link with its next link under it: not held");
+	Check(!HandChildHoldsItem(false, false, 0, true, false), "a shape, not a node: not held");
 }
 
 // The pose's words for the mark's line: each pose its own.

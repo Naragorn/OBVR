@@ -10,6 +10,7 @@
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
+#include "game/SpellOrb.h"
 #include "test/HandScriptRuntime.h"
 
 namespace obvr::game {
@@ -308,7 +309,7 @@ HeldRead ReadHeld(const NiAVObject* hand, const char** holder, UInt32* model) {
 				break;
 			}
 		}
-		if (HandChildHoldsItem(fingerLink, isNode, child->flags, first != 0)) {
+		if (HandChildHoldsItem(fingerLink, isNode, child->flags, first != 0, IsSpellOrbNode(child))) {
 			*holder = name;
 			*model = first;
 			return HeldRead::Held;

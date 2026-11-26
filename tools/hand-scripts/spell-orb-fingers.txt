@@ -5,6 +5,8 @@
 # from the first charge on the left fingers stayed as the animation had them: no fist, no tracking.
 # Here: Flare charged 2.5 s and let go, then the left hand curled into a fist and opened again.
 # The left hand must hold nothing once the orb is gone, and its fingers follow the controller.
+# Since 2026-11-26 (the tester said yes) they follow it while the spell charges too: the orb, shown
+# or hidden, is never a held item (game::HandChildHoldsItem) - a fist is made at the charged mark.
 
 ini Hands Enabled=1
 ini Hands SpellCharge=1
@@ -18,9 +20,10 @@ console SetActiveSpell 000A97DF
 expect HandScript: finished
 expect Spell orb: "SpecialIdle_Projectile" playing
 expect Spell orb: gone from the hand
-expect Fireball.NIF" - its fingers stay as the animation has them
-# Once at the start and once when the orb is hidden again.
-count 2 Hands: the left hand holds nothing of its own
+# The orb is no held item, shown or hidden: the left hand holds nothing of its own, said once.
+count 1 Hands: the left hand holds nothing of its own
+reject Fireball.NIF" - its fingers stay as the animation has them
+expect Hands: at the mark charged-fist - the left fingers follow the controller
 expect Hands: at the mark fist-after-cast - the left fingers follow the controller
 expect Hands: at the mark open-after-cast - the left fingers follow the controller
 reject HandScript: WARNING
@@ -38,6 +41,11 @@ mark before-cast
 left trigger 1
 wait 2.5
 mark charged
+left curl 1
+wait 1
+mark charged-fist
+left curl 0
+wait 0.5
 left trigger 0
 wait 3
 mark after-cast

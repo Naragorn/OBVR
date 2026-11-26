@@ -101,6 +101,8 @@ bool Ensure(Orb& o, NiAVObject* holder, const char* path) {
 
 }  // namespace
 
+bool IsSpellOrbNode(const NiAVObject* node) { return node != nullptr && node == State().node; }
+
 void WantSpellOrb(bool shown, float scale, bool full) {
 	Orb& o = State();
 	o.wanted = shown;
