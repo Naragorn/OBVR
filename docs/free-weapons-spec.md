@@ -1206,6 +1206,36 @@ not seen in first person"; the tester found weapons at the shoulders annoying).
   5's A); an enchanted weapon's glow (the copy has none - not checked); the first load's cost
   (not measured); a shield from a mod whose model lies otherwise than the vanilla ones.
 
+#### 5.12.3 Wish 2026-11-26: one-handers at the shoulders too (not built - the look is Nadi's choice)
+
+Nadi, Windows 2026-11-26: "außerdem will ich nun dass man einhänder auch auf den schultern
+holstern kann. meinetwegen auch ohne echtes schwert dann dort modell sehen zu können". His log
+has the hint he met: "Holster sign: at the right shoulder - "" / "This goes on your hip"".
+
+- **The places [D]:** both shoulders take a one-hander as well (`vr::SlotAccepts`); one thing
+  a place as now. The reach and the let go work there unchanged - the draw is the ready
+  click whatever place keeps the weapon. A newly equipped one-hander still goes to its hip
+  (`DefaultSlotFor`). A shoulder keeping a one-hander is taken for the two-hander and the bow:
+  a newly equipped two-hander goes to the other free shoulder, else to its home in place of
+  the one-hander there (`PlaceForUnkept`, as for two weapons today). The circles and the
+  "Holster weapon" sign come at the shoulders for a drawn one-hander; "This goes on your hip"
+  stays for the torch.
+- **What is seen [R]:** the engine hangs a one-hander only on the hip's "SideWeapon". Kept at
+  a shoulder it would still hang at the left hip (no mirror: `SheathMirrorFor` mirrors only for
+  a hip), the hilt reach there would draw it, and a weapon the left hip keeps would not be
+  shown there (`GameSheathHip`: the game's sheath hangs there) - the hip shows the shoulder's
+  sword. So the place alone is not enough. Options: (a) the place alone - the wrong sword at
+  the hip stays; (b) the hip's sheath hidden while the equipped one-hander is kept at a
+  shoulder - nothing seen of it, as Nadi allows, the hilt reach gone with it (`Shown`), the
+  hip free for its own kept copy; (c) the hip's sheath carried to
+  the back (BackWeapon's place taken into the pelvis's frame each frame, the blade diagonal
+  over the shoulder) - seen in a mirror or third person, hardly in first person.
+- **Cost:** (a) small but shows the overlap; (b) small to medium - the place rule and its
+  tests, a hide booked in game/BodySheaths.cpp like the mirror, the copy rule, the controls
+  card and guide texts, a harness scenario; (c) medium - a transform each frame, the blade's
+  angle, the hilt reach reading it, judged in the headset.
+- **Recommended:** (b).
+
 ### 5.13 A throw looks back in time, not in frames (built 2026-10-28)
 
 **Reported (Nadi, Windows run of 2026-10-27):** "Fackeln werfen ging oft aber
