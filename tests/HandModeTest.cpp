@@ -10,6 +10,7 @@
 #include "game/KeyScanCodes.h"
 #include "vr/AttackControl.h"
 #include "vr/ButtonBindings.h"
+#include "vr/HandBlockLogic.h"
 #include "vr/HandInput.h"
 #include "vr/HandMode.h"
 #include "vr/HandSettingsOps.h"
@@ -2910,6 +2911,156 @@ void TestArmSwingRun() {
 	Check(!r.controls.run, "both the same way for a while: walks again");
 }
 
+// The block the hands' pose makes (vr/HandBlockLogic.h), each way to it and
+// what keeps it off.
+void TestDecideHandBlock() {
+	std::printf("The block the hands' pose makes\n");
+	const GestureThresholds t;
+	HandBlockFrame f;
+	f.leftValid = true;
+	f.rightValid = true;
+	f.rightHandValid = true;
+	f.leftRelative = NiPoint3{-0.2f, 0.3f, -0.1f};   // ahead, 10 cm under the eyes
+	f.rightRelative = NiPoint3{0.2f, 0.1f, -0.6f};   // low
+	f.shieldEquipped = true;
+	HandBlock b = DecideHandBlock(f, t);
+	Check(b.blocking && b.with == obvr::game::BlockWith::Shield, "the left hand raised with a shield: the shield's");
+	f.shieldEquipped = false;
+	f.torchBlocks = true;
+	b = DecideHandBlock(f, t);
+	Check(b.blocking && b.with == obvr::game::BlockWith::Torch, "with a torch: the torch's");
+	f.torchBlocks = false;
+	Check(!DecideHandBlock(f, t).blocking, "the left hand raised, empty: none");
+	f.weaponDrawn = true;
+	f.rightRelative = NiPoint3{0.1f, 0.4f, -0.1f};  // up and ahead
+	f.blade = NiPoint3{1.0f, 0.0f, 0.0f};           // across the body
+	b = DecideHandBlock(f, t);
+	Check(b.blocking && b.with == obvr::game::BlockWith::Weapon && !b.fistGuard, "the weapon raised across: the weapon's");
+	f.rightSwinging = true;
+	Check(!DecideHandBlock(f, t).blocking, "the weapon hand swinging through: none");
+	f.rightSwinging = false;
+	f.fistsUp = true;
+	f.blade = NiPoint3{0.0f, 1.0f, 0.0f};  // the fist pointing ahead: no blade across
+	b = DecideHandBlock(f, t);
+	Check(b.blocking && b.fistGuard && b.with == obvr::game::BlockWith::Fists, "the fists up, both raised: the fists'");
+	f.leftSwinging = true;
+	Check(!DecideHandBlock(f, t).blocking, "a fist punching: none");
+	f.leftSwinging = false;
+	f.menuMode = true;
+	Check(!DecideHandBlock(f, t).blocking, "a menu up: none");
+	f.menuMode = false;
+	f.torchBlocks = true;
+	f.armsRun = true;
+	Check(!DecideHandBlock(f, t).blocking, "the arms running by swinging: none, whatever is raised");
+}
+
+// Swung arms with a weapon drawn (the tester, 2026-11-26: "wenn man die waffe
+// gezogen hat dann ist 'swing arms' zum sprinten schwierig oder buggy, weil er
+// nicht weiss ob sprint oder schwung"): the sword arm's pump of the run is no
+// swing, a stroke of it alone is; ArmSwingBalance 0 swings on every pump, as
+// before.
+bool PumpArms(HandMode& mode, HandModeFrame& frame, const HandSettings& settings, float speed, bool& ran) {
+	bool swung = false;
+	for (int half = 0; half < 4; ++half) {
+		const float way = half % 2 == 0 ? 1.0f : -1.0f;
+		for (int i = 0; i < 10; ++i) {
+			// The head looks along tracking -z: the right hand forward, the left back.
+			frame.right.velocity = NiPoint3{0.0f, 0.0f, -speed * way};
+			frame.left.velocity = NiPoint3{0.0f, 0.0f, speed * way};
+			frame.right.position.z += frame.right.velocity.z * frame.dtSeconds;
+			frame.left.position.z += frame.left.velocity.z * frame.dtSeconds;
+			const HandModeResult r = mode.Update(frame, settings);
+			swung = swung || r.swingActive || r.swing != SwingVerdict::None || r.leftSwingActive;
+			ran = ran || r.armSwinging;
+		}
+	}
+	return swung;
+}
+
+void TestArmSwingPumps() {
+	std::printf("Swung arms with a weapon drawn: a pump of the run is no swing, a stroke is\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	settings.armSwing.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.inWorld = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.dtSeconds = 0.01f;
+	frame.right.valid = true;
+	frame.left.valid = true;
+	frame.meleeInHand = true;
+	frame.right.position = NiPoint3{0.25f, -0.5f, -0.2f};
+	frame.left.position = NiPoint3{-0.25f, -0.5f, -0.2f};
+	HandMode mode;
+	for (int i = 0; i < 10; ++i) {
+		mode.Update(frame, settings);
+	}
+	bool ran = false;
+	Check(!PumpArms(mode, frame, settings, 3.0f, ran),
+	      "both arms pumped against each other at 3 m/s, 0.3 m each way: no swing of the sword arm");
+	Check(ran, "and they run");
+	frame.right.velocity = NiPoint3{0.0f, 0.0f, 0.0f};
+	frame.left.velocity = NiPoint3{0.0f, 0.0f, 0.0f};
+	for (int i = 0; i < 60; ++i) {
+		mode.Update(frame, settings);
+	}
+	bool swung = false;
+	bool stroked = false;
+	for (int i = 0; i < 10; ++i) {
+		frame.right.velocity = NiPoint3{-3.0f, 0.0f, 0.0f};
+		frame.right.position.x -= 0.03f;
+		const HandModeResult r = mode.Update(frame, settings);
+		swung = swung || r.swingActive;
+		stroked = stroked || r.armSwinging;
+	}
+	Check(swung && !stroked, "the sword arm alone at 3 m/s: a swing, and no run");
+	HandSettings before = settings;
+	before.armSwing.balance = 0.0f;
+	HandMode old;
+	for (int i = 0; i < 10; ++i) {
+		old.Update(frame, before);
+	}
+	bool oldRan = false;
+	Check(PumpArms(old, frame, before, 3.0f, oldRan) && oldRan,
+	      "ArmSwingBalance 0: the same pumps run and swing, as before the rule");
+
+	// The torch in the left hand, the hands high: each pump takes the torch up
+	// past the block's height (20 cm below the eyes) and 15 to 45 cm ahead.
+	settings.torchBlocks = true;
+	frame.torchHeld = true;
+	frame.right.position = NiPoint3{0.25f, -0.2f, -0.15f};
+	frame.left.position = NiPoint3{-0.25f, -0.2f, -0.15f};
+	frame.right.velocity = NiPoint3{0.0f, 0.0f, 0.0f};
+	frame.left.velocity = NiPoint3{0.0f, 0.0f, 0.0f};
+	HandMode torch;
+	HandModeResult t = torch.Update(frame, settings);
+	frame.left.position.z = -0.3f;
+	t = torch.Update(frame, settings);
+	Check(t.blocking, "standing, the torch raised ahead: a block");
+	frame.left.position.z = -0.15f;
+	bool blocked = false;
+	for (int half = 0; half < 6; ++half) {
+		const float way = half % 2 == 0 ? -1.0f : 1.0f;  // the left forward first
+		for (int i = 0; i < 10; ++i) {
+			frame.left.velocity = NiPoint3{0.0f, 0.0f, 3.0f * way};
+			frame.right.velocity = NiPoint3{0.0f, 0.0f, -3.0f * way};
+			frame.left.position.z += frame.left.velocity.z * frame.dtSeconds;
+			frame.right.position.z += frame.right.velocity.z * frame.dtSeconds;
+			t = torch.Update(frame, settings);
+			blocked = blocked || (half > 0 && t.blocking);
+		}
+	}
+	Check(t.armSwinging && !blocked, "pumping, the torch up past the block's height each swing: no block");
+	frame.left.velocity = NiPoint3{0.0f, 0.0f, 0.0f};
+	frame.right.velocity = NiPoint3{0.0f, 0.0f, 0.0f};
+	frame.left.position.z = -0.3f;
+	for (int i = 0; i < 50; ++i) {
+		t = torch.Update(frame, settings);
+	}
+	Check(!t.armSwinging && t.blocking, "the pumps stopped, the torch held up ahead: a block once the run is over");
+}
+
 void TestKickButtonsInHandMode() {
 	std::printf("The kick and the held left B through the mode\n");
 	HandSettings settings = WithoutLaserOffset();
@@ -4816,6 +4967,8 @@ int main() {
 	TestGrabHand();
 	TestGrabHandOverride();
 	TestArmSwingRun();
+	TestDecideHandBlock();
+	TestArmSwingPumps();
 	TestLeftButtonsInHandMode();
 	TestQuickSaveChordInHandMode();
 	TestRingTimingInHandMode();

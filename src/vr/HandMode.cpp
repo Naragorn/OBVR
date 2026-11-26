@@ -5,6 +5,7 @@
 #include "core/Rotation.h"
 #include "game/MenuCursor.h"
 #include "vr/AttackControl.h"
+#include "vr/HandBlockLogic.h"
 #include "vr/HeadOffset.h"
 #include "vr/QuickSaveChord.h"
 #include "vr/SheathReach.h"
@@ -330,36 +331,28 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		}
 	}
 
-	// Gestures.
-	// The left hand raised blocks only with a shield on that arm (the tester,
-	// 2026-09-29: "linke hand heben wenn kein schild equiped, darf nicht als
-	// block zählen").
-	// A torch in it blocks as well, raised the same way ([Hands] TorchBlocks).
-	const bool torchBlocks = s.torchBlocks && f.torchHeld;
-	r.blocking = LeftHandBlocks(f.left.valid && !f.menuMode && IsBlockGesture(leftRelative, s.gestures), f.shieldEquipped,
-	                            torchBlocks);
-	r.blockWith = r.blocking ? LeftWithFor(f.shieldEquipped, torchBlocks) : game::BlockWith::None;
-	// Or the weapon raised across the body (IsWeaponGuard; with the block's
-	// angle rule any raised blade not pointing ahead), with the weapon drawn
-	// - fists included.
-	if (!r.blocking && !f.menuMode && f.right.valid && r.rightHandValid &&
-	    f.weaponSeen == WeaponSeen::Drawn) {
-		const NiPoint3 blade{r.rightHandRotation.data[0][1], r.rightHandRotation.data[1][1],
-		                     r.rightHandRotation.data[2][1]};
-		r.blocking = IsWeaponGuard(rightRelative, blade, m_swing.swinging, s.gestures, s.blockByAngle);
-		if (r.blocking) {
-			r.blockWith = game::BlockWith::Weapon;
-		}
-	}
-	// Or, with the fists up, both raised in front (IsFistGuard).
-	if (!r.blocking && !f.menuMode && f.right.valid && f.left.valid && f.equipped == EquippedKind::Nothing &&
-	    f.weaponSeen == WeaponSeen::Drawn) {
-		r.blocking = IsFistGuard(rightRelative, leftRelative, m_swing.swinging, m_leftSwing.swinging, s.gestures);
-		r.fistGuard = r.blocking;
-		if (r.blocking) {
-			r.blockWith = game::BlockWith::Fists;
-		}
-	}
+	// Gestures: the block the hands' pose makes (vr/HandBlockLogic.h) - none
+	// while the arms run by swinging (ArmSwingHoldsBlocks).
+	HandBlockFrame bf;
+	bf.menuMode = f.menuMode;
+	bf.leftValid = f.left.valid;
+	bf.rightValid = f.right.valid;
+	bf.rightHandValid = r.rightHandValid;
+	bf.weaponDrawn = f.weaponSeen == WeaponSeen::Drawn;
+	bf.fistsUp = f.equipped == EquippedKind::Nothing;
+	bf.shieldEquipped = f.shieldEquipped;
+	bf.torchBlocks = s.torchBlocks && f.torchHeld;
+	bf.leftRelative = leftRelative;
+	bf.rightRelative = rightRelative;
+	bf.blade = NiPoint3{r.rightHandRotation.data[0][1], r.rightHandRotation.data[1][1], r.rightHandRotation.data[2][1]};
+	bf.rightSwinging = m_swing.swinging;
+	bf.leftSwinging = m_leftSwing.swinging;
+	bf.blockByAngle = s.blockByAngle;
+	bf.armsRun = ArmSwingHoldsBlocks(m_armSwing, s.armSwing);
+	const HandBlock block = DecideHandBlock(bf, s.gestures);
+	r.blocking = block.blocking;
+	r.blockWith = block.with;
+	r.fistGuard = block.fistGuard;
 	r.reachBack = f.right.valid && IsReachBackGesture(rightRelative, s.gestures);
 
 	// The swing, from the right hand's speed across the head-relative frame
@@ -387,10 +380,15 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		fin.read = &m_fistFingersRead;
 		r.fist = StepFist(m_fist, fin, s.fist);
 	}
-	// A weapon just readied: its draw is no swing (HandInput.h, StepDrawGrace)
-	// - the detectors kept idle and no strike through the grace.
+	// A weapon just readied: its draw is no swing (HandInput.h, StepDrawGrace) - the detectors kept idle and
+	// no strike through the grace. Swung arms run instead of the left stick held (vr/ArmSwing.h); a pump of
+	// that run is no swing either (ArmSwingPump): the detectors idle, given no speed, through it.
 	const bool drawGrace = StepDrawGrace(m_drawGrace, f.meleeInHand, f.dtSeconds);
-	if (drawGrace) {
+	const bool both = f.left.valid && f.right.valid;
+	const NiPoint3 lv = both ? OffsetFromPose(f.head, f.left.velocity, NiPoint3{}, 1.0f) : NiPoint3{};
+	const NiPoint3 rv = both ? OffsetFromPose(f.head, f.right.velocity, NiPoint3{}, 1.0f) : NiPoint3{};
+	const bool pump = ArmSwingPump(s.armSwing, both, lv, rv);
+	if (drawGrace || pump) {
 		m_swing = SwingDetector{};
 		m_leftSwing = SwingDetector{};
 	}
@@ -403,7 +401,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			// the hand's head-relative position by a metre or two a second while
 			// the hand stood still, and started swings (the tester, 2026-09-29:
 			// "passiert sogar bei dem kleinsten luftzug").
-			const float speed = HandSpeed(m_lastRightRoom, f.right.position, f.dtSeconds);
+			const float speed = pump ? 0.0f : HandSpeed(m_lastRightRoom, f.right.position, f.dtSeconds);
 			const bool wasSwinging = m_swing.swinging;
 			const float peakBefore = m_swing.peakSpeed;
 			const float metresBefore = m_swing.metres;
@@ -453,7 +451,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	r.leftStrikeByMotion = r.strikeByMotion && f.equipped == EquippedKind::Nothing;
 	if (f.left.valid && !f.menuMode) {
 		if (m_haveLastLeft) {
-			const float speed = HandSpeed(m_lastLeftRoom, f.left.position, f.dtSeconds);
+			const float speed = pump ? 0.0f : HandSpeed(m_lastLeftRoom, f.left.position, f.dtSeconds);
 			const bool wasSwinging = m_leftSwing.swinging;
 			const PowerDirection soFar =
 				m_leftSwing.swinging
@@ -654,7 +652,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			r.blockWith = game::BlockWith::None;
 			// Always: vanilla blocks with a bow (the tester, 2026-10-01: "das ist
 			// vanilla funktionalität daher immer drin").
-			if (cl.valid && f.bowLimbValid && !f.menuMode) {
+			if (cl.valid && f.bowLimbValid && !f.menuMode && !ArmSwingHoldsBlocks(m_armSwing, s.armSwing)) {
 				const NiPoint3 limb = TrackingRotate(cl.orientation, f.bowLimbLocal);
 				const float length = math::Sqrt(limb.LengthSquared());
 				const bool arrowOut = r.archery.state != ArrowState::None;
@@ -812,14 +810,9 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	// menu, where nothing is bound, on the left stick's click as before.
 	r.controls.run = StepRunToggle(m_runLatched, s.runToggle, f.menuMode ? runToggleClick : r.controls.runClick,
 	                               r.controls.run);
-	{
-		// Swung arms run instead of the left stick held (vr/ArmSwing.h).
-		const bool both = f.left.valid && f.right.valid;
-		const NiPoint3 lv = both ? OffsetFromPose(f.head, f.left.velocity, NiPoint3{}, 1.0f) : NiPoint3{};
-		const NiPoint3 rv = both ? OffsetFromPose(f.head, f.right.velocity, NiPoint3{}, 1.0f) : NiPoint3{};
-		r.armSwinging = StepArmSwing(m_armSwing, s.armSwing, both, lv, rv, f.dtSeconds);
-		r.controls.run = ArmSwingRun(s.armSwing.enabled, r.armSwinging, r.controls.run, in.dropShift);
-	}
+	// Swung arms run instead of the left stick held (vr/ArmSwing.h).
+	r.armSwinging = StepArmSwing(m_armSwing, s.armSwing, both, lv, rv, f.dtSeconds);
+	r.controls.run = ArmSwingRun(s.armSwing.enabled, r.armSwinging, r.controls.run, in.dropShift);
 	// The left stick walks analog (vr/AnalogWalkLogic.h): the octant's keys
 	// from its own round dead zone, the run key from the push - or from a run
 	// asked otherwise, as before. The fly camera has the stick to itself.

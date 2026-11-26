@@ -1,0 +1,1021 @@
+# Running by swung arms with the torch in the left hand, the hands high (the
+# tester, 2026-11-26: "... sodass er den lauf abbricht usw."). His log has the
+# torch hand going "up - blocking" and "down" with his pumps, and the engine
+# walks a blocking player: arm-swing-weapon.txt measured the push's run
+# backwards at 322 units a second with the torch low and 107 with it raised
+# into the block - the walk's speed. Here both arms pump 0.15 m higher than
+# there (the hands between 45 and 25 cm under the eyes, at rest 35), so the
+# torch rises past the block's height (30 cm under the eyes, 12 cm ahead) for
+# a third of each forward swing; the
+# sword drawn, the stick a third forward, 2.5 s. With ArmSwingBalance a hand
+# raised while the arms run blocks nothing (vr/ArmSwing.h ArmSwingHoldsBlocks).
+# Written by tools/gen-arm-swing-scripts.py, its argument "block".
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/arm-swing-torch-block.txt --headless --no-steamvr --parallel --hz 90 --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands ArmSwingRun=1
+ini Hands AnalogWalk=1
+ini Hands ReachOpens=0
+# The torch equipped by the console comes into an open hand: no grace (TorchGraceSeconds, 2026-10-27).
+ini Hands TorchGraceSeconds=0
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=1
+ini Hands TorchDrop=0
+ini Hands OffHandGrabs=0
+ini Hands TwoHandOneHanders=0
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+console player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+console-at ready player.setav fatigue 600
+
+expect HandScript: finished
+expect Hands: ready weapon done
+count 1 Arm swing: running
+reject Hands: the left hand is up - blocking
+reject HandScript: WARNING
+
+wait 12
+left curl 0.8
+left rot 0 0 0
+left pos -0.20 -0.40 -0.20
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 18
+mark placed
+# The sword drawn from the hip (weapon-drop.txt's draw), the grip kept closed
+# (WeaponHold lets go of an opened one).
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.3
+right pos 0.30 -0.40 -0.35
+wait 3
+right rot -20 0 0
+left rot -10 0 0
+right rot -20.0 0.0 0.0
+right pos 0.300 -0.400 -0.350
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.300 -0.400 -0.349
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.299 -0.399 -0.348
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.298 -0.399 -0.346
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.298 -0.398 -0.344
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.297 -0.398 -0.341
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.295 -0.397 -0.338
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.294 -0.396 -0.335
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.292 -0.395 -0.331
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.291 -0.394 -0.327
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.289 -0.393 -0.322
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.287 -0.392 -0.317
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.285 -0.390 -0.312
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.282 -0.389 -0.306
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.280 -0.388 -0.300
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.278 -0.386 -0.294
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.275 -0.384 -0.287
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.272 -0.383 -0.281
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.270 -0.381 -0.274
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.267 -0.379 -0.267
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.264 -0.378 -0.260
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.261 -0.376 -0.253
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.259 -0.374 -0.247
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.256 -0.372 -0.240
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.253 -0.371 -0.233
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.250 -0.369 -0.226
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.248 -0.367 -0.219
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.245 -0.366 -0.213
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.242 -0.364 -0.206
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.240 -0.362 -0.200
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.238 -0.361 -0.194
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.235 -0.360 -0.188
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.233 -0.358 -0.183
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.231 -0.357 -0.178
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.229 -0.356 -0.173
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.228 -0.355 -0.169
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.226 -0.354 -0.165
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.225 -0.353 -0.162
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.223 -0.352 -0.159
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.222 -0.352 -0.156
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.222 -0.351 -0.154
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.221 -0.351 -0.152
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.220 -0.350 -0.151
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.220 -0.350 -0.150
+wait 0.011
+right rot -20.0 0.0 0.0
+right pos 0.220 -0.350 -0.150
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.200 -0.400 -0.200
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.200 -0.400 -0.200
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.200 -0.399 -0.199
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.200 -0.399 -0.199
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.201 -0.398 -0.198
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.201 -0.398 -0.198
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.201 -0.397 -0.197
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.202 -0.396 -0.196
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.202 -0.395 -0.195
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.202 -0.394 -0.194
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.203 -0.393 -0.193
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.203 -0.392 -0.192
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.204 -0.390 -0.190
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.204 -0.389 -0.189
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.205 -0.388 -0.188
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.206 -0.386 -0.186
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.206 -0.384 -0.184
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.207 -0.383 -0.183
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.208 -0.381 -0.181
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.208 -0.379 -0.179
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.209 -0.378 -0.178
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.210 -0.376 -0.176
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.210 -0.374 -0.174
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.211 -0.372 -0.172
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.212 -0.371 -0.171
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.212 -0.369 -0.169
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.213 -0.367 -0.167
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.214 -0.366 -0.166
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.214 -0.364 -0.164
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.215 -0.362 -0.163
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.216 -0.361 -0.161
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.216 -0.360 -0.160
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.217 -0.358 -0.158
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.217 -0.357 -0.157
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.218 -0.356 -0.156
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.218 -0.355 -0.155
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.218 -0.354 -0.154
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.219 -0.353 -0.153
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.219 -0.352 -0.152
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.219 -0.352 -0.152
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.220 -0.351 -0.151
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.220 -0.351 -0.151
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.220 -0.350 -0.150
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.220 -0.350 -0.150
+wait 0.011
+left rot -10.0 0.0 0.0
+left pos -0.220 -0.350 -0.150
+wait 0.011
+wait 1
+mark drawn
+# high pumps: both arms alike, 0.15 m higher, 2.5 s
+left stick 0 0.33
+wait 0.5
+mark pumps_start
+right pos 0.220 -0.340 -0.179
+left pos -0.220 -0.360 -0.121
+wait 0.011
+right pos 0.220 -0.329 -0.208
+left pos -0.220 -0.371 -0.092
+wait 0.011
+right pos 0.220 -0.319 -0.236
+left pos -0.220 -0.381 -0.064
+wait 0.011
+right pos 0.220 -0.310 -0.263
+left pos -0.220 -0.390 -0.037
+wait 0.011
+right pos 0.220 -0.300 -0.289
+left pos -0.220 -0.400 -0.011
+wait 0.011
+right pos 0.220 -0.292 -0.313
+left pos -0.220 -0.408 0.013
+wait 0.011
+right pos 0.220 -0.284 -0.336
+left pos -0.220 -0.416 0.036
+wait 0.011
+right pos 0.220 -0.276 -0.357
+left pos -0.220 -0.424 0.057
+wait 0.011
+right pos 0.220 -0.270 -0.375
+left pos -0.220 -0.430 0.075
+wait 0.011
+right pos 0.220 -0.264 -0.391
+left pos -0.220 -0.436 0.091
+wait 0.011
+right pos 0.220 -0.259 -0.404
+left pos -0.220 -0.441 0.104
+wait 0.011
+right pos 0.220 -0.255 -0.415
+left pos -0.220 -0.445 0.115
+wait 0.011
+right pos 0.220 -0.252 -0.423
+left pos -0.220 -0.448 0.123
+wait 0.011
+right pos 0.220 -0.251 -0.428
+left pos -0.220 -0.449 0.128
+wait 0.011
+right pos 0.220 -0.250 -0.430
+left pos -0.220 -0.450 0.130
+wait 0.011
+right pos 0.220 -0.250 -0.429
+left pos -0.220 -0.450 0.129
+wait 0.011
+right pos 0.220 -0.252 -0.425
+left pos -0.220 -0.448 0.125
+wait 0.011
+right pos 0.220 -0.254 -0.418
+left pos -0.220 -0.446 0.118
+wait 0.011
+right pos 0.220 -0.258 -0.408
+left pos -0.220 -0.442 0.108
+wait 0.011
+right pos 0.220 -0.262 -0.395
+left pos -0.220 -0.438 0.095
+wait 0.011
+right pos 0.220 -0.268 -0.380
+left pos -0.220 -0.432 0.080
+wait 0.011
+right pos 0.220 -0.274 -0.362
+left pos -0.220 -0.426 0.062
+wait 0.011
+right pos 0.220 -0.281 -0.342
+left pos -0.220 -0.419 0.042
+wait 0.011
+right pos 0.220 -0.289 -0.320
+left pos -0.220 -0.411 0.020
+wait 0.011
+right pos 0.220 -0.298 -0.296
+left pos -0.220 -0.402 -0.004
+wait 0.011
+right pos 0.220 -0.307 -0.271
+left pos -0.220 -0.393 -0.029
+wait 0.011
+right pos 0.220 -0.316 -0.244
+left pos -0.220 -0.384 -0.056
+wait 0.011
+right pos 0.220 -0.326 -0.216
+left pos -0.220 -0.374 -0.084
+wait 0.011
+right pos 0.220 -0.337 -0.188
+left pos -0.220 -0.363 -0.112
+wait 0.011
+right pos 0.220 -0.347 -0.159
+left pos -0.220 -0.353 -0.141
+wait 0.011
+right pos 0.220 -0.357 -0.130
+left pos -0.220 -0.343 -0.170
+wait 0.011
+right pos 0.220 -0.368 -0.101
+left pos -0.220 -0.332 -0.199
+wait 0.011
+right pos 0.220 -0.378 -0.073
+left pos -0.220 -0.322 -0.227
+wait 0.011
+right pos 0.220 -0.387 -0.045
+left pos -0.220 -0.313 -0.255
+wait 0.011
+right pos 0.220 -0.397 -0.019
+left pos -0.220 -0.303 -0.281
+wait 0.011
+right pos 0.220 -0.406 0.006
+left pos -0.220 -0.294 -0.306
+wait 0.011
+right pos 0.220 -0.414 0.029
+left pos -0.220 -0.286 -0.329
+wait 0.011
+right pos 0.220 -0.422 0.050
+left pos -0.220 -0.278 -0.350
+wait 0.011
+right pos 0.220 -0.428 0.070
+left pos -0.220 -0.272 -0.370
+wait 0.011
+right pos 0.220 -0.434 0.086
+left pos -0.220 -0.266 -0.386
+wait 0.011
+right pos 0.220 -0.440 0.101
+left pos -0.220 -0.260 -0.401
+wait 0.011
+right pos 0.220 -0.444 0.112
+left pos -0.220 -0.256 -0.412
+wait 0.011
+right pos 0.220 -0.447 0.121
+left pos -0.220 -0.253 -0.421
+wait 0.011
+right pos 0.220 -0.449 0.127
+left pos -0.220 -0.251 -0.427
+wait 0.011
+right pos 0.220 -0.450 0.130
+left pos -0.220 -0.250 -0.430
+wait 0.011
+right pos 0.220 -0.450 0.130
+left pos -0.220 -0.250 -0.430
+wait 0.011
+right pos 0.220 -0.449 0.126
+left pos -0.220 -0.251 -0.426
+wait 0.011
+right pos 0.220 -0.447 0.120
+left pos -0.220 -0.253 -0.420
+wait 0.011
+right pos 0.220 -0.443 0.111
+left pos -0.220 -0.257 -0.411
+wait 0.011
+right pos 0.220 -0.439 0.099
+left pos -0.220 -0.261 -0.399
+wait 0.011
+right pos 0.220 -0.434 0.085
+left pos -0.220 -0.266 -0.385
+wait 0.011
+right pos 0.220 -0.428 0.068
+left pos -0.220 -0.272 -0.368
+wait 0.011
+right pos 0.220 -0.421 0.049
+left pos -0.220 -0.279 -0.349
+wait 0.011
+right pos 0.220 -0.413 0.027
+left pos -0.220 -0.287 -0.327
+wait 0.011
+right pos 0.220 -0.405 0.004
+left pos -0.220 -0.295 -0.304
+wait 0.011
+right pos 0.220 -0.396 -0.021
+left pos -0.220 -0.304 -0.279
+wait 0.011
+right pos 0.220 -0.387 -0.048
+left pos -0.220 -0.313 -0.252
+wait 0.011
+right pos 0.220 -0.377 -0.075
+left pos -0.220 -0.323 -0.225
+wait 0.011
+right pos 0.220 -0.367 -0.104
+left pos -0.220 -0.333 -0.196
+wait 0.011
+right pos 0.220 -0.356 -0.132
+left pos -0.220 -0.344 -0.168
+wait 0.011
+right pos 0.220 -0.346 -0.161
+left pos -0.220 -0.354 -0.139
+wait 0.011
+right pos 0.220 -0.336 -0.190
+left pos -0.220 -0.364 -0.110
+wait 0.011
+right pos 0.220 -0.325 -0.219
+left pos -0.220 -0.375 -0.081
+wait 0.011
+right pos 0.220 -0.316 -0.247
+left pos -0.220 -0.384 -0.053
+wait 0.011
+right pos 0.220 -0.306 -0.273
+left pos -0.220 -0.394 -0.027
+wait 0.011
+right pos 0.220 -0.297 -0.299
+left pos -0.220 -0.403 -0.001
+wait 0.011
+right pos 0.220 -0.288 -0.322
+left pos -0.220 -0.412 0.022
+wait 0.011
+right pos 0.220 -0.281 -0.344
+left pos -0.220 -0.419 0.044
+wait 0.011
+right pos 0.220 -0.274 -0.364
+left pos -0.220 -0.426 0.064
+wait 0.011
+right pos 0.220 -0.267 -0.382
+left pos -0.220 -0.433 0.082
+wait 0.011
+right pos 0.220 -0.262 -0.397
+left pos -0.220 -0.438 0.097
+wait 0.011
+right pos 0.220 -0.257 -0.409
+left pos -0.220 -0.443 0.109
+wait 0.011
+right pos 0.220 -0.254 -0.419
+left pos -0.220 -0.446 0.119
+wait 0.011
+right pos 0.220 -0.252 -0.425
+left pos -0.220 -0.448 0.125
+wait 0.011
+right pos 0.220 -0.250 -0.429
+left pos -0.220 -0.450 0.129
+wait 0.011
+right pos 0.220 -0.250 -0.430
+left pos -0.220 -0.450 0.130
+wait 0.011
+right pos 0.220 -0.251 -0.428
+left pos -0.220 -0.449 0.128
+wait 0.011
+right pos 0.220 -0.253 -0.422
+left pos -0.220 -0.447 0.122
+wait 0.011
+right pos 0.220 -0.256 -0.414
+left pos -0.220 -0.444 0.114
+wait 0.011
+right pos 0.220 -0.260 -0.403
+left pos -0.220 -0.440 0.103
+wait 0.011
+right pos 0.220 -0.264 -0.390
+left pos -0.220 -0.436 0.090
+wait 0.011
+right pos 0.220 -0.270 -0.373
+left pos -0.220 -0.430 0.073
+wait 0.011
+right pos 0.220 -0.277 -0.355
+left pos -0.220 -0.423 0.055
+wait 0.011
+right pos 0.220 -0.284 -0.334
+left pos -0.220 -0.416 0.034
+wait 0.011
+right pos 0.220 -0.292 -0.311
+left pos -0.220 -0.408 0.011
+wait 0.011
+right pos 0.220 -0.301 -0.286
+left pos -0.220 -0.399 -0.014
+wait 0.011
+right pos 0.220 -0.311 -0.260
+left pos -0.220 -0.389 -0.040
+wait 0.011
+right pos 0.220 -0.320 -0.233
+left pos -0.220 -0.380 -0.067
+wait 0.011
+right pos 0.220 -0.330 -0.205
+left pos -0.220 -0.370 -0.095
+wait 0.011
+right pos 0.220 -0.341 -0.176
+left pos -0.220 -0.359 -0.124
+wait 0.011
+right pos 0.220 -0.351 -0.147
+left pos -0.220 -0.349 -0.153
+wait 0.011
+right pos 0.220 -0.361 -0.118
+left pos -0.220 -0.339 -0.182
+wait 0.011
+right pos 0.220 -0.372 -0.090
+left pos -0.220 -0.328 -0.210
+wait 0.011
+right pos 0.220 -0.381 -0.062
+left pos -0.220 -0.319 -0.238
+wait 0.011
+right pos 0.220 -0.391 -0.035
+left pos -0.220 -0.309 -0.265
+wait 0.011
+right pos 0.220 -0.400 -0.009
+left pos -0.220 -0.300 -0.291
+wait 0.011
+right pos 0.220 -0.409 0.015
+left pos -0.220 -0.291 -0.315
+wait 0.011
+right pos 0.220 -0.417 0.038
+left pos -0.220 -0.283 -0.338
+wait 0.011
+right pos 0.220 -0.424 0.058
+left pos -0.220 -0.276 -0.358
+wait 0.011
+right pos 0.220 -0.431 0.077
+left pos -0.220 -0.269 -0.377
+wait 0.011
+right pos 0.220 -0.437 0.092
+left pos -0.220 -0.263 -0.392
+wait 0.011
+right pos 0.220 -0.441 0.106
+left pos -0.220 -0.259 -0.406
+wait 0.011
+right pos 0.220 -0.445 0.116
+left pos -0.220 -0.255 -0.416
+wait 0.011
+right pos 0.220 -0.448 0.124
+left pos -0.220 -0.252 -0.424
+wait 0.011
+right pos 0.220 -0.449 0.128
+left pos -0.220 -0.251 -0.428
+wait 0.011
+right pos 0.220 -0.450 0.130
+left pos -0.220 -0.250 -0.430
+wait 0.011
+right pos 0.220 -0.450 0.129
+left pos -0.220 -0.250 -0.429
+wait 0.011
+right pos 0.220 -0.448 0.124
+left pos -0.220 -0.252 -0.424
+wait 0.011
+right pos 0.220 -0.445 0.117
+left pos -0.220 -0.255 -0.417
+wait 0.011
+right pos 0.220 -0.442 0.107
+left pos -0.220 -0.258 -0.407
+wait 0.011
+right pos 0.220 -0.437 0.094
+left pos -0.220 -0.263 -0.394
+wait 0.011
+right pos 0.220 -0.432 0.079
+left pos -0.220 -0.268 -0.379
+wait 0.011
+right pos 0.220 -0.425 0.061
+left pos -0.220 -0.275 -0.361
+wait 0.011
+right pos 0.220 -0.418 0.040
+left pos -0.220 -0.282 -0.340
+wait 0.011
+right pos 0.220 -0.410 0.018
+left pos -0.220 -0.290 -0.318
+wait 0.011
+right pos 0.220 -0.401 -0.006
+left pos -0.220 -0.299 -0.294
+wait 0.011
+right pos 0.220 -0.392 -0.032
+left pos -0.220 -0.308 -0.268
+wait 0.011
+right pos 0.220 -0.383 -0.058
+left pos -0.220 -0.317 -0.242
+wait 0.011
+right pos 0.220 -0.373 -0.086
+left pos -0.220 -0.327 -0.214
+wait 0.011
+right pos 0.220 -0.363 -0.115
+left pos -0.220 -0.337 -0.185
+wait 0.011
+right pos 0.220 -0.352 -0.144
+left pos -0.220 -0.348 -0.156
+wait 0.011
+right pos 0.220 -0.342 -0.173
+left pos -0.220 -0.358 -0.127
+wait 0.011
+right pos 0.220 -0.332 -0.202
+left pos -0.220 -0.368 -0.098
+wait 0.011
+right pos 0.220 -0.321 -0.230
+left pos -0.220 -0.379 -0.070
+wait 0.011
+right pos 0.220 -0.312 -0.257
+left pos -0.220 -0.388 -0.043
+wait 0.011
+right pos 0.220 -0.302 -0.283
+left pos -0.220 -0.398 -0.017
+wait 0.011
+right pos 0.220 -0.294 -0.308
+left pos -0.220 -0.406 0.008
+wait 0.011
+right pos 0.220 -0.285 -0.331
+left pos -0.220 -0.415 0.031
+wait 0.011
+right pos 0.220 -0.278 -0.352
+left pos -0.220 -0.422 0.052
+wait 0.011
+right pos 0.220 -0.271 -0.371
+left pos -0.220 -0.429 0.071
+wait 0.011
+right pos 0.220 -0.265 -0.388
+left pos -0.220 -0.435 0.088
+wait 0.011
+right pos 0.220 -0.260 -0.402
+left pos -0.220 -0.440 0.102
+wait 0.011
+right pos 0.220 -0.256 -0.413
+left pos -0.220 -0.444 0.113
+wait 0.011
+right pos 0.220 -0.253 -0.422
+left pos -0.220 -0.447 0.122
+wait 0.011
+right pos 0.220 -0.251 -0.427
+left pos -0.220 -0.449 0.127
+wait 0.011
+right pos 0.220 -0.250 -0.430
+left pos -0.220 -0.450 0.130
+wait 0.011
+right pos 0.220 -0.250 -0.429
+left pos -0.220 -0.450 0.129
+wait 0.011
+right pos 0.220 -0.251 -0.426
+left pos -0.220 -0.449 0.126
+wait 0.011
+right pos 0.220 -0.254 -0.420
+left pos -0.220 -0.446 0.120
+wait 0.011
+right pos 0.220 -0.257 -0.410
+left pos -0.220 -0.443 0.110
+wait 0.011
+right pos 0.220 -0.261 -0.398
+left pos -0.220 -0.439 0.098
+wait 0.011
+right pos 0.220 -0.267 -0.384
+left pos -0.220 -0.433 0.084
+wait 0.011
+right pos 0.220 -0.273 -0.366
+left pos -0.220 -0.427 0.066
+wait 0.011
+right pos 0.220 -0.280 -0.347
+left pos -0.220 -0.420 0.047
+wait 0.011
+right pos 0.220 -0.287 -0.325
+left pos -0.220 -0.413 0.025
+wait 0.011
+right pos 0.220 -0.296 -0.302
+left pos -0.220 -0.404 0.002
+wait 0.011
+right pos 0.220 -0.305 -0.276
+left pos -0.220 -0.395 -0.024
+wait 0.011
+right pos 0.220 -0.314 -0.250
+left pos -0.220 -0.386 -0.050
+wait 0.011
+right pos 0.220 -0.324 -0.222
+left pos -0.220 -0.376 -0.078
+wait 0.011
+right pos 0.220 -0.334 -0.194
+left pos -0.220 -0.366 -0.106
+wait 0.011
+right pos 0.220 -0.345 -0.165
+left pos -0.220 -0.355 -0.135
+wait 0.011
+right pos 0.220 -0.355 -0.136
+left pos -0.220 -0.345 -0.164
+wait 0.011
+right pos 0.220 -0.365 -0.107
+left pos -0.220 -0.335 -0.193
+wait 0.011
+right pos 0.220 -0.375 -0.079
+left pos -0.220 -0.325 -0.221
+wait 0.011
+right pos 0.220 -0.385 -0.051
+left pos -0.220 -0.315 -0.249
+wait 0.011
+right pos 0.220 -0.395 -0.024
+left pos -0.220 -0.305 -0.276
+wait 0.011
+right pos 0.220 -0.404 0.001
+left pos -0.220 -0.296 -0.301
+wait 0.011
+right pos 0.220 -0.412 0.024
+left pos -0.220 -0.288 -0.324
+wait 0.011
+right pos 0.220 -0.420 0.046
+left pos -0.220 -0.280 -0.346
+wait 0.011
+right pos 0.220 -0.427 0.066
+left pos -0.220 -0.273 -0.366
+wait 0.011
+right pos 0.220 -0.433 0.083
+left pos -0.220 -0.267 -0.383
+wait 0.011
+right pos 0.220 -0.439 0.098
+left pos -0.220 -0.261 -0.398
+wait 0.011
+right pos 0.220 -0.443 0.110
+left pos -0.220 -0.257 -0.410
+wait 0.011
+right pos 0.220 -0.446 0.119
+left pos -0.220 -0.254 -0.419
+wait 0.011
+right pos 0.220 -0.449 0.126
+left pos -0.220 -0.251 -0.426
+wait 0.011
+right pos 0.220 -0.450 0.129
+left pos -0.220 -0.250 -0.429
+wait 0.011
+right pos 0.220 -0.450 0.130
+left pos -0.220 -0.250 -0.430
+wait 0.011
+right pos 0.220 -0.449 0.127
+left pos -0.220 -0.251 -0.427
+wait 0.011
+right pos 0.220 -0.447 0.122
+left pos -0.220 -0.253 -0.422
+wait 0.011
+right pos 0.220 -0.444 0.113
+left pos -0.220 -0.256 -0.413
+wait 0.011
+right pos 0.220 -0.440 0.102
+left pos -0.220 -0.260 -0.402
+wait 0.011
+right pos 0.220 -0.435 0.088
+left pos -0.220 -0.265 -0.388
+wait 0.011
+right pos 0.220 -0.429 0.072
+left pos -0.220 -0.271 -0.372
+wait 0.011
+right pos 0.220 -0.422 0.053
+left pos -0.220 -0.278 -0.353
+wait 0.011
+right pos 0.220 -0.415 0.032
+left pos -0.220 -0.285 -0.332
+wait 0.011
+right pos 0.220 -0.407 0.009
+left pos -0.220 -0.293 -0.309
+wait 0.011
+right pos 0.220 -0.398 -0.016
+left pos -0.220 -0.302 -0.284
+wait 0.011
+right pos 0.220 -0.389 -0.042
+left pos -0.220 -0.311 -0.258
+wait 0.011
+right pos 0.220 -0.379 -0.069
+left pos -0.220 -0.321 -0.231
+wait 0.011
+right pos 0.220 -0.369 -0.098
+left pos -0.220 -0.331 -0.202
+wait 0.011
+right pos 0.220 -0.358 -0.126
+left pos -0.220 -0.342 -0.174
+wait 0.011
+right pos 0.220 -0.348 -0.155
+left pos -0.220 -0.352 -0.145
+wait 0.011
+right pos 0.220 -0.338 -0.184
+left pos -0.220 -0.362 -0.116
+wait 0.011
+right pos 0.220 -0.328 -0.213
+left pos -0.220 -0.372 -0.087
+wait 0.011
+right pos 0.220 -0.318 -0.241
+left pos -0.220 -0.382 -0.059
+wait 0.011
+right pos 0.220 -0.308 -0.268
+left pos -0.220 -0.392 -0.032
+wait 0.011
+right pos 0.220 -0.299 -0.293
+left pos -0.220 -0.401 -0.007
+wait 0.011
+right pos 0.220 -0.290 -0.317
+left pos -0.220 -0.410 0.017
+wait 0.011
+right pos 0.220 -0.282 -0.340
+left pos -0.220 -0.418 0.040
+wait 0.011
+right pos 0.220 -0.275 -0.360
+left pos -0.220 -0.425 0.060
+wait 0.011
+right pos 0.220 -0.269 -0.378
+left pos -0.220 -0.431 0.078
+wait 0.011
+right pos 0.220 -0.263 -0.394
+left pos -0.220 -0.437 0.094
+wait 0.011
+right pos 0.220 -0.258 -0.407
+left pos -0.220 -0.442 0.107
+wait 0.011
+right pos 0.220 -0.255 -0.417
+left pos -0.220 -0.445 0.117
+wait 0.011
+right pos 0.220 -0.252 -0.424
+left pos -0.220 -0.448 0.124
+wait 0.011
+right pos 0.220 -0.251 -0.429
+left pos -0.220 -0.449 0.129
+wait 0.011
+right pos 0.220 -0.250 -0.430
+left pos -0.220 -0.450 0.130
+wait 0.011
+right pos 0.220 -0.251 -0.428
+left pos -0.220 -0.449 0.128
+wait 0.011
+right pos 0.220 -0.252 -0.424
+left pos -0.220 -0.448 0.124
+wait 0.011
+right pos 0.220 -0.255 -0.416
+left pos -0.220 -0.445 0.116
+wait 0.011
+right pos 0.220 -0.259 -0.406
+left pos -0.220 -0.441 0.106
+wait 0.011
+right pos 0.220 -0.263 -0.393
+left pos -0.220 -0.437 0.093
+wait 0.011
+right pos 0.220 -0.269 -0.377
+left pos -0.220 -0.431 0.077
+wait 0.011
+right pos 0.220 -0.275 -0.359
+left pos -0.220 -0.425 0.059
+wait 0.011
+right pos 0.220 -0.283 -0.338
+left pos -0.220 -0.417 0.038
+wait 0.011
+right pos 0.220 -0.291 -0.316
+left pos -0.220 -0.409 0.016
+wait 0.011
+right pos 0.220 -0.299 -0.292
+left pos -0.220 -0.401 -0.008
+wait 0.011
+right pos 0.220 -0.309 -0.266
+left pos -0.220 -0.391 -0.034
+wait 0.011
+right pos 0.220 -0.318 -0.239
+left pos -0.220 -0.382 -0.061
+wait 0.011
+right pos 0.220 -0.328 -0.211
+left pos -0.220 -0.372 -0.089
+wait 0.011
+right pos 0.220 -0.338 -0.182
+left pos -0.220 -0.362 -0.118
+wait 0.011
+right pos 0.220 -0.349 -0.154
+left pos -0.220 -0.351 -0.146
+wait 0.011
+right pos 0.220 -0.359 -0.125
+left pos -0.220 -0.341 -0.175
+wait 0.011
+right pos 0.220 -0.369 -0.096
+left pos -0.220 -0.331 -0.204
+wait 0.011
+right pos 0.220 -0.379 -0.068
+left pos -0.220 -0.321 -0.232
+wait 0.011
+right pos 0.220 -0.389 -0.040
+left pos -0.220 -0.311 -0.260
+wait 0.011
+right pos 0.220 -0.398 -0.014
+left pos -0.220 -0.302 -0.286
+wait 0.011
+right pos 0.220 -0.407 0.010
+left pos -0.220 -0.293 -0.310
+wait 0.011
+right pos 0.220 -0.415 0.033
+left pos -0.220 -0.285 -0.333
+wait 0.011
+right pos 0.220 -0.423 0.054
+left pos -0.220 -0.277 -0.354
+wait 0.011
+right pos 0.220 -0.430 0.073
+left pos -0.220 -0.270 -0.373
+wait 0.011
+right pos 0.220 -0.435 0.089
+left pos -0.220 -0.265 -0.389
+wait 0.011
+right pos 0.220 -0.440 0.103
+left pos -0.220 -0.260 -0.403
+wait 0.011
+right pos 0.220 -0.444 0.114
+left pos -0.220 -0.256 -0.414
+wait 0.011
+right pos 0.220 -0.447 0.122
+left pos -0.220 -0.253 -0.422
+wait 0.011
+right pos 0.220 -0.449 0.128
+left pos -0.220 -0.251 -0.428
+wait 0.011
+right pos 0.220 -0.450 0.130
+left pos -0.220 -0.250 -0.430
+wait 0.011
+right pos 0.22 -0.35 -0.15
+left pos -0.22 -0.35 -0.15
+mark pumps_end
+left stick 0 0
+wait 1
+mark end

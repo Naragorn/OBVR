@@ -96,7 +96,6 @@ vr::TrackerSource ReadSource(vr::TrackerSource fallback, const char* path) {
 	if (GetPrivateProfileStringA("Head", "Source", "", buffer, sizeof(buffer), path) == 0) {
 		return fallback;
 	}
-
 	if (EqualsIgnoreCase(buffer, "none")) {
 		return vr::TrackerSource::None;
 	}
@@ -906,6 +905,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Bool, "Hands", "ArmSwingRun", hands.armSwing.enabled),
 	OBVR_KEY(Float, "Hands", "ArmSwingSpeed", hands.armSwing.speedMetres),
 	OBVR_KEY(Float, "Hands", "ArmSwingHoldSeconds", hands.armSwing.holdSeconds),
+	OBVR_KEY(Float, "Hands", "ArmSwingBalance", hands.armSwing.balance),
 	OBVR_STEP(LaserNeedsOne, "", ""),
 	OBVR_KEY(Float, "Hands", "HitBoundFactor", hands.hitBoundFactor),
 	OBVR_KEY(Float, "Hands", "HitPadUnits", hands.hitPadUnits),

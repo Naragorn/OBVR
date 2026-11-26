@@ -5347,6 +5347,78 @@ run with it off. The controls card: "Stick: walk. Swing both arms: run." "Arm
 swing: running / walking again" in the log. Not built: the onboarding step
 offering it (onboarding-spec, open wish). Harness arm-swing-run.txt PASS 2026-10-28 headless: the stick alone walked 233.5 units in 2 s, the stick pressed in 233.6 (no run), the arms swung every 0.15 s 663.5 ("Arm swing: running").
 
+**Fixed 2026-11-26: a pump of the run or a weapon's stroke (`[Hands] ArmSwingBalance`).**
+The tester, Windows 2026-11-26 (DLL 8095bfd): "wenn man die waffe gezogen hat dann ist 'swing
+arms' zum sprinten schwierig oder buggy, weil er nicht weiss ob sprint oder schwung, sodass er
+den lauf abbricht usw." - with the weapon drawn the arm-swing sprint is hard or buggy, it cannot
+tell a sprint from a swing, so the run breaks off.
+- **His log** (artifacts/win-run-2026-11-26/OBVR.log, the katana drawn, the torch in the left
+  hand) [R]: eight sprints at 21425-22569, each over a few log lines after it began ("Arm swing:
+  running", "AnalogWalk: sprinting - the pace factor 1.40", "walking again", "the sprint over");
+  the sprint's lines stop there, their budget of 16 spent. Six weapon swings fell inside the
+  arm-swing runs: 2.7-3.7 m/s at their fastest and 0.22-0.75 m long, the median 2.9 m/s and 0.34
+  m (21432 a forward power swing, 3.7 m/s, 0.75 m - the thrust's 0.6 m), against the 54 outside
+  them: the median 5.5 m/s and 0.71 m. Each was charged a swing's fatigue (8.8, the power one
+  17.6), on top of the sprint's 10 a second; at 23321 "the sprint spent ... (fatigue 1.0)". The
+  torch hand went "up - blocking" and "down" with his pumps: 25 of the session's 225 block starts
+  fell inside the arm-swing runs the log names (its "Arm swing" lines stop at 25324, their budget
+  of 40 spent).
+- **Cause, three parts** [R in the code, M in the harness]:
+  - The weapon hand's swing detector (vr/HandInput.h StepSwing: 2.6 m/s, 0.2 m) never knew of
+    the run: a pump past 2.6 m/s was a swing - its swish, its fatigue, a power attack's grunt, a
+    strike on whatever the blade met.
+  - A stroke with the other hand drawn back was "both hands along the body against each other",
+    a run for ArmSwingHoldSeconds - the stick's walk sprinting at 1.4 for a moment.
+  - The torch (or a shield) in the left hand blocks when that hand is raised ahead
+    (IsBlockGesture: no lower than 30 cm under the eyes, 12 cm ahead), and a forward pump takes
+    it there; the engine walks a blocking player. Measured [M]: the push's run backwards, 482
+    units in 1.5 s with the torch low, 160 in 1.5 s with it raised into the block - 107 units a
+    second, the harness character's walk (114.5). So each pump of his torch arm broke the run.
+  - Nothing else in a swing ends the run: the arm-swing run itself ends only when the arms stop
+    meeting the rule, which his log cannot show (his arms are not recorded) [D].
+- **Measured before the fix** (arm-swing-weapon.txt, old DLL fe4eaf76, 20261126-162811-slot1;
+  the first probe 155451-slot3 the same) [M]: the sword drawn, the torch in the left hand, 4 s of
+  both arms swung against each other at 1.5 Hz (0.28 m forward and back, 0.10 m up and down, 2.8
+  m/s at the most): one run held throughout - and six light swings, each charged 10.6 fatigue; 3 s
+  with the torch arm at 60 %: four more; one slash of the sword at 6.1 m/s with the torch hand
+  drawn back and up at 2.1 m/s while walking: "Arm swing: running", "AnalogWalk: sprinting - the
+  pace factor 1.40". Twelve swings charged where two were meant.
+- **The rule** (vr/ArmSwing.h ArmSwingPump, StepArmSwing; vr/HandMode.cpp; arm_swing_test,
+  hand_mode_test "Swung arms with a weapon drawn"): a runner's arms swing alike. Both hands
+  against each other along the body (as before) with the slower's whole speed at least
+  `ArmSwingBalance` (0.5) of the faster's is a **pump**: it starts the run, and the swing
+  detectors of both hands are given no speed through it - a pump never strikes, swishes, grunts
+  or costs a swing's fatigue. One hand far faster than the other is a **stroke**: it attacks as
+  ever and starts no run. A run once going holds on any swing against each other, a lopsided one
+  too, as before. While the arms run (the hold over each turn included) no raised hand blocks -
+  the left hand's shield or torch, the weapon's guard, the fists', the bow's
+  (ArmSwingHoldsBlocks; the block's decision moved into vr/HandBlockLogic.h, DecideHandBlock,
+  for it): to block, the arms stop, and the hand blocks ArmSwingHoldSeconds (0.35 s) later.
+  `ArmSwingBalance=0`: the rule before (every swing against each other runs, every fast hand
+  swings, every raised hand blocks). The balance is a first guess (guesses-overview.md).
+- **Measured after** [M]: arm-swing-weapon with the pump rule (20261126-162952-slot1, e7359275,
+  before the block's part): PASS - the pumps and the lopsided pumps one run each, no swing and
+  no swing's fatigue; the slash with the hand drawn back a swing and no run; the plain slash a
+  swing; again with the block's part (163957-slot1, a5a6a73a): PASS, and the torch raised after
+  the run still blocks. arm-swing-torch-block.txt (the pumps 0.15 m higher, the torch past the block's height for
+  a third of each forward swing, 2.5 s): the old DLL FAIL (20261126-163650-slot1) - the torch
+  blocked four times, 874 units covered; the fix PASS (163823-slot1, a5a6a73a) - no block, no
+  swing charged, one run, 1104 units covered. arm-swing-run (165259-slot1) and sprint
+  (165354-slot1) PASS with it.
+- **Open:** the tester's own arms are not in his log: whether his torch arm pumped at half his
+  sword arm's speed or more is not known. A pose recording of a sprint with the weapon drawn
+  (Help / Save the last minute) gives both hands' speeds; `ArmSwingBalance` lowers to 0.3 for a
+  lopsided pumper. Where the engine turns a blocking player's run into a walk is not read
+  (../OBNG/knowledge/player-movement-pace.md).
+- **Options** weighed, the first built:
+
+  | | What | Cost | What it risks |
+  |---|---|---|---|
+  | A (built) | the balance: a pump alike, a stroke one-sided; no raised-hand block while the arms run | small: one pure rule, one hook in the hand mode, the block's decision moved into a pure header | an arm pumping under half the other's (a torch held up to light the way) starts no run and its partner's pumps still swing; a slow stroke with a strong counter-move reads as a pump; a block wanted straight out of a sprint comes 0.35 s late |
+  | B | the rhythm: the run starts only after a back-and-forth of both arms, and while running every swing of the weapon arm is a pump | medium | the sprint starts some 0.3 s later; an attack made while still pumping is eaten |
+  | C | no arm-swing sprint with a melee weapon drawn; the stick's click sprints then | small | the arms do nothing in a fight - the tester asked for them to work |
+  | D | a stroke counts only after a grace | medium | every attack late by the grace |
+
 ## The engine's fly camera (`tfc`) - built 2026-10-31
 
 Nadi, 2026-10-31: "manche mods schalten tfc an also die fliegende kamera. auf
