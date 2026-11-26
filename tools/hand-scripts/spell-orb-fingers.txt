@@ -1,0 +1,50 @@
+# The left hand's fingers after a charged spell (Nadi's Windows run of 2026-11-26: "konnte ich die
+# linke hand nicht mehr zumachen, finger tracking ging auch nicht mehr"). The charged spell's orb
+# (game/SpellOrb.h) is a copy of the spell's model hung on Bip01 L Hand and kept there, hidden by
+# the cull bit, between charges. game::HandHoldsItem took that hidden copy for a held item, so
+# from the first charge on the left fingers stayed as the animation had them: no fist, no tracking.
+# Here: Flare charged 2.5 s and let go, then the left hand curled into a fist and opened again.
+# The left hand must hold nothing once the orb is gone, and its fingers follow the controller.
+
+ini Hands Enabled=1
+ini Hands SpellCharge=1
+ini Hands FingerTracking=1
+# The fist gesture off: the curled hand here is only a pose.
+ini Hands Fists=0
+console-at settle CloseAllMenus
+console player.addspell 000A97DF
+console SetActiveSpell 000A97DF
+
+expect HandScript: finished
+expect Spell orb: "SpecialIdle_Projectile" playing
+expect Spell orb: gone from the hand
+expect Fireball.NIF" - its fingers stay as the animation has them
+# Once at the start and once when the orb is hidden again.
+count 2 Hands: the left hand holds nothing of its own
+expect Hands: at the mark fist-after-cast - the left fingers follow the controller
+expect Hands: at the mark open-after-cast - the left fingers follow the controller
+reject HandScript: WARNING
+
+left index 1
+wait 12
+mark settle
+wait 1
+right pos 0.25 -0.60 -0.10
+left pos 0.02 -0.15 -0.35
+left rot 0 0 -90
+left curl 0
+wait 1.5
+mark before-cast
+left trigger 1
+wait 2.5
+mark charged
+left trigger 0
+wait 3
+mark after-cast
+left curl 1
+wait 1.5
+mark fist-after-cast
+left curl 0
+wait 1.5
+mark open-after-cast
+wait 1

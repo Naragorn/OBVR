@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
 #include "game/HandGrip.h"
 
@@ -297,6 +298,42 @@ void TestHandle() {
 	      "no such link: refused, nothing written");
 }
 
+// Which child of a hand bone holds a thing (HandChildHoldsItem): every
+// combination of its four inputs, then the cases by name - the culled spell
+// orb of Nadi's Windows run (2026-11-26) among them.
+void TestHeldChild() {
+	for (int bits = 0; bits < 16; ++bits) {
+		const bool fingerLink = (bits & 1) != 0;
+		const bool isNode = (bits & 2) != 0;
+		const bool culled = (bits & 4) != 0;
+		const bool hung = (bits & 8) != 0;
+		const bool want = !fingerLink && isNode && !culled && hung;
+		if (HandChildHoldsItem(fingerLink, isNode, culled ? kNiAppCulledFlag : 0, hung) != want) {
+			Check(false, "a held child: a combination off the rule");
+			return;
+		}
+	}
+	Check(HandChildHoldsItem(false, true, 0x000E, true), "the Torch node with the torch, flags without the cull bit: held");
+	Check(!HandChildHoldsItem(false, true, 0x000F, true), "the spell orb hidden between charges (cull bit set): not held");
+	Check(HandChildHoldsItem(false, true, 0x0000, true), "the spell orb shown while charging: held");
+	Check(!HandChildHoldsItem(false, true, 0, false), "an empty Torch node: not held");
+	Check(!HandChildHoldsItem(true, true, 0, true), "a finger link with its next link under it: not held");
+	Check(!HandChildHoldsItem(false, false, 0, true), "a shape, not a node: not held");
+}
+
+// The pose's words for the mark's line: each pose its own.
+void TestPoseWords() {
+	Check(std::strcmp(FingerPoseWords(FingerPose::Tracked), "follow the controller") == 0, "tracked: follow the controller");
+	Check(std::strcmp(FingerPoseWords(FingerPose::Animation), "stay as the animation has them") == 0,
+	      "animation: stay as the animation has them");
+	Check(std::strcmp(FingerPoseWords(FingerPose::Grip), "close around what the hand holds") == 0,
+	      "grip: close around what the hand holds");
+	Check(std::strcmp(FingerPoseWords(FingerPose::Handle), "close round the handle") == 0,
+	      "handle: close round the handle");
+	Check(std::strcmp(FingerPoseWords(static_cast<FingerPose>(99)), "stay as the animation has them") == 0,
+	      "no such pose: the animation's words");
+}
+
 int main() {
 	TestRotationBlend();
 	TestPose();
@@ -305,6 +342,8 @@ int main() {
 	TestTables();
 	TestLittleFinger();
 	TestHandle();
+	TestHeldChild();
+	TestPoseWords();
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
 		return 1;

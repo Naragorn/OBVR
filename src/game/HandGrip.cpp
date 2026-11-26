@@ -10,6 +10,7 @@
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
+#include "test/HandScriptRuntime.h"
 
 namespace obvr::game {
 namespace {
@@ -167,6 +168,10 @@ void ForgetHandGrip() {
 
 void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, float curlDegrees,
                      const FingerCurls* curls, float towardHandle) {
+	if (test::HandScriptMarkedThisFrame()) {
+		OBVR_LOG("Hands: at the mark %s - the %s fingers %s", test::HandScriptMarkName(), rightHand ? "right" : "left",
+		         FingerPoseWords(pose));
+	}
 	Fingers& f = g_fingers[rightHand ? 0 : 1];
 	NiAVObject* const root = FirstPersonArmsNode();
 	if (root == nullptr || f.root != root) {
@@ -259,77 +264,29 @@ void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, 
 	}
 }
 
-bool HandHoldsItem(bool rightHand, const char* handBoneName) {
-	// The hand bone the fingers were found under, while that tree stands.
+namespace {
+
+// The hand bone the fingers were found under, while that tree stands.
+const NiAVObject* HandBoneFor(bool rightHand, const char* handBoneName) {
 	const Fingers& f = g_fingers[rightHand ? 0 : 1];
 	NiAVObject* const root = FirstPersonArmsNode();
-	const NiAVObject* const hand =
-		f.found && root != nullptr && f.root == root ? f.hand : FindFirstPersonNode(handBoneName);
-	if (!LooksLikeObject(hand)) {
-		return false;
-	}
-	const UInt8* const bytes = reinterpret_cast<const UInt8*>(hand);
-	UInt8* const* const children = *reinterpret_cast<UInt8* const* const*>(bytes + addr::kNiChildrenOffset);
-	const UInt16 count = *reinterpret_cast<const UInt16*>(bytes + addr::kNiChildCountOffset);
-	if (!LooksLikeObject(children) || count > 64) {
-		return true;  // cannot be told: the animation keeps the fingers
-	}
-	const char* holding = nullptr;
-	for (UInt16 i = 0; i < count && holding == nullptr; ++i) {
-		const NiAVObject* const child = reinterpret_cast<const NiAVObject*>(children[i]);
-		if (!LooksLikeObject(child)) {
-			continue;
-		}
-		const char* const name = NameOf(child);
-		int finger = 0;
-		int link = 0;
-		if (FingerLinkOf(name, finger, link) || !NiClassIsNode(NiClassNameOf(child))) {
-			continue;
-		}
-		const UInt8* const childBytes = reinterpret_cast<const UInt8*>(child);
-		UInt8* const* const hung = *reinterpret_cast<UInt8* const* const*>(childBytes + addr::kNiChildrenOffset);
-		const UInt16 hungCount = *reinterpret_cast<const UInt16*>(childBytes + addr::kNiChildCountOffset);
-		if (!LooksLikeObject(hung)) {
-			continue;
-		}
-		for (UInt16 k = 0; k < hungCount && k < 64; ++k) {
-			if (LooksLikeObject(hung[k])) {
-				holding = name;
-				break;
-			}
-		}
-	}
-	const signed char now = holding != nullptr ? 1 : 0;
-	signed char& logged = g_holdsLogged[rightHand ? 0 : 1];
-	if (now != logged && g_holdLinesLeft > 0) {
-		--g_holdLinesLeft;
-		if (holding != nullptr) {
-			OBVR_LOG("Hands: the %s hand holds \"%s\" - its fingers stay as the animation has them",
-			         rightHand ? "right" : "left", holding);
-		} else {
-			OBVR_LOG("Hands: the %s hand holds nothing of its own", rightHand ? "right" : "left");
-		}
-		logged = now;
-	}
-	return holding != nullptr;
+	return f.found && root != nullptr && f.root == root ? f.hand : FindFirstPersonNode(handBoneName);
 }
 
-UInt32 HandHungItem(bool rightHand, const char* handBoneName, const char** holder) {
-	if (holder != nullptr) {
-		*holder = nullptr;
-	}
-	const Fingers& f = g_fingers[rightHand ? 0 : 1];
-	NiAVObject* const root = FirstPersonArmsNode();
-	const NiAVObject* const hand =
-		f.found && root != nullptr && f.root == root ? f.hand : FindFirstPersonNode(handBoneName);
+// What the hand holds (HandChildHoldsItem): the first such child's first
+// hung model, its name into `holder`. Unread: no hand, or its child list
+// cannot be read.
+enum class HeldRead : UInt8 { Nothing, Held, Unread };
+
+HeldRead ReadHeld(const NiAVObject* hand, const char** holder, UInt32* model) {
 	if (!LooksLikeObject(hand)) {
-		return 0;
+		return HeldRead::Unread;
 	}
 	const UInt8* const bytes = reinterpret_cast<const UInt8*>(hand);
 	UInt8* const* const children = *reinterpret_cast<UInt8* const* const*>(bytes + addr::kNiChildrenOffset);
 	const UInt16 count = *reinterpret_cast<const UInt16*>(bytes + addr::kNiChildCountOffset);
 	if (!LooksLikeObject(children) || count > 64) {
-		return 0;
+		return HeldRead::Unread;
 	}
 	for (UInt16 i = 0; i < count; ++i) {
 		const NiAVObject* const child = reinterpret_cast<const NiAVObject*>(children[i]);
@@ -339,25 +296,63 @@ UInt32 HandHungItem(bool rightHand, const char* handBoneName, const char** holde
 		const char* const name = NameOf(child);
 		int finger = 0;
 		int link = 0;
-		if (FingerLinkOf(name, finger, link) || !NiClassIsNode(NiClassNameOf(child))) {
-			continue;
-		}
+		const bool fingerLink = FingerLinkOf(name, finger, link);
+		const bool isNode = NiClassIsNode(NiClassNameOf(child));
 		const UInt8* const childBytes = reinterpret_cast<const UInt8*>(child);
 		UInt8* const* const hung = *reinterpret_cast<UInt8* const* const*>(childBytes + addr::kNiChildrenOffset);
 		const UInt16 hungCount = *reinterpret_cast<const UInt16*>(childBytes + addr::kNiChildCountOffset);
-		if (!LooksLikeObject(hung)) {
-			continue;
-		}
-		for (UInt16 k = 0; k < hungCount && k < 64; ++k) {
+		UInt32 first = 0;
+		for (UInt16 k = 0; !fingerLink && isNode && LooksLikeObject(hung) && k < hungCount && k < 64; ++k) {
 			if (LooksLikeObject(hung[k])) {
-				if (holder != nullptr) {
-					*holder = name;
-				}
-				return reinterpret_cast<UInt32>(hung[k]);
+				first = reinterpret_cast<UInt32>(hung[k]);
+				break;
 			}
 		}
+		if (HandChildHoldsItem(fingerLink, isNode, child->flags, first != 0)) {
+			*holder = name;
+			*model = first;
+			return HeldRead::Held;
+		}
 	}
-	return 0;
+	return HeldRead::Nothing;
+}
+
+}  // namespace
+
+bool HandHoldsItem(bool rightHand, const char* handBoneName) {
+	const NiAVObject* const hand = HandBoneFor(rightHand, handBoneName);
+	if (!LooksLikeObject(hand)) {
+		return false;
+	}
+	const char* holding = nullptr;
+	UInt32 model = 0;
+	const HeldRead read = ReadHeld(hand, &holding, &model);
+	if (read == HeldRead::Unread) {
+		return true;  // cannot be told: the animation keeps the fingers
+	}
+	const signed char now = read == HeldRead::Held ? 1 : 0;
+	signed char& logged = g_holdsLogged[rightHand ? 0 : 1];
+	if (now != logged && g_holdLinesLeft > 0) {
+		--g_holdLinesLeft;
+		if (now != 0) {
+			OBVR_LOG("Hands: the %s hand holds \"%s\" - its fingers stay as the animation has them",
+			         rightHand ? "right" : "left", holding);
+		} else {
+			OBVR_LOG("Hands: the %s hand holds nothing of its own", rightHand ? "right" : "left");
+		}
+		logged = now;
+	}
+	return now != 0;
+}
+
+UInt32 HandHungItem(bool rightHand, const char* handBoneName, const char** holder) {
+	const char* name = nullptr;
+	UInt32 model = 0;
+	const bool held = ReadHeld(HandBoneFor(rightHand, handBoneName), &name, &model) == HeldRead::Held;
+	if (holder != nullptr) {
+		*holder = held ? name : nullptr;
+	}
+	return held ? model : 0;
 }
 
 }  // namespace obvr::game

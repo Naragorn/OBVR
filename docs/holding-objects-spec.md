@@ -96,7 +96,49 @@ With nothing held, each finger of a hand follows the controller's finger
 - "Holds something of its own" means a node under the hand bone, other than
   a finger link, that carries a child: the drawn weapon's "Weapon" node, the
   "Torch" node. That hand keeps the animation's grip on the handle. The
-  first transitions are logged per hand.
+  first transitions are logged per hand. A node hidden by the cull bit holds
+  nothing (`game::HandChildHoldsItem`, since 2026-11-26, below).
+- **Bug, 2026-11-26: the left hand stopped closing and tracking after a
+  charged spell.** Nadi's Windows run (14:09-14:44, 8095bfd): "konnte ich die
+  linke hand nicht mehr zumachen, finger tracking ging auch nicht mehr".
+  - Cause [read in the code, shown in the harness]: the charged spell's orb
+    (`game/SpellOrb.h`, since 2026-11-23) is a copy of the spell's model hung
+    on Bip01 L Hand. Between charges it stays there, hidden by the cull bit.
+    `HandHoldsItem` counted any node with a child under the hand, hidden or
+    not, so from the first charge on the left hand "held"
+    `MagicEffects\Fireball.NIF` and `FingerPoseFor` gave the animation: no
+    fist, no tracking, until the game was loaded again. The bow bypasses the
+    check, so the bow hand still tracked. The right hand has no orb.
+  - In his log [read]: the first orb at line 18493 ("Spell orb: the spell's
+    model made for the casting hand"), the fireball spells around 18484-19095.
+    The line that would have shown the hold ("the left hand holds ...") had
+    used up its budget at line 8584, so the moment is derived, not logged. His
+    grip and curls kept arriving (his bug replay of 14:37:50: curls valid on
+    every frame, a full fist read in its first 2.5 s).
+  - Not reproduced by the replay alone: played on his autosave of 14:36 the
+    left fingers tracked - a load rebuilds the skeleton and the orb is gone.
+  - Fix: a hidden child is no held item (`HandChildHoldsItem`, finger_test
+    every combination). The game's own holders are not culled: a torch or
+    bow leaves the hand by its model going. The orb while shown still counts,
+    so the fingers stay as the animation has them while a spell is charged,
+    as before. A hand script's mark now logs each hand's finger pose
+    ("Hands: at the mark ... - the left fingers follow the controller").
+  - Harness `tools/hand-scripts/spell-orb-fingers.txt` (Flare charged and let
+    go, then the left hand curled and opened): Linux
+    headless, no SteamVR, 2026-11-26. Old DLL 7bc5f795 (main ae3afdc): FAIL
+    (20261126-213502-slot1) - "the left hand holds nothing of its own" once,
+    never again after the orb went, no "follow the controller" at the fist.
+    The same code with a probe line on each finger pose change (213655-slot1):
+    tracked until the orb was made, then the animation's pose with
+    "holdsItem 1", for the rest of the run, while the fist was read
+    ("the left hand made a fist (curls 1.00 ...)"). Fix (baf3443b): PASS
+    (213558-slot1): "holds nothing" again at the orb's hide, the left fingers
+    follow the controller at after-cast, fist-after-cast and open-after-cast.
+    Filmed with `--record 1.5` (old 214300-slot1, new 214401-slot1, hand
+    turned and centred): the fingers point away from the eye, so the films do
+    not show the fist either way - the log lines are the evidence.
+  - Open: the headset. Whether the fingers should follow the controller
+    while a spell is charged too (the orb shown) is a choice not made here.
 - When OBVR lets go, a link gets the animation's rotation back, unless the
   animation has written it since.
 - The first tracked frame logs the index finger's first link as the

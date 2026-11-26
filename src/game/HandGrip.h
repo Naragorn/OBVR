@@ -98,6 +98,21 @@ inline FingerPose FingerPoseFor(bool tracking, bool curlValid, bool gripClosed, 
 	return FingerPose::Animation;
 }
 
+// The pose in the log's words (a hand script's mark says it for each hand).
+inline const char* FingerPoseWords(FingerPose pose) {
+	switch (pose) {
+	case FingerPose::Grip:
+		return "close around what the hand holds";
+	case FingerPose::Tracked:
+		return "follow the controller";
+	case FingerPose::Handle:
+		return "close round the handle";
+	case FingerPose::Animation:
+	default:
+		return "stay as the animation has them";
+	}
+}
+
 struct FingerQuat {
 	float w;
 	float x;
@@ -330,9 +345,25 @@ inline float LinkCurlDegrees(const NiMatrix33& rot) {
 void StepHandFingers(bool rightHand, const char* handBoneName, FingerPose pose, float curlDegrees,
                      const FingerCurls* curls, float towardHandle = 0.0f);
 
-// Whether the named hand holds a thing of its own: anything under the hand
-// bone besides its finger links that carries a child - the drawn weapon's
-// "Weapon" node, the "Torch" node with the torch.
+// NiAVObject's AppCulled flag: the node and everything under it not drawn.
+inline constexpr UInt16 kNiAppCulledFlag = 0x0001;
+
+// Whether one child of a hand bone holds a thing for that hand: a node, not
+// one of the finger links, not hidden by the cull bit, with something hung
+// under it. A hidden child is no held item (Nadi's Windows run, 2026-11-26:
+// "konnte ich die linke hand nicht mehr zumachen, finger tracking ging auch
+// nicht mehr"): the charged spell's orb (game/SpellOrb.h) stays on Bip01 L
+// Hand between charges, culled, and was taken for a held item - from the
+// first charge on, the left fingers stayed as the animation had them. The
+// game's own holders ("Weapon", "Torch") are not culled; their models go
+// when the item goes.
+inline bool HandChildHoldsItem(bool fingerLink, bool isNode, UInt16 flags, bool somethingHung) {
+	return !fingerLink && isNode && (flags & kNiAppCulledFlag) == 0 && somethingHung;
+}
+
+// Whether the named hand holds a thing of its own: a child of the hand bone
+// that holds one (HandChildHoldsItem) - the drawn weapon's "Weapon" node, the
+// "Torch" node with the torch or the bow, the spell orb while it is shown.
 bool HandHoldsItem(bool rightHand, const char* handBoneName);
 
 // The first thing hung that way (the weapon's model under "Weapon"), 0 for
