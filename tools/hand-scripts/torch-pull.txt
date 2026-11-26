@@ -3,6 +3,9 @@
 # feet, the left hand held off it - beyond the grab's reach, within the
 # pull's - the fingers closed: the torch floats to the hand as every item
 # does, and in the hand it is taken and equipped, burning there.
+# The hand at -1.25 (was -1.40): since [Head] RealHeight (2026-11-08) the hands
+# stand 5.9 units lower in the harness, and at -1.40 the hand closed 0.12 m
+# from the grip - a take at the grip, no pull (seen 2026-11-26, 20261126-160126-slot2).
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-pull.txt --run-timeout 120 --headless
 
 ini Hands Enabled=1
@@ -24,7 +27,7 @@ reject could not be sent
 
 wait 15
 head pitch -50
-left pos 0.05 -1.40 -0.80
+left pos 0.05 -1.25 -0.80
 left rot -80 0 0
 wait 1.5
 mark near

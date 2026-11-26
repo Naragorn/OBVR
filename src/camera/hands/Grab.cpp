@@ -10,6 +10,7 @@
 #include "game/CrosshairTarget.h"
 #include "game/DropRotationLogic.h"
 #include "game/GameAddresses.h"
+#include "game/GrabPhysics.h"
 #include "game/HandBones.h"
 #include "game/HeldObject.h"
 #include "game/InventoryGrab.h"
@@ -187,6 +188,95 @@ void HangTakenWeapon(const GrabState& state) {
 	}
 }
 
+const char* GrabChoiceWords(game::WeaponGrabChoice c) {
+	return c == game::WeaponGrabChoice::Equip   ? "a hold takes it"
+	       : c == game::WeaponGrabChoice::Carry ? "a grip carries it"
+	       : c == game::WeaponGrabChoice::Pull  ? "a grip pulls it to the hand"
+	       : c == game::WeaponGrabChoice::Nothing ? "nothing yet"
+	                                              : "no weapon or torch";
+}
+
+// The pick's weapon or torch and what a grip does on it, once each time either
+// changes: where its grip is from the taking hand's controller in the hand
+// script's frame (metres: right, up, back, along the camera's heading) - what
+// a scenario's "right pos" needs.
+void SayWeaponPick(GrabState& state, const GrabLinks& links, const HandShared& shared, const NiPoint3& palm,
+                   SInt32 weaponType, bool torch, game::WeaponGrabChoice choice, game::TorchTakeGate torchGate,
+                   float perMetre) {
+	if ((links.nearItem.ref == state.weaponPickRef && choice == state.lastWeaponChoice && torchGate == state.torchGate) ||
+	    state.weaponGrabLinesLeft == 0) {
+		return;
+	}
+	--state.weaponGrabLinesLeft;
+	NiPoint3 fromController{0.0f, 0.0f, 0.0f};
+	if (shared.cyclopeanCameraValid) {
+		const NiMatrix33& camRot = shared.cyclopeanCamera.rot;
+		const NiPoint3 delta = state.weaponPick.gripPoint - palm;
+		NiPoint3 forward = camRot * NiPoint3{0.0f, 1.0f, 0.0f};
+		forward.z = 0.0f;
+		const float length = math::Sqrt(forward.LengthSquared());
+		if (length > 1.0e-4f) {
+			forward = forward * (1.0f / length);
+			const NiPoint3 right{forward.y, -forward.x, 0.0f};
+			fromController = NiPoint3{(delta.x * right.x + delta.y * right.y) / perMetre, delta.z / perMetre,
+			                          -(delta.x * forward.x + delta.y * forward.y) / perMetre};
+		}
+	}
+	OBVR_LOG("%s grab: the pick is on %08X (type %d) - its grip at %.1f %.1f %.1f, %.1f units "
+	         "(%.2f m) from the %s hand's controller - %.2f right %.2f up %.2f back of it in the "
+	         "script's frame - the mesh %.1f units from the %s hand: %s%s%s",
+	         torch ? "Torch" : "Weapon", links.nearItem.ref, weaponType,
+	         static_cast<double>(state.weaponPick.gripPoint.x),
+	         static_cast<double>(state.weaponPick.gripPoint.y), static_cast<double>(state.weaponPick.gripPoint.z),
+	         static_cast<double>(state.weaponPick.toGripUnits),
+	         static_cast<double>(state.weaponPick.toGripUnits / perMetre), torch ? "other" : "weapon",
+	         static_cast<double>(fromController.x), static_cast<double>(fromController.y),
+	         static_cast<double>(fromController.z), static_cast<double>(links.nearItem.distance),
+	         links.nearItem.left ? "other" : "weapon", GrabChoiceWords(choice),
+	         torch && torchGate != game::TorchTakeGate::Takes ? " - " : "",
+	         torch && torchGate != game::TorchTakeGate::Takes ? game::TorchTakeGateWords(torchGate) : "");
+}
+
+// A closed grip with a pick, its reach running and its key still up a third
+// of a second on: what stood in the way, once each closing - the pick, what a
+// grip does on it, the engine's pick and how far its point is from the hand.
+// The tester's run of 2026-11-26 had five grips at a sword on the floor and
+// nothing to say why: every line about picks had spent its budget by then.
+void SayReachRefusal(GrabState& state, const GrabLinks& links, const HandShared& shared, bool gripHeld,
+                     const vr::GrabReachVerdict& reach, game::WeaponGrabChoice choice, float perMetre) {
+	if (!gripHeld) {
+		state.reachWait = 0.0f;
+		state.reachSaid = false;
+		return;
+	}
+	if (reach.key || !reach.reachPick || !links.nearItem.valid) {
+		state.reachWait = 0.0f;
+		return;
+	}
+	state.reachWait += links.deltaSeconds;
+	if (state.reachSaid || state.reachWait < 0.35f || state.reachRefusalLines == 0 || !shared.cyclopeanCameraValid) {
+		return;
+	}
+	state.reachSaid = true;
+	--state.reachRefusalLines;
+	const vr::HandModeResult& hand = shared.hand;
+	const game::CrosshairTarget target = game::ReadCrosshairTarget();
+	NiPoint3 hit = target.position;
+	game::ReadPickHit(hit);
+	const NiPoint3 handWorld = shared.cyclopeanCamera.pos +
+	                           shared.cyclopeanCamera.rot *
+	                               (hand.grabWithLeftHand ? hand.leftHandOffsetUnits : hand.rightHandOffsetUnits);
+	OBVR_LOG("Hands: grab - the %s grip reached %.2f s and the key stayed up - the pick %08X (class %u, %.2f m "
+	         "from the hand; %s), the engine's pick %08X%s, its point %.2f m from the hand; a take's hold latched %d",
+	         hand.grabWithLeftHand ? "left" : "right", static_cast<double>(state.reachWait), links.nearItem.ref,
+	         static_cast<unsigned>(links.nearItem.rankClass), static_cast<double>(links.nearItem.distance / perMetre),
+	         GrabChoiceWords(choice), target.haveRef ? target.refAddress : 0u,
+	         target.haveRef && target.refAddress == links.nearItem.ref ? " (the same)" : " (not the pick)",
+	         static_cast<double>(target.haveRef ? math::Sqrt((hit - handWorld).LengthSquared()) / perMetre : 0.0f),
+	         game::WeaponHoldBlocksGrab(state.weaponHoldLatch) || game::WeaponHoldBlocksGrab(state.torchHoldLatch) ? 1
+	                                                                                                           : 0);
+}
+
 }  // namespace
 
 GrabOutput StepGrab(GrabState& state, const HandStep& step, const HandShared& shared, vr::HandModeFrame& frame,
@@ -319,6 +409,9 @@ KeepModToggleOffBeforeKey(gripHeld || links.slapTapPressed);
 // A stuck arrow at the gripping hand is taken, not held (game/StuckArrow.h);
 // the hand that took one reads no pick below - the take deleted its reference.
 const bool arrowBlocksGrab = TakeStuckArrow(state, step, frame, links, gripHeld, handResult.grabWithLeftHand);
+// A thing let go of at the body, still passing through the player, is out of
+// the engine's pick: the grip reaching for it ends that (game::GripReachesFor).
+game::EndPassOf(game::GripReachesFor(gripHeld, state.grabReachPick, links.nearItem.valid, links.nearItem.ref));
 bool inReach = false;
 UInt32 reachRef = 0;
 if (gripHeld && !arrowBlocksGrab && state.grabReachPick && shared.cyclopeanCameraValid) {
@@ -405,44 +498,7 @@ game::WeaponGrabChoice weaponChoice = game::WeaponGrabChoice::NotAWeapon;
 			                                      takingHand ? links.nearItem.distance : -1.0f,
 			                                      wg.gripReachMetres * perMetre, game::kPickTouchUnits,
 			                                      wg.pullToHand);
-			if ((links.nearItem.ref != state.weaponPickRef || weaponChoice != state.lastWeaponChoice || torchGate != state.torchGate) &&
-			    state.weaponGrabLinesLeft > 0) {
-				--state.weaponGrabLinesLeft;
-				// Where the grip is from the weapon hand's controller in the
-				// hand script's frame (metres: right, up, back, along the
-				// camera's heading): what a scenario's "right pos" needs.
-				NiPoint3 fromController{0.0f, 0.0f, 0.0f};
-				if (shared.cyclopeanCameraValid) {
-					const NiMatrix33& camRot = shared.cyclopeanCamera.rot;
-					const NiPoint3 delta = state.weaponPick.gripPoint - palm;
-					NiPoint3 forward = camRot * NiPoint3{0.0f, 1.0f, 0.0f};
-					forward.z = 0.0f;
-					const float length = math::Sqrt(forward.LengthSquared());
-					if (length > 1.0e-4f) {
-						forward = forward * (1.0f / length);
-						const NiPoint3 right{forward.y, -forward.x, 0.0f};
-						fromController = NiPoint3{(delta.x * right.x + delta.y * right.y) / perMetre, delta.z / perMetre,
-						                          -(delta.x * forward.x + delta.y * forward.y) / perMetre};
-					}
-				}
-				OBVR_LOG("%s grab: the pick is on %08X (type %d) - its grip at %.1f %.1f %.1f, %.1f units "
-				         "(%.2f m) from the %s hand's controller - %.2f right %.2f up %.2f back of it in the "
-				         "script's frame - the mesh %.1f units from the %s hand: %s%s%s",
-				         torch ? "Torch" : "Weapon", links.nearItem.ref, weaponType,
-				         static_cast<double>(state.weaponPick.gripPoint.x),
-				         static_cast<double>(state.weaponPick.gripPoint.y), static_cast<double>(state.weaponPick.gripPoint.z),
-				         static_cast<double>(state.weaponPick.toGripUnits),
-				         static_cast<double>(state.weaponPick.toGripUnits / perMetre), torch ? "other" : "weapon",
-				         static_cast<double>(fromController.x),
-				         static_cast<double>(fromController.y), static_cast<double>(fromController.z),
-				         static_cast<double>(links.nearItem.distance), links.nearItem.left ? "other" : "weapon",
-				         weaponChoice == game::WeaponGrabChoice::Equip   ? "a hold takes it"
-				         : weaponChoice == game::WeaponGrabChoice::Carry ? "a grip carries it"
-				         : weaponChoice == game::WeaponGrabChoice::Pull  ? "a grip pulls it to the hand"
-				                                                         : "nothing yet",
-				         torch && torchGate != game::TorchTakeGate::Takes ? " - " : "",
-				         torch && torchGate != game::TorchTakeGate::Takes ? game::TorchTakeGateWords(torchGate) : "");
-			}
+			SayWeaponPick(state, links, shared, palm, weaponType, torch, weaponChoice, torchGate, perMetre);
 			state.weaponPickRef = links.nearItem.ref;
 			state.lastWeaponChoice = weaponChoice;
 			state.torchGate = torchGate;
@@ -464,6 +520,7 @@ NoteGrabKey(state, reach.key, reachRef, handResult.grabWithLeftHand, config.hand
             links.deltaSeconds);
 state.grabReachPick = reach.reachPick;
 state.grabKeyDown = reach.key;
+SayReachRefusal(state, links, shared, gripHeld, reach, weaponChoice, config.tracker.unitsPerMetre);
 handResult.controls.grab = reach.key || links.slapTapPressed;
 // Where the held object goes: the palm of the grabbing hand's pinned bone
 // (game::HeldObject - the spring pulls the touched point there), moved

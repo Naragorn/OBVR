@@ -30,7 +30,7 @@ namespace obvr::game {
 
 struct TorchReleaseSettings {
 	bool enabled = true;           // [Hands] TorchDrop
-	float releaseSeconds = 0.03f;  // [Hands] WeaponReleaseSeconds, the weapon's
+	float releaseSeconds = 0.0f;   // [Hands] WeaponReleaseSeconds, the weapon's
 	float throwStrength = 1.0f;    // [Hands] WeaponThrowStrength, the weapon's
 	float throwSpinStrength = 1.0f;  // [Hands] ThrowSpinStrength, the weapon's
 	// [Hands] TorchGraceSeconds: a torch equipped into an open hand (the
@@ -136,16 +136,23 @@ inline TorchReleaseVerdict StepTorchRelease(TorchReleaseState& s, const TorchRel
 	case TorchReleasePhase::Armed:
 		PushVelocity(s.history, in.handVelocity, in.dt);
 		PushVelocity(s.spins, in.handAngularVelocity, in.dt);
-		if (!in.holdClosed) {
-			v.opened = true;
-			s.phase = TorchReleasePhase::Opening;
-			s.open = 0.0f;
+		if (in.holdClosed) {
+			return v;
+		}
+		v.opened = true;
+		s.phase = TorchReleasePhase::Opening;
+		s.open = 0.0f;
+		{
 			const UInt32 best = FastestSample(s.history);
 			s.fastest = s.history.count > 0 ? s.history.v[best] : NiPoint3{0.0f, 0.0f, 0.0f};
 			s.fastestSpin = best < s.spins.count ? s.spins.v[best] : NiPoint3{0.0f, 0.0f, 0.0f};
-			s.peaks = ThrowPeaksOf(s.history);
 		}
-		return v;
+		s.peaks = ThrowPeaksOf(s.history);
+		// No release time (the default): the frame the hold reads open lets go.
+		if (settings.releaseSeconds > 0.0f) {
+			return v;
+		}
+		break;
 	case TorchReleasePhase::Opening:
 		break;
 	}

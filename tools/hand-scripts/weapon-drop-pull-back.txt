@@ -1,0 +1,57 @@
+# A sword the hand let go of, pulled back by the grip (the tester's run of
+# 2026-11-26 on Windows, the tutorial dungeon: his sword fell from the hand in
+# a fight, and five grips at it on the floor each logged "reaching for
+# something within 0.10 m" - no pull; Activate took it). weapon-pull.txt
+# drops its sword by the console, this one by the hand as weapon-drop.txt
+# does: drawn at the hip, let go of in front, then the weapon hand points down
+# at it on the floor and closes - the sword has to float to the hand and be
+# equipped ([Hands] PullToHand).
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr tools/hand-scripts/weapon-drop-pull-back.txt
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=1
+ini Hands GrabEquipsWeapons=1
+ini Hands PullToHand=1
+# The harness save's question box closed first.
+console-at settle CloseAllMenus
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Weapon hold: let go - dropped where the hand is - the new reference
+expect a grip pulls it to the hand
+expect pulled to the hand and taken
+expect Weapon grab: equipped and drawn - straight into the hand
+reject HandScript: WARNING
+reject NOT taken
+reject stayed in the engine's grab
+
+wait 20
+mark settle
+wait 1
+mark sword_sheathed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.3
+right pos 0.30 -0.40 -0.35
+wait 3
+mark sword_drawn_held
+right grip 0
+wait 3
+mark dropped
+wait 6
+head pitch -50
+right pos 0.30 -1.05 -0.45
+right rot -80 0 0
+wait 2
+mark near
+right grip 0.9
+wait 4
+mark arrived
+right grip 0
+wait 2
+mark drawn
+wait 1

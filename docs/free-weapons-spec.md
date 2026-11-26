@@ -2131,3 +2131,112 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
   way to switch, not the feature's); this time both switches made a swing nobody made (six
   fatigue lines, four wanted); one 152.9 ms frame inside the left hand's jump to the swing's
   start, left-handed (cause not read).
+
+## The tester's Windows run of 2026-11-26 (14:09-14:44, the DLL of main 8095bfd)
+
+The run's log and INI are kept in `artifacts/win-run-2026-11-26/` (OBVR.log, 37,913 lines; the
+line numbers below are its).
+
+### A sword on the floor did not come to the grip (fixed 2026-11-26)
+
+"crit bug: schwert das am boden lag mit grip kam nicht an die hand geflogen! ... mit a ins
+inventory ging."
+- **The log [R]:** the sword let go of twice in the tutorial dungeon's fight ("too far, a drop",
+  lines 23349 and 23741), then five and three grips at it, each "reaching for something within
+  0.10 m" and none "took" - the grab key never went down. Every line about picks had spent its
+  budget by then ("Pick:" stops at 10253, "the pick is on" at 16793, the dropped body's "clear"
+  at 18862), so the log could not say why.
+- **Reproduced [M]:** weapon-drop-pull-back.txt - the sword drawn at the hip and let go of in
+  front (weapon-drop.txt's way), then the weapon hand pointed down at it and closed. The DLL as
+  deployed: FAIL, 20261126-154008-slot1 - the pick on the sword (class 2, 0.35 m, "a grip pulls
+  it to the hand"), the key never down.
+- **Cause [R]:** a weapon dropped by the hand takes the player's collision group
+  (PassDroppedBody, 2026-10-25: the hand it leaves must not knock it away) until its bound is a
+  hand's margin clear of both hands and out of the player's capsule on the horizontal. A
+  sword's bound sphere is about half its length round: lying at the feet it counts as inside
+  the capsule, and a hand reaching for it is within its margin, so the pass never ended. The
+  engine's activation pick is cast in the player's own group (0x005808A4-0x005808D7: the
+  character controller's filter info, its upper half the system group, set on the pick by
+  0x00538D10) and passes through everything in that group. The grip's grab, its pull and its
+  carry all go through that pick (the crosshair reference); Activate (A) takes OBVR's own pick
+  - which is why A took it.
+- **Fix:** a grip reaching for a thing still passing through the player ends the pass at once
+  (game::GripReachesFor, game::EndPassOf in game/GrabPhysics; the same for a held object let go
+  of inside the capsule, which waits the same way). Logged: "Hands: a grip reaches for X, a
+  dropped weapon passing through the player N frames - group G put back, the engine's pick
+  finds it again". New DLL: PASS, 20261126-154936-slot1 (passing 789 frames, put back, pulled,
+  taken, equipped and drawn).
+- **The log says why from now on:** a grip with a pick whose key stays up 0.35 s says once per
+  closing the pick (class, distance, what a grip does on it), the engine's pick and its point's
+  distance, and whether a take's hold is latched (camera/hands/Grab.cpp, SayReachRefusal).
+  weapon-grip-says-why.txt PASS (20261126-155123-slot1).
+- **Kept working [M]:** weapon-drop-sweep (the knock-away the pass is for), weapon-pull,
+  weapon-drop, torch-drop-pickup, weapon-throw - all PASS with the fix (20261126-155216 to
+  -155705, slot 1).
+- **Not changed:** the clear test still measures the bound sphere, wide for a long weapon; the
+  grip no longer waits for it.
+
+### A pulled torch turns to the hand on the way (built 2026-11-26)
+
+"fackel richtet sich nun auch passend in die endposition in der hand aus während des flugs, so
+wie schwert. same für bogen und alle anderen ausrüstbare dinge."
+- **The log [R]:** the swords pulled turned to the grip (25148-25162: 84.7 to 0.0 degrees;
+  33500-33515: 91 to 0); the torches pulled turned not at all (no turn line for any of the six,
+  7674 to 14032). The bows pulled by the weapon hand turned to that hand's Weapon node - but a
+  bow ends in the other hand (8DE4FF04, 16807-16842); two of three were off at the catch anyway
+  (8E679420 100.9 degrees, "TURNED AWAY"; 8DA8F5CC 46.5).
+- **Cause [R]:** the turn (5.15) took only weapons, and only the weapon hand's Weapon node as
+  the grip.
+- **Built:** game::PullTurnsToGrip - a weapon in the weapon hand turns to its Weapon node as
+  before, a torch in the other hand to that hand's Torch node, where the take equips it;
+  game::PullHoldTarget - what turns has its held point float to where the equip will put it
+  (the node's place plus the point turned with the node), so the model's origin arrives on the
+  node (a torch's grip is 2.7 units down its shaft, a sword's 0.9 - both went to the node's
+  place before). The other hand's holds of anything else still go to its palm. pull_turn_test.
+- **Harness [M]:** torch-pull-turn.txt (torch-pull.txt watched on the way): the DLL as deployed
+  FAIL, 20261126-161535-slot1 - no turn line at all; the fix PASS, -161631-slot1 - "the pulled
+  torch ... 100% of the way, 0.0 degrees from the grip's turn - at the catch, close to the grip's
+  turn, it never turned away". torch-pull.txt's hand moved from -1.40 to -1.25: since [Head]
+  RealHeight it closed 0.12 m from the grip, a take, no pull (20261126-160126-slot2) - the same
+  as weapon-pull.txt's. weapon-pull-turn PASS with the exact catch point (0.0 degrees).
+- Staffs and two-handers are weapons: they turned already. Shields are not taken from the
+  world. The bow: open, the tester's choice (below).
+
+### A throw leaves the hand in the frame the hand opens (changed 2026-11-26)
+
+"beim werfen von fackel, schwert kann es sein das ein paar frames, ms pause ist bevor es
+wegfliegt? nervt..."
+- **The log [R]:** every throw's timeline read "let go at 3 (34 ms), off the hand at 3 (34
+  ms), the dropped one's model loaded at 4 (45 ms)" (lines 10979, 13915). The tester's headset
+  logs hold 72 let-gos (39 today, 21 and 11 before) and not one hold-on ("the hold read open
+  for ... - kept").
+- **Cause [R]:** WeaponReleaseSeconds 0.03, the flicker guard (0.12 until 2026-10-25), kept
+  the weapon in the slowing hand three frames at 90 Hz; the torch shares it. And the step let
+  go one frame after the opening at the earliest.
+- **Changed:** WeaponReleaseSeconds 0 by default (the code and the shipped INI): the frame the
+  hold reads open lets go. Above 0 it is the flicker guard as before (weapon-hold-flicker.txt
+  pins 0.03 now). weapon_release_test, torch_release_test.
+- **Harness [M]:** weapon-throw-at-once.txt (weapon-throw-smooth.txt timed, 90 Hz):
+  | | let go | off the hand | the world's model | thrown at |
+  | --- | --- | --- | --- | --- |
+  | the DLL as deployed (8095bfd, 20261126-160327-slot2) | frame 3, 34 ms | frame 3 | frame 3 | 4.45 m/s |
+  | 0 by default (20261126-160438-slot2) | frame 0, 0 ms | frame 0 | frame 1, 10 ms | 4.48 m/s |
+  weapon-hold-flicker (the guard pinned at 0.03), weapon-drop-sweep, torch-throw-flick,
+  weapon-release-holster, weapon-pull-bow PASS with the change (20261126-1607 to -1614).
+- **Left [D]:** the engine makes the dropped reference's model a frame after the drop ("model
+  loaded at" one frame after "off the hand"): one frame without the weapon between the hand and
+  the world. Not filmed.
+
+### Open: which hand catches a bow (the tester's choice)
+
+The game holds a bow in the other hand (its Torch node), but the weapon hand takes it from the
+world: it flies to the weapon hand, turns to that hand's Weapon node, and appears in the other
+hand at the take. And the other hand's grip only carries a bow (line 16968: "88236520 is in the
+grab and NOT taken - ... the weapon hand's 0").
+- (a) A bow is the other hand's, like a torch: that grip pulls it, it turns on the way into
+  that hand's Torch node, and the take equips it there; the weapon hand only carries a bow.
+  Small (IsTakingHand, PullTurnsToGrip, weapon-pull-bow.txt to the other hand).
+- (b) Either hand pulls it, and it always flies to the other hand. Medium: the engine's grab
+  stays with the hand that pulled while the model goes to the other.
+- (c) The hand that pulls keeps it: the sides switch at the take (the handover's switch,
+  5.16). Medium to large, and the switch's open points come with it.

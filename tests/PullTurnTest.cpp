@@ -160,10 +160,41 @@ void TestWatch() {
 	Check(PullTurnNeverTurnedAway(fresh), "one frame alone: nothing to compare");
 }
 
+// What turns to the holding hand's grip node on the way, and where its held
+// point goes: each thing where its take equips it (the tester, 2026-11-26:
+// the torch "so wie schwert").
+void TestWhatTurns() {
+	std::printf("What turns on the way, and where it is caught\n");
+	Check(PullTurnsToGrip(true, true, false), "a weapon in the weapon hand turns to its Weapon node");
+	Check(PullTurnsToGrip(false, false, true), "a torch in the other hand turns to its Torch node");
+	Check(!PullTurnsToGrip(false, true, false), "a weapon the other hand carries: held as it lay");
+	Check(!PullTurnsToGrip(true, false, true), "a torch the weapon hand carries: held as it lay");
+	Check(!PullTurnsToGrip(true, false, false) && !PullTurnsToGrip(false, false, false),
+	      "anything else: held as it lay");
+
+	NiTransform grip{AboutZ(90.0f), NiPoint3{100.0f, 0.0f, 50.0f}, 1.0f};
+	const NiPoint3 palm{1.0f, 2.0f, 3.0f};
+	const NiPoint3 pivot{0.0f, -2.7f, 0.0f};  // a torch's grip on its model
+	const NiPoint3 caught = PullHoldTarget(true, true, true, grip, palm, pivot, 1.0f);
+	const NiPoint3 wanted = grip.pos + grip.rot * pivot;
+	Check((caught - wanted).LengthSquared() < 1.0e-6f,
+	      "a turning thing: its held point goes where the equip will put it - the node's place plus the point turned "
+	      "with the node");
+	const NiPoint3 scaled = PullHoldTarget(true, true, true, grip, palm, pivot, 2.0f);
+	Check((scaled - (grip.pos + grip.rot * (pivot * 2.0f))).LengthSquared() < 1.0e-6f, "scaled with the model");
+	Check((PullHoldTarget(true, false, true, grip, palm, pivot, 1.0f) - grip.pos).LengthSquared() < 1.0e-6f,
+	      "the weapon hand, a thing that does not turn: the node's place, as before");
+	Check((PullHoldTarget(false, false, true, grip, palm, pivot, 1.0f) - palm).LengthSquared() < 1.0e-6f,
+	      "the other hand, a thing that does not turn: the palm, as before");
+	Check((PullHoldTarget(true, true, false, grip, palm, pivot, 1.0f) - palm).LengthSquared() < 1.0e-6f,
+	      "no grip node read: the palm");
+}
+
 }  // namespace
 
 int main() {
 	TestWatch();
+	TestWhatTurns();
 	TestShare();
 	TestAngles();
 	TestFlight();

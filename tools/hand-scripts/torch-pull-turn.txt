@@ -1,0 +1,44 @@
+# torch-pull.txt watched on the way: the torch turns to the other hand's
+# Torch node while it floats in and is caught as the equip will hang it, as
+# a pulled sword does (game/PullTurnLogic.h, PullTurnsToGrip). The tester,
+# Windows, 2026-11-26: "fackel richtet sich nun auch passend in die
+# endposition in der hand aus während des flugs, so wie schwert" - before,
+# a torch came in as it lay and snapped at the equip (no turn line at all).
+# The hand at -1.25 (was -1.40): since [Head] RealHeight (2026-11-08) the hands
+# stand 5.9 units lower in the harness, and at -1.40 the hand closed 0.12 m
+# from the grip - a take at the grip, no pull (seen 2026-11-26, 20261126-160126-slot2).
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr tools/hand-scripts/torch-pull-turn.txt
+
+
+ini Hands Enabled=1
+ini Hands GrabEquipsTorches=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+console player.additem 0002CF9F 1
+console player.drop 0002CF9F 1
+
+expect HandScript: finished
+expect a grip pulls it to the hand
+expect pulled to the other hand and taken
+expect Torch grab: equipped - in the other hand
+expect Hands: the pulled torch
+expect - at the catch, close to the grip's turn, it never turned away
+reject STILL OFF the grip's turn
+reject TURNED AWAY on the way
+reject HandScript: WARNING
+reject Torch grab: given up
+reject NOT taken
+reject stayed in the engine's grab
+reject could not be sent
+
+wait 15
+head pitch -50
+left pos 0.05 -1.25 -0.80
+left rot -80 0 0
+wait 1.5
+mark near
+left grip 0.9
+wait 4
+mark arrived
+wait 2
+mark held

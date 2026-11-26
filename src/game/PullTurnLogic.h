@@ -166,4 +166,33 @@ inline bool PullTurnNeverTurnedAway(const PullTurnWatch& w) { return w.worstRise
 
 inline bool PullTurnCaughtClose(float angleAtCatch) { return angleAtCatch < kPullTurnCatchTolerance; }
 
+// What turns on the way to the holding hand's grip node: what the take equips
+// on that node - a weapon in the weapon hand (its Weapon node), a torch in the
+// other hand (its Torch node, game/TorchGrab.h; the tester, 2026-11-26:
+// "fackel richtet sich nun auch passend in die endposition in der hand aus
+// während des flugs, so wie schwert" - the torch came in as it lay, then
+// snapped). A weapon the other hand carries, a torch the weapon hand carries,
+// anything else: held as it lay.
+inline bool PullTurnsToGrip(bool weaponHand, bool isWeapon, bool isTorch) { return weaponHand ? isWeapon : isTorch; }
+
+// Where the held point floats to. A thing that turns: where the equip will
+// put that point - the grip node's place plus the point (in the model's frame,
+// `pivotLocal`, scaled with it) turned with the node - so the model's origin
+// arrives on the node and the take moves nothing (the touched point is the
+// grip on the model: a sword's 0.9 units down its blade, a torch's 2.7 down
+// its shaft, which went into the node's place before). Anything else as
+// before: the weapon hand's grip node, the other hand's palm; the palm with no
+// node read.
+inline NiPoint3 PullHoldTarget(bool weaponHand, bool turns, bool haveGrip, const NiTransform& grip,
+                               const NiPoint3& palm, const NiPoint3& pivotLocal, float objectScale) {
+	if (!haveGrip || !(weaponHand || turns)) {
+		return palm;
+	}
+	if (!turns) {
+		return grip.pos;
+	}
+	const float scale = objectScale > 0.0f ? objectScale : 1.0f;
+	return grip.pos + grip.rot * (pivotLocal * scale);
+}
+
 }  // namespace obvr::game

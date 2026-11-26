@@ -4,12 +4,16 @@
 # and close again - one to three frames open, under the release time - so the
 # sword stays in the hand and the log says the hold-on with how long it read
 # open. Then a real opening drops it, so the release still works after.
+# Shipped without a release time since 2026-11-26 (the thrown weapon leaves
+# in the frame the hand opens): the guard is pinned here at 0.03, as a player
+# with a flickering grip would set it.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-hold-flicker.txt --run-timeout 150 --headless
 
 ini Hands Enabled=1
 ini Hands Holsters=1
 ini Hands GripByPull=1
 ini Hands WeaponHold=1
+ini Hands WeaponReleaseSeconds=0.03
 ini Debug GripTrace=1
 console player.additem 00000C0C 1
 console player.equipitem 00000C0C

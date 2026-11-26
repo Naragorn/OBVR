@@ -102,40 +102,31 @@ void TestFlickerGuard() {
 	Check(!v.drop, "the next frame: dropped once only");
 }
 
-// The release time as shipped, and what the step says of an opening: the
-// hold read open (the timeline of game/WeaponTimeline.h begins there), and
-// closed again within the time - kept, with how long it read open, so a
-// flickering controller shows in the log (Nadi, Windows, 2026-10-24: "eine
-// Splitsekunde Pause ... same beim Loslassen" - the drawn hand held the
-// weapon 0.12 s past the opening).
+// The release time as shipped: none since 2026-11-26 - the frame the hold
+// reads open lets go, said as an opening too (the timeline of
+// game/WeaponTimeline.h begins there). The tester (Windows, 2026-11-26):
+// "beim werfen von fackel, schwert kann es sein das ein paar frames, ms pause
+// ist bevor es wegfliegt? nervt" - the 0.03 s kept a thrown sword three
+// frames in the slowing hand (34 ms at 90 Hz, "let go at 3" in every
+// timeline), against a flicker the 72 let-gos of his logs never showed once.
 void TestOpeningSaid() {
-	std::printf("The opening: said, held on, and the release time as shipped\n");
+	std::printf("The opening: said, and the release time as shipped\n");
 	const game::WeaponReleaseSettings shipped;
-	Check(shipped.releaseSeconds == 0.03f, "WeaponReleaseSeconds 0.03 by default");
+	Check(shipped.releaseSeconds == 0.0f, "WeaponReleaseSeconds 0 by default");
 	game::WeaponReleaseState s;
 	game::WeaponReleaseVerdict v = game::StepWeaponRelease(s, Drawn(true), shipped);
 	Check(v.armed && !v.opened, "armed: no opening");
 	v = game::StepWeaponRelease(s, Drawn(false), shipped);
-	Check(v.opened && !v.heldOn && s.phase == game::WeaponReleasePhase::Opening, "the first frame read open: said");
-	v = game::StepWeaponRelease(s, Drawn(false), shipped);
-	Check(!v.opened && !v.drop, "the next frame open: not said again, nothing let go");
-	v = game::StepWeaponRelease(s, Drawn(false), shipped);
-	Check(!v.drop, "three frames open at 90 Hz: still held");
-	v = game::StepWeaponRelease(s, Drawn(true), shipped);
-	Check(v.heldOn && !v.armed && s.phase == game::WeaponReleasePhase::Armed, "closed again: held on, said");
-	Check(v.openSeconds > 0.02f && v.openSeconds < 0.025f, "with how long it read open");
-	v = game::StepWeaponRelease(s, Drawn(true), shipped);
-	Check(!v.heldOn, "said once");
+	Check(v.opened && v.drop && !v.heldOn, "the first frame read open: said and let go in it");
+	Check(s.phase == game::WeaponReleasePhase::Lowering, "then the fists watched, as after any drop");
 
-	game::WeaponReleaseState d;
-	game::StepWeaponRelease(d, Drawn(true), shipped);
-	int frames = 0;
-	do {
-		v = game::StepWeaponRelease(d, Drawn(false), shipped);
-		++frames;
-	} while (!v.drop && frames < 100);
-	Check(v.drop && frames == 4, "a still hand opened at 90 Hz lets go in its fourth open frame");
-	Check(!v.heldOn && !v.opened, "a drop is neither");
+	game::WeaponReleaseState t;
+	game::WeaponReleaseInput swing = Drawn(true);
+	swing.handVelocity = NiPoint3{0.0f, 300.0f, 0.0f};
+	game::StepWeaponRelease(t, swing, shipped);
+	swing.holdClosed = false;
+	v = game::StepWeaponRelease(t, swing, shipped);
+	Check(v.drop && v.velocity.y > 250.0f, "a swung hand opened: thrown in that frame, with the swing's speed");
 
 	game::WeaponReleaseState q;
 	game::WeaponReleaseInput quest = Drawn(true);
@@ -143,7 +134,39 @@ void TestOpeningSaid() {
 	game::StepWeaponRelease(q, quest, shipped);
 	quest.holdClosed = false;
 	v = game::StepWeaponRelease(q, quest, shipped);
-	Check(v.opened, "a quest item's opening is said too");
+	Check(v.opened && v.refused && !v.drop, "a quest item's opening is said too, and refused in that frame");
+}
+
+// A release time set ([Hands] WeaponReleaseSeconds, for a controller whose
+// grip flickers): a hold read open shorter than it is kept, with how long it
+// read open, so the flicker shows in the log.
+void TestFlickerTime() {
+	std::printf("A release time set: the flicker guard\n");
+	game::WeaponReleaseSettings guard;
+	guard.releaseSeconds = 0.03f;
+	game::WeaponReleaseState s;
+	game::WeaponReleaseVerdict v = game::StepWeaponRelease(s, Drawn(true), guard);
+	v = game::StepWeaponRelease(s, Drawn(false), guard);
+	Check(v.opened && !v.drop && s.phase == game::WeaponReleasePhase::Opening, "the first frame read open: said, held");
+	v = game::StepWeaponRelease(s, Drawn(false), guard);
+	Check(!v.opened && !v.drop, "the next frame open: not said again, nothing let go");
+	v = game::StepWeaponRelease(s, Drawn(false), guard);
+	Check(!v.drop, "three frames open at 90 Hz: still held");
+	v = game::StepWeaponRelease(s, Drawn(true), guard);
+	Check(v.heldOn && !v.armed && s.phase == game::WeaponReleasePhase::Armed, "closed again: held on, said");
+	Check(v.openSeconds > 0.02f && v.openSeconds < 0.025f, "with how long it read open");
+	v = game::StepWeaponRelease(s, Drawn(true), guard);
+	Check(!v.heldOn, "said once");
+
+	game::WeaponReleaseState d;
+	game::StepWeaponRelease(d, Drawn(true), guard);
+	int frames = 0;
+	do {
+		v = game::StepWeaponRelease(d, Drawn(false), guard);
+		++frames;
+	} while (!v.drop && frames < 100);
+	Check(v.drop && frames == 4, "a still hand opened at 90 Hz lets go in its fourth open frame");
+	Check(!v.heldOn && !v.opened, "a drop after the guard is no opening");
 }
 
 // After a drop the slot empties and the game keeps its ready state: the
@@ -601,6 +624,20 @@ void TestDroppedClear() {
 	      "no capsule read: the hands alone decide");
 }
 
+// A closed grip reaching for a thing let go of at the body ends its pass
+// through the player at once (game::GripReachesFor): in the player's group
+// the engine's pick passes through it, and the grip's pull never took the
+// tester's sword back (Windows, 2026-11-26).
+void TestGripEndsThePass() {
+	std::printf("A grip reaching for a thing let go of at the body\n");
+	Check(game::GripReachesFor(true, true, true, 0x8C6222B4u) == 0x8C6222B4u,
+	      "a closed grip whose reach runs, the pick on the thing: reached for");
+	Check(game::GripReachesFor(false, true, true, 0x8C6222B4u) == 0u, "the grip open: nothing reached for");
+	Check(game::GripReachesFor(true, false, true, 0x8C6222B4u) == 0u,
+	      "the grip's first frame, its reach not running yet: nothing reached for");
+	Check(game::GripReachesFor(true, true, false, 0x8C6222B4u) == 0u, "no pick: nothing reached for");
+}
+
 // The weapon the same as the torch: the hand opened 0.11 s after the
 // swing's peak still throws with it, and the verdict carries the peaks.
 void TestLateOpening() {
@@ -704,6 +741,7 @@ int main() {
 	TestArming();
 	TestFlickerGuard();
 	TestOpeningSaid();
+	TestFlickerTime();
 	TestWhereItGoes();
 	TestSheathHang();
 	TestHeldByOther();
@@ -713,6 +751,7 @@ int main() {
 	TestThrowSpeed();
 	TestThrowSpin();
 	TestDroppedClear();
+	TestGripEndsThePass();
 	TestWords();
 	if (g_failures != 0) {
 		std::printf("%d failure(s)\n", g_failures);

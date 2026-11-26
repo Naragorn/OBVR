@@ -43,7 +43,7 @@ namespace obvr::game {
 
 struct WeaponReleaseSettings {
 	bool enabled = true;            // [Hands] WeaponHold
-	float releaseSeconds = 0.03f;   // [Hands] WeaponReleaseSeconds: the hold open this long lets go
+	float releaseSeconds = 0.0f;    // [Hands] WeaponReleaseSeconds: the hold open this long lets go
 	float bodyWaitSeconds = 1.0f;   // how long the dropped reference may take to get its body
 	float throwStrength = 1.0f;     // [Hands] WeaponThrowStrength: the hand's speed times this, 0 never throws
 	float throwSpinStrength = 1.0f; // [Hands] ThrowSpinStrength: the hand's turning speed times this, 0 no spin
@@ -209,6 +209,18 @@ inline SheathHangStep StepSheathHang(SheathHangState& h, bool begin, bool allowe
 	return step;
 }
 
+// The hold read open: the opening begins, the throw's speed and turn taken
+// from the frames before it (the fastest, 5.13).
+inline void BeginReleaseOpening(WeaponReleaseState& s) {
+	s.phase = WeaponReleasePhase::Opening;
+	s.open = 0.0f;
+	s.refusedThisOpening = false;
+	const UInt32 best = FastestSample(s.history);
+	s.fastest = s.history.count > 0 ? s.history.v[best] : NiPoint3{0.0f, 0.0f, 0.0f};
+	s.fastestSpin = best < s.spins.count ? s.spins.v[best] : NiPoint3{0.0f, 0.0f, 0.0f};
+	s.peaks = ThrowPeaksOf(s.history);
+}
+
 inline bool WeaponReleaseLive(const WeaponReleaseInput& in) {
 	return in.allowed && in.equipped != vr::EquippedKind::Nothing && in.seen == vr::WeaponSeen::Drawn;
 }
@@ -257,17 +269,16 @@ inline WeaponReleaseVerdict StepWeaponRelease(WeaponReleaseState& s, const Weapo
 	case WeaponReleasePhase::Armed:
 		PushVelocity(s.history, in.handVelocity, in.dt);
 		PushVelocity(s.spins, in.handAngularVelocity, in.dt);
-		if (!in.holdClosed) {
-			v.opened = true;
-			s.phase = WeaponReleasePhase::Opening;
-			s.open = 0.0f;
-			s.refusedThisOpening = false;
-			const UInt32 best = FastestSample(s.history);
-			s.fastest = s.history.count > 0 ? s.history.v[best] : NiPoint3{0.0f, 0.0f, 0.0f};
-			s.fastestSpin = best < s.spins.count ? s.spins.v[best] : NiPoint3{0.0f, 0.0f, 0.0f};
-			s.peaks = ThrowPeaksOf(s.history);
+		if (in.holdClosed) {
+			return v;
 		}
-		return v;
+		v.opened = true;
+		BeginReleaseOpening(s);
+		// No release time (the default): the frame the hold reads open lets go.
+		if (settings.releaseSeconds > 0.0f) {
+			return v;
+		}
+		break;
 	case WeaponReleasePhase::Opening:
 	case WeaponReleasePhase::Lowering:
 		break;

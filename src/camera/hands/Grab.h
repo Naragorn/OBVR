@@ -103,6 +103,11 @@ struct GrabState {
 	game::WeaponGrabChoice lastWeaponChoice = game::WeaponGrabChoice::NotAWeapon;
 	game::TorchTakeGate torchGate = game::TorchTakeGate::Off;
 	bool keyWas = false;
+	// A grip reaching with its key up: how long, and whether this closing said
+	// why (SayReachRefusal in Grab.cpp).
+	float reachWait = 0.0f;
+	bool reachSaid = false;
+	UInt32 reachRefusalLines = 64;
 };
 
 // What the reaching shares with the rest of the frame.

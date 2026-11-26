@@ -1,0 +1,33 @@
+# A closed grip at a weapon that it does not take says why (camera/hands/
+# Grab.cpp, SayReachRefusal): weapon-pull.txt with the pull off, so the grip
+# 0.23 m off the sword's grip neither pulls nor takes it - after a third of a
+# second the log names the pick, what a grip does on it ("nothing yet") and
+# the engine's pick. The tester's run of 2026-11-26 had five such grips at a
+# sword on the floor and no line saying why.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr tools/hand-scripts/weapon-grip-says-why.txt
+
+ini Hands Enabled=1
+ini Hands GrabEquipsWeapons=1
+ini Hands GripByPull=1
+ini Hands PullToHand=0
+console player.additem 00000C0C 1
+console player.drop 00000C0C 1
+
+expect HandScript: finished
+expect Hands: grab - the right grip reached
+expect and the key stayed up - the pick
+expect nothing yet), the engine's pick
+reject HandScript: WARNING
+reject pulled to the hand and taken
+
+wait 15
+head pitch -50
+right pos 0.05 -1.31 -0.80
+right rot -80 0 0
+wait 1.5
+mark near
+right grip 0.9
+wait 2
+mark held
+right grip 0
+wait 1

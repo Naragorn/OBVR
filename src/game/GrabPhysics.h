@@ -289,6 +289,23 @@ inline bool InsidePlayerCapsule(const NiPoint3& centre, float radius, const NiPo
 	return dx * dx + dy * dy < reach * reach;
 }
 
+// What a closed grip reaches for: the gripping hand's pick once the grab's
+// reach runs (vr::StepGrabReach's reachPick), 0 for nothing. A thing let go of
+// at the body - a held object let go of inside the player's capsule (the
+// waiting ones above), a weapon dropped by the hand (PassDroppedBody) - keeps
+// the player's collision group until it is clear of the capsule and the hands,
+// and the engine's activation pick is cast in the player's own group
+// (0x005808A4-0x005808D7: the controller's filter info, its upper half the
+// group, set on the pick by 0x00538D10), so it passes through such a thing.
+// The grip's grab, its pull and its carry all go through that pick: a sword
+// let go of in a fight lay at the tester's feet, five grips at it each
+// "reaching for something", nothing pulled (Windows, 2026-11-26: "schwert das
+// am boden lag mit grip kam nicht an die hand geflogen"; Activate, OBVR's own
+// pick, took it). So a grip reaching for one ends its pass at once (EndPassOf).
+inline UInt32 GripReachesFor(bool gripHeld, bool reachPick, bool pickValid, UInt32 pickRef) {
+	return gripHeld && reachPick && pickValid ? pickRef : 0;
+}
+
 // ------------------------------------------------ The held object pushes
 //
 // In the hand, the object is shown on the hand while its physics body is
@@ -491,6 +508,12 @@ void StepDroppedBodies(bool rightValid, const NiPoint3& right, bool leftValid, c
 // (weapon-drop-sweep.txt, 2026-10-25), the push being OBVR's own ray push,
 // not Havok's.
 bool DroppedBodyPassing(UInt32 body);
+
+// A grip reaches for `ref` (GripReachesFor): if it is still passing through
+// the player - let go of inside the capsule, or a dropped weapon - it gets its
+// own group back now, so the engine's pick finds it the next frame. True when
+// it was passing.
+bool EndPassOf(UInt32 ref);
 
 // Wakes a body and gives it a linear velocity in world units a second, the
 // way a thrown held object leaves the hand. False when the body or its motion

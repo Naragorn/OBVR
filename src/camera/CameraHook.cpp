@@ -7697,11 +7697,11 @@ void BeforeFirstScenePass() {
 				held.rightHand = !g_hand.grabWithLeftHand;
 				held.palmAlongUnits = (game::kPalmAlongMetres + hands.heldObjectMetres) * perMetre;
 				held.floatUnitsPerSecond = hands.pullSpeedMetres * perMetre;
-				// The weapon's grip, the right hand's Weapon node, only while holding.
-				if (holding && held.rightHand && !hands.levitateObjects) {
-					const NiAVObject* const weaponNode = game::FindFirstPersonNode("Weapon");
-					if (weaponNode != nullptr) {
-						held.grip = weaponNode->worldTransform;
+				// The holding hand's grip node while holding: the weapon hand's Weapon, the other's Torch.
+				if (holding && !hands.levitateObjects) {
+					const NiAVObject* const gripNode = game::FindFirstPersonNode(held.rightHand ? "Weapon" : "Torch");
+					if (gripNode != nullptr) {
+						held.grip = gripNode->worldTransform;
 						held.haveGripPoint = true;
 					}
 				}

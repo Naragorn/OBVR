@@ -510,6 +510,38 @@ bool DroppedBodyPassing(UInt32 body) {
 	return false;
 }
 
+bool EndPassOf(UInt32 ref) {
+	if (ref == 0) {
+		return false;
+	}
+	static UInt32 s_lines = 24;
+	const auto end = [&](Waiting* list, UInt32& count, const char* what) {
+		for (UInt32 i = 0; i < count; ++i) {
+			if (list[i].held.ref != ref) {
+				continue;
+			}
+			const bool there = BodyStillThere(list[i].held);
+			if (there) {
+				SetGroup(list[i].held.wrapper, list[i].held.savedGroup);
+			}
+			if (s_lines > 0) {
+				--s_lines;
+				OBVR_LOG("Hands: a grip reaches for %08X, %s through the player %u frames - group %u %s, the engine's "
+				         "pick finds it again", ref, what, list[i].frames, list[i].held.savedGroup,
+				         there ? "put back" : "gone with its body");
+			}
+			for (UInt32 j = i + 1; j < count; ++j) {
+				list[j - 1] = list[j];
+			}
+			--count;
+			return true;
+		}
+		return false;
+	};
+	return end(g_dropped, g_droppedCount, "a dropped weapon passing") ||
+	       end(g_waiting, g_waitingCount, "let go of inside the capsule and passing");
+}
+
 UInt32 RefBodyOf(UInt32 ref) {
 	if (!LooksLikeObject(ref)) {
 		return 0;

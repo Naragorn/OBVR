@@ -306,7 +306,25 @@ void TestLateOpening() {
 	      "the verdict says the peak and how long before the opening it was");
 }
 
+// As shipped since 2026-11-26 the torch has no release time either: the frame
+// the hold reads open throws it (the tester: "beim werfen von fackel, schwert
+// ... ein paar frames, ms pause ... bevor es wegfliegt").
+void TestAtOnce() {
+	std::printf("No release time: let go in the frame the hold reads open\n");
+	const game::TorchReleaseSettings shipped;
+	Check(shipped.releaseSeconds == 0.0f, "no release time by default");
+	game::TorchReleaseState s;
+	game::TorchReleaseInput in = Held(true);
+	in.handVelocity = NiPoint3{0.0f, 300.0f, 0.0f};
+	game::StepTorchRelease(s, in, shipped);
+	in.holdClosed = false;
+	const game::TorchReleaseVerdict v = game::StepTorchRelease(s, in, shipped);
+	Check(v.opened && v.drop && v.velocity.y > 250.0f, "said and thrown in the frame it opened, with the swing's speed");
+	Check(s.phase == game::TorchReleasePhase::Idle, "nothing left waiting");
+}
+
 int main() {
+	TestAtOnce();
 	TestLateOpening();
 	TestArmAndDrop();
 	TestHeldOn();

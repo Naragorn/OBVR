@@ -9,6 +9,7 @@
 #include "game/GameTypes.h"
 #include "game/GrabPhysics.h"
 #include "game/HandBones.h"
+#include "game/NearbyItems.h"
 #include "game/PullTurnLogic.h"
 
 namespace obvr::game {
@@ -30,9 +31,10 @@ struct Hold {
 	float floatElapsed = 0.0f;
 	// Said once per hold: in the hand (HeldObjectArrived).
 	bool arrived = false;
-	// A weapon turns on the way to the grip's turn (PullTurnLogic.h).
-	bool weaponRead = false;
-	bool isWeapon = false;
+	// A weapon in the weapon hand, a torch in the other, turns on the way to
+	// the grip's turn (PullTurnLogic.h, PullTurnsToGrip); read at the new hold.
+	bool turns = false;
+	bool isTorch = false;
 	PullTurn turn;
 	PullTurnWatch watch;
 	UInt32 turnLines = 0;
@@ -43,18 +45,12 @@ bool g_arrivedEvent = false;
 bool g_arrivedRightHand = true;
 UInt32 g_reportsLeft = 6;
 
-// The weapon's turn against the hand this frame (PullTurnLogic.h): begun at
-// the first placed frame from its lay, towards the grip's turn while the grip
-// is known; the angle to the grip logged on the way and at the catch.
+// The weapon's or torch's turn against the hand this frame (PullTurnLogic.h):
+// begun at the first placed frame from its lay, towards the grip's turn while
+// the grip is known; the angle to the grip logged on the way and at the catch.
 const HeldAttachment& TurnHeldWeapon(Hold& h, const NiMatrix33& handRot, const HeldHand& hand, float floated,
                                      float dt) {
-	if (!h.turn.active && !h.weaponRead) {
-		h.weaponRead = true;
-		const UInt32 base = *reinterpret_cast<const UInt32*>(h.ref + addr::kRefBaseFormOffset);
-		h.isWeapon = LooksLikeObject(base) && *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset) ==
-		                                          addr::kFormTypeWeapon;
-	}
-	if (!h.isWeapon || !hand.haveGripPoint) {
+	if (!h.turns || !hand.haveGripPoint) {
 		return h.attachment;
 	}
 	if (!h.turn.active) {
@@ -68,14 +64,23 @@ const HeldAttachment& TurnHeldWeapon(Hold& h, const NiMatrix33& handRot, const H
 		WatchPullTurn(h.watch, angle);
 		--h.turnLines;
 		const bool caught = floated >= 1.0f;
-		OBVR_LOG("Hands: the pulled weapon %08X %.0f%% of the way, %.1f degrees from the grip's turn%s%s", h.ref,
-		         static_cast<double>(floated * 100.0f), static_cast<double>(angle * 57.29578f),
+		OBVR_LOG("Hands: the pulled %s %08X %.0f%% of the way, %.1f degrees from the grip's turn%s%s",
+		         h.isTorch ? "torch" : "weapon", h.ref, static_cast<double>(floated * 100.0f),
+		         static_cast<double>(angle * 57.29578f),
 		         !caught ? "" : PullTurnCaughtClose(angle) ? " - at the catch, close to the grip's turn"
 		                                                   : " - at the catch, STILL OFF the grip's turn",
 		         !caught ? "" : PullTurnNeverTurnedAway(h.watch) ? ", it never turned away" : ", it TURNED AWAY on the way");
 		h.turnLines = caught ? 0 : h.turnLines;
 	}
 	return h.attachment;
+}
+
+// Where the held point floats to (PullHoldTarget): what turns, to where the
+// equip will put it; else the weapon hand's grip node or the other's palm.
+NiPoint3 HoldTarget(const Hold& h, const HeldHand& hand, const NiMatrix33& handRot, const NiPoint3& handPos,
+                    float scale) {
+	return PullHoldTarget(hand.rightHand, h.turns, hand.haveGripPoint, hand.grip,
+	                      PalmPoint(handRot, handPos, hand.palmAlongUnits), h.attachment.pivotLocal, scale);
 }
 
 // A new hold, for the log: placed in the hand or left on the engine's spring, and why.
@@ -121,6 +126,8 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 		}
 		g_hold.node = reinterpret_cast<NiAVObject*>(node);
 		const UInt8 type = *reinterpret_cast<const UInt8*>(base + addr::kFormTypeOffset);
+		g_hold.isTorch = RefIsTorch(ref);
+		g_hold.turns = PullTurnsToGrip(hand.rightHand, type == addr::kFormTypeWeapon, g_hold.isTorch);
 		const float radius = g_hold.node->worldBound.radius;
 		const bool small = IsSmallHeldObject(type, radius);
 		const NiTransform& world = g_hold.node->worldTransform;
@@ -151,8 +158,7 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 	NiAVObject* const node = g_hold.node;
 	NiAVObject* const parent = node->parent;
 	const float scale = node->worldTransform.scale;
-	const NiPoint3 grip =
-		hand.haveGripPoint ? hand.grip.pos : PalmPoint(handRot, handPos, hand.palmAlongUnits);
+	const NiPoint3 grip = HoldTarget(g_hold, hand, handRot, handPos, scale);
 	// Floating in: the held point from where it lay to the grip (FloatWeight),
 	// timed from the first frame it is placed.
 	if (!g_hold.floatStarted) {

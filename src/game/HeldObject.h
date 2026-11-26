@@ -151,9 +151,11 @@ inline NiPoint3 FloatPoint(const NiPoint3& from, const NiPoint3& grip, float wei
 struct HeldHand {
 	bool rightHand = true;
 	float palmAlongUnits = 0.0f;
-	// Where the weapon's grip is (the right hand's Weapon node, its world
-	// transform), when known: the held point goes to its position instead of
-	// the palm, and a weapon turns on the way to its turn (PullTurnLogic.h).
+	// The holding hand's grip node, its world transform, when known: the weapon
+	// hand's Weapon node, the other hand's Torch node. What turns on the way to
+	// it (a weapon in the weapon hand, a torch in the other) comes in as the
+	// equip will hang it; in the weapon hand anything else goes to its place,
+	// in the other to the palm (PullTurnLogic.h, PullTurnsToGrip).
 	bool haveGripPoint = false;
 	NiTransform grip{NiMatrix33::Identity(), NiPoint3{0.0f, 0.0f, 0.0f}, 1.0f};
 	// How fast a new hold floats in, units a second (FloatSeconds).
