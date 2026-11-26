@@ -1,0 +1,61 @@
+# A box wider than the page on the tablet (Nadi's Windows run of 2026-11-26:
+# "message boxen wo die texte und größer waren waren am rande abgeschnitten";
+# docs/inventory-tablet-spec.md 24.3). There the tutorial's Generic box, 888
+# units wide, was moved onto the page's middle - 399.5 units from the
+# screen's left - and so started 45 units left of the screen, where the game
+# draws nothing; read cut at the edge, it was shifted on to 89 units past it,
+# and the tablet's face began left of the layer ("the face -105,151..").
+# Here a book, opened over the tablet by the console (equipping a book reads
+# it): moved onto the page, it must stay on the screen - the face never
+# starts left of the layer's edge.
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Tablet InScene=1
+ini Render UnpausedMenus=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+console-at ready player.additem 00024590 1
+console-at inventory player.equipitem 00024590
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Tablet: the Book box moved onto the page's middle
+reject the face -
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 3
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.25 -0.15
+right rot 40 25 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark inventory
+wait 3
+mark book
+wait 1
+key 0x01 1
+wait 0.2
+key 0x01 0
+wait 1.5
+mark book-closed
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark closed
+wait 1

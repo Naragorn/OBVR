@@ -40,6 +40,10 @@ UiRect Rect(float left, float top, float right, float bottom) {
 // The vanilla page as read in the game, in HUD units (tablet-tiles.txt,
 // 20261117-190432): 745 by 792.
 const UiRect kPaper = Rect(27.0f, 131.0f, 772.0f, 923.0f);
+// The screen the game lays its menus out on, in HUD units: 960 high, as wide
+// as the layer's 4036 by 2270 pixels (Nadi's run of 2026-11-26).
+const float kScreenWide = 960.0f * 4036.0f / 2270.0f;
+const float kScreenHigh = 960.0f;
 
 void TestWhen() {
 	std::printf("When the boxes come onto the page:\n");
@@ -63,19 +67,50 @@ void TestShift() {
 	std::printf("A box moved onto the page's middle:\n");
 	// The message box of the left-handed run: the screen's middle, right of the page.
 	const UiRect message = Rect(459.0f, 362.0f, 1247.0f, 598.0f);
-	BoxShift s = ShiftOntoPage(message, kPaper);
+	BoxShift s = ShiftOntoPage(message, kPaper, kScreenWide, kScreenHigh);
 	Check(s.move && Near(s.dx, 399.5f - 853.0f) && Near(s.dy, 527.0f - 480.0f),
 	      "the screen's middle to the page's: left by 453.5, down by 47 units");
 	const UiRect centred = Rect(message.left + s.dx, message.top + s.dy, message.right + s.dx, message.bottom + s.dy);
-	Check(!ShiftOntoPage(centred, kPaper).move, "there already: no shift");
+	Check(!ShiftOntoPage(centred, kPaper, kScreenWide, kScreenHigh).move, "there already: no shift");
 	const UiRect nearly = Rect(centred.left + 0.4f, centred.top - 0.4f, centred.right + 0.4f, centred.bottom - 0.4f);
-	s = ShiftOntoPage(nearly, kPaper);
+	s = ShiftOntoPage(nearly, kPaper, kScreenWide, kScreenHigh);
 	Check(!s.move && s.dx == 0.0f && s.dy == 0.0f, "within half a unit: no shift (no write a frame for a rounding)");
+	Check(!ShiftOntoPage(UiRect{}, kPaper, kScreenWide, kScreenHigh).move &&
+	          !ShiftOntoPage(message, UiRect{}, kScreenWide, kScreenHigh).move,
+	      "no box or no page: none");
+
+	// What lies past the screen the game draws nowhere (Nadi, Windows
+	// 2026-11-26: the tutorial's Generic box, 888 units wide, centred on the
+	// page's middle lost its left 45 units, and read cut at the screen's edge
+	// it was shifted further, to 89 units past it; docs/inventory-tablet-spec.md 24.3).
+	std::printf("A box kept on the screen:\n");
+	const UiRect generic = Rect(409.0f, 249.0f, 1297.0f, 711.0f);
+	s = ShiftOntoPage(generic, kPaper, kScreenWide, kScreenHigh);
+	Check(s.move && Near(s.dx, -409.0f) && Near(s.dy, 47.0f),
+	      "the run's Generic box, 888 units: its left edge at the screen's, not 45 units past it; centred up and down");
+	const UiRect atEdge = Rect(0.0f, 296.0f, 888.0f, 758.0f);
+	Check(!ShiftOntoPage(atEdge, kPaper, kScreenWide, kScreenHigh).move,
+	      "there: it stays - not pushed on past the edge");
+	const UiRect cut = Rect(0.0f, 296.0f, 844.0f, 758.0f);  // the old shift's box as read, cut at the edge
+	Check(!ShiftOntoPage(cut, kPaper, kScreenWide, kScreenHigh).move,
+	      "a box read cut at the screen's edge is not shifted further off it");
 	const UiRect book = Rect(277.0f, 52.0f, 1429.0f, 908.0f);  // 1152 by 856, the screen's middle
-	s = ShiftOntoPage(book, kPaper);
-	Check(s.move && Near(0.5f * (book.left + book.right) + s.dx, 399.5f) && Near(0.5f * (book.top + book.bottom) + s.dy, 527.0f),
-	      "a book larger than the page: centred on it all the same");
-	Check(!ShiftOntoPage(UiRect{}, kPaper).move && !ShiftOntoPage(message, UiRect{}).move, "no box or no page: none");
+	s = ShiftOntoPage(book, kPaper, kScreenWide, kScreenHigh);
+	Check(s.move && Near(book.left + s.dx, 0.0f) && Near(0.5f * (book.top + book.bottom) + s.dy, 527.0f),
+	      "a book larger than the page: as near its middle as the screen lets it - its left at the screen's");
+	const UiRect tall = Rect(459.0f, 30.0f, 1247.0f, 930.0f);  // 900 high
+	s = ShiftOntoPage(tall, kPaper, kScreenWide, kScreenHigh);
+	Check(s.move && Near(tall.bottom + s.dy, kScreenHigh) && Near(0.5f * (tall.left + tall.right) + s.dx, 399.5f),
+	      "a box too tall for the page's middle: its foot at the screen's, centred across");
+	const UiRect rightPaper = Rect(1100.0f, 131.0f, 1650.0f, 923.0f);
+	const UiRect wide = Rect(100.0f, 300.0f, 900.0f, 600.0f);  // 800 wide, for a page near the right edge
+	s = ShiftOntoPage(wide, rightPaper, kScreenWide, kScreenHigh);
+	Check(s.move && Near(wide.right + s.dx, kScreenWide), "a page near the right edge: the box's right at the screen's");
+	const UiRect huge = Rect(0.0f, 0.0f, kScreenWide, kScreenHigh);
+	Check(!ShiftOntoPage(huge, kPaper, kScreenWide, kScreenHigh).move,
+	      "a box as large as the screen: where it is - the near edges win");
+	Check(Near(KeptOnScreen(-10.0f, 2000.0f, 400.0f, kScreenWide), 10.0f),
+	      "wider than the screen and past both edges: its left at the screen's");
 
 	std::printf("What of a moved box is put back:\n");
 	Check(KeptOriginal(false, 0.0f, 0.0f, 853.0f) == 853.0f, "the first move: the game's own value is the one to put back");
@@ -136,7 +171,7 @@ void TestHeld() {
 	// (Nadi: "das löst auch das linkshänder problem" - the box hung over the
 	// forearm, section 21).
 	const UiRect message = Rect(460.0f, 347.0f, 1248.0f, 614.0f);
-	const BoxShift shift = ShiftOntoPage(message, kPaper);
+	const BoxShift shift = ShiftOntoPage(message, kPaper, kScreenWide, kScreenHigh);
 	const TabletFrame game = FrameWithBox(message);
 	TabletPlace p = PlaceTablet(game, s, false, hand, TabletHold::Side);
 	Check(Near(AcrossFromHand(p, game, hand, 772.0f), 0.0f, 0.0005f) && Near(AcrossFromHand(p, game, hand, 1248.0f), 0.476f, 0.001f),

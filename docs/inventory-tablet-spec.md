@@ -1642,3 +1642,48 @@ schwebend kurz für paar frames. diese weg."
 - Not run: the headset - SteamVR's compositing is not in a harness run, so
   the overlay is checked by the overlays the log names, not by a picture;
   the tablet as an overlay (InScene=0).
+
+### 24.3 A box wider than the page cut off at the left
+
+Nadi: "message boxen wo die texte und größer waren waren am rande
+abgeschnitten".
+
+- [R in the log] Two boxes were moved onto the page in the run, both the
+  tutorial's Generic box (its help cards), 888 units wide: "the Generic box
+  moved onto the page's middle - by -454,47 units, from 409,249..1297,711"
+  (19816), then "by -22,0 ... from 0,296..844,758", -11, -6, -3, -1, -1
+  (19824-19859: the root from -454 to -498), and the next page read "the face
+  -105,151..1994,2182" (19817): the tablet's face began 105 layer pixels left
+  of the layer. The same at 19969-19973.
+- [R in the code, section 23] `ShiftOntoPage` centred the box on the page's
+  middle - 399.5 units from the screen's left, as the page stands at 27..772
+  - whatever its width. The box's pictures are read cut to the screen
+  (vr::PopupRect, vr::OnScreen). The unit test even said so: "a book larger
+  than the page: centred on it all the same".
+- **Cause** [D]: a box wider than 799 units, centred there, starts left of
+  the screen (the Generic box at -45), where the game draws nothing - the
+  tablet showed its left part missing. Read cut at the screen's edge, its
+  middle seemed right of the page's, and it was shifted on each frame, to 89
+  units past the edge in the end (root -498 for -454).
+- **Changed** (vr/TabletBoxes.h `KeptOnScreen`, `ShiftOntoPage` with the
+  screen's size; game/TabletMenu.cpp): the box is centred on the page as far
+  as the screen lets it - a box that would leave the screen stops at its
+  edge, and wider than the screen it starts at 0. The Generic box now starts
+  at the screen's left edge, 27 units left of the page, and reaches 116 past
+  its right; the face holds it whole. A message box (788 units) still
+  centres (5.5 units from the edge).
+- Tests: tablet_boxes_test (the run's Generic box, a box read cut at the
+  edge not shifted further, a book, a box too tall, a page near the right
+  edge, a box as large as the screen; the old "centred all the same"
+  replaced). Written first: they did not build before.
+- Harness, Linux, headless, the stand-in runtime (tablet-box-wide.txt, new: a
+  book opened over the tablet by the console - equipping a book reads it):
+  FAIL with 8095bfd (20261126-161938-slot3: "the Book box moved onto the
+  page's middle - by -454,47 units, from 277,52..1429,908", then -88, -44,
+  ... to a root of -630, 353 units of it off the screen; "the face
+  -417,151..2306,2258"), PASS with this change (20261126-162140-slot2: "by
+  -277,47 units", once; "the face 0,151..2724,2258"). tablet-boxes.txt PASS
+  (20261126-162315-slot2: the message box moved by -454,47 as before).
+- Not seen in a picture: the eye dumps of a harness run do not show the
+  tablet; the rectangles in the log are the evidence. Not run: a Generic box
+  in the harness (the unit test has the run's own rectangle), the headset.

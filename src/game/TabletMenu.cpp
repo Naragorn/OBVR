@@ -223,7 +223,7 @@ UInt32 JoinFaceMenus(TabletMenuState& state, const UInt32* stack, UInt32 count, 
 		vr::UiRect popup = vr::PopupRect(tiles, read, screenWidth, vr::kHudUiHeightUnits);
 		if (onPage && popup.valid && vr::TabletBoxMoves(faces[i])) {
 			kept[keptCount++] = faces[i];
-			const vr::BoxShift shift = vr::ShiftOntoPage(popup, rects.paper);
+			const vr::BoxShift shift = vr::ShiftOntoPage(popup, rects.paper, screenWidth, vr::kHudUiHeightUnits);
 			if (shift.move && MoveBox(state, faces[i], shift, popup)) {
 				popup.left += shift.dx;
 				popup.right += shift.dx;

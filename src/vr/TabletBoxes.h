@@ -50,9 +50,9 @@ inline bool TabletBoxMoves(UInt32 menuId) {
 }
 
 // How far a box is shifted, in HUD units, to stand on the page's middle: its
-// pictures' rectangle centred on the page's. None within half a unit - it
-// stands there, and a rounding is no reason to write a frame - nor without a
-// box or a page.
+// pictures' rectangle centred on the page's, as far as the screen lets it
+// (KeptOnScreen). None within half a unit - it stands there, and a rounding
+// is no reason to write a frame - nor without a box or a page.
 inline constexpr float kBoxShiftLeast = 0.5f;
 
 struct BoxShift {
@@ -61,13 +61,32 @@ struct BoxShift {
 	float dy = 0.0f;
 };
 
-inline BoxShift ShiftOntoPage(const UiRect& box, const UiRect& paper) {
+// The shift along one axis that centres [lo, hi] on `mid`, stopped where the
+// box would leave the screen [0, extent]: what lies past it the game draws
+// nowhere, and the tablet shows the layer as drawn (Nadi, Windows
+// 2026-11-26: the tutorial's Generic box, 888 units wide, centred on the
+// page's middle 399.5 units from the screen's left lost its left 45 units;
+// read cut at the edge - vr::OnScreen - it was shifted on to 89 units past
+// it; docs/inventory-tablet-spec.md 24.3). Wider than the screen, the near
+// edge wins: the box starts at 0, as a page does.
+inline float KeptOnScreen(float lo, float hi, float mid, float extent) {
+	float d = mid - 0.5f * (lo + hi);
+	if (hi + d > extent) {
+		d = extent - hi;
+	}
+	if (lo + d < 0.0f) {
+		d = -lo;
+	}
+	return d;
+}
+
+inline BoxShift ShiftOntoPage(const UiRect& box, const UiRect& paper, float screenWidth, float screenHeight) {
 	BoxShift s;
 	if (!box.valid || !paper.valid) {
 		return s;
 	}
-	const float dx = 0.5f * (paper.left + paper.right) - 0.5f * (box.left + box.right);
-	const float dy = 0.5f * (paper.top + paper.bottom) - 0.5f * (box.top + box.bottom);
+	const float dx = KeptOnScreen(box.left, box.right, 0.5f * (paper.left + paper.right), screenWidth);
+	const float dy = KeptOnScreen(box.top, box.bottom, 0.5f * (paper.top + paper.bottom), screenHeight);
 	s.move = dx > kBoxShiftLeast || dx < -kBoxShiftLeast || dy > kBoxShiftLeast || dy < -kBoxShiftLeast;
 	if (s.move) {
 		s.dx = dx;
