@@ -169,15 +169,12 @@ void NoteBodyPlacement(const BodyPlacementTrace& t);
 void NoteBodyRenderDone();
 
 // The sheathed weapons' nodes on the body - "SideWeapon" (the hip),
-// "BackWeapon" (the back), "Quiver" - mirrored across the body's middle,
-// each when asked (vr/SheathMirror.h decides which: a left-hander's places,
-// Nadi 2026-10-21), in its parent's frame (MirroredAcrossLocalZ). Booked like
-// every bone the IK writes: put back at the next frame's start, given back
-// by ReleaseBodyIk. A node whose parent's z is not the body's left-right
-// (LateralAxisAgrees against the thighs or the clavicles, 30 degrees) is
-// left where the game hangs it, said once. After BeginBodyIk, before the
+// "BackWeapon" (the back), "Quiver" - kept still through the draw and the
+// sheathe and mirrored across the body's middle, each when asked
+// (vr/SheathMirror.h decides which: a left-hander's places, Nadi 2026-10-21):
+// game/BodySheaths.h, with this frame's bones. After BeginBodyIk, before the
 // body is placed.
-void StepBodySheaths(bool side, bool back, bool quiver);
+void StepBodySheaths(bool side, bool back, bool quiver, float dtSeconds);
 
 // For a frame the body is not shown: every bone written put back where it
 // still holds the write, under the body root the engine has now (none: only

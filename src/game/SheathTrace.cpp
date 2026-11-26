@@ -7,6 +7,7 @@
 #include "game/FirstPersonHide.h"
 #include "game/GameAddresses.h"
 #include "game/NiMath.h"
+#include "game/SheathHoldLogic.h"
 #include "core/MathFns.h"
 
 namespace obvr::game {
@@ -29,6 +30,18 @@ struct TraceState {
 	UInt32 tracesLeft = kTracesPerSession;
 	NiMatrix33 armWas[kArmBones] = {};
 	bool armSeen[kArmBones] = {};
+	// The hip's sheath and its first child turned in their parents' frames
+	// since the last traced frame: a node the animation moves under the held
+	// pelvis (the hilt swung at the hip after a holster's let go, Nadi
+	// 2026-11-26). The child's is said only while it is the same node.
+	NiMatrix33 sideLocalWas{};
+	NiMatrix33 sideChildLocalWas{};
+	UInt32 sideChildWas = 0;
+	bool sideSeen = false;
+	// A window's draw or sheathe (the player's action 0 or 1): the hip's
+	// largest turn a frame through it, for the window's verdict.
+	SInt32 action = -1;
+	float mostTurn = 0.0f;
 };
 
 // The angle in degrees between two rotations.
@@ -71,7 +84,7 @@ NiPoint3 InRoot(const NiAVObject* root, const NiPoint3& p) {
 
 }  // namespace
 
-void TraceSheaths(NiAVObject* root, NiAVObject* const* sheaths, const bool* mirrored) {
+void TraceSheaths(NiAVObject* root, NiAVObject* const* sheaths, const bool* mirrored, SInt32 action) {
 	TraceState& s = State();
 	if (!Looks(root)) {
 		return;
@@ -94,6 +107,9 @@ void TraceSheaths(NiAVObject* root, NiAVObject* const* sheaths, const bool* mirr
 		s.framesLeft = kSheathTraceFrames;
 		OBVR_LOG("Sheath trace: a child changed at frame %u - %u frames follow (%u traces left)", s.frame,
 		         kSheathTraceFrames, s.tracesLeft);
+		s.sideSeen = false;
+		s.action = -1;
+		s.mostTurn = 0.0f;
 	}
 	if (s.framesLeft == 0) {
 		return;
@@ -120,6 +136,22 @@ void TraceSheaths(NiAVObject* root, NiAVObject* const* sheaths, const bool* mirr
 		                    reinterpret_cast<UInt32>(child[i]), static_cast<double>(c.x), static_cast<double>(c.y),
 		                    static_cast<double>(c.z), hidden ? " hidden" : "");
 	}
+	if (Looks(nodes[0]) && at > 0 && at < static_cast<int>(sizeof(line))) {
+		const NiMatrix33& local = nodes[0]->localTransform.rot;
+		const bool same = Looks(child[0]) && reinterpret_cast<UInt32>(child[0]) == s.sideChildWas;
+		const double childTurn = s.sideSeen && same ? TurnDegrees(s.sideChildLocalWas, child[0]->localTransform.rot) : 0.0;
+		const float turn = s.sideSeen ? TurnDegrees(s.sideLocalWas, local) : 0.0f;
+		if (SheathStillFor(action)) {
+			s.action = action;
+			s.mostTurn = turn > s.mostTurn ? turn : s.mostTurn;
+		}
+		at += std::snprintf(line + at, sizeof(line) - at, " | hip local turns %.1f, its child %.1f",
+		                    static_cast<double>(turn), childTurn);
+		s.sideLocalWas = local;
+		s.sideChildLocalWas = Looks(child[0]) ? child[0]->localTransform.rot : NiMatrix33{};
+		s.sideChildWas = reinterpret_cast<UInt32>(child[0]);
+		s.sideSeen = true;
+	}
 	NiAVObject* arms[kArmBones] = {};
 	FindNodesNamed(root, kArmNames, kArmBones, arms);
 	at += std::snprintf(line + at, sizeof(line) - at, " | arm turns");
@@ -134,6 +166,11 @@ void TraceSheaths(NiAVObject* root, NiAVObject* const* sheaths, const bool* mirr
 		s.armSeen[i] = true;
 	}
 	OBVR_LOG("%s", line);
+	if (s.framesLeft == 0 && s.action >= 0) {
+		OBVR_LOG("Sheath trace: through the %s the hip's sheath turned at most %.1f degrees a frame in its parent - %s",
+		         s.action == kSheathActionUnequip ? "sheathe" : "draw", static_cast<double>(s.mostTurn),
+		         SheathTiltStill(s.mostTurn) ? "held still" : "SWUNG");
+	}
 }
 
 }  // namespace obvr::game

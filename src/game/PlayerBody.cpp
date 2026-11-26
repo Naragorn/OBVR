@@ -410,9 +410,9 @@ bool ShowPlayerBody(const BodyFrame& frame) {
 	// where the engine left it, then turns the body with the head - both
 	// before anything below reads the head's place.
 	const bool ik = BeginBodyIk(root);
-	// The sheaths on a left-hander's side, booked with the IK's writes.
+	// The sheaths: still through the draw and the sheathe, on a left-hander's side, booked with the IK's writes.
 	if (ik) {
-		StepBodySheaths(frame.mirrorSideSheath, frame.mirrorBackSheath, frame.mirrorQuiver);
+		StepBodySheaths(frame.mirrorSideSheath, frame.mirrorBackSheath, frame.mirrorQuiver, frame.dtSeconds);
 	}
 
 	// The skeleton read for sense before anything is written to it: one that

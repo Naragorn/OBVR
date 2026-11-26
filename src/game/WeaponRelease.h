@@ -169,7 +169,10 @@ inline NiPoint3 WeaponMiddleVelocity(const NiPoint3& handVelocity, const NiPoint
 // Unequip running neither of that rule's branches fires, and the group's
 // Detach finds the hand empty, as intended. The hang is given up when the
 // weapon reads sheathed first (the Unequip ran unseen), when the world goes
-// (a menu, death), or after kSheathHangWaitSeconds.
+// (a menu, death), or after kSheathHangWaitSeconds. Hung this early the weapon
+// rides the turn the Unequip's group gives the sheath node before its Detach
+// key - the body's sheaths are held still through it (game/SheathHoldLogic.h,
+// Nadi 2026-11-26: the hilt swung at the hip).
 inline constexpr float kSheathHangWaitSeconds = 1.5f;  // the ready click's own wait and retry are shorter
 
 enum class SheathHangStep : UInt8 { None, Hang, Sheathed, Cancelled, GaveUp };

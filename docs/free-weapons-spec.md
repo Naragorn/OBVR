@@ -1755,6 +1755,55 @@ weggesteckt über mehrere sekunden statt sofort wie das erwartet wäre."
   and rejects "NOT hung back" - not run. The headset: let go at a hip, the
   weapon goes onto the hip at once, no draw between.
 
+### Fixed 2026-11-26 (harness; headset open): the hilt swung at the hip after the let go (Nadi, Windows headset)
+
+Nadi, 2026-11-26 14:09-14:44 (DLL of 8095bfd): "beim wegstecken vom schwert flackert es
+mehrere frames her und dahin statt direkt dort holstered zu sein".
+
+- [R in the run's log] Every holstering of Renault's Akaviri Katana: let go at frame 3 (the
+  0.03 s release), off the hand at 6, no draw between (the change of 2026-11-22 holds), the
+  Unequip at ten times its speed, done after 0.12 s. Nothing in the log named the hip.
+- [M, harness, old DLL, films looking down; the player made male so the belly, not a chest,
+  is between the eyes and the hips] The weapon leaves the hand and its hilt shows at the hip
+  in the same frame (the hang); then for about ten frames the hilt swings up and back, at the
+  right hip (its sheath mirrored) and at the left (the game's own node) alike
+  (h2-sheathe-katana 20261126-163318-slot3, h2-katana-left 20261126-163741-slot3). The Iron
+  Longsword's round pommel shows the same turn as a small wobble (h2-sheathe-film2
+  20261126-162522-slot2).
+- [M] The cause, read with the sheath trace's new column "hip local turns" (the hip's sheath
+  node and its first child, turned in their parents since the last traced frame): the Unequip
+  group turns "SideWeapon" under the pelvis by 11.5, 38.9, 16.8, 22.4 and 19.8 degrees in the
+  five frames after it begins, then not at all; the katana's own local does not turn - the
+  engine's hang (0x00656270) sets it to the identity (h2-sheathe-katana 20261126-164256-slot4,
+  that build without the fix). [R] The engine attaches the weapon to the sheath at the group's
+  Detach key (onehandunequip.kf 0.467 s of 0.867 s), after the turn: in the game alone the turn
+  moves the empty scabbard. OBVR hangs it as the Unequip begins (2026-11-22, so it leaves the
+  hand at once), and so it rode the turn. The pelvis itself is held at the standing pose
+  (game/BodyIk.cpp StepTrunk); the node under it was not.
+- **Fix:** the body's sheath nodes (SideWeapon, BackWeapon, Quiver) keep the local they had in
+  the frame before while the player's action is the draw or the sheathe (0, 1), and go back to
+  the animation's after it, eased over 0.15 s where the two differ (game/SheathHoldLogic.h,
+  sheath_hold_test). The sheaths' writes moved out of game/BodyIk.cpp into game/BodySheaths.cpp
+  (BodyIk.cpp 1738 -> 1656 lines), booked as before. The sheath trace ends a window that saw a
+  draw or a sheathe with a verdict: "Sheath trace: through the sheathe the hip's sheath turned
+  at most 0.0 degrees a frame in its parent - held still" ("SWUNG" from 1 degree).
+- **Harness** `holster-sheathe-still.txt` (the katana at the right hip, drawn, let go there,
+  WeaponReleaseSeconds 0, `--hz 90 --record 1.5`): the old DLL (8095bfd) FAIL - no verdict
+  (20261126-165410-slot3); the new one (DLL 225e799d) PASS - through the draw and the sheathe
+  "held still", 0.0 degrees (-165237-slot3). Filmed, the let go's film frames 6 to 15: old,
+  the hilt swings up and back; new, it keeps its turn from the hang's frame on.
+  `tools/film-flicker.py` on the let go's film: old worst 0.158 % of the pixels flashed, 2
+  frames over 0.1 % (the lower half 0.315 %, 3 frames); new 0.001 %, none. The draw's film is
+  alike in both (1.65 and 1.63 % - the script's hand jumping from the hip to before the body).
+- **Not run yet** (paused 2026-11-26): holster, weapon-release-holster, kept-on-body,
+  sheath-grab, sheath-right-handed, sheath-left-handed, holster-two-handed, potion-belt against
+  the moved sheath code; the headset.
+- Not changed by this: the frames from the hold's opening until the weapon is off the hand -
+  with WeaponReleaseSeconds 0 one frame to the let go and three for the ready click to reach
+  the engine and its Unequip to begin (the timeline "let go at 1, off the hand at 4"), with
+  0.03 s three and three. The film shows the sword in the hand those frames, then at the hip;
+  no frame shows it in both places or in neither.
+
 ### The take's last three frames (Nadi, 2026-11-18: "schließ nun die Pause") - built 2026-11-18
 
 Nadi, 2026-11-18: between the weapon floating to the hand and it being

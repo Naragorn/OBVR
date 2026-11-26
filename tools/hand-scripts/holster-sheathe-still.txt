@@ -1,0 +1,56 @@
+# The sheathed weapon still at the hip from the let go on (game/SheathHoldLogic.h,
+# game/BodySheaths.cpp; free-weapons-spec "The hilt swung at the hip"; Nadi, Windows 2026-11-26:
+# "beim wegstecken vom schwert flackert es mehrere frames her und dahin statt direkt dort
+# holstered zu sein"). The player made male (a belly, not a chest, between the eyes and the
+# hips, so the films see the hilt), Renault's Akaviri Katana (00066C44, the tester's) equipped -
+# kept at the right hip, the save's Elven Longsword keeping the left - drawn there, held before
+# the body, brought back and let go there. The weapon leaves the hand as the sheathe begins and
+# hangs on the hip's sheath node, which the sheathe's group turns up to 39 degrees a frame (the
+# sheath trace's "hip local turns"); held still through the draw and the sheathe it does not.
+# The trace's verdict for the sheathe's window: "held still" (before 2026-11-26: no verdict, the
+# turns 11.5, 38.9, 16.8, 22.4, 19.8). The weapon is let go the frame the hold reads open
+# (WeaponReleaseSeconds 0, as it ships since 2026-11-26).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/holster-sheathe-still.txt --headless --no-steamvr --parallel --hz 90 --record 1.5
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=1
+ini Hands WeaponReleaseSeconds=0
+ini Hands ShowKeptWeapons=1
+ini Body Visible=1
+console player.additem 00066C44 1
+console-at settle CloseAllMenus
+console-at settle set timescale to 0
+console-at settle set gamehour to 12
+console-at settle player.sexchange
+console-at settle player.equipitem 00066C44
+expect HandScript: finished
+expect Holster: reach for the one-handed weapon - drawing (the weapon hand at the right hip
+expect Weapon hold: let go at the holster - sheathed
+expect Holster: the weapon hung back on its sheath - first person off the hand
+expect Sheath trace: through the sheathe the hip's sheath turned at most
+expect the hip's sheath turned at most 0.0 degrees a frame in its parent - held still
+reject SWUNG
+reject the weapon NOT hung back
+reject HandScript: WARNING
+wait 20
+mark settle
+wait 4
+head pitch -70
+head yaw 30
+right pos 0.20 -0.45 -0.25
+wait 1.5
+mark view
+right pos 0.18 -0.62 -0.02
+wait 0.5
+right grip 0.9
+wait 0.4
+right pos 0.22 -0.48 -0.22
+wait 1.5
+right pos 0.18 -0.62 -0.02
+wait 0.6
+mark letgo
+right grip 0
+wait 2.5
+mark after
+wait 1

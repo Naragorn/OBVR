@@ -3141,3 +3141,12 @@ if(NOT MSVC)
 	target_compile_options(handover_hold_save_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME handover_hold_save COMMAND handover_hold_save_test)
+
+# The body's sheath nodes kept still through the draw and the sheathe
+# (game/SheathHoldLogic.h, game/BodySheaths.cpp).
+add_executable(sheath_hold_test SheathHoldTest.cpp)
+target_include_directories(sheath_hold_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(sheath_hold_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME sheath_hold COMMAND sheath_hold_test)

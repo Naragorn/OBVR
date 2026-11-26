@@ -18,7 +18,11 @@ inline constexpr UInt32 kSheathTraceFrames = 30;
 
 // `sheaths` are SideWeapon, BackWeapon, Quiver as StepBodySheaths found them
 // this frame (after its write), `mirrored` whether each was asked mirrored;
-// `root` the body's root.
-void TraceSheaths(NiAVObject* root, NiAVObject* const* sheaths, const bool* mirrored);
+// `root` the body's root; `action` the player's (game::ReadPlayerAction).
+// Each line also says how far the hip's sheath turned in its parent since the
+// last traced frame, and a window that saw a draw or a sheathe ends with the
+// largest such turn through it - "held still" under kSheathStillDegrees, else
+// "SWUNG" (game/SheathHoldLogic.h; the hilt swung at the hip, 2026-11-26).
+void TraceSheaths(NiAVObject* root, NiAVObject* const* sheaths, const bool* mirrored, SInt32 action);
 
 }  // namespace obvr::game
