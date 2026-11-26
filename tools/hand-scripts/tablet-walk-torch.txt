@@ -1,0 +1,67 @@
+# Walking with the tablet open while the off hand carries a lit torch
+# (Nadi's Windows run of 2026-11-26: in the tutorial dungeon, a torch in the
+# left hand, every walk under the tablet said "walked 0 units"; outside, the
+# torch on the hip, it walked 336; docs/inventory-tablet-spec.md 24). As
+# tablet-walk.txt, with the torch equipped into the closed left grip first
+# (an open hand drops it: TorchGraceSeconds) and the grip opened once the
+# tablet is up, as in that run. The walk's end says how far the feet went;
+# the Move trace ([Debug] WaterCaptureTrace) the step of every frame.
+
+ini Hands Enabled=1
+ini Hands WalkDirection=head
+ini Tablet Enabled=1
+ini Tablet Unroll=vertical
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Tablet InScene=1
+ini Render UnpausedMenus=0
+ini Render MonitorMenusOnly=0
+ini Debug WaterCaptureTrace=1
+
+console-at world player.additem 0002CF9F 1
+console-at world player.equipitem 0002CF9F
+
+expect HandScript: finished
+expect Hands: the other hand carries - shield none, torch Torch
+expect Tablet: in the off hand, drawn into the eyes
+expect the sticks walk under menu
+expect under a walked menu the player's skeleton keeps the walk beside a torch's arm
+expect Tablet: walked
+expect Tablet: put down - the menus as before
+reject HandScript: WARNING
+reject walked 0 units
+reject Hands: the other hand carries - shield none, torch none
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.25 -0.15
+right rot 40 32 0
+left grip 1
+wait 1.5
+mark world
+wait 8
+mark torch
+wait 1
+left b 1
+wait 0.2
+left b 0
+wait 1
+left grip 0
+wait 1
+mark open
+left stick 0 1
+wait 2.5
+left stick 0 0
+wait 1
+mark walked
+wait 1
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark closed
+wait 1

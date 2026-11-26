@@ -108,6 +108,8 @@ struct UnderMenu {
 	UInt32 heldLines = 6;
 	UInt32 menuAnimData = 0;     // the player's +0x5DC, taken off for the span (PlayerAnimDataForSpan)
 	UInt32 animLines = 2;
+	bool skeletonTried = false;  // the anim data's play (addr::kPlayerSkeletonMenuModeSites)
+	UInt32 skeletonSites = 0;
 };
 UnderMenu g_underMenu;
 
@@ -160,6 +162,14 @@ int __cdecl PlayerControlsSpanEnds() {
 	u.inSpan = false;
 	u.spanTablet = false;
 	return IsMenuMode() ? 1 : 0;
+}
+
+// What the anim data's play hears at addr::kPlayerSkeletonMenuModeSites:
+// vanilla's answer, but no menu while the player's update runs under a
+// walked menu - its third-person skeleton keeps the walk beside a torch's
+// arm (PlayerSkeletonSeesMenu). Same shape as IsMenuMode.
+int __cdecl PlayerSkeletonMenuMode() {
+	return PlayerSkeletonSeesMenu(IsMenuMode(), g_underMenu.inSpan) ? 1 : 0;
 }
 
 // GetControlState's entry: within the span only the walk reads; a held
@@ -389,6 +399,17 @@ void SetPlayerWalksUnderMenu(bool walking, bool underTablet) {
 		         addr::kPlayerControlsScopeEndSite,
 		         u.guarded ? "now ask OBVR - under a walked menu only the walk reads, a click is no attack"
 		                   : "keep their vanilla answer - the tablet does not walk");
+	}
+	if (walking && !u.skeletonTried) {
+		u.skeletonTried = true;
+		for (const UInt32 site : addr::kPlayerSkeletonMenuModeSites) {
+			u.skeletonSites += RedirectSite(site, reinterpret_cast<UInt32>(&PlayerSkeletonMenuMode)) ? 1u : 0u;
+		}
+		OBVR_LOG("Menu pause: the anim data's play (%08X, %08X, %08X) asks OBVR at %u of 3 sites - %s",
+		         addr::kPlayerSkeletonMenuModeSites[0], addr::kPlayerSkeletonMenuModeSites[1],
+		         addr::kPlayerSkeletonMenuModeSites[2], u.skeletonSites,
+		         u.skeletonSites == 3 ? "under a walked menu the player's skeleton keeps the walk beside a torch's arm"
+		                              : "the rest keep vanilla's: with a torch in hand the walk under a menu may read no step");
 	}
 	u.walks = walking && u.siteRedirected;
 	u.tablet = underTablet && u.guarded && u.axesRedirected;

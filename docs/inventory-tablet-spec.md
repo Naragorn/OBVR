@@ -1500,3 +1500,83 @@ das löst auch das linkshänder problem." Then, shown the infos on the page:
     message box moved.
   - Not run: a book, a Generic box (the same root shift as the message box;
     [D] they move the same way), the headset.
+
+## 24. Nadi's Windows headset run of 2026-11-26 (14:09-14:44, main 8095bfd)
+
+The run's log and INI: artifacts/win-run-2026-11-26/ in the main checkout
+(OBVR.log, 37,913 lines). Line numbers below are that log's. [R] read or
+measured, [D] derived, [G] guessed.
+
+### 24.1 No walk under the tablet with a torch in the off hand
+
+Nadi: "mit tablet in der hand konnte ich im tutorial dungeon nicht mit
+linken stick laufen. in der welt draußen ging es."
+
+- [R in the log] Every walk under the tablet in the tutorial's cells
+  0001FBB9 and 00022FF6 said "Tablet: walked 0 units with it open" (lines
+  11657, 11737, 12017, 12020, 12025, 23542), each after "the player's
+  controls run - the sticks walk under menu F1-F4 stack entry (0x001) - the
+  tablet's". Outside (after the load at 31135) it walked 336 and 196
+  (35664, 35667). In the dungeon the torch was in the left hand at each of
+  those opens ("Menu near shapes: first person - "Torch02:0"" at 11036 and
+  11924; dropped at 23191 and taken back by the left grip at 23202, the held
+  torch's contact lines after it at 23205 and 23213 [D: in the hand at 23540]);
+  outside it hung on the hip
+  ("Kept on body: the left hip shows 0002CF9F, a torch" at 30946 and 33562).
+  [R] Not the interior: the harness save stands in TestingHall, an
+  interior, and tablet-walk.txt walks there.
+- [R in the harness, the DLL of 8095bfd] tablet-walk-torch.txt (new: the
+  tablet-walk with a torch equipped into the closed left grip):
+  20261126-154102-slot2 "walked 0 units"; the same scenario with the torch
+  dropped (an open grip) walked 877 (20261126-153931-slot2). The Move trace
+  ([Debug] WaterCaptureTrace): the player's Move from UpdateMovement
+  (0x0063CB42) every frame with the walk's flags 513 (forward, run) and a
+  step of 0.000; without the torch 4.4 to 5.5 units a frame.
+- [R with a probe build, not committed, that logged both anim data at each
+  Move] Under the tablet with the torch the first-person anim data (player
+  +0x5CC) plays group 0x0007 (the forward run) in slot 0 with 4.8 to 4.9
+  units of root motion a frame; the third-person one (the process's +0x17C)
+  has slot 0 at 0x00FF with no sequence, slot 2 at 0x0021 (the torch's arm),
+  no root motion (20261126-154425-slot1). Without the torch the third-person
+  slot 0 is 0x0007 with its sequence too (20261126-154552-slot1).
+- [R in Oblivion.exe 1.2.416, objdump] UpdateMovement (0x0063C730), for the
+  player in first person, takes the step from the first-person anim data
+  only while its slot-0 group equals the third-person one's (0x0063C7D6 ..
+  0x0063C7EE: 0x00470720(0) of each, the word at +0x3C); else from the
+  third-person anim data. The anim data's play of a sequence (0x00474530)
+  asks IsMenuMode at three sites that, in a menu, treat the player's
+  third-person skeleton (the anim data whose root at +4 is the player's own
+  node: 0x00660110(0) -> 0x00612220 -> the reference's +0x3C) as a picture of
+  one pose: 0x004745FE starts a sequence already playing again,
+  0x0047462C clears slots 4, 0, 1, 2 and 3 (0x00470FC0 sets each group to
+  0xFF) before setting the one played, 0x0047478A blends nothing. The
+  fourth, 0x0047488D, is about the F1-F4 figure's own node (+0x5D8).
+- **Cause** [D from the above]: the player's update never runs in a vanilla
+  menu; under the tablet (stage 4) it does, and with a torch in the off hand
+  its arm's group is played after the walk's and clears it, so the
+  third-person slot 0 reads 0xFF, the groups differ, and UpdateMovement takes
+  that skeleton's root motion - none. A reached container's walk (the same
+  span) has the same rule [D, not run with a torch].
+- **Changed** (game/MenuPausePolicy.h `PlayerSkeletonSeesMenu`,
+  game/PlayerControlSites.h `kPlayerSkeletonMenuModeSites`,
+  game/MenuPause.cpp): the three sites ask OBVR; while the player's update
+  runs under a walked menu (the span from the controls gate 0x0040DC61 to
+  0x0040DD5F) the answer is "no menu" - the skeleton keeps the walk beside
+  the torch's arm as in the world - and vanilla's everywhere else. Redirected
+  with the span's other sites at the first walk; said once: "Menu pause: the
+  anim data's play (004745FE, 0047462C, 0047478A) asks OBVR at 3 of 3 sites".
+  A site another mod holds keeps vanilla's answer (said; the walk without a
+  torch is not affected).
+- Tests: menu_pause_policy_test (the span, outside it, no menu). Written
+  first: it did not build before the function.
+- Harness, Linux, headless, the stand-in runtime: tablet-walk-torch.txt FAIL
+  with the DLL of 8095bfd (20261126-155327-slot2: "walked 0 units", the
+  sites' line missing), PASS with this change (20261126-155201-slot2: 877
+  units, the step 4.8 to 5.0 a frame, the torch in the hand throughout).
+  reach-walk-wheel.txt PASS (20261126-155557-slot2). tablet-walk.txt walks
+  883 units with this change and 882 with the old DLL, and fails with both
+  on its beam's click on the magic page's button (20261126-155443-slot2,
+  20261126-155741-slot2): its fixed angles aim at the page's place before
+  section 20 (the open point of section 21), not this change.
+- Not run: the headset; a walk under a reached container with a torch; a
+  shield or a bow in the off hand under the tablet [G: the same rule].

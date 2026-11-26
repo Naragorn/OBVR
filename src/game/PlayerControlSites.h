@@ -64,4 +64,30 @@ inline constexpr UInt32 kPlayerControlsScopeEndSite = 0x0040DD5F;
 // 0.000 with the walking flags). Both calls lie inside the player's update,
 // between the controls gate and kPlayerControlsScopeEndSite.
 inline constexpr UInt32 kPlayerMenuAnimDataOffset = 0x5DC;
+
+// The anim data's play of a sequence (0x00474530, thiscall: the sequence,
+// its group, its slot; ret 0Ch) asks IsMenuMode at three sites that, in a
+// menu, treat the player's third-person skeleton - the anim data whose root
+// (+4) is the player's own node, PlayerCharacter 0x00660110(0) -> 0x00612220
+// -> the reference's +0x3C - as a picture of one pose (objdump of 1.2.0.416,
+// 2026-11-26):
+//
+//   004745FE  call 00578F60   ; a sequence already playing in the slot: in
+//                             ;   a menu it is started again, else kept
+//   0047462C  call 00578F60   ; in a menu: slots 4, 0, 1, 2 and 3 cleared
+//                             ;   (0x00470FC0 sets each group to 0xFF), then
+//                             ;   the one played is set
+//   0047478A  call 00578F60   ; in a menu: no blend from the slot's last
+//
+// The player's update never runs in a vanilla menu. Under a walked menu it
+// does, and with a torch in the off hand its arm's group (0x21, slot 2) is
+// played after the walk's (slot 0) and clears it. UpdateMovement (0x0063C730)
+// takes the step from the first-person anim data only while its slot-0 group
+// equals the third-person one's (0x0063C7D6..0x0063C7EE: 0x00470720(0) of
+// each, +0x3C), else from the third-person anim data - so the walk read a
+// zero step (measured 2026-11-26: first-person 0x0007 with 4.8 units of root
+// motion a frame, third-person 0x00FF and none; without the torch both
+// 0x0007). The fourth site (0047488D) is about the F1-F4 figure's own node
+// (+0x5D8) and stays vanilla's.
+inline constexpr UInt32 kPlayerSkeletonMenuModeSites[] = {0x004745FE, 0x0047462C, 0x0047478A};
 }  // namespace obvr::addr

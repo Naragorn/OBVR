@@ -176,6 +176,18 @@ inline bool PlayerOwnAnimDataForSpan(bool spanUnderTablet, bool figureAnimDataSe
 	return spanUnderTablet && figureAnimDataSet;
 }
 
+// What the anim data's play (addr::kPlayerSkeletonMenuModeSites) is told
+// when it asks whether a menu is up. In a menu it holds the player's
+// third-person skeleton to the one sequence played last; the player's update
+// never runs in a vanilla menu. While it runs under a walked menu (the span
+// from the controls gate to its end) the player is in the world: the walk's
+// sequence stays beside a torch's arm, and UpdateMovement, which takes the
+// step from that skeleton when its walk group is not the first-person one's,
+// gets the walk's step instead of none.
+inline bool PlayerSkeletonSeesMenu(bool menuMode, bool playerUpdateUnderMenu) {
+	return menuMode && !playerUpdateUnderMenu;
+}
+
 // The mouse axis the player's controls read as the wheel (the third of
 // 0x00403190's axes; game/GameAddresses.h kPlayerWheelReadSite).
 inline constexpr UInt32 kMouseAxisWheel = 3;

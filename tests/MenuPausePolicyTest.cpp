@@ -69,6 +69,19 @@ void TestPlayerAnimData() {
 	Check(!PlayerOwnAnimDataForSpan(false, false), "neither: nothing touched");
 }
 
+// The anim data's play (0x00474530) asks IsMenuMode at three sites that, in
+// a menu, hold the player's third-person skeleton to the one sequence played
+// last: the walk's beside a torch's arm was cleared and the walk read no step
+// (docs/inventory-tablet-spec.md 24).
+void TestPlayerSkeletonUnderMenu() {
+	std::printf("The player's third-person skeleton while its update runs under a menu\n");
+	Check(!PlayerSkeletonSeesMenu(true, true),
+	      "the player's update under a walked menu: no menu - the walk and the torch's arm side by side");
+	Check(PlayerSkeletonSeesMenu(true, false), "a menu up, outside the player's update: the menu's rule as vanilla");
+	Check(!PlayerSkeletonSeesMenu(false, false), "no menu: no menu");
+	Check(!PlayerSkeletonSeesMenu(false, true), "no menu, whatever the span says: no menu");
+}
+
 void TestPlayerWheel() {
 	std::printf("The mouse wheel the player's controls read\n");
 	Check(!PlayerControlsReadAxis(true, kMouseAxisWheel), "under a menu the wheel is the menu's alone");
@@ -227,6 +240,7 @@ int main() {
 	TestPlayerWheel();
 	TestPlayerControlReads();
 	TestPlayerAnimData();
+	TestPlayerSkeletonUnderMenu();
 	TestForeignHookThunk();
 	TestStableMenuId();
 
