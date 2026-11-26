@@ -1,0 +1,539 @@
+# The torch's near miss of a rat (torch-blow-rat.txt's first stroke alone):
+# the torch's head stops some 20 units short of the rat's flank, while the
+# hand is inside the old rule's column (the rat's bound 96 units round, the
+# column 52 units to either side of its middle) going towards its middle at
+# 4 m/s and more - the old rule struck the rat with a torch that never met it.
+# An Iron Longsword (00000C0C) drawn by the holster, Torch02 (0002CF9F) in the
+# left hand, a rat (CreatureRat, 00025314) placed 60 units ahead and frozen
+# (tai), given health for several blows. Its bound is 96 units round: the
+# old rule's column for the hand (half the radius wide, the radius high) is
+# a metre and a half across round a rat. The torch hand moves
+# as a person's: smooth strokes with their follow-through, written by
+# tools/gen-torch-rat-scripts.py (a cosine ease, a step every 11 ms; run with
+# --hz 90).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-blow-rat-near.txt --headless --no-steamvr --parallel --hz 90 --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Debug ShoveTrace=1
+ini Debug ContactTrace=300
+# The torch equipped by the console comes into an open hand: no grace (TorchGraceSeconds, 2026-10-27).
+ini Hands TorchGraceSeconds=0
+ini Hands Holsters=1
+ini Hands GripByPull=1
+ini Hands WeaponHold=1
+ini Hands OffHandStrikes=1
+ini Hands OffHandGrabs=0
+ini Hands TwoHandOneHanders=0
+ini Hands PushPeople=0
+ini Hands TorchDrop=0
+ini Hands VanillaKnockdown=0
+ini Hands ReachOpens=0
+# The stagger's push off, so each blow finds the rat where it stood.
+ini Hands ShoveDistance=0
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+console player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+console-at ready tgm
+console-at ready player.placeatme 00025314 1 60 0
+console-at ready tai
+console-at placed {actor}.setav health 400
+
+expect HandScript: finished
+expect Hands: ready weapon done
+reject - a torch, skill 17 (
+reject HandScript: WARNING
+
+wait 12
+left curl 0.8
+left rot 0 0 0
+left pos -0.20 -0.40 -0.20
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 22
+mark placed
+# The sword drawn from the hip (weapon-drop.txt's draw) and held low at the
+# right side, pointing back, the grip kept closed (WeaponHold lets go of an
+# opened one).
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 0.9
+wait 0.3
+right pos 0.30 -0.40 -0.35
+wait 3
+right rot 0 180 0
+right pos 0.25 -0.55 0.05
+wait 1
+head pitch -35
+wait 1
+mark drawn
+# The near miss: from the right towards the rat at 6.8 m/s at its fastest, the torch's head stopping short of it.
+left rot -0.0 0.0 0.0
+left pos -0.199 -0.400 -0.200
+wait 0.011
+left rot -0.2 0.0 0.0
+left pos -0.197 -0.401 -0.201
+wait 0.011
+left rot -0.4 0.0 0.0
+left pos -0.192 -0.403 -0.203
+wait 0.011
+left rot -0.8 0.0 0.0
+left pos -0.187 -0.405 -0.205
+wait 0.011
+left rot -1.2 0.0 0.0
+left pos -0.179 -0.407 -0.208
+wait 0.011
+left rot -1.7 0.0 0.0
+left pos -0.170 -0.411 -0.212
+wait 0.011
+left rot -2.3 0.0 0.0
+left pos -0.159 -0.415 -0.216
+wait 0.011
+left rot -3.0 0.0 0.0
+left pos -0.147 -0.419 -0.221
+wait 0.011
+left rot -3.8 0.0 0.0
+left pos -0.133 -0.424 -0.226
+wait 0.011
+left rot -4.7 0.0 0.0
+left pos -0.117 -0.430 -0.232
+wait 0.011
+left rot -5.7 0.0 0.0
+left pos -0.100 -0.436 -0.238
+wait 0.011
+left rot -6.7 0.0 0.0
+left pos -0.082 -0.442 -0.246
+wait 0.011
+left rot -7.9 0.0 0.0
+left pos -0.062 -0.449 -0.253
+wait 0.011
+left rot -9.1 0.0 0.0
+left pos -0.041 -0.457 -0.261
+wait 0.011
+left rot -10.4 0.0 0.0
+left pos -0.019 -0.465 -0.270
+wait 0.011
+left rot -11.7 0.0 0.0
+left pos 0.005 -0.473 -0.279
+wait 0.011
+left rot -13.1 0.0 0.0
+left pos 0.030 -0.482 -0.289
+wait 0.011
+left rot -14.6 0.0 0.0
+left pos 0.056 -0.491 -0.299
+wait 0.011
+left rot -16.2 0.0 0.0
+left pos 0.083 -0.501 -0.309
+wait 0.011
+left rot -17.8 0.0 0.0
+left pos 0.111 -0.511 -0.320
+wait 0.011
+left rot -19.4 0.0 0.0
+left pos 0.140 -0.521 -0.331
+wait 0.011
+left rot -21.1 0.0 0.0
+left pos 0.170 -0.532 -0.343
+wait 0.011
+left rot -22.9 0.0 0.0
+left pos 0.201 -0.543 -0.355
+wait 0.011
+left rot -24.7 0.0 0.0
+left pos 0.232 -0.554 -0.367
+wait 0.011
+left rot -26.5 0.0 0.0
+left pos 0.264 -0.566 -0.379
+wait 0.011
+left rot -28.4 0.0 0.0
+left pos 0.297 -0.577 -0.392
+wait 0.011
+left rot -30.3 0.0 0.0
+left pos 0.330 -0.589 -0.404
+wait 0.011
+left rot -32.2 0.0 0.0
+left pos 0.363 -0.601 -0.417
+wait 0.011
+left rot -34.1 0.0 0.0
+left pos 0.397 -0.613 -0.430
+wait 0.011
+left rot -36.1 0.0 0.0
+left pos 0.431 -0.625 -0.444
+wait 0.011
+left rot -38.0 0.0 0.0
+left pos 0.466 -0.638 -0.457
+wait 0.011
+left rot -40.0 0.0 0.0
+left pos 0.500 -0.650 -0.470
+wait 0.011
+left rot -42.0 0.0 0.0
+left pos 0.534 -0.662 -0.483
+wait 0.011
+left rot -43.9 0.0 0.0
+left pos 0.569 -0.675 -0.496
+wait 0.011
+left rot -45.9 0.0 0.0
+left pos 0.603 -0.687 -0.510
+wait 0.011
+left rot -47.8 0.0 0.0
+left pos 0.637 -0.699 -0.523
+wait 0.011
+left rot -49.7 0.0 0.0
+left pos 0.670 -0.711 -0.536
+wait 0.011
+left rot -51.6 0.0 0.0
+left pos 0.703 -0.723 -0.548
+wait 0.011
+left rot -53.5 0.0 0.0
+left pos 0.736 -0.734 -0.561
+wait 0.011
+left rot -55.3 0.0 0.0
+left pos 0.768 -0.746 -0.573
+wait 0.011
+left rot -57.1 0.0 0.0
+left pos 0.799 -0.757 -0.585
+wait 0.011
+left rot -58.9 0.0 0.0
+left pos 0.830 -0.768 -0.597
+wait 0.011
+left rot -60.6 0.0 0.0
+left pos 0.860 -0.779 -0.609
+wait 0.011
+left rot -62.2 0.0 0.0
+left pos 0.889 -0.789 -0.620
+wait 0.011
+left rot -63.8 0.0 0.0
+left pos 0.917 -0.799 -0.631
+wait 0.011
+left rot -65.4 0.0 0.0
+left pos 0.944 -0.809 -0.641
+wait 0.011
+left rot -66.9 0.0 0.0
+left pos 0.970 -0.818 -0.651
+wait 0.011
+left rot -68.3 0.0 0.0
+left pos 0.995 -0.827 -0.661
+wait 0.011
+left rot -69.6 0.0 0.0
+left pos 1.019 -0.835 -0.670
+wait 0.011
+left rot -70.9 0.0 0.0
+left pos 1.041 -0.843 -0.679
+wait 0.011
+left rot -72.1 0.0 0.0
+left pos 1.062 -0.851 -0.687
+wait 0.011
+left rot -73.3 0.0 0.0
+left pos 1.082 -0.858 -0.694
+wait 0.011
+left rot -74.3 0.0 0.0
+left pos 1.100 -0.864 -0.702
+wait 0.011
+left rot -75.3 0.0 0.0
+left pos 1.117 -0.870 -0.708
+wait 0.011
+left rot -76.2 0.0 0.0
+left pos 1.133 -0.876 -0.714
+wait 0.011
+left rot -77.0 0.0 0.0
+left pos 1.147 -0.881 -0.719
+wait 0.011
+left rot -77.7 0.0 0.0
+left pos 1.159 -0.885 -0.724
+wait 0.011
+left rot -78.3 0.0 0.0
+left pos 1.170 -0.889 -0.728
+wait 0.011
+left rot -78.8 0.0 0.0
+left pos 1.179 -0.893 -0.732
+wait 0.011
+left rot -79.2 0.0 0.0
+left pos 1.187 -0.895 -0.735
+wait 0.011
+left rot -79.6 0.0 0.0
+left pos 1.192 -0.897 -0.737
+wait 0.011
+left rot -79.8 0.0 0.0
+left pos 1.197 -0.899 -0.739
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 1.199 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 1.200 -0.900 -0.740
+wait 0.011
+wait 0.4
+mark near_ready
+left rot -80.0 0.0 0.0
+left pos 1.193 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 1.170 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 1.134 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 1.086 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 1.027 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 0.959 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 0.886 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 0.810 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 0.734 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 0.661 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 0.593 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 0.534 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 0.486 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 0.450 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 0.427 -0.900 -0.740
+wait 0.011
+left rot -80.0 0.0 0.0
+left pos 0.420 -0.900 -0.740
+wait 0.011
+wait 0.6
+mark near
+left rot -80.0 0.0 0.0
+left pos 0.420 -0.900 -0.740
+wait 0.011
+left rot -79.9 0.0 0.0
+left pos 0.419 -0.899 -0.739
+wait 0.011
+left rot -79.7 0.0 0.0
+left pos 0.417 -0.898 -0.738
+wait 0.011
+left rot -79.4 0.0 0.0
+left pos 0.415 -0.896 -0.736
+wait 0.011
+left rot -79.1 0.0 0.0
+left pos 0.413 -0.894 -0.734
+wait 0.011
+left rot -78.7 0.0 0.0
+left pos 0.410 -0.892 -0.731
+wait 0.011
+left rot -78.2 0.0 0.0
+left pos 0.406 -0.889 -0.728
+wait 0.011
+left rot -77.7 0.0 0.0
+left pos 0.402 -0.885 -0.724
+wait 0.011
+left rot -77.0 0.0 0.0
+left pos 0.397 -0.881 -0.720
+wait 0.011
+left rot -76.4 0.0 0.0
+left pos 0.392 -0.877 -0.715
+wait 0.011
+left rot -75.6 0.0 0.0
+left pos 0.386 -0.873 -0.710
+wait 0.011
+left rot -74.8 0.0 0.0
+left pos 0.380 -0.867 -0.705
+wait 0.011
+left rot -73.9 0.0 0.0
+left pos 0.373 -0.862 -0.699
+wait 0.011
+left rot -73.0 0.0 0.0
+left pos 0.365 -0.856 -0.692
+wait 0.011
+left rot -72.0 0.0 0.0
+left pos 0.358 -0.850 -0.686
+wait 0.011
+left rot -70.9 0.0 0.0
+left pos 0.349 -0.843 -0.678
+wait 0.011
+left rot -69.8 0.0 0.0
+left pos 0.341 -0.836 -0.671
+wait 0.011
+left rot -68.6 0.0 0.0
+left pos 0.332 -0.829 -0.663
+wait 0.011
+left rot -67.4 0.0 0.0
+left pos 0.322 -0.821 -0.655
+wait 0.011
+left rot -66.1 0.0 0.0
+left pos 0.312 -0.813 -0.646
+wait 0.011
+left rot -64.7 0.0 0.0
+left pos 0.302 -0.805 -0.637
+wait 0.011
+left rot -63.4 0.0 0.0
+left pos 0.291 -0.796 -0.628
+wait 0.011
+left rot -62.0 0.0 0.0
+left pos 0.280 -0.787 -0.618
+wait 0.011
+left rot -60.5 0.0 0.0
+left pos 0.269 -0.778 -0.608
+wait 0.011
+left rot -59.0 0.0 0.0
+left pos 0.257 -0.769 -0.598
+wait 0.011
+left rot -57.5 0.0 0.0
+left pos 0.245 -0.759 -0.588
+wait 0.011
+left rot -55.9 0.0 0.0
+left pos 0.233 -0.749 -0.577
+wait 0.011
+left rot -54.3 0.0 0.0
+left pos 0.221 -0.739 -0.567
+wait 0.011
+left rot -52.7 0.0 0.0
+left pos 0.208 -0.729 -0.556
+wait 0.011
+left rot -51.0 0.0 0.0
+left pos 0.196 -0.719 -0.545
+wait 0.011
+left rot -49.4 0.0 0.0
+left pos 0.183 -0.709 -0.533
+wait 0.011
+left rot -47.7 0.0 0.0
+left pos 0.170 -0.698 -0.522
+wait 0.011
+left rot -46.0 0.0 0.0
+left pos 0.157 -0.688 -0.511
+wait 0.011
+left rot -44.3 0.0 0.0
+left pos 0.143 -0.677 -0.499
+wait 0.011
+left rot -42.6 0.0 0.0
+left pos 0.130 -0.666 -0.487
+wait 0.011
+left rot -40.9 0.0 0.0
+left pos 0.117 -0.655 -0.476
+wait 0.011
+left rot -39.1 0.0 0.0
+left pos 0.103 -0.645 -0.464
+wait 0.011
+left rot -37.4 0.0 0.0
+left pos 0.090 -0.634 -0.453
+wait 0.011
+left rot -35.7 0.0 0.0
+left pos 0.077 -0.623 -0.441
+wait 0.011
+left rot -34.0 0.0 0.0
+left pos 0.063 -0.612 -0.429
+wait 0.011
+left rot -32.3 0.0 0.0
+left pos 0.050 -0.602 -0.418
+wait 0.011
+left rot -30.6 0.0 0.0
+left pos 0.037 -0.591 -0.407
+wait 0.011
+left rot -29.0 0.0 0.0
+left pos 0.024 -0.581 -0.395
+wait 0.011
+left rot -27.3 0.0 0.0
+left pos 0.012 -0.571 -0.384
+wait 0.011
+left rot -25.7 0.0 0.0
+left pos -0.001 -0.561 -0.373
+wait 0.011
+left rot -24.1 0.0 0.0
+left pos -0.013 -0.551 -0.363
+wait 0.011
+left rot -22.5 0.0 0.0
+left pos -0.025 -0.541 -0.352
+wait 0.011
+left rot -21.0 0.0 0.0
+left pos -0.037 -0.531 -0.342
+wait 0.011
+left rot -19.5 0.0 0.0
+left pos -0.049 -0.522 -0.332
+wait 0.011
+left rot -18.0 0.0 0.0
+left pos -0.060 -0.513 -0.322
+wait 0.011
+left rot -16.6 0.0 0.0
+left pos -0.071 -0.504 -0.312
+wait 0.011
+left rot -15.3 0.0 0.0
+left pos -0.082 -0.495 -0.303
+wait 0.011
+left rot -13.9 0.0 0.0
+left pos -0.092 -0.487 -0.294
+wait 0.011
+left rot -12.6 0.0 0.0
+left pos -0.102 -0.479 -0.285
+wait 0.011
+left rot -11.4 0.0 0.0
+left pos -0.112 -0.471 -0.277
+wait 0.011
+left rot -10.2 0.0 0.0
+left pos -0.121 -0.464 -0.269
+wait 0.011
+left rot -9.1 0.0 0.0
+left pos -0.129 -0.457 -0.262
+wait 0.011
+left rot -8.0 0.0 0.0
+left pos -0.138 -0.450 -0.254
+wait 0.011
+left rot -7.0 0.0 0.0
+left pos -0.145 -0.444 -0.248
+wait 0.011
+left rot -6.1 0.0 0.0
+left pos -0.153 -0.438 -0.241
+wait 0.011
+left rot -5.2 0.0 0.0
+left pos -0.160 -0.433 -0.235
+wait 0.011
+left rot -4.4 0.0 0.0
+left pos -0.166 -0.427 -0.230
+wait 0.011
+left rot -3.6 0.0 0.0
+left pos -0.172 -0.423 -0.225
+wait 0.011
+left rot -3.0 0.0 0.0
+left pos -0.177 -0.419 -0.220
+wait 0.011
+left rot -2.3 0.0 0.0
+left pos -0.182 -0.415 -0.216
+wait 0.011
+left rot -1.8 0.0 0.0
+left pos -0.186 -0.411 -0.212
+wait 0.011
+left rot -1.3 0.0 0.0
+left pos -0.190 -0.408 -0.209
+wait 0.011
+left rot -0.9 0.0 0.0
+left pos -0.193 -0.406 -0.206
+wait 0.011
+left rot -0.6 0.0 0.0
+left pos -0.195 -0.404 -0.204
+wait 0.011
+left rot -0.3 0.0 0.0
+left pos -0.197 -0.402 -0.202
+wait 0.011
+left rot -0.1 0.0 0.0
+left pos -0.199 -0.401 -0.201
+wait 0.011
+left rot -0.0 0.0 0.0
+left pos -0.200 -0.400 -0.200
+wait 0.011
+left rot 0.0 0.0 0.0
+left pos -0.200 -0.400 -0.200
+wait 0.011
+wait 2.0
+mark near_back
+wait 1
+mark end

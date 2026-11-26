@@ -1741,6 +1741,16 @@ endif()
 
 add_test(NAME torch_blow COMMAND torch_blow_test)
 
+add_executable(torch_touch_test TorchTouchTest.cpp)
+
+target_include_directories(torch_touch_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(torch_touch_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME torch_touch COMMAND torch_touch_test)
+
 add_executable(actor_exceptions_test ActorExceptionsTest.cpp)
 
 target_include_directories(actor_exceptions_test PRIVATE ../src)

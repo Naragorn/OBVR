@@ -725,6 +725,88 @@ down from ShoveHardSpeed by its speed alone; the shove with the weapons away lik
 judged:** the feel in the headset - whether the hold to the swing's end (0.04-0.07 s in the
 harness, longer for a real arm's follow-through) reads as a late reaction.
 
+### 5.9.1 The torch's blow where the torch meets them (fixed 2026-11-26)
+
+The tester, Windows 2026-11-26 (DLL 8095bfd): "gegner mit fackel links schlagen ging manchmal
+nicht" - hitting enemies with the torch in the left hand sometimes did nothing.
+
+**His log** (artifacts/win-run-2026-11-26/OBVR.log) [R]. The torch was in the left hand from line
+7688 on and through the tutorial dungeon's fights with rats and goblins. One torch blow landed in
+the whole session (21401-21404: "struck 2B001840 ... a torch, skill 17", "the left hand at 3.2 m/s
+towards 2B001840 - light ... the torch, by the speed alone"). The torch met the rat 2B137C60 (base
+0002509B, its mesh "Rat") twice at speed and nothing landed: 22724 "a fast torch is held by
+2B137C60 at 5.6 m/s", 22812 "a fast torch is held by 2B137C60 at 4.0 m/s", "rests on 2B137C60 ...
+9.12 m/s into it". Between them 22744 "the left hand at 2.2 m/s towards 2B137C60 refused - a
+weapon is readied; the hand is a fist; the grip is held". 5.9's hold to the swing's end was not
+in play: TorchKnockdownPowerOnly is 0 by default since 2026-11-02 and the one blow reads "by the
+speed alone".
+
+**Cause** [R in the code, M in the harness]. The torch's blow was found and measured at the HAND,
+by the shove's rule (CameraHook StepShoves, game::LivingActorAt, game::AimShoveHand): the hand in
+an upright column round the actor's bound - half its radius plus 4 units across, its radius plus 4
+up and down - and the hand's speed across the ground towards the bound's middle, at the stagger's
+3 m/s. A torch strikes with its far end, some 27 units past the hand.
+- The harness's rat has a bound 96 units round: a column 52 units to either side of its middle
+  and 101 up and down [M] - a metre and a half across, round a rat.
+- A chop down onto the rat (torch-blow-rat-chop.txt, old DLL, 20261126-161753-slot1): the hand in
+  the column throughout, 4.8 m/s at its fastest and 2.25 of it across the ground towards the
+  middle - under the 3, no blow - while the contact step held the torch on the rat: "a fast torch
+  is held by 640B0E70 at 4.4 m/s" [M]. The same as the tester's 22724 and 22812.
+- A stroke that stops short (torch-blow-rat-near.txt, old DLL, 20261126-162053-slot1): the torch's
+  head never within 20 units of the rat, the hand inside the column going its way at 5.9 m/s -
+  "struck ... the left hand at 5.9 m/s towards 640B0E70 - light" [M]. The first probe's sweep and
+  jab landed the same way, 13 to 20 log lines before the torch reached the rat.
+- The refusal line named the shove's rules ("a weapon is readied", "the grip is held") for a
+  torch that was only too slow: it is printed from the slap's 1.3 m/s in the face and lists
+  why a shove would not go [R].
+
+**Fix** (game/TorchTouchLogic.h, torch_touch_test 49 checks; camera/hands/TorchBlow.cpp, the held
+blows moved there out of CameraHook.cpp). The torch strikes where its shaft meets someone:
+- The shaft (game/TorchShaftLogic.h) at the controller's pose this frame and the frame before is
+  tested against the capsules of the living the hands' contact step collected this frame - the
+  blade's hit by touch (game::CapsulesTouched within 4 units), swept between the two poses
+  (game::SweptCapsulesTouched; a jump past 300 units is no sweep) so a fast blow does not pass
+  through a rat in one frame. Only a new meeting is a blow: a torch on them the frame before too
+  (resting, pressed on) is none. Bodies away from the swept box are not tested.
+- It is a blow when the torch goes INTO them there: its own speed at that point - the hand's and
+  its turn carried out from the grip, as the half-sword's hilt - at least a quarter against the
+  way out of their capsule (kTorchIntoShare). A chop onto a back, a sweep into a flank, a jab
+  count; a slide along them or a torch drawn back does not.
+- How hard is the hand's speed, as for the sword's power: a stagger from StaggerSpeed (3 m/s), a
+  knockdown from KnockdownSpeed (6) - not the torch head's, which runs well ahead of the hand in
+  a swing (the harness's chop: the hand 4.4 m/s, the torch at the rat 7.5) and would knock down
+  on a flick of the wrist (Nadi, 2026-10-26). A first build took the hand's speed INTO the body:
+  the chop's 2.9 of 4.4 m/s missed again (20261126-160429-slot3).
+- Then as before: TorchKnockdownPowerOnly's hold, the engine's fist blow as a torch (skill 17),
+  the stagger's push from the touch towards the middle of their capsules, the hand-to-hand hit's
+  sound, the buzz, the shove's cooldown per actor.
+- Without collected bodies (HandsStopAtBodies or HandsStopAtWalls off) or with the shaft unread
+  the hand's rule strikes as before.
+- The log: "Shove: the torch went into <actor> at its <part> (point, the way out of it) - the
+  torch there at X m/s, Y of it into them", "Shove: the torch met <actor>, the hand at X m/s -
+  light/hard ...", and a met-but-no-blow line with its reason ("not into them (along them or
+  away)" or "the hand under the stagger's speed"); "Torch touch: 600 frames with the torch and
+  people near - X us a frame on the mean, Y the longest".
+
+**Measured after** [M, Linux harness, no SteamVR, 90 Hz]: torch-blow-rat-chop PASS
+(20261126-161916-slot1: "the torch went into 640B0E70 at its torso ... the torch there at 7.5 m/s,
+3.2 of it into them", "struck", "the hand at 4.4 m/s - light"); torch-blow-rat-near PASS
+(20261126-162216-slot1: no blow); torch-blow-rat PASS (20261126-162548-slot1: nothing for the near
+miss, the chop and the sweep "went into" the rat's torso, 4.2 and 4.5 m/s into it, the hand at 4.4
+and 5.3 m/s - staggered; its old-DLL run 162348-slot1 knocked the rat down with the near miss,
+refused the chop and struck the sweep before the torch reached it). The three again with the
+build that also holds the arm-swing rule (a5a6a73a): PASS 164258-slot1, 164436-slot1,
+164602-slot1. The beggar's scenarios pass through the touch with it: torch-blow (164752-slot1, "the
+torch went into ... at its right arm ... between two frames", held to the swing's end, staggered,
+then knocked down by the power swing), torch-blow-speed (164951-slot1), torch-blow-sheathed
+(165129-slot1). The touch's cost 0.3-2.3 us a frame on the mean, 20.4 the longest, while the torch
+was near the rat.
+
+**Open:** the feel in the headset - whether a blow now lands on every visible hit, and whether
+the knockdown at 6 m/s of the hand comes as often as wanted (TorchKnockdownPowerOnly=1 wants a
+power swing for it). Only a rat was in the harness; the goblins of his session (2B0C8948, its
+mesh "GoblinChest01") and the zombie 2B001A50 (bound 74 units round) were not.
+
 ### 5.10 A torch in the world taken at its grip by the other hand (built 2026-10-27)
 
 Nadi, 2026-10-27: "Fackeln sollen wie waffen aus der welt aufgreifbar am griff wo sie dann

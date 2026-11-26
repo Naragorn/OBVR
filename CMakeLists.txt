@@ -53,6 +53,7 @@ add_library(OBVR SHARED
 	src/camera/hands/Doors.cpp
 	src/camera/hands/ThrowHits.cpp
 	src/camera/hands/ThrowNoiseRun.cpp
+	src/camera/hands/TorchBlow.cpp
 	src/camera/hands/Kick.cpp
 	src/camera/hands/LivingBones.cpp
 	src/camera/hands/Hints.cpp

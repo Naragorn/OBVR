@@ -1293,7 +1293,10 @@ realistische Werte."
   per-way keys (ShoveSpeed, ShoveHardSpeed, ShieldBashSpeed/HardSpeed,
   PommelSpeed/HardSpeed, HalfSwordHardSpeed, ThrowStaggerSpeed/KnockSpeed)
   are gone. `TorchKnockdownPowerOnly` now defaults to 0, so the torch goes by
-  its speed like everything else.
+  its speed like everything else. Since 2026-11-26 the torch's blow is found
+  where its shaft meets someone's body and goes into it, and the hand's speed
+  is the one judged (free-weapons-spec 5.9.1): the hand's speed across the
+  ground towards the bound's middle missed a chop onto a rat.
 - **Why 3 and 6:** measured punch fist speeds. Trained boxers peak at
   7.9 m/s, the untrained at 6.9 to 7.6 m/s (Menzel & Potthast 2021, Sensors
   21(23) 7882, table 6). Contact speeds are 5.6 m/s elite and 4.9 m/s junior
