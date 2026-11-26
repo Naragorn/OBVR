@@ -52,6 +52,11 @@ inline float GripOpenLimit(const GripHoldSettings& s) {
 struct GripHoldState {
 	bool held = false;
 	GripToggleState toggle;  // the grip toggle's, stepped by the hand mode after the hold
+	// The hold as everything read it last frame (after the toggle), for its
+	// closing (HandModeResult::rightHoldClosed). Kept with the hand: it swaps
+	// with the hold at a roles switch. Starts closed: a hand already closed when
+	// the mode starts (after a load, the mode off) is no closing.
+	bool holdWas = true;
 };
 
 struct GripHoldInput {
@@ -60,6 +65,14 @@ struct GripHoldInput {
 	bool pullKnown = false;  // the pull reads (GripPullKnown)
 	float pull = 0.0f;       // HandPose::gripPull
 };
+
+// Whether the hold as everything reads it (after the toggle) closed this
+// frame; the frame's hold kept for the next (GripHoldState::holdWas).
+inline bool StepHoldClosed(GripHoldState& s, bool hold) {
+	const bool closed = hold && !s.holdWas;
+	s.holdWas = hold;
+	return closed;
+}
 
 inline bool StepGripHold(GripHoldState& s, const GripHoldInput& in, const GripHoldSettings& settings) {
 	if (!in.valid) {

@@ -286,6 +286,7 @@ class Run:
         self.problems: List[str] = []
         self.measured: List[str] = []
         self.marks: List[str] = []
+        self.last_mark_at: Optional[float] = None
         self.notes: List[str] = []
         self.shot_index = 0
         self.window: Optional[str] = None
@@ -553,6 +554,26 @@ class Run:
             if STEAMVR_DIR in png.parents:
                 png.unlink(missing_ok=True)
 
+    def wait_for_films(self, seconds: float) -> None:
+        """Until the last mark's film is filmed and written
+        (logic.film_wait_left): the game films on past the script's end."""
+        said = False
+        while True:
+            now = time.time()
+            times = []
+            for bmp in self.game_dir.glob("OBVR-Rec-*.bmp"):
+                with contextlib.suppress(FileNotFoundError):
+                    if bmp.stat().st_mtime >= self.started_at:
+                        times.append(bmp.stat().st_mtime)
+            left = logic.film_wait_left(seconds, now - self.last_mark_at if self.last_mark_at else None,
+                                        now - max(times) if times else None, self.game_pid() is not None)
+            if left <= 0:
+                return
+            if not said:
+                said = True
+                say(f"  waiting for the last film ({seconds:g} s from its mark, then the writer)")
+            time.sleep(min(left, 0.5))
+
     def bring_recordings(self) -> None:
         """Each mark's film ([Debug] Record) made into rec-<mark>.mp4, .gif and
         -strip.png in the run; the pictures deleted after."""
@@ -562,8 +583,16 @@ class Run:
         fps = logic.film_fps(hz, self.args.record_every)
         for mark, pictures in sorted(logic.recording_films(names).items()):
             strip = [pictures[i] for i in logic.strip_picks(len(pictures))]
-            failed = [cmd[0] for cmd in logic.film_commands(mark, str(self.game_dir), str(self.run_dir), fps, strip)
+            # Made from a folder of its own pictures alone (logic.film_links):
+            # the game's folder may hold an earlier run's of the same mark.
+            staging = Path(logic.film_folder(str(self.run_dir), mark))
+            shutil.rmtree(staging, ignore_errors=True)
+            staging.mkdir(parents=True)
+            for source, link in logic.film_links(mark, pictures, str(self.game_dir), str(staging)):
+                os.symlink(source, link)
+            failed = [cmd[0] for cmd in logic.film_commands(mark, str(staging), str(self.run_dir), fps, strip)
                       if run_quiet(cmd, timeout=180.0)[0] != 0]
+            shutil.rmtree(staging, ignore_errors=True)
             gaps = logic.film_gaps(pictures)
             dropped = f", {gaps} dropped by the recorder in between (the film skips them)" if gaps else ""
             say(f"  film rec-{mark}: {len(pictures)} pictures at {fps:g} a second{dropped}"
@@ -663,6 +692,7 @@ class Run:
             marks, done, seen = logic.new_marks(read_log(self.log), seen)
             for mark in marks:
                 self.marks.append(mark)
+                self.last_mark_at = time.time()
                 say(f"Mark {mark}")
                 self.shot(mark)
                 self.check_still_behind(mark)
@@ -694,6 +724,7 @@ class Run:
             self.problems.append(f"the script did not finish within {self.args.run_timeout} s")
         self.shot("end")
         self.bring_dumps()
+        self.wait_for_films(logic.record_seconds(spec))
         self.bring_recordings()
         self.bring_obvr_pictures()
         problems, measured = logic.evaluate(spec, read_log(self.log))

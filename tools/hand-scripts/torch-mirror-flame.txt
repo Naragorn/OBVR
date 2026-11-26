@@ -18,7 +18,7 @@ expect Torch: the hold closed on the torch
 expect the first-person skeleton mirrored: root determinant -1
 expect Mirror cull: the renderer's shape draws
 expect draws "FireParticles"
-expect upright, the engine's cull
+expect particles, facing the camera: the engine's cull
 expect turned over, the cull swaps
 reject HandScript: WARNING
 reject not known, the cull swaps

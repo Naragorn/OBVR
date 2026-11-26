@@ -71,6 +71,16 @@ inline ShapeTurn ShapeTurnOf(const NiMatrix33& rot, float scale) {
 	return d < 0.0f ? ShapeTurn::TurnedOver : ShapeTurn::Upright;
 }
 
+// The turn a draw winds by. A particle draw (NiDX9Renderer slot 92,
+// render/ShapeTurnHook.h) builds its quads toward the camera whatever its
+// shape's turn, so it winds the engine's way: a spell's glow hangs under the
+// mirrored hand (turned over) and went with the cull swapped (spell-mirror-glow,
+// 2026-11-26: "PCloud Projectile Local" turned over, the glow gone from the
+// palm); the torch's flame is in the world and was upright. A mesh by its turn.
+inline ShapeTurn DrawnShapeTurn(bool particles, const NiMatrix33& rot, float scale) {
+	return particles ? ShapeTurn::Upright : ShapeTurnOf(rot, scale);
+}
+
 // The cull a first-person draw is made with while the skeleton is drawn
 // mirrored (left-handed play, game/BonePin.h "The mirror"): a mirrored mesh
 // winds its triangles the other way round, so the cull swaps - in the

@@ -37,8 +37,6 @@ struct HandoverState {
 	game::HandBackState handBack{};
 	bool handBackLeft = false;  // the hand taking it back
 	game::InventoryItemKind handBackKind = game::InventoryItemKind::Other;
-	bool rightHoldWas = false;
-	bool leftHoldWas = false;
 };
 
 // What the handover shares with the other hand features this frame.

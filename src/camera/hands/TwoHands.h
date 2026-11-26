@@ -58,7 +58,6 @@ struct WeaponRest {
 struct TwoHandState {
 	// Two hands on a two-hander (StepTwoHands, vr/TwoHandLogic.h).
 	vr::TwoHandState twoHand;
-	bool twoHandLeftGripWas = false;
 	// The left hand's way from its controller to the handle (vr::StepTwoHandBlend),
 	// how far the approach had shaped it when the grip closed (vr::HeldWeight),
 	// and last frame's approach (vr::PreshapeWeight).
@@ -91,7 +90,6 @@ struct TwoHandState {
 	vr::RightHoldInput rightHoldIn;
 	vr::RightHold rightHoldBefore = vr::RightHold::Handle;
 	vr::RightHoldEvent rightHoldPending = vr::RightHoldEvent::None;
-	bool rightHoldWas = false;
 	vr::WeaponPose freeRel;
 	vr::WeaponPose bladeLocal;
 	vr::WeaponPose restLocal;
@@ -132,6 +130,7 @@ struct TwoHandState {
 	bool handoverMeasured = true;  // the palm's place along it said once after a switch
 	UInt32 handoverTraceFrames = 0;  // the first frames after a switch, traced (TraceHandoverFrame)
 	UInt32 handoverSettleFrames = 0;  // frames to its second saying, half a second on
+	UInt32 switchTraceFrames = 0;  // the frames from a roles switch on, the hands traced after their pins
 };
 
 // Where the weapon hand's palm is along the Weapon node's axis now: as

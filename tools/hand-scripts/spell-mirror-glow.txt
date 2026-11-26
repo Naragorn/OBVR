@@ -1,0 +1,42 @@
+# A spell's glow in the mirrored hand (free-weapons-spec 5.16, the torch's flame under the mirror:
+# "other unmirrored effects with the hand - a spell's glow - should now draw too, not filmed").
+# Left-handed: the first-person skeleton mirrored, the spell hand is the physical right one. Flare
+# (000A97DF) charged by the right trigger held 2.5 s, then let go. Only a turned-over shape culls the
+# other way under the mirror (render/ShapeTurnHook.h). The spell's glow ("PCloud Projectile Local")
+# hangs under the mirrored hand, turned over, and was culled with the swap: in the first film
+# (2026-11-26, 20261126-120301-slot1) the palm had no glow where the right-handed control's burns.
+# A particle draw faces the camera whatever its turn and keeps the engine's cull since
+# (render/BackfacePass.h DrawnShapeTurn).
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --record 2.5 tools/hand-scripts/spell-mirror-glow.txt
+# Read: the films at "charging" (the glow at the right hand) and "cast"; the "Mirror cull:" lines.
+ini Hands Enabled=1
+ini Hands LeftHanded=1
+console-at settle CloseAllMenus
+console player.addspell 000A97DF
+console SetActiveSpell 000A97DF
+
+expect HandScript: finished
+expect the first-person skeleton mirrored: root determinant -1
+expect Mirror cull: the renderer's shape draws
+expect turned over, the cull swaps
+expect draws "PCloud Projectile Local"
+expect particles, facing the camera: the engine's cull
+expect Spell charge:
+reject HandScript: WARNING
+reject not known, the cull swaps
+
+wait 12
+mark settle
+wait 1
+right pos 0.18 -0.40 -0.42
+left pos -0.25 -0.45 -0.30
+head pitch -40
+wait 1.5
+mark raised
+right trigger 1
+wait 0.3
+mark charging
+wait 2.2
+right trigger 0
+mark cast
+wait 2

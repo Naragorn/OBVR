@@ -291,8 +291,7 @@ bool WeaponHandedOver(const Config& config, const HandShared& shared, const vr::
 bool TorchHandedOver(ReleaseState& state, const Config& config, const HandShared& shared,
                      const vr::HandModeResult& handResult, const vr::HandModeFrame& frame, const ReleaseLinks& links,
                      bool torchHeld, const NiPoint3& leftWorld) {
-	const bool rightClosedNow = handResult.rightHold && !state.torchRightHoldWas;
-	state.torchRightHoldWas = handResult.rightHold;
+	const bool rightClosedNow = handResult.rightHoldClosed;
 	if (!rightClosedNow || !torchHeld || !handResult.rightHandValid) {
 		return false;
 	}

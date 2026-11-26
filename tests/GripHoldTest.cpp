@@ -154,6 +154,20 @@ void TestPullKnown() {
 
 }  // namespace
 
+// The hold's closing (StepHoldClosed): once, in the frame it closes; a hold
+// already closed when the state starts (a load, the mode off) is none.
+void TestClosing() {
+	std::printf("The hold's closing\n");
+	GripHoldState st;
+	Check(!StepHoldClosed(st, true), "closed from the start: no closing");
+	Check(!StepHoldClosed(st, true), "(still closed)");
+	Check(!StepHoldClosed(st, false), "opened: none");
+	Check(StepHoldClosed(st, true), "closed again: a closing");
+	Check(!StepHoldClosed(st, true), "held on: none the next frame");
+	GripHoldState fresh;
+	Check(!StepHoldClosed(fresh, false) && StepHoldClosed(fresh, true), "open from the start, then closed: a closing");
+}
+
 int main() {
 	TestHysteresis();
 	TestClickBesideThePull();
@@ -161,6 +175,7 @@ int main() {
 	TestUntracked();
 	TestSettingsSanity();
 	TestPullKnown();
+	TestClosing();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);
 		return 1;

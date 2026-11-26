@@ -253,15 +253,23 @@ void MeasureHandle(TwoHandState& s, const NiAVObject* weapon, const UInt8* weapo
 
 TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandSettings& hands, const NiMatrix33& cameraRot, const NiPoint3& cameraPos) {
 	TwoHandPins out;
-	EndHoldsAtSwitch(s, env.mirrored);
+	// The switch's own frame: the weapon's line below is read from the bones as
+	// the last frame left them, the weapon still in the other hand - the other
+	// hand, now beside that place, was put on the handle for that frame (the
+	// shield before the eyes, hand-side-switch-probe 2026-11-26). No two-hand
+	// pins then; both hands at their controllers.
+	if (EndHoldsAtSwitch(s, env.mirrored)) {
+		return out;
+	}
 	// The left hand's hold (vr/GripHold.h): the fingers closed round the
 	// handle at an ordinary grip take it, as a weapon's grip and the holsters
 	// do - not only the force click of a full squeeze (Nadi, 2026-10-27: "ab
 	// normaler griff Stärke ... nicht nur auf 100 Prozent mit press so wie
 	// B&S"). With [Hands] GripByPull 0 or no pull read, the click as before.
 	const bool leftGrip = env.hand.leftHold;
-	const bool closedNow = leftGrip && !s.twoHandLeftGripWas;
-	s.twoHandLeftGripWas = leftGrip;
+	// Its closing as the hand mode keeps it, with the hand across a roles
+	// switch (HandModeResult::leftHoldClosed).
+	const bool closedNow = env.hand.leftHoldClosed;
 	s.leftGripOnHandle = false;
 	// A two-hander, or a one-hander when both hands may hold those too
 	// (vr::TwoHandWeapon). The game's own grip is read from the two-handed
@@ -421,8 +429,7 @@ TwoHandPins StepTwoHands(TwoHandState& s, const TwoHandEnv& env, const vr::HandS
 		rin.leftHolds = s.twoHand.active;
 		rin.leftAxial = s.twoHand.handAxial;
 		rin.rightHold = rightHold;
-		rin.rightClosedNow = rightHold && !s.rightHoldWas;
-		s.rightHoldWas = rightHold;
+		rin.rightClosedNow = env.hand.rightHoldClosed;
 		vr::AxialLateral(right, lineOrigin, lineAxis, rin.rightAxial, rin.rightLateral);
 		rin.handle = handle;
 		rin.dt = env.deltaSeconds;
@@ -882,6 +889,7 @@ void LogHalfSwordArrival(TwoHandState& s, const TwoHandEnv& /*env*/) {
 void AfterHandPins(TwoHandState& s, const TwoHandEnv& env, const vr::HandSettings& hands, const NiMatrix33& cameraRot,
                    const NiPoint3& cameraPos, const NiPoint3& sharedGripMetres, float perMetre) {
 	LogHalfSwordArrival(s, env);
+	TraceSwitchFrames(s, env, cameraRot, cameraPos);
 	TraceHandLag(env.hand, hands, cameraRot, cameraPos, sharedGripMetres, perMetre, env.deltaSeconds, env.mirrored);
 	game::StepPhysicsStepTimes(GetConfig().physicsStepTimes,
 	                           test::HandScriptMarkedThisFrame() ? test::HandScriptMarkName() : nullptr);

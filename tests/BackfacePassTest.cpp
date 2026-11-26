@@ -125,6 +125,15 @@ int main() {
 		obvr::NiMatrix33 flat{};
 		Check(ShapeTurnOf(flat, 1.0f) == ShapeTurn::Unknown, "a flat matrix: not known");
 		Check(ShapeTurnOf(obvr::NiMatrix33::Identity(), 0.0f) == ShapeTurn::Unknown, "scale 0: not known");
+		// A particle draw faces the camera whatever its shape's turn: a spell's
+		// glow hangs under the mirrored hand (turned over), its quads still wind
+		// the engine's way - with the cull swapped the glow went (spell-mirror-glow,
+		// 2026-11-26: "PCloud Projectile Local", slot 92, turned over).
+		Check(DrawnShapeTurn(true, m, 1.0f) == ShapeTurn::Upright, "particles under the mirror: the engine's cull");
+		Check(DrawnShapeTurn(true, obvr::NiMatrix33::Identity(), 1.0f) == ShapeTurn::Upright, "particles upright: the same");
+		Check(DrawnShapeTurn(true, flat, 1.0f) == ShapeTurn::Upright, "particles with a flat turn: still facing the camera");
+		Check(DrawnShapeTurn(false, m, 1.0f) == ShapeTurn::TurnedOver && DrawnShapeTurn(false, flat, 1.0f) == ShapeTurn::Unknown,
+		      "a mesh: by its turn, as before");
 	}
 	Check(BackfaceCullFor(true, true, MirroredCullFor(true, true, kCullCounterClockwise), false, rgba) ==
 	          kCullCounterClockwise,

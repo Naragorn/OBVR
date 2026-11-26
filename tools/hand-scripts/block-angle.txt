@@ -47,9 +47,12 @@ head face 1
 mark placed
 right pos -0.18 -0.62 -0.02
 wait 0.3
+# Held closed from the draw on: since [Hands] WeaponHold (2026-10-24) the hand
+# opening lets the sword go - the old "right grip 0" here threw it away, and no
+# guard stood (failed since; 2026-11-25: "weapon 1", blocking 0, one to three
+# blows judged in 75 s).
 right grip 1
 wait 0.2
-right grip 0
 right pos 0.00 -0.45 -0.35
 wait 2
 mark drawn

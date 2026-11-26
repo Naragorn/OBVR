@@ -48,7 +48,11 @@ right grip 0
 right pos 0.25 -0.40 -0.30
 wait 1
 mark held_left
-right pos 0.00 -0.35 -0.35
+# The weapon hand on the apple, where the other hand holds it: in its palm, 13.8 units behind that
+# hand's controller (the weapon hand holds at its Weapon node, by its controller). Before
+# 2026-11-26 the controllers met here, 1.4 units apart, and the hand closed 8.1 units from the
+# apple - the reach is 8.4 ("Handover: at the mark" lines).
+right pos -0.04 -0.36 -0.17
 wait 0.5
 right grip 0.9
 wait 1

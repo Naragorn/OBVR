@@ -23,7 +23,10 @@ namespace obvr::camera::hands {
 // other hand let go - the two-hand hold and the right hand's half-sword hold
 // end at once. A switch while a load's hold waits is the side read from the
 // co-save, no handover: the hold is the load's to give.
-void EndHoldsAtSwitch(TwoHandState& s, bool mirrored);
+// True in the switch's own frame.
+bool EndHoldsAtSwitch(TwoHandState& s, bool mirrored);
+// The frames from a switch on: each hand bone against its controller after the pins (the log).
+void TraceSwitchFrames(TwoHandState& s, const TwoHandEnv& env, const NiMatrix33& cameraRot, const NiPoint3& cameraPos);
 
 // After a load: the hold along the weapon the co-save kept, taken at the first
 // frame the hands are there and the weapon's state is read.

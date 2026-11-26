@@ -1,15 +1,18 @@
 #include "camera/hands/HandoverHold.h"
 
 #include "core/Log.h"
+#include "core/MathFns.h"
+#include "game/HandBones.h"
 #include "game/HolsterSlots.h"
 #include "vr/HandoverHoldSave.h"
 
 namespace obvr::camera::hands {
 
-void EndHoldsAtSwitch(TwoHandState& s, bool mirrored) {
+bool EndHoldsAtSwitch(TwoHandState& s, bool mirrored) {
 	if (!vr::StepRolesSeen(s.mirrorSeen, mirrored)) {
-		return;
+		return false;
 	}
+	s.switchTraceFrames = 4;
 	if (vr::SwitchIsHandover(true, vr::HandoverHoldNow().restore)) {
 		// The hand that took the weapon keeps it where it held it
 		// (vr::HandoverHoldAxial), read from the frame before the switch.
@@ -39,6 +42,7 @@ void EndHoldsAtSwitch(TwoHandState& s, bool mirrored) {
 	s.twoHandPreshape = 0.0f;
 	s.rightHold = vr::RightHoldState{};
 	s.rightHoldPending = vr::RightHoldEvent::None;
+	return true;
 }
 
 void RestoreHoldAfterLoad(TwoHandState& s, const TwoHandEnv& env, const UInt8* weaponForm,
@@ -104,6 +108,37 @@ void NoteFrameForSwitch(TwoHandState& s, const UInt8* drawnForm, bool otherClose
 	s.otherClosedWas = otherClosed;
 	s.otherAxialWas = otherAxial;
 	s.handleWas = handle;
+}
+
+// The frames from a roles switch on (EndHoldsAtSwitch), after the hands' pins
+// and before the body's arms: where each first-person hand bone is against
+// the controller its pin follows. The switch's first frame drew the shield
+// before the eyes and the body's right arm reached across the body
+// (hand-side-switch-probe 2026-11-26, 20261126-120513-slot1: its target at
+// -11.7 units left of the root, 16.4 right the frame after).
+void TraceSwitchFrames(TwoHandState& s, const TwoHandEnv& env, const NiMatrix33& cameraRot, const NiPoint3& cameraPos) {
+	if (s.switchTraceFrames == 0) {
+		return;
+	}
+	const UInt32 frame = 4 - s.switchTraceFrames;
+	--s.switchTraceFrames;
+	NiPoint3 at[2];
+	NiPoint3 want[2];
+	bool read[2];
+	for (int i = 0; i < 2; ++i) {
+		NiMatrix33 rot;
+		read[i] = game::ReadHandBoneWorld(i == 0, rot, at[i]);
+		want[i] = cameraPos + cameraRot * (i == 0 ? env.hand.weaponHandOffsetUnits : env.hand.leftHandOffsetUnits);
+	}
+	const auto apart = [](const NiPoint3& a, const NiPoint3& b) { return math::Sqrt((a - b).LengthSquared()); };
+	OBVR_LOG("Hands: the switch's frame %u, the pins done - mirrored %d; the right bone %s at %.1f %.1f %.1f, "
+	         "%.1f units from the weapon hand's controller (pinned %d); the left bone %s at %.1f %.1f %.1f, %.1f "
+	         "from the other hand's controller (pinned %d)",
+	         frame, env.mirrored ? 1 : 0, read[0] ? "read" : "NOT read", static_cast<double>(at[0].x),
+	         static_cast<double>(at[0].y), static_cast<double>(at[0].z), static_cast<double>(apart(at[0], want[0])),
+	         game::HandPinnedThisFrame(true) ? 1 : 0, read[1] ? "read" : "NOT read", static_cast<double>(at[1].x),
+	         static_cast<double>(at[1].y), static_cast<double>(at[1].z), static_cast<double>(apart(at[1], want[1])),
+	         game::HandPinnedThisFrame(false) ? 1 : 0);
 }
 
 }  // namespace obvr::camera::hands

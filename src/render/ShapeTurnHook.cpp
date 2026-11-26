@@ -36,12 +36,16 @@ State& S() {
 	return s;
 }
 
-ShapeTurn TurnOf(const void* shape) {
+// The slot that draws particles (0x00765990: the torch's FireParticles and
+// Sparks, a spell's "PCloud Projectile Local" - the trace's names).
+constexpr int kParticleSlot = 4;
+
+ShapeTurn TurnOf(const void* shape, int slot) {
 	if (!mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(shape))) {
 		return ShapeTurn::Unknown;
 	}
 	const NiTransform& world = static_cast<const NiAVObject*>(shape)->worldTransform;
-	return ShapeTurnOf(world.rot, world.scale);
+	return DrawnShapeTurn(slot == kParticleSlot, world.rot, world.scale);
 }
 
 template <int K>
@@ -50,7 +54,7 @@ void __fastcall Hooked(void* renderer, void* unusedEdx, void* shape) {
 	const ShapeTurn turn = s.turn;
 	const void* const was = s.shape;
 	const int slot = s.slot;
-	s.turn = TurnOf(shape);
+	s.turn = TurnOf(shape, K);
 	s.shape = shape;
 	s.slot = K;
 	s.original[K](renderer, unusedEdx, shape);
@@ -107,9 +111,10 @@ ShapeTurn CurrentShapeTurn() {
 		const bool named = mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(name));
 		OBVR_LOG("Mirror cull: slot %u draws \"%.40s\" (%08X) in the mirrored first-person pass - %s",
 		         kFirstSlot + s.slot, named ? name : "?", reinterpret_cast<UInt32>(s.shape),
-		         s.turn == ShapeTurn::TurnedOver ? "turned over, the cull swaps"
-		         : s.turn == ShapeTurn::Upright  ? "upright, the engine's cull"
-		                                         : "not known, the cull swaps");
+		         s.slot == kParticleSlot          ? "particles, facing the camera: the engine's cull"
+		         : s.turn == ShapeTurn::TurnedOver ? "turned over, the cull swaps"
+		         : s.turn == ShapeTurn::Upright    ? "upright, the engine's cull"
+		                                           : "not known, the cull swaps");
 	}
 	return s.turn;
 }

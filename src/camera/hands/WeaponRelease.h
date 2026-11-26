@@ -70,7 +70,6 @@ struct ReleaseState {
 	// weapon's, and the fire put on once its 3D is there: read before and
 	// after, and again a second later.
 	game::TorchReleaseState torchRelease;
-	bool torchRightHoldWas = false;  // the weapon hand's hold last frame (game::TorchHandedAtClose)
 	game::DroppedWeaponState droppedTorch;
 	UInt32 torchFireRef = 0;
 	UInt32 torchFireFrames = 0;

@@ -544,10 +544,9 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	in.leftTrigger = in.leftTrigger && !f.leftTriggerOnHandle;
 	in.rightGrip = cr.valid && GripDown(cr.buttonsPressed);
 	in.leftGrip = cl.valid && GripDown(cl.buttonsPressed);
-	// The hold (vr/GripHold.h): the fingers closed round the grip, by the
-	// grip's pull with a hysteresis - the holsters' grip since 2026-10-23,
-	// measured on the tester's Index (free-weapons-spec 5.4); the click where
-	// no pull reads. The grab, the bow's draw and the stow keep the click.
+	// The hold (vr/GripHold.h): the fingers closed round the grip, by the grip's pull with a hysteresis - the
+	// holsters' grip since 2026-10-23, measured on the tester's Index (free-weapons-spec 5.4); the click where no
+	// pull reads. The grab, the bow's draw and the stow keep the click.
 	bool rightGripHold = false;
 	bool leftGripHold = false;
 	{
@@ -879,6 +878,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	r.controlsActive = f.right.valid || f.left.valid;
 	r.rightHold = rightGripHold;
 	r.leftHold = leftGripHold;
+	r.rightHoldClosed = StepHoldClosed(m_rightHold, rightGripHold);
+	r.leftHoldClosed = StepHoldClosed(m_leftHold, leftGripHold);
 	r.rightGripDown = f.right.valid && GripDown(f.right.buttonsPressed);
 	r.leftGripDown = f.left.valid && GripDown(f.left.buttonsPressed);
 	r.rightGripForce = f.right.valid ? f.right.gripForce : 0.0f;

@@ -688,6 +688,68 @@ def film_gaps(pictures: Sequence[str]) -> int:
     return numbers[-1] - numbers[0] + 1 - len(numbers) if numbers else 0
 
 
+# How long no new picture must come before a film counts as written, and how
+# far past its seconds a film is waited for at most.
+FILM_QUIET_SECONDS = 2.0
+FILM_WAIT_MOST = 30.0
+RECORD_SECONDS_DEFAULT = 4.0  # test/RecordingPlan.h RecordSettings::seconds
+
+
+def record_seconds(scenario: Scenario) -> float:
+    """How long each mark's film runs, as the scenario's ini lines set it
+    ([Debug] Record, RecordSeconds; the last line of a key wins); 0 when it
+    does not film."""
+    values: Dict[str, str] = {}
+    for setting in scenario.ini.get("Debug", []):
+        key, _, value = setting.partition("=")
+        values[key.strip().lower()] = value.strip()
+    if values.get("record") != "1":
+        return 0.0
+    try:
+        seconds = float(values.get("recordseconds", RECORD_SECONDS_DEFAULT))
+    except ValueError:
+        seconds = RECORD_SECONDS_DEFAULT
+    return seconds if seconds > 0 else 0.0
+
+
+def film_wait_left(seconds: float, since_mark: Optional[float], since_picture: Optional[float],
+                   game_running: bool, quiet: float = FILM_QUIET_SECONDS, most: float = FILM_WAIT_MOST) -> float:
+    """How long the runner still waits before it makes the films. The last
+    mark's film runs `seconds` after its mark - mostly past the script's end -
+    and its writer thread finishes the pictures after that: made at once, the
+    last film had more pictures than the runner counted, and the rest stayed in
+    the game's folder for a later run of the same mark (hand-side-switch-probe
+    20261120-180226-slot1: 237 counted, 467 in the film). So it waits until the
+    seconds since the mark are over and no picture came for `quiet` seconds,
+    at most `most` seconds past the film's end. Nothing to wait for without a
+    film, a mark or the game."""
+    if seconds <= 0 or since_mark is None or not game_running:
+        return 0.0
+    cap = seconds + most - since_mark
+    if cap <= 0:
+        return 0.0
+    left = seconds - since_mark
+    if since_picture is not None:
+        left = max(left, quiet - since_picture)
+    return min(max(left, 0.0), cap)
+
+
+def film_folder(run_dir: str, mark: str) -> str:
+    """The folder a mark's film is made from, in the run: its own pictures alone."""
+    return f"{run_dir}/.film-{mark}"
+
+
+def film_links(mark: str, pictures: Iterable[str], source: str, staging: str) -> List[Tuple[str, str]]:
+    """Which pictures are linked into the film's folder (film_folder), each under
+    its own name, in order: the run's own pictures of that mark, nothing else.
+    A glob over the game's folder took every picture of the mark's name there -
+    those an earlier run left too (2026-11-26: 283 pictures of "end" from
+    2026-11-18 and -20 in the player's game folder, mirrored into every slot,
+    made handover-sword's rec-end.mp4 508 frames long for its own 166 and 301)."""
+    own = recording_films(pictures).get(mark, [])
+    return [(f"{source}/{name}", f"{staging}/{name}") for name in own]
+
+
 def film_commands(mark: str, folder: str, out_dir: str, fps: float, strip_names: Sequence[str]) -> List[List[str]]:
     """The commands that make a mark's film: an MP4 and a GIF from its
     pictures in order, and a strip of the picked pictures side by side.

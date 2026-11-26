@@ -1124,11 +1124,11 @@ struct HandModeResult : MenuPlaceResult {  // the wrists and the tablet: TabletL
 	// the hand whose grip is closed.
 	bool rightGripDown = false;
 	bool leftGripDown = false;
-	// Each role's hold (vr/GripHold.h): the fingers closed round the grip by
-	// the pull, the click where no pull reads - what the holsters and the
-	// world weapon's take go by.
-	bool rightHold = false;
-	bool leftHold = false;
+	// Each role's hold (vr/GripHold.h): the fingers closed round the grip by the pull, the click where no pull
+	// reads - what the holsters and the world weapon's take go by; and its closing this frame, its memory kept by the
+	// hand across a roles switch (GripHoldState::holdWas; a hand closed through it is none - handover-cosave-hold).
+	bool rightHold = false, rightHoldClosed = false;
+	bool leftHold = false, leftHoldClosed = false;
 	GripToggleSeen gripToggle;  // [Hands] GripToggle's events this frame, for the log (vr/GripToggle.h)
 	// Each grip's force, 0..1 (an Index's rAxis[2].x; 0 elsewhere): a fist
 	// squeezes it, so it counts as a fist where the fingers cannot be read

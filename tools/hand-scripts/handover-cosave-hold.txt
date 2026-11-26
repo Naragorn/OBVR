@@ -41,6 +41,10 @@ reject too far, a drop
 reject Weapon hold: the dropped
 reject taken at its grip
 reject two-handed sword's blade (half-swording)
+# A hand closed through the load is no closing after it (HandModeResult::leftHoldClosed): the right
+# hand stays closed through the load and is the other hand after it (2026-11-25: it read as a closing,
+# "the left grip closed off the handle", and near the handle would have taken the two-hand hold).
+reject Hands: the left grip closed off the handle
 
 wait 12
 right rot 0 0 0

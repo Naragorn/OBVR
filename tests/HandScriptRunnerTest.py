@@ -699,5 +699,58 @@ class Recording(unittest.TestCase):
         self.assertEqual(r.film_gaps([]), 0)
         self.assertEqual(r.film_gaps(["OBVR-Eye-Right-pull.bmp"]), 0)
 
+    def test_the_films_seconds_read_from_the_scenario(self):
+        on = r.parse_scenario(r.with_recording("wait 1\nmark a\n", 6, 1, 640, False))
+        self.assertEqual(r.record_seconds(on), 6)
+        # Switched on by the scenario itself: the recorder's own 4 s unless it says.
+        self.assertEqual(r.record_seconds(r.parse_scenario("ini Debug Record=1\n")), 4)
+        self.assertEqual(r.record_seconds(r.parse_scenario("ini Debug Record=1\nini Debug RecordSeconds=2.5\n")), 2.5)
+        # The last line of a key wins, as the ini's reader takes it.
+        self.assertEqual(r.record_seconds(r.parse_scenario(
+            "ini Debug Record=1\nini Debug RecordSeconds=2\nini Debug RecordSeconds=7\n")), 7)
+        self.assertEqual(r.record_seconds(r.parse_scenario("ini Debug Record=0\nini Debug RecordSeconds=5\n")), 0)
+        self.assertEqual(r.record_seconds(r.parse_scenario("wait 1\n")), 0)
+        self.assertEqual(r.record_seconds(r.parse_scenario("ini Debug Record=1\nini Debug RecordSeconds=x\n")), 4)
+
+    def test_a_film_is_made_of_its_own_pictures_only(self):
+        """The pictures of a mark are linked into a folder of the film's own, and the
+        film is made from there: a glob over the game's folder took any picture of
+        that mark's name left by an earlier run too (2026-11-26: 283 pictures of
+        "end" from 2026-11-18 and -20 in the player's game folder, mirrored into
+        every slot, appended to handover-sword's rec-end.mp4 - 508 frames for its
+        166 and 301)."""
+        own = ["OBVR-Rec-end-0001.bmp", "OBVR-Rec-end-0000.bmp"]
+        links = r.film_links("end", own, "/g", "/run/.film-end")
+        self.assertEqual(links, [("/g/OBVR-Rec-end-0000.bmp", "/run/.film-end/OBVR-Rec-end-0000.bmp"),
+                                 ("/g/OBVR-Rec-end-0001.bmp", "/run/.film-end/OBVR-Rec-end-0001.bmp")])
+        # Another mark's pictures and other files are not the film's.
+        self.assertEqual(r.film_links("end", ["OBVR-Rec-endless-0000.bmp", "OBVR-Eye-Right-end.bmp"], "/g", "/s"), [])
+        self.assertEqual(r.film_folder("/run", "end"), "/run/.film-end")
+
+    def test_the_last_film_is_waited_for(self):
+        """The last mark's film runs its seconds after the script's end, and its
+        writer finishes after them: the films are made once both are over
+        (hand-side-switch-probe 20261120-180226-slot1: back_seen 237 pictures
+        counted, 467 in the film, 411 left in the game's folder)."""
+        # Not filming, the game gone, no mark: nothing to wait for.
+        self.assertEqual(r.film_wait_left(0, 1.0, 0.1, True), 0)
+        self.assertEqual(r.film_wait_left(4, 1.0, 0.1, False), 0)
+        self.assertEqual(r.film_wait_left(4, None, 0.1, True), 0)
+        # The film still runs: its seconds since the mark.
+        self.assertAlmostEqual(r.film_wait_left(4, 1.0, 0.0, True), 3.0)
+        # Its seconds over, the writer still at it (a slow game, a busy disk):
+        # until no picture came for the quiet time.
+        self.assertAlmostEqual(r.film_wait_left(4, 5.0, 0.5, True), r.FILM_QUIET_SECONDS - 0.5)
+        # Over and quiet: the films are made.
+        self.assertEqual(r.film_wait_left(4, 5.0, r.FILM_QUIET_SECONDS, True), 0)
+        # No picture at all yet: its seconds, then no more.
+        self.assertAlmostEqual(r.film_wait_left(4, 1.5, None, True), 2.5)
+        self.assertEqual(r.film_wait_left(4, 4.0, None, True), 0)
+        # A game that films on and on is not waited for past the most.
+        most = 4 + r.FILM_WAIT_MOST
+        self.assertAlmostEqual(r.film_wait_left(4, most - 0.5, 0.0, True), 0.5)
+        self.assertEqual(r.film_wait_left(4, most, 0.0, True), 0)
+        self.assertEqual(r.film_wait_left(4, most + 9.0, 0.0, True), 0)
+
 if __name__ == "__main__":
     unittest.main()

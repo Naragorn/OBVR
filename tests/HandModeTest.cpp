@@ -876,6 +876,85 @@ void TestRolesSwitchNoSwing() {
 	Check(!swung, "switched back: no swing either");
 }
 
+// Each role's hold closing (HandModeResult::rightHoldClosed, leftHoldClosed):
+// what the two-hand hold, the handover and the torch's pass take as a hand
+// closing. It goes with the hand at a roles switch, as the hold does: a hand
+// closed through a load whose co-save puts the weapon in the other hand is the
+// other hand after it, still closed - no closing (handover-cosave-hold,
+// 2026-11-25: "the left grip closed off the handle" in the first frames after
+// the load, near the handle it would have taken the two-hand hold). Nor is a
+// hand already closed when the mode starts again (a load, the mode off).
+void TestHoldClosedEdges() {
+	std::printf("A hold's closing goes with its hand\n");
+	HandSettings settings = WithoutLaserOffset();
+	settings.enabled = true;
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.dtSeconds = 1.0f / 72.0f;
+	HandPose physicalRight;
+	HandPose physicalLeft;
+	physicalRight.valid = true;
+	physicalLeft.valid = true;
+	physicalRight.position = NiPoint3{0.20f, -0.40f, -0.35f};
+	physicalLeft.position = NiPoint3{-0.20f, -0.40f, -0.35f};
+	const UInt64 grip = 1ull << openvr::kButtonIndexGrip;
+	HandMode mode;
+	// One frame: the controllers' grips, and whether the weapon is in the
+	// left hand (the roles swapped, the left controller the weapon hand's).
+	const auto step = [&](bool swapped, bool rightClosed, bool leftClosed) {
+		physicalRight.buttonsPressed = rightClosed ? grip : 0;
+		physicalLeft.buttonsPressed = leftClosed ? grip : 0;
+		frame.rolesSwapped = swapped;
+		frame.right = swapped ? physicalLeft : physicalRight;
+		frame.left = swapped ? physicalRight : physicalLeft;
+		return mode.Update(frame, settings);
+	};
+	HandModeResult r;
+	for (int i = 0; i < 3; ++i) {
+		r = step(false, false, false);
+	}
+	Check(!r.rightHoldClosed && !r.leftHoldClosed, "both open: no closing");
+	r = step(false, true, false);
+	Check(r.rightHold && r.rightHoldClosed && !r.leftHoldClosed, "the weapon hand closes: its closing, in that frame");
+	r = step(false, true, false);
+	Check(r.rightHold && !r.rightHoldClosed, "held on: no closing the next frame");
+	// The roles switch with the right controller still closed: it is the other
+	// hand now.
+	r = step(true, true, false);
+	Check(r.leftHold && !r.leftHoldClosed, "switched with that hand closed: the other hand holds, no closing");
+	Check(!r.rightHold && !r.rightHoldClosed, "the open controller is the weapon hand now: nothing");
+	r = step(true, true, false);
+	Check(r.leftHold && !r.leftHoldClosed, "(and none the frame after)");
+	step(true, false, false);
+	r = step(true, true, false);
+	Check(r.leftHoldClosed && !r.rightHoldClosed, "opened and closed again after the switch: its closing");
+	// Switched back in the frame the open controller closes: that one's
+	// closing; the one closed throughout has none.
+	step(true, true, false);
+	r = step(false, true, true);
+	Check(r.leftHoldClosed && !r.rightHoldClosed,
+	      "switched back as the open controller closes: its closing; the one closed throughout none");
+	// The mode stops (no head - a load) with the right controller closed and
+	// starts again: a hand already closed is no closing.
+	step(false, true, false);
+	frame.headValid = false;
+	step(false, true, false);
+	frame.headValid = true;
+	r = step(false, true, false);
+	Check(r.rightHold && !r.rightHoldClosed, "closed when the mode starts again: held, no closing");
+	step(false, false, false);
+	r = step(false, true, false);
+	Check(r.rightHoldClosed, "opened and closed after it: a closing");
+	// As before: an untracked hand holds nothing, so tracked again with its
+	// grip down it closes.
+	physicalRight.valid = false;
+	r = step(false, true, false);
+	Check(!r.rightHold && !r.rightHoldClosed, "untracked: no hold, no closing");
+	physicalRight.valid = true;
+	r = step(false, true, false);
+	Check(r.rightHold && r.rightHoldClosed, "tracked again with the grip down: a closing (its hold read open while lost)");
+}
+
 void TestOffHandSwingWithWeapon() {
 	std::printf("The other hand's swing with a weapon drawn\n");
 	HandSettings settings = WithoutLaserOffset();
@@ -4770,6 +4849,7 @@ int main() {
 	TestWristTransform();
 	TestStrikeByMotion();
 	TestRolesSwitchNoSwing();
+	TestHoldClosedEdges();
 	TestOffHandSwingWithWeapon();
 	TestLaserOnBigQuad();
 	TestMenusOnly();

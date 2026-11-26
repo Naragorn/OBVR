@@ -1774,11 +1774,22 @@ on the way, ever closer to how it will sit in the hand at the catch; always on.
   after. weapon-grab PASS.
 - **Not seen:** whether the equip still jumps by a turn of the mesh's own root
   against the Weapon node (the derived target above) - a headset look.
-- **Open bug (2026-11-11):** weapon-pull.txt fails - its hand at -1.40 now comes
-  0.16 m from the dropped sword's grip, so a hold takes it at once and nothing
-  is pulled ("pulled to the hand and taken" missing). weapon-pull-turn.txt holds
-  the hand at -1.05 instead. Why the sword lies nearer than the 0.37 m written
-  in the scenario is not looked into.
+- **Fixed 2026-11-26 (the scenario): weapon-pull.txt failed since 2026-11-11** - its hand at
+  -1.40 came 0.16 m from the dropped sword's grip, so a hold took it at once and nothing was
+  pulled ("pulled to the hand and taken" missing). [M] The sword lies where it lay in October
+  (its grip at 251.5 -1613.4 -252.5 in 20261025-132611 and 20261125-112507-slot3); the hand
+  does not: the right hand's body at 258.9 -1609.8 -236.5 in October, -242.8 since, the eyes
+  at -145 and -151 - the whole tracked space 6.3 units lower. That is [Head] RealHeight
+  (491893a, 2026-11-08): "the view lifted -5.9 units - the eyes 112.0 units over the floor,
+  the character's 117.9" in every harness run since. At 0.16 m the hand stood within
+  WeaponGripReachMetres (0.18): a take, or now and then a pull when the hold read 0.18 m
+  first (PASS 20261118-114418-slot4, 20261125-110244-slot3; FAIL 20261125-105925-slot2).
+  The scenario's hand moved up to -1.31, back where it was against the sword; the claymore,
+  bow and old-draw variants, which share the place, with it. Harness 2026-11-26 [M], both on
+  main's DLL: at -1.40 the right hand's body at -242.8, 10 units from the sword at "near", a
+  hold line at 0.16 m before the pull (it passed this time - 20261126-115826-slot1); at -1.31
+  the hand at -236.5 and 16 units off as in October, pulled with no hold line
+  (-115834-slot2).
 
 - **Fixed (2026-11-20): weapon-release-holster.txt** failed on main with and without the kept
   weapons (old DLL 5cb8ab5c, 20261120-144419-slot1; OBVR bisected it back to 2d22f2f): the let
@@ -1944,11 +1955,21 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
   loaded with the sword in the left hand: "read from the co-save - the left hand", mirrored
   after the load), handover-shield, handover-torch, handover-bow (each switched there and
   back), handover-item (passed both ways, 2.7 and 8.1 units).
-- [M] Seen, not explained: with the sides switched and the weapon hand crossed over to the
+- [M] Seen: with the sides switched and the weapon hand crossed over to the
   right, the first-person skeleton's Camera01 stands 21 to 28 units sideways of where it
   stands otherwise (handover-sword: 283.4 against 255.4 at "handed"); with the hands on
-  their own sides it does not move (hand-side-switch-probe). Whether anything reads it there
-  is not checked.
+  their own sides it does not move (hand-side-switch-probe).
+  **Explained 2026-11-26, not a bug [M/D]:** Camera01 hangs under the first-person root, and
+  OBVR places that root with the weapon hand's controller (game::PlaceFirstPersonArms); it
+  moves wherever that hand goes, mirrored or not. Read again in handover-sword
+  (20261124-231416-slot3): 255.4 at "ready", 283.4 at "handed" (mirrored, the weapon hand
+  crossed to the right), 262.4 at "moved" (mirrored, the hands apart), 234.4 at "handed_back"
+  (not mirrored, the weapon hand crossed to the left, 21 units the other way). Who reads it:
+  the engine's first-person eye (FUN_0066b710) - at every mark of that run "the engine's eye
+  0.00 ... over the feet" sideways and the view's eyes at x 255.4, so the eye is read before
+  the root is placed; and the point NPCs look at (0x006604C0), which OBVR answers from the
+  headset's eyes instead (game/PlayerLookAt.h). No other reader found in the code; xOBSE
+  scripts that ask for the camera's place could see it - not checked.
 - **Drawing with either hand, built 2026-11-23 (DLL 6693cff4):** the empty other hand closing
   at a place that keeps a weapon of the weapon hand's - nothing drawn - draws it, and the
   sides switch (vr::StepHolster, `switchSides`; equipped first when it is not); the empty
@@ -1993,6 +2014,17 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
   the right hand); handover-torch, handover-sword (the arms not inside out) and
   finery-checks (the wear check's own hook on slots 88/89 chains behind it) PASS. Other
   unmirrored effects with the hand (a spell's glow) should now draw too - not filmed.
+  **Filmed 2026-11-26 - it did not; fixed [M].** spell-mirror-glow.txt (new): left-handed, Flare
+  charged in the right hand for 2.5 s; spell-glow-righthanded (the same, right-handed) as the
+  control. The control burns orange on the palm; mirrored, the palm stayed bare
+  (20261126-120301-slot1, DLL 08781f65). The trace: the glow, "PCloud Projectile Local", slot
+  92, "turned over, the cull swaps" - it hangs under the mirrored hand. [D] A particle draw
+  builds its quads towards the camera whatever its shape's turn, so it winds the engine's
+  way; swapped, its front faces went. Fix: slot 92 (0x00765990, the particles: the torch's
+  FireParticles and Sparks, the spell's PCloud) keeps the engine's cull under the mirror
+  (render/BackfacePass.h DrawnShapeTurn; backface_pass_test). After (DLL e142379f,
+  -125351-slot1): "particles, facing the camera: the engine's cull", the glow on the palm as
+  in the control; torch-mirror-flame PASS (-125531-slot2).
 - **2026-11-24, headset on Windows (Nadi; the DLL of 2026-11-23 12:23, 06601d8, before
   the mirror-cull fix; OBVR.log of 22:26).** Only the Akaviri Katana and the torch were tried.
   Oblivion Walkers was loaded in that session (Mode 2, the dead rise; the Walkers session's
@@ -2070,13 +2102,28 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
     read-back, the take after the load and the switch. Not run: the save loaded in a game
     started anew (the harness loads in the running game); an enchanted weapon made in the game
     (an FF id) through ResolveRefID. Evidence page: https://claude.ai/artifact/S6iM8T4xEBXjWUeZxVj17Q
-  - **Open, seen 2026-11-25 with the old and the new DLL alike: a hand closed through a load
-    counts as closing after it.** In handover-cosave-hold the right hand stays closed through
-    the load and is the other hand after it; the first frames log "the left grip closed off
-    the handle - -35 units along the weapon, 39 from its line". Placed far from the weapon it
-    took nothing. [D] Near the handle it would take the two-hand hold nobody reached for. Cause
-    not read: the two-hand step's grip of the frame before, kept across the load's frames or
-    the side switch.
+  - **Fixed 2026-11-26: a hand closed through a load counted as closing after it.** In
+    handover-cosave-hold the right hand stays closed through the load and is the other hand
+    after it; the first frames logged "the left grip closed off the handle - -35 units along
+    the weapon, 39 from its line" (seen 2026-11-25 with the old and the new DLL alike). Placed
+    far from the weapon it took nothing; [D] near the handle it would have taken the two-hand
+    hold nobody reached for. Cause [R]: the two-hand step kept the other hand's hold of the
+    frame before itself (TwoHands.cpp, twoHandLeftGripWas), per role; the load's side switch
+    puts the other role on the controller that was closed all along as the weapon hand, so
+    "closed now, open before" read true. The hand mode swaps its own memories at a switch
+    (HandMode::StepRolesSwitch, step 3: "a hand's grip hold and trigger edges go with it");
+    the modules outside it did not: the two-hand hold, the half-sword's right hand, the
+    handover (both hands) and the torch's pass each kept their own per role. Fix: the hand
+    mode gives each role's closing (HandModeResult::rightHoldClosed, leftHoldClosed), its
+    memory in vr::GripHoldState, which swaps with the hand; it starts closed, so a hand
+    already closed when the mode starts again (a load, the mode off) is no closing either.
+    The four modules read it instead of their own. Not changed: the lead's grip edge (by
+    physical side, no role) and the potion belt's (the grip's click per role - the same
+    pattern, open: a click held through a switch near a belt place). hand_mode_test and
+    grip_hold_test cover it (red: they do not build against main, the fields are new).
+    Harness 2026-11-26 [M]: handover-cosave-hold (now rejecting that line) FAIL on main
+    (DLL fc0e06a4, 20261126-115924-slot1: the line comes in the frame of "the sides switched
+    with the load"), PASS with the fix (DLL 08781f65, -115932-slot2).
 - Right-handed, without a switch (open, causes not read): the shield one frame higher while
   the sword is drawn at the hip (3.2 %), and the shield's edge wobbling for 12 frames after
   the head turned 30 degrees down (up to 1.7 %).

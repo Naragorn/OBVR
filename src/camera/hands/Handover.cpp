@@ -3,14 +3,56 @@
 #include "core/Log.h"
 #include "core/MathFns.h"
 #include "game/InventoryGrab.h"
+#include "game/FirstPersonHide.h"
+#include "game/HandBones.h"
+#include "game/HeldObject.h"
 #include "game/MeleeHits.h"
 #include "game/NearbyItems.h"
 #include "game/TakeItem.h"
+#include "test/HandScriptRuntime.h"
 #include "vr/HandSides.h"
 
 namespace obvr::camera::hands {
 
 namespace {
+
+// At a hand script's mark, a thing held as an object: where it hangs against
+// each hand - from its bound's surface to each controller's tracked origin
+// (what the handover's reach measures from), the weapon hand's Weapon node
+// (where that hand holds it) and each palm (where the other hand holds it,
+// game::PalmPoint). The pass back to the weapon hand closed at 8.1 units of
+// the reach's 8.4 (handover-item, 2026-11-22) with the controllers 2 cm apart.
+void LogHeldThingAtMark(const HandShared& shared, const vr::HandModeResult& hand, const InventoryHold& held,
+                        float upm, float heldObjectMetres) {
+	const UInt32 ref = held.ref;
+	NiPoint3 centre{};
+	float radius = 0.0f;
+	if (!test::HandScriptMarkedThisFrame() || ref == 0 || !shared.cyclopeanCameraValid ||
+	    !game::RefWorldBound(ref, centre, radius)) {
+		return;
+	}
+	const auto gap = [&](const NiPoint3& p) { return math::Sqrt((centre - p).LengthSquared()) - radius; };
+	const NiPoint3 rightOrigin = shared.cyclopeanCamera.pos + shared.cyclopeanCamera.rot * hand.rightHandOffsetUnits;
+	const NiPoint3 leftOrigin = shared.cyclopeanCamera.pos + shared.cyclopeanCamera.rot * hand.leftHandOffsetUnits;
+	float palm[2] = {-1.0f, -1.0f};
+	for (int i = 0; i < 2; ++i) {
+		NiMatrix33 rot;
+		NiPoint3 pos;
+		if (game::ReadHandBoneWorld(i == 0, rot, pos)) {
+			palm[i] = gap(game::PalmPoint(rot, pos, (game::kPalmAlongMetres + heldObjectMetres) * upm));
+		}
+	}
+	const NiAVObject* const weaponNode = game::FindFirstPersonNode("Weapon");
+	OBVR_LOG("Handover: at the mark - %08X held by the %s hand, its bound at %.1f %.1f %.1f, %.1f round; from its "
+	         "surface: the weapon hand's controller %.1f units, its Weapon node %.1f, its palm %.1f; the other "
+	         "hand's controller %.1f, its palm %.1f; the controllers %.1f apart",
+	         ref, held.left ? "other" : "weapon", static_cast<double>(centre.x),
+	         static_cast<double>(centre.y), static_cast<double>(centre.z), static_cast<double>(radius),
+	         static_cast<double>(gap(rightOrigin)),
+	         static_cast<double>(weaponNode != nullptr ? gap(weaponNode->worldTransform.pos) : -1.0f),
+	         static_cast<double>(palm[0]), static_cast<double>(gap(leftOrigin)), static_cast<double>(palm[1]),
+	         static_cast<double>(math::Sqrt((rightOrigin - leftOrigin).LengthSquared())));
+}
 
 // What a hand-back's verdict does this frame: the other hand's hold let go,
 // the thing taken and equipped (moved out of StepHandover, 2026-11-20).
@@ -89,10 +131,8 @@ void StepHandover(HandoverState& state, const HandStep& step, const HandShared& 
 	const bool menuIsUp = step.menuIsUp;
 	const float dt = step.dt;
 	vr::HandModeResult& handResult = shared.hand;
-	const bool rightClosedNow = handResult.rightHold && !state.rightHoldWas;
-	const bool leftClosedNow = handResult.leftHold && !state.leftHoldWas;
-	state.rightHoldWas = handResult.rightHold;
-	state.leftHoldWas = handResult.leftHold;
+	const bool rightClosedNow = handResult.rightHoldClosed;
+	const bool leftClosedNow = handResult.leftHoldClosed;
 	const bool usable = active && !menuIsUp;
 	// The ordinary grab's thing, the other hand closing: ours from here.
 	if (usable && links.inventoryHold.ref == 0 && state.handBack.ref == 0 && !links.weaponPullGrab && !links.weaponPullTaking) {
@@ -107,6 +147,7 @@ void StepHandover(HandoverState& state, const HandStep& step, const HandShared& 
 	}
 	const float upm = config.tracker.unitsPerMetre;
 	const float reach = config.hands.handoverReachMetres * upm;
+	LogHeldThingAtMark(shared, handResult, links.inventoryHold, upm, config.hands.heldObjectMetres);
 	// The shield worn on the other hand, the weapon hand closing on it (a
 	// ball of HandoverThingMetres round that hand), not at a holster
 	// place: the shield to that hand (below). The shield has no let go of

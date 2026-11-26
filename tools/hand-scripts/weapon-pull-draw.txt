@@ -2,10 +2,12 @@
 # the sheath and drawn by the click, as before 2026-10-25.
 # A weapon pulled to the hand and equipped on arrival ([Hands] PullToHand,
 # game/WeaponGrab.h): an Iron Longsword dropped at the feet, the weapon hand
-# held 0.2 m off its model and 0.37 m off its grip - beyond the grab's reach,
+# held off its grip - beyond the grab's reach,
 # within the pull's - the fingers closed: the sword floats to the hand as
 # every item does, and in the hand it is taken, equipped and drawn (the
 # tester, 2026-10-24: "sofort ausrüsten").
+# The hand at -1.31, as in weapon-pull.txt: [Head] RealHeight puts the hands 5.9 units lower in the
+# harness since 2026-11-08, and at -1.40 the hold took the weapon at once, no pull.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-pull-draw.txt --run-timeout 120 --headless
 
 ini Hands Enabled=1
@@ -31,7 +33,7 @@ reject the weapon was not on the hand
 
 wait 15
 head pitch -50
-right pos 0.05 -1.40 -0.80
+right pos 0.05 -1.31 -0.80
 right rot -80 0 0
 wait 1.5
 mark near

@@ -1264,15 +1264,15 @@ namespace {
 void LogBodyTrace(const BodyArmsFrame& f) {
 	const NiPoint3 root = g_frame.bone[kRoot] != nullptr ? g_frame.bone[kRoot]->worldTransform.pos
 	                                                     : NiPoint3{0.0f, 0.0f, 0.0f};
-	char arms[2][160];
-	for (UInt32 side = 0; side < 2; ++side) {
+	char arms[2][224];
+	for (UInt32 side = 0; side < 2; ++side) {  // the target (the first-person hand reached) against the root
 		const ArmStats& a = g_frame.arm[side];
-		std::snprintf(arms[side], sizeof(arms[side]),
-		              "%s f%d d%.3f bend %.2f pole %.3f %.3f %.3f mv%d clav %.2f off %.2f", side == 0 ? "R" : "L",
+		std::snprintf(arms[side], sizeof(arms[side]), "%s f%d d%.3f bend %.2f pole %.3f %.3f %.3f mv%d clav %.2f off %.2f tgt %.2f %.2f %.2f", side == 0 ? "R" : "L",
 		              a.follows ? 1 : 0, static_cast<double>(a.reachRatio), static_cast<double>(a.bendDegrees),
 		              static_cast<double>(a.pole.x), static_cast<double>(a.pole.y), static_cast<double>(a.pole.z),
 		              a.elbowMoved ? 1 : 0, static_cast<double>(a.clavicleDegrees),
-		              static_cast<double>(ik::Length(a.wrist - a.target)));
+		              static_cast<double>(ik::Length(a.wrist - a.target)), static_cast<double>(a.target.x - root.x),
+		              static_cast<double>(a.target.y - root.y), static_cast<double>(a.target.z - root.z));
 	}
 	// Each leg against the root: the foot as the animation left it, the
 	// foot, the knee and the hip as the frame leaves them.
