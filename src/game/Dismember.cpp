@@ -14,34 +14,21 @@
 #include "game/GameAddresses.h"
 #include "game/GameSound.h"
 #include "game/Blood.h"
+#include "game/CutJoints.h"
 #include "game/CutSideLogic.h"
+#include "game/CutSkeletonLogic.h"
+#include "game/CutSkinSpan.h"
 #include "game/DismemberCaps.h"
 #include "game/FakeBone.h"
 #include "game/RefFingerprint.h"
 #include "game/GameTypes.h"
 #include "game/GrabPhysics.h"
-#include "game/NeckReach.h"
 #include "game/RagdollHold.h"
 #include "game/SkinRead.h"
 #include "game/WalkersLink.h"
 
 namespace obvr::game {
 namespace {
-
-constexpr UInt32 kCollisionObjectOf = 0x0047FAC0;  // cdecl(node)
-constexpr UInt8 kCollisionObjectOfBytes[] = {0x8B, 0x44, 0x24, 0x04, 0x56, 0x8B, 0xB0, 0xA8};
-constexpr UInt32 kConstraintRemove = 0x008A0760;  // bhkConstraint vtable +0x60, thiscall(this) -> bool
-constexpr UInt8 kConstraintRemoveBytes[] = {0x53, 0x56, 0x8B, 0xF1, 0x8B, 0x06, 0x8B, 0x50, 0x58};
-constexpr UInt32 kConstraintRemoveSlot = 0x60;
-constexpr UInt32 kListRemoveNode = 0x0067A850;  // thiscall(node): the node's item out of the list
-constexpr UInt8 kListRemoveNodeBytes[] = {0x56, 0x8B, 0xF1, 0x57, 0x8B, 0x7E, 0x04, 0x85, 0xFF};
-constexpr UInt32 kCollisionBody = 0x10;       // collision object -> bhkRigidBody
-constexpr UInt32 kBodyConstraintList = 0x10;  // bhkRigidBody -> its list's inline first node
-constexpr UInt32 kConstraintInstance = 0x08;  // bhkConstraint -> hkConstraintInstance
-constexpr UInt32 kInstanceOwner = 0x08;       // non-null while in a world
-constexpr UInt32 kInstanceEntityA = 0x10;
-constexpr UInt32 kInstanceEntityB = 0x14;
-constexpr UInt32 kEntityWrapper = 0x0C;
 
 constexpr UInt32 kGeometrySkinInstance = 0xB8;
 constexpr UInt32 kSkinInstanceData = 0x08;
@@ -53,18 +40,6 @@ constexpr float kCollapsedScale = 0.001f;
 
 bool LooksLikeObject(UInt32 p) { return mem::LooksLikeObjectAddress(p); }
 UInt32 Read(UInt32 a) { return *reinterpret_cast<const UInt32*>(a); }
-
-bool Verified() {
-	static int verified = 0;
-	if (verified == 0) {
-		const bool ok = mem::Verify(kCollisionObjectOf, kCollisionObjectOfBytes, sizeof(kCollisionObjectOfBytes)) &&
-		                mem::Verify(kConstraintRemove, kConstraintRemoveBytes, sizeof(kConstraintRemoveBytes)) &&
-		                mem::Verify(kListRemoveNode, kListRemoveNodeBytes, sizeof(kListRemoveNodeBytes));
-		verified = ok ? 1 : -1;
-		OBVR_LOG("Dismember: the engine's joint and list functions %s", ok ? "as read" : "NOT as read - no cut");
-	}
-	return verified > 0;
-}
 
 // The cuts' own bones (game/FakeBone.h): with a stand-in parent each.
 using FakeNode = FakeBone;
@@ -78,7 +53,8 @@ struct Cut {
 	CutPart part = CutPart::Head;  // the head at the neck, or a hand at its wrist
 	UInt32 root = 0;
 	NiAVObject* head = nullptr;
-	NiAVObject* neck = nullptr;  // Neck1, or Spine2 without one
+	NiAVObject* neck = nullptr;  // the stump's bone: the head's parent (Neck1, a goblin's Neck), a limb's named one
+	NiAVObject* joint = nullptr;  // the body it was joined to (Spine2, an ogre's Spine1): the bound's side, the rescans
 	NiAVObject* neckTop = nullptr;   // Bip01 Neck1, or null (counted as the head's bones)
 	NiAVObject* neckBase = nullptr;  // Bip01 Neck, or null
 	NiAVObject* other = nullptr;  // a hand cut: the other hand (its bones stay; SwapBoneOnPartSide)
@@ -172,6 +148,11 @@ NiAVObject* Named(UInt32 root, const char* name) {
 	return LooksLikeObject(reinterpret_cast<UInt32>(node)) ? node : nullptr;
 }
 
+// A bone's parent when it reads, else null.
+NiAVObject* ParentOf(const NiAVObject* node) {
+	return node != nullptr && LooksLikeObject(reinterpret_cast<UInt32>(node->parent)) ? node->parent : nullptr;
+}
+
 bool IsUnder(const NiAVObject* node, const NiAVObject* ancestor);
 
 // A bone on the cut limb's own side: under the first of its ancestors that
@@ -199,63 +180,6 @@ bool IsUnder(const NiAVObject* node, const NiAVObject* ancestor) {
 	return false;
 }
 
-UInt32 WrapperOf(const NiAVObject* node) {
-	using CollisionOfFn = UInt32(__cdecl*)(const NiAVObject* node);
-	const UInt32 collision = reinterpret_cast<CollisionOfFn>(kCollisionObjectOf)(node);
-	return LooksLikeObject(collision) ? Read(collision + kCollisionBody) : 0;
-}
-
-// The head's joints to Spine2 taken out of the world and out of its list.
-UInt32 ReleaseNeckJoints(const NiAVObject* head, const NiAVObject* spine2) {
-	const UInt32 wrapper = WrapperOf(head);
-	const UInt32 spineWrapper = WrapperOf(spine2);
-	if (!LooksLikeObject(wrapper) || !LooksLikeObject(spineWrapper)) {
-		return 0;
-	}
-	using LockFn = void(__thiscall*)(void* lock);
-	using RemoveFn = UInt8(__thiscall*)(void* constraint);
-	using ListRemoveFn = void(__thiscall*)(void* node);
-	void* const lock = reinterpret_cast<void*>(kHavokLock);
-	UInt32 released = 0;
-	reinterpret_cast<LockFn>(kHavokLockEnter)(lock);
-	for (UInt32 pass = 0; pass < 8; ++pass) {
-		UInt32 node = wrapper + kBodyConstraintList;
-		UInt32 hit = 0;
-		for (UInt32 i = 0; i < 32 && node != 0; ++i) {
-			const UInt32 item = Read(node);
-			if (LooksLikeObject(item) && LooksLikeObject(Read(item)) &&
-			    Read(Read(item) + kConstraintRemoveSlot) == kConstraintRemove) {
-				const UInt32 instance = Read(item + kConstraintInstance);
-				if (LooksLikeObject(instance)) {
-					const UInt32 a = Read(instance + kInstanceEntityA);
-					const UInt32 b = Read(instance + kInstanceEntityB);
-					const UInt32 aw = LooksLikeObject(a) ? Read(a + kEntityWrapper) : 0;
-					const UInt32 bw = LooksLikeObject(b) ? Read(b + kEntityWrapper) : 0;
-					if (aw == spineWrapper || bw == spineWrapper) {
-						hit = node;
-						break;
-					}
-				}
-			}
-			const UInt32 next = Read(node + 4);
-			node = LooksLikeObject(next) ? next : 0;
-		}
-		if (hit == 0) {
-			break;
-		}
-		const UInt32 item = Read(hit);
-		const UInt32 instance = Read(item + kConstraintInstance);
-		InterlockedIncrement(reinterpret_cast<volatile LONG*>(item + 4));  // kept: a queued removal may still read it
-		if (Read(instance + kInstanceOwner) != 0) {
-			reinterpret_cast<RemoveFn>(kConstraintRemove)(reinterpret_cast<void*>(item));
-		}
-		reinterpret_cast<ListRemoveFn>(kListRemoveNode)(reinterpret_cast<void*>(hit));
-		++released;
-	}
-	reinterpret_cast<LockFn>(kHavokLockLeave)(lock);
-	return released;
-}
-
 struct SwapCount {
 	char names[320] = {};
 	char parted[200] = {};  // the bones of the part's side shapes sent to the part, once each
@@ -281,36 +205,99 @@ void NoteParted(SwapCount& n, const NiAVObject* bone) {
 	}
 }
 
-void SwapShape(UInt32 geometry, bool headSide, Cut& c, SwapCount& n) {
+// The other limb's bones: its match, under it, or holding it and not the
+// cut one (SwapBoneOnPartSide's inOther).
+bool InOther(const NiAVObject* b, const Cut& c) {
+	if (c.part == CutPart::Head || c.other == nullptr) {
+		return false;
+	}
+	return b == c.other || IsUnder(b, c.other) || (IsUnder(c.other, b) && !IsUnder(c.head, b));
+}
+
+// What a bone is to the cut (DismemberLogic.h SwapBoneOnPartSide's inputs).
+struct BoneFacts {
+	bool isHead = false;
+	bool underHead = false;
+	bool holdsPart = false;
+	bool holdsOther = false;
+	bool underStump = false;
+	bool other = false;
+};
+
+BoneFacts FactsOf(const NiAVObject* b, const Cut& c) {
+	const bool headCut = c.part == CutPart::Head;
+	BoneFacts f;
+	f.isHead = b == c.head;
+	f.underHead = !f.isHead && IsUnder(b, c.head);
+	f.holdsPart = !headCut && IsUnder(c.head, b);
+	f.holdsOther = !headCut && c.other != nullptr && IsUnder(c.other, b);
+	f.underStump = !headCut && OnCutLimb(b, c);
+	f.other = InOther(b, c);
+	return f;
+}
+
+// A shape's bone list (its NiSkinInstance's, +0x14) and its count, or null.
+UInt32* BonesOfShape(UInt32 geometry, UInt32& count) {
+	count = 0;
 	const UInt32 skin = Read(geometry + kGeometrySkinInstance);
-	if (!LooksLikeObject(skin)) {
-		return;
-	}
-	const UInt32 data = Read(skin + kSkinInstanceData);
-	const UInt32 bones = Read(skin + kSkinInstanceBones);
+	const UInt32 data = LooksLikeObject(skin) ? Read(skin + kSkinInstanceData) : 0;
+	const UInt32 bones = LooksLikeObject(skin) ? Read(skin + kSkinInstanceBones) : 0;
 	if (!LooksLikeObject(data) || !LooksLikeObject(bones)) {
+		return nullptr;
+	}
+	count = Read(data + kSkinDataBoneCount);
+	return count == 0 || count > kMaxBones ? nullptr : reinterpret_cast<UInt32*>(bones);
+}
+
+bool ShapeHasOther(const UInt32* bone, UInt32 count, const Cut& c) {
+	for (UInt32 i = 0; i < count; ++i) {
+		if (LooksLikeObject(bone[i]) && InOther(reinterpret_cast<const NiAVObject*>(bone[i]), c)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// A shape a limb cut's bone rule took for the part's: whether its skin, taken
+// whole to the part, would stretch (CutSkeletonLogic.h): which of its bones
+// go with the part, then its weights. A cut's own node or one of another cut
+// counts as staying.
+SpanRead PartSideSpans(UInt32 geometry, const Cut& c, UInt32& spanning) {
+	spanning = 0;
+	UInt32 count = 0;
+	const UInt32* const bone = BonesOfShape(geometry, count);
+	if (bone == nullptr) {
+		return SpanRead::Unread;
+	}
+	const bool hasOther = ShapeHasOther(bone, count, c);
+	bool flies[kMaxBones] = {};
+	bool anyFlies = false;
+	bool anyStays = false;
+	for (UInt32 i = 0; i < count; ++i) {
+		if (LooksLikeObject(bone[i]) && !IsCutNode(bone[i])) {
+			const BoneFacts f = FactsOf(reinterpret_cast<const NiAVObject*>(bone[i]), c);
+			flies[i] = PartSideBoneFlies(false, f.isHead, f.underHead, f.holdsPart, f.holdsOther, f.underStump, f.other,
+			                             hasOther);
+		}
+		anyFlies = anyFlies || flies[i];
+		anyStays = anyStays || !flies[i];
+	}
+	if (!SpanPossible(anyFlies, anyStays)) {
+		return SpanRead::None;
+	}
+	return ShapeSpansCut(geometry, flies, count, spanning);
+}
+
+void SwapShape(UInt32 geometry, bool headSide, Cut& c, SwapCount& n) {
+	UInt32 count = 0;
+	UInt32* const bone = BonesOfShape(geometry, count);
+	if (bone == nullptr) {
 		return;
 	}
-	const UInt32 count = Read(data + kSkinDataBoneCount);
-	if (count == 0 || count > kMaxBones) {
-		return;
-	}
-	UInt32* const bone = reinterpret_cast<UInt32*>(bones);
 	const UInt32 bodyFake = reinterpret_cast<UInt32>(c.bodySide.bytes);
 	const UInt32 headFake = reinterpret_cast<UInt32>(c.headSide.bytes);
-	const bool headCutHere = c.part == CutPart::Head;
-	// The other limb's bones: its match, under it, or holding it and not the
-	// cut one (SwapBoneOnPartSide's inOther); whether the shape has any.
-	const auto inOther = [&](const NiAVObject* b) {
-		if (headCutHere || c.other == nullptr) {
-			return false;
-		}
-		return b == c.other || IsUnder(b, c.other) || (IsUnder(c.other, b) && !IsUnder(c.head, b));
-	};
-	bool shapeHasOther = false;
-	for (UInt32 i = 0; headSide && i < count && !shapeHasOther; ++i) {
-		shapeHasOther = LooksLikeObject(bone[i]) && inOther(reinterpret_cast<const NiAVObject*>(bone[i]));
-	}
+	const bool headCut = c.part == CutPart::Head;
+	const bool shapeHasOther = headSide && ShapeHasOther(bone, count, c);
 	bool any = false;
 	for (UInt32 i = 0; i < count; ++i) {
 		const NiAVObject* const b = reinterpret_cast<const NiAVObject*>(bone[i]);
@@ -321,20 +308,14 @@ void SwapShape(UInt32 geometry, bool headSide, Cut& c, SwapCount& n) {
 		if (!LooksLikeObject(bone[i]) || bone[i] == bodyFake || bone[i] == headFake || IsCutNode(bone[i])) {
 			continue;
 		}
-		const bool isHead = b == c.head;
-		const bool underHead = !isHead && IsUnder(b, c.head);
-		const bool headCut = c.part == CutPart::Head;
-		const bool holdsPart = !headCut && IsUnder(c.head, b);
-		const bool holdsOther = !headCut && c.other != nullptr && IsUnder(c.other, b);
-		const bool underStump = !headCut && OnCutLimb(b, c);
-		const bool other = inOther(b);
-		if (headSide &&
-		    PartSideBoneLeftBehind(headCut, isHead, underHead, holdsPart, holdsOther, underStump, other, shapeHasOther)) {
+		const BoneFacts f = FactsOf(b, c);
+		if (headSide && PartSideBoneLeftBehind(headCut, f.isHead, f.underHead, f.holdsPart, f.holdsOther, f.underStump,
+		                                       f.other, shapeHasOther)) {
 			++n.leftBehind;
 		}
-		if (headSide ? SwapBoneOnPartSide(headCut, isHead, underHead, holdsPart, holdsOther, underStump, other,
-		                                  shapeHasOther)
-		             : SwapBoneOnBodySide(isHead, underHead)) {
+		if (headSide ? SwapBoneOnPartSide(headCut, f.isHead, f.underHead, f.holdsPart, f.holdsOther, f.underStump,
+		                                  f.other, shapeHasOther)
+		             : SwapBoneOnBodySide(f.isHead, f.underHead)) {
 			if (headSide) {
 				NoteParted(n, b);
 			}
@@ -397,6 +378,39 @@ bool HeadShape(const NiAVObject* shape, const NiPoint3& head, const NiPoint3& sp
 	return (c - head).LengthSquared() < (c - spine2).LengthSquared();
 }
 
+// A shape's side of the cut: under the part's node the part's; else by the
+// cut nodes it holds, its bones or its bound (ShapeSideFor); and a limb cut's
+// shape the bones give the part only when nothing of it would stretch
+// (CutSkeletonLogic.h LimbShapeSideFor) - else the body's, drawn again for the part.
+ShapeSide SideOfShape(const NiAVObject* node, bool inHead, const Cut& c, const NiPoint3& joint, UInt32 partBones,
+                      UInt32 bones, bool holdsPart, bool holdsStump, const char* shapeName) {
+	if (inHead) {
+		return ShapeSide::Part;
+	}
+	const ShapeSide byBones =
+		ShapeSideFor(holdsPart, holdsStump, partBones, bones, HeadShape(node, c.head->worldTransform.pos, joint));
+	const bool headCut = c.part == CutPart::Head;
+	if (!SpanWanted(byBones, headCut, holdsPart || holdsStump, bones > 0)) {
+		return byBones;
+	}
+	UInt32 spanning = 0;
+	const SpanRead span = PartSideSpans(reinterpret_cast<UInt32>(node), c, spanning);
+	const ShapeSide side = LimbShapeSideFor(byBones, headCut, false, span);
+	static UInt32 s_lines = 32;
+	if (side != byBones && s_lines > 0) {
+		--s_lines;
+		char why[96] = "its skin's weights did not read";
+		if (span == SpanRead::Spans) {
+			std::snprintf(why, sizeof(why), "taken whole, %u of its vertices would hang on both the part and the body and stretch",
+			              spanning);
+		}
+		OBVR_LOG("Dismember: %08X's %s - \"%s\" (%u of its %u bones the part's) stays the body's and is drawn again for "
+		         "the part: %s",
+		         c.actor, CutPartName(c.part), shapeName != nullptr ? shapeName : "?", partBones, bones, why);
+	}
+	return side;
+}
+
 void SwapSkins(const NiAVObject* node, bool underHead, Cut& c, const NiPoint3& spine2, SwapCount& n,
                UInt32 depth) {
 	if (!LooksLikeObject(reinterpret_cast<UInt32>(node)) || depth > kMaxDepth) {
@@ -421,11 +435,10 @@ void SwapSkins(const NiAVObject* node, bool underHead, Cut& c, const NiPoint3& s
 		bool holdsPart = false;
 		bool holdsStump = false;
 		CountShapeBones(reinterpret_cast<UInt32>(node), c, headBones, bones, holdsPart, holdsStump);
-		const bool headSide = inHead || ShapeSideFor(holdsPart, holdsStump, headBones, bones,
-		                                             HeadShape(node, c.head->worldTransform.pos, spine2)) == ShapeSide::Part;
 		const char* const shapeName = LooksLikeObject(reinterpret_cast<UInt32>(node->name) & ~3u) ? node->name : nullptr;
+		const ShapeSide side = SideOfShape(node, inHead, c, spine2, headBones, bones, holdsPart, holdsStump, shapeName);
+		const bool headSide = side == ShapeSide::Part;
 		const bool decal = IsDecalShapeName(shapeName);
-		const ShapeSide side = headSide ? ShapeSide::Part : ShapeSide::Body;
 		if (PartCopyWanted(c.part == CutPart::Head, side, headBones, decal)) {
 			AddPartCopy(n.copies, node, c.head, reinterpret_cast<UInt32>(c.headSide.bytes));  // before the swap: its bones still real
 		} else if (decal && PartCopyWanted(c.part == CutPart::Head, side, headBones, false)) {
@@ -565,86 +578,6 @@ Cut* Find(UInt32 actor, CutPart part) {
 
 }  // namespace
 
-bool LoadedActorIsDead(UInt32 actor) {
-	RosterActor actors[64];
-	const UInt32 n = CollectLoadedActors(actors, 64);
-	for (UInt32 i = 0; i < n; ++i) {
-		if (actors[i].ref == actor) {
-			return actors[i].dead;
-		}
-	}
-	return false;
-}
-
-bool ActorIsEssential(UInt32 actor) {
-	const UInt32 base = LooksLikeObject(actor) ? Read(actor + addr::kRefBaseFormOffset) : 0;
-	return LooksLikeObject(base) && ActorBaseFlagsEssential(Read(base + kEssentialFlagsOffset));
-}
-
-UInt32 CollectNecks(const NiPoint3& around, float within, NeckOf* out, UInt32 most, NeckParts parts) {
-	RosterActor actors[64];
-	const UInt32 n = CollectLoadedActors(actors, 64);
-	NeckRule& rule = TheNeckRule();
-	const bool check = BeginNeckCall(rule, n);
-	UInt32 found = 0;
-	for (UInt32 i = 0; i < n && found < most; ++i) {
-		const UInt32 actor = actors[i].ref;
-		const UInt32 root = LooksLikeObject(actor) ? Read(actor + addr::kRefNiNodeOffset) : 0;
-		if (!LooksLikeObject(root)) {
-			continue;
-		}
-		// By its 3D's bound first (NeckReachLogic.h): the names are a walk of
-		// the whole 3D each.
-		const NiBound bound = reinterpret_cast<const NiAVObject*>(root)->worldBound;
-		const NeckAsk ask = AsksBones(bound.center, bound.radius, around, within, check);
-		if (ask == NeckAsk::No) {
-			continue;
-		}
-		++rule.asked;
-		// The head first: most of those asked are out of reach by it, and
-		// every name is a walk.
-		NiAVObject* const head = Named(root, "Bip01 Head");
-		if (head == nullptr || (head->worldTransform.pos - around).LengthSquared() > within * within) {
-			continue;
-		}
-		NiAVObject* const spine = Named(root, "Bip01 Spine2");
-		if (spine == nullptr) {
-			continue;
-		}
-		NeckTaken(rule, actor, bound, head->worldTransform.pos, ask == NeckAsk::YesToCheck);
-		NeckOf& k = out[found++];
-		k = NeckOf{};
-		k.actor = actor;
-		k.dead = actors[i].dead;
-		k.low = spine->worldTransform.pos;
-		k.high = head->worldTransform.pos;
-		if (parts == NeckParts::NeckOnly) {
-			continue;
-		}
-		for (UInt32 p = 0; p < kCutPartCount; ++p) {
-			const CutPartBones bones = BonesOfCut(static_cast<CutPart>(p));
-			NiAVObject* const joint = IsLimbCut(static_cast<CutPart>(p)) ? Named(root, bones.part) : nullptr;
-			NiAVObject* const next = joint != nullptr ? Named(root, bones.next) : nullptr;
-			k.hasLimb[p] = next != nullptr;
-			if (k.hasLimb[p]) {
-				k.limbJoint[p] = joint->worldTransform.pos;
-				k.limbNext[p] = next->worldTransform.pos;
-			}
-		}
-		for (UInt32 side = 0; side < 2; ++side) {
-			NiAVObject* const forearm = Named(root, side == 0 ? "Bip01 L Forearm" : "Bip01 R Forearm");
-			NiAVObject* const hand = Named(root, side == 0 ? "Bip01 L Hand" : "Bip01 R Hand");
-			k.hasWrist[side] = forearm != nullptr && hand != nullptr;
-			if (k.hasWrist[side]) {
-				k.wristLow[side] = forearm->worldTransform.pos;
-				k.wristHigh[side] = hand->worldTransform.pos;
-			}
-		}
-	}
-	SayNeckRule(rule);
-	return found;
-}
-
 bool HeadIsCut(UInt32 actor) { return Find(actor, CutPart::Head) != nullptr; }
 
 bool PartIsCut(UInt32 actor, CutPart part) { return Find(actor, part) != nullptr; }
@@ -664,7 +597,7 @@ bool CutHead(UInt32 actor, const NiPoint3& pushUnits, char* why, UInt32 whySize,
 
 // Why a part is not cut before its bones are looked at, or nullptr.
 static const char* CutRefusedBefore(UInt32 actor, CutPart part) {
-	if (!Verified()) {
+	if (!CutJointsVerified()) {
 		return "the engine's functions are not as read";
 	}
 	if (Find(actor, part) != nullptr) {
@@ -678,6 +611,33 @@ static const char* CutRefusedBefore(UInt32 actor, CutPart part) {
 	return nullptr;
 }
 
+// The cut's bones as this skeleton has them (CutSkeletonLogic.h; the names
+// are the human skeleton's, DismemberLogic.h BonesOfCut): the part, the body
+// it is joined to, the bone the stump follows. False when the part or a body
+// to join it to is not there.
+static bool CutBonesOf(UInt32 root, CutPart part, NiAVObject*& head, NiAVObject*& joint, NiAVObject*& stump) {
+	const CutPartBones bones = BonesOfCut(part);
+	head = Named(root, bones.part);
+	if (head == nullptr) {
+		return false;
+	}
+	NiAVObject* const named = Named(root, bones.stump);
+	NiAVObject* const parent = ParentOf(head);
+	const StumpFrom from = StumpBoneFrom(part == CutPart::Head, named != nullptr, parent != nullptr);
+	stump = from == StumpFrom::Named ? named : (from == StumpFrom::Parent ? parent : nullptr);
+	NiAVObject* const namedJoint = Named(root, bones.joint);
+	NiAVObject* const stumpParent = ParentOf(stump);
+	const JointFrom jointFrom = JointBoneFrom(namedJoint != nullptr, stumpParent != nullptr);
+	joint = jointFrom == JointFrom::Named ? namedJoint : (jointFrom == JointFrom::StumpParent ? stumpParent : nullptr);
+	if (joint == nullptr) {
+		return false;
+	}
+	if (stump == nullptr) {
+		stump = joint;
+	}
+	return true;
+}
+
 bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why, UInt32 whySize, bool redo) {
 	auto say = [&](const char* text) {
 		std::snprintf(why, whySize, "%s", text);
@@ -688,18 +648,14 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 	}
 	const UInt32 root = LooksLikeObject(actor) ? Read(actor + addr::kRefNiNodeOffset) : 0;
 	// The part's bones (variables named for the head, the first part): the
-	// part, the body its joint holds it to, the bone the stump follows
-	// (DismemberLogic.h BonesOfCut).
+	// part, the body its joint holds it to, the bone the stump follows.
 	const bool isHead = part == CutPart::Head;
 	const CutPartBones bones = BonesOfCut(part);
-	NiAVObject* const head = Named(root, bones.part);
-	NiAVObject* const spine2 = Named(root, bones.joint);
-	NiAVObject* neck = Named(root, bones.stump);
-	if (head == nullptr || spine2 == nullptr) {
+	NiAVObject* head = nullptr;
+	NiAVObject* spine2 = nullptr;
+	NiAVObject* neck = nullptr;
+	if (!CutBonesOf(root, part, head, spine2, neck)) {
 		return say("the part's bone or its joint's body is not in its skeleton");
-	}
-	if (neck == nullptr) {
-		neck = spine2;
 	}
 	if (!RoomForACut()) {
 		return say("DismemberMostCuts cuts standing - no room");
@@ -708,7 +664,7 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 	if (slot == nullptr) {
 		return say("all cut slots taken - no room");
 	}
-	const UInt32 joints = ReleaseNeckJoints(head, spine2);
+	const UInt32 joints = ReleasePartJoints(head);
 	Cut& c = *slot;
 	c.actor = actor;
 	c.world = CurrentWorld();
@@ -717,6 +673,7 @@ bool CutPartOff(UInt32 actor, CutPart part, const NiPoint3& pushUnits, char* why
 	c.root = root;
 	c.head = head;
 	c.neck = neck;
+	c.joint = spine2;
 	c.neckTop = isHead ? Named(root, "Bip01 Neck1") : nullptr;
 	c.neckBase = isHead ? Named(root, "Bip01 Neck") : nullptr;
 	c.other = bones.other != nullptr ? Named(root, bones.other) : nullptr;
@@ -945,7 +902,8 @@ void StepCuts(const CutSettings& settings, float dtSeconds) {
 		Place(c);
 		Bleed(c, settings, dtSeconds);
 		// Shapes drawn after the cut (CutRescanDue): their part's bones too.
-		const NiAVObject* const joint = CutRescanDue(c.rescanSeconds, dtSeconds) ? Named(root, BonesOfCut(c.part).joint) : nullptr;
+		const NiAVObject* const joint =
+			CutRescanDue(c.rescanSeconds, dtSeconds) && LooksLikeObject(reinterpret_cast<UInt32>(c.joint)) ? c.joint : nullptr;
 		if (joint != nullptr) {
 			SwapCount n;
 			SwapSkins(reinterpret_cast<const NiAVObject*>(root), false, c, joint->worldTransform.pos, n, 0);

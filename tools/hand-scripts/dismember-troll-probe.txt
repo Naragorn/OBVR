@@ -1,0 +1,54 @@
+# A probe, not a pass/fail of a fix: a troll's head is part of its body's one
+# skinned mesh (troll.nif: 1088 of its 5476 vertices mostly on the head bone or
+# under it, pyffi) and its joint goes to Spine2, so it was cut before
+# 2026-11-26 as now: the joint released, the head bone sent off - and the
+# body's shape, the body's by its bones, collapses the head's vertices into the
+# stump (docs/dismemberment-spec.md, "2026-11-26: creatures", open). The
+# pictures at cut_07 and end show what is left. CreatureTroll (00002DBC)
+# placed 250 units ahead, killed, its head cut by [Debug] TestCut.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/dismember-troll-probe.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Hands Dismemberment=1
+ini Debug TestCut=1
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme 00002DBC 1 250 0
+console-at kill killall
+
+expect HandScript: finished
+expect Dismember: the engine's joint and list functions as read
+expect Dismember: test cut at the mark - cut
+expect 's head cut - 1 neck joint(s) released
+expect woken and sent off
+expect Dismember: at the mark "cut_07"
+expect Troll01:0(body
+reject HandScript: WARNING
+reject Necks: the bound left out
+reject - its cut forgotten
+reject CRASH
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 0.5
+mark placed
+wait 1
+mark kill
+wait 3
+head pitch -25
+wait 0.5
+mark lying
+wait 0.5
+mark cut
+wait 0.2
+mark cut_02
+wait 0.5
+mark cut_07
+wait 1.5
+mark end

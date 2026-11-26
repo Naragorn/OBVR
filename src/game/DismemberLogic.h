@@ -142,6 +142,10 @@ struct CutInput {
 	bool limb = false;        // a hand, an arm or a leg, not the head
 	bool twoHanded = false;   // a two-handed blade
 	float speedMetres = 0.0f;
+	// This swing cut another part of them already (CutStrokeLogic.h: one part
+	// of a body a swing - the tester, 2026-11-26: "kopf UND arm ... obwohl nur
+	// kopf sollte").
+	bool swingTookAnother = false;
 };
 
 // The speed a cut wants (CutSettings): the neck's or a limb's, a two-handed
@@ -152,7 +156,7 @@ inline float CutSpeedNeeded(const CutSettings& s, bool limb, bool twoHanded) {
 	return share ? base * s.twoHandedShare : base;
 }
 
-enum class CutVerdict : UInt8 { Cut, Off, AlreadyCut, Living, Essential, NoEdge, NotOnNeck, TooSlow };
+enum class CutVerdict : UInt8 { Cut, Off, AlreadyCut, Living, Essential, NoEdge, NotOnNeck, TooSlow, SwingTookAnother };
 
 inline const char* CutVerdictName(CutVerdict v) {
 	switch (v) {
@@ -164,6 +168,7 @@ inline const char* CutVerdictName(CutVerdict v) {
 		case CutVerdict::NoEdge: return "no edge";
 		case CutVerdict::NotOnNeck: return "not the neck";
 		case CutVerdict::TooSlow: return "too slow";
+		case CutVerdict::SwingTookAnother: return "this swing took another part of theirs already";
 	}
 	return "?";
 }
@@ -174,6 +179,9 @@ inline CutVerdict DecideCut(const CutSettings& s, const CutInput& in) {
 	}
 	if (in.alreadyCut) {
 		return CutVerdict::AlreadyCut;
+	}
+	if (in.swingTookAnother) {
+		return CutVerdict::SwingTookAnother;
 	}
 	// The essential never lose a part: at no health they lie unconscious and
 	// read dead (camera/FrameLogic.h), so this comes before the death.

@@ -20,7 +20,9 @@ namespace obvr::camera::hands {
 // essential one never loses a part), and the blade's edge and speed; on
 // the neck or the wrist - the caller says otherwise. `limb`: a hand, an arm
 // or a leg (DismemberLimbMinSpeed); a two-handed blade drawn cuts easier.
-static game::CutInput CutInputOf(UInt32 actor, bool alreadyCut, bool dead, bool edge, float speed, bool limb) {
+// And whether this swing cut another part of them already (CutStrokeLogic.h).
+static game::CutInput CutInputOf(const DismemberState& state, UInt32 actor, bool alreadyCut, bool dead, bool edge,
+                                 float speed, bool limb) {
 	SInt32 type = -1;
 	game::EquippedWeaponForm(&type);
 	game::CutInput in;
@@ -33,6 +35,7 @@ static game::CutInput CutInputOf(UInt32 actor, bool alreadyCut, bool dead, bool 
 	in.edge = edge;
 	in.onNeck = true;
 	in.speedMetres = speed;
+	in.swingTookAnother = game::SwingTookPartOf(state.swingCuts, state.swingSerial, actor);
 	return in;
 }
 
@@ -45,9 +48,11 @@ static void CreditCut(const Config& config, UInt32 actor, game::DismemberBonus w
 	                           config.hands.dismemberHandSkillUses);
 }
 
-// A cut landed: felt in the weapon hand, and its extra skill.
-static void CutLanded(vr::OpenVRBackend& backend, bool rolesSwapped, const Config& config, UInt32 actor,
-                      game::DismemberBonus what) {
+// A cut landed: felt in the weapon hand, its extra skill, and this swing
+// takes no other part of theirs (CutStrokeLogic.h).
+static void CutLanded(DismemberState& state, vr::OpenVRBackend& backend, bool rolesSwapped, const Config& config,
+                      UInt32 actor, game::DismemberBonus what) {
+	game::NoteSwingCut(state.swingCuts, state.swingSerial, actor);
 	if (config.hands.hitHaptics) {
 		backend.Pulse(!rolesSwapped, 0.12f, 60.0f, 1.0f);
 	}
@@ -80,13 +85,28 @@ static void NoteBluntBlow(DismemberState& state, float stepSeconds) {
 	state.bluntAge = 0.0f;
 }
 
+// A part the blade went through that this swing keeps: it took another part
+// of theirs already (CutStrokeLogic.h). Said from a budget of its own - the
+// shared ones run out on the living's lines while a sword is drawn.
+static void SaySwingKept(DismemberState& state, UInt32 actor, game::CutPart part, float speed,
+                         game::CutVerdict verdict) {
+	if (verdict != game::CutVerdict::SwingTookAnother || state.swingLines == 0) {
+		return;
+	}
+	--state.swingLines;
+	OBVR_LOG("Dismember: swing %u through %08X's %s at %.1f m/s - kept, %s", state.swingSerial, actor,
+	         game::CutJointName(part), static_cast<double>(speed), game::CutVerdictName(verdict));
+}
+
 // A limb cut by the blade: its verdict (DismemberLogic.h DecideCut, the joint
 // for the neck), the cut, the log and the hand's pulse. Answers whether it was cut.
 static bool CutLimb(DismemberState& state, vr::OpenVRBackend& backend, const DismemberLinks& links,
                     const Config& config, UInt32 actor, game::CutPart part, bool dead, bool edge, float speed,
                     const NiPoint3& push, const char* how) {
-	const game::CutInput in = CutInputOf(actor, game::PartIsCut(actor, part), dead, edge, speed, part != game::CutPart::Head);
+	const game::CutInput in =
+		CutInputOf(state, actor, game::PartIsCut(actor, part), dead, edge, speed, part != game::CutPart::Head);
 	const game::CutVerdict verdict = game::DecideCut(config.hands.dismember, in);
+	SaySwingKept(state, actor, part, speed, verdict);
 	char why[96] = "";
 	const bool cut = verdict == game::CutVerdict::Cut && game::CutPartOff(actor, part, push, why, sizeof(why));
 	if (state.wristLines > 0 && (cut || verdict != game::CutVerdict::Cut)) {
@@ -96,7 +116,7 @@ static bool CutLimb(DismemberState& state, vr::OpenVRBackend& backend, const Dis
 		         cut ? game::CutPartName(part) : game::CutVerdictName(verdict), cut ? " off" : why);
 	}
 	if (cut) {
-		CutLanded(backend, links.rolesSwapped, config, actor, game::DismemberBonus::HandOff);
+		CutLanded(state, backend, links.rolesSwapped, config, actor, game::DismemberBonus::HandOff);
 	}
 	return cut;
 }
@@ -149,6 +169,30 @@ static void CutLimbOfKillingStrike(DismemberState& state, vr::OpenVRBackend& bac
 			}
 		}
 	}
+}
+
+// [Debug] TestCut: at the mark "cut", the nearest dead one's head not yet cut, no blade.
+static void TestCutHeadAtMark(const Config& config) {
+	if (!config.hands.testCut || !test::HandScriptMarkedThisFrame() ||
+	    std::strcmp(test::HandScriptMarkName(), "cut") != 0) {
+		return;
+	}
+	NiPoint3 feet{0.0f, 0.0f, 0.0f};
+	if (!game::PlayerWorldPosition(feet)) {
+		return;
+	}
+	game::NeckOf necks[8];
+	const UInt32 n = game::CollectNecks(feet, 400.0f, necks, 8);
+	UInt32 best = 8;
+	for (UInt32 i = 0; i < n; ++i) {
+		if (necks[i].dead && !game::HeadIsCut(necks[i].actor) &&
+		    (best == 8 || (necks[i].high - feet).LengthSquared() < (necks[best].high - feet).LengthSquared())) {
+			best = i;
+		}
+	}
+	char why[96] = "no dead actor within 400 units";
+	const bool cut = best < 8 && game::CutHead(necks[best].actor, NiPoint3{60.0f, 0.0f, 120.0f}, why, sizeof(why));
+	OBVR_LOG("Dismember: test cut at the mark - %s (%u actors near)", cut ? "cut" : why, n);
 }
 
 // [Debug] TestCut at a mark: the nearest dead one's part named by the mark
@@ -230,7 +274,7 @@ static void RememberNecks(DismemberState& state, const NiPoint3& tip) {
 	state.necksNowCount = game::kNecksNotCollected;
 }
 
-void StepDismember(DismemberState& state, const HandStep& step, const HandShared& /*shared*/,
+void StepDismember(DismemberState& state, const HandStep& step, const HandShared& shared,
                    const vr::HandModeFrame& frame, const DismemberLinks& links) {
 	const Config& config = step.config;
 	vr::OpenVRBackend& backend = step.backend;
@@ -242,26 +286,8 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 	if (test::HandScriptMarkedThisFrame()) {
 		game::LogCuts(test::HandScriptMarkName());
 	}
-	// [Debug] TestCut: at the mark "cut", the nearest dead one's head not yet cut, no blade.
-	if (config.hands.testCut && test::HandScriptMarkedThisFrame() &&
-	    std::strcmp(test::HandScriptMarkName(), "cut") == 0) {
-		NiPoint3 feet{0.0f, 0.0f, 0.0f};
-		if (game::PlayerWorldPosition(feet)) {
-			game::NeckOf necks[8];
-			const UInt32 n = game::CollectNecks(feet, 400.0f, necks, 8);
-			UInt32 best = 8;
-			for (UInt32 i = 0; i < n; ++i) {
-				if (necks[i].dead && !game::HeadIsCut(necks[i].actor) &&
-				    (best == 8 || (necks[i].high - feet).LengthSquared() < (necks[best].high - feet).LengthSquared())) {
-					best = i;
-				}
-			}
-			char why[96] = "no dead actor within 400 units";
-			const bool cut =
-				best < 8 && game::CutHead(necks[best].actor, NiPoint3{60.0f, 0.0f, 120.0f}, why, sizeof(why));
-			OBVR_LOG("Dismember: test cut at the mark - %s (%u actors near)", cut ? "cut" : why, n);
-		}
-	}
+	state.swingSerial = shared.hand.swingSerial;
+	TestCutHeadAtMark(config);
 	TestCutAtMark(config);
 	const game::CutSettings& cuts = config.hands.dismember;
 	const float stepSeconds = dt == dt && dt > 0.0f ? dt : 0.0f;
@@ -280,7 +306,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 			         static_cast<double>(waited + stepSeconds), cut ? "the killing blow cut" : "refused: ",
 			         cut ? "" : why);
 			if (cut) {
-				CutLanded(backend, links.rolesSwapped, config, actor, game::DismemberBonus::HeadOff);
+				CutLanded(state, backend, links.rolesSwapped, config, actor, game::DismemberBonus::HeadOff);
 			}
 		} else if (pending == game::PendingStep::Expired) {
 			OBVR_LOG("Dismember: %08X lived past the blow through its neck - no cut", actor);
@@ -320,7 +346,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 			const UInt32 kills = game::TakeKillingStrikes(killed, 4);
 			for (UInt32 i = 0; i < kills; ++i) {
 				const game::BodyPart part = static_cast<game::BodyPart>(killed[i].part);
-				game::CutInput in = CutInputOf(killed[i].actor, game::HeadIsCut(killed[i].actor), true, edge, speed, false);
+				game::CutInput in = CutInputOf(state, killed[i].actor, game::HeadIsCut(killed[i].actor), true, edge, speed, false);
 				bool swept = false;
 				for (UInt32 j = 0; j < state.necksBeforeCount; ++j) {
 					const game::NeckOf& was = state.necksBefore[j];
@@ -348,7 +374,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 				}
 				if (cut) {
 					state.killingBlow.armed = false;
-					CutLanded(backend, links.rolesSwapped, config, killed[i].actor, game::DismemberBonus::HeadOff);
+					CutLanded(state, backend, links.rolesSwapped, config, killed[i].actor, game::DismemberBonus::HeadOff);
 				}
 				// A blunt killing blow to the head: crushed, nothing cut -
 				// Walkers ends the walker as by a cut (DismemberLogic.h).
@@ -362,7 +388,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 				if (game::BluntGuardHolds(state.bluntActor, state.bluntAge, k.actor) || !game::NeckTouched(k.low, k.high, cuts.neckRadiusUnits, state.gripBefore, state.tipBefore, grip, tip)) {
 					continue;
 				}
-				const game::CutInput in = CutInputOf(k.actor, game::HeadIsCut(k.actor), k.dead, edge, speed, false);
+				const game::CutInput in = CutInputOf(state, k.actor, game::HeadIsCut(k.actor), k.dead, edge, speed, false);
 				const game::CutVerdict verdict = game::DecideCut(cuts, in);
 				char why[96] = "";
 				const NiPoint3 push = stepSeconds > 0.0f ? (tip - state.tipBefore) * (0.5f / stepSeconds) : NiPoint3{};
@@ -382,7 +408,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 				state.lastActor = k.actor;
 				state.lastVerdict = verdict;
 				if (cut) {
-					CutLanded(backend, links.rolesSwapped, config, k.actor, game::DismemberBonus::HeadOff);
+					CutLanded(state, backend, links.rolesSwapped, config, k.actor, game::DismemberBonus::HeadOff);
 				}
 			}
 			// The hands at their wrists (Nadi, 2026-10-31: "7 ... go"): the same
@@ -400,8 +426,9 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 						continue;
 					}
 					const game::CutPart part = side == 0 ? game::CutPart::LeftHand : game::CutPart::RightHand;
-					const game::CutInput in = CutInputOf(k.actor, game::PartIsCut(k.actor, part), k.dead, edge, speed, true);
+					const game::CutInput in = CutInputOf(state, k.actor, game::PartIsCut(k.actor, part), k.dead, edge, speed, true);
 					const game::CutVerdict verdict = game::DecideCut(cuts, in);
+					SaySwingKept(state, k.actor, part, speed, verdict);
 					char why[96] = "";
 					const NiPoint3 push = (tip - state.tipBefore) * (0.5f / stepSeconds);
 					const bool cut = verdict == game::CutVerdict::Cut &&
@@ -413,7 +440,7 @@ void StepDismember(DismemberState& state, const HandStep& step, const HandShared
 						         edge ? "an edge" : "no edge", game::CutVerdictName(verdict), cut ? "" : why);
 					}
 					if (cut) {
-						CutLanded(backend, links.rolesSwapped, config, k.actor, game::DismemberBonus::HandOff);
+						CutLanded(state, backend, links.rolesSwapped, config, k.actor, game::DismemberBonus::HandOff);
 					}
 				}
 			}

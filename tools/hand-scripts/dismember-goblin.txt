@@ -1,0 +1,59 @@
+# A goblin's head comes off (the tester, 2026-11-26: "beheadden für ... goblins
+# ... kam nix. bei goblins blieb der kopf dran"; docs/dismemberment-spec.md,
+# "2026-11-26: creatures"). CGGoblinPATROL01 (0003B525, the base of the
+# tester's goblin 2B009318) placed 200 units ahead and killed (killall), and
+# at the mark "cut" [Debug] TestCut cuts the nearest dead one's head without a
+# blade. The goblin's skeleton.nif holds the head's ragdoll joint to its
+# Neck's body, not to Spine2, and has no Neck1 (game/CutSkeletonLogic.h): the
+# cut looked for a joint to Spine2 and released none - "0 neck joint(s)
+# released", the head stayed on (OBVR.log 2026-11-26 line 24995). Now the
+# joint the head's own body holds is released and the stump follows its Neck.
+# The mark lines say how far the head lies from the cut ("Dismember: at the
+# mark"): the head stays at the cut while its joint holds.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/dismember-goblin.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Hands Dismemberment=1
+ini Debug TestCut=1
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme 0003B525 1 200 0
+console-at kill killall
+
+expect HandScript: finished
+expect Dismember: the engine's joint and list functions as read
+expect Dismember: test cut at the mark - cut
+expect 's head cut - 1 neck joint(s) released
+expect woken and sent off
+expect wound caps - the stump capped
+expect Dismember: at the mark "cut_07"
+reject 's head cut - 0 neck joint(s) released
+reject HandScript: WARNING
+reject Necks: the bound left out
+reject - its cut forgotten
+reject CRASH
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 0.5
+mark placed
+wait 1
+mark kill
+wait 3
+head pitch -25
+wait 0.5
+mark lying
+wait 0.5
+mark cut
+wait 0.2
+mark cut_02
+wait 0.5
+mark cut_07
+wait 1.5
+mark end

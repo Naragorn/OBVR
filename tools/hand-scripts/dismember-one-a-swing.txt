@@ -1,0 +1,160 @@
+# One part of a body a swing (the tester, 2026-11-26: "teilweise fliegt auch
+# kopf UND arm ab obwohl nur kopf sollte"; game/CutStrokeLogic.h;
+# docs/dismemberment-spec.md, "2026-11-26: creatures"). dismember-killing-
+# blow.txt's frozen beggar (0001C45B, 74 health) 70 units ahead, the longsword
+# drawn, blade and strength 100 so one strike kills - but slashed across at
+# neck height instead of thrust: such a slash meets an arm's capsule first
+# (2026-10-30), the killing strike's sweep on goes through the neck (the head)
+# and through that arm's elbow or shoulder (CutLimbOfKillingStrike), and the
+# corpse's rules take whatever else the same swing passes (a shoulder, a
+# wrist). The tester's zombie lost its head and both arms to one slash
+# (OBVR.log 2026-11-26 lines 21491-21526). Now a swing takes one part of a
+# body: the head, decided first; the others "this swing took another part of
+# theirs already". Three slashes, each its own swing: at the shoulders, then
+# a little higher and lower.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/dismember-one-a-swing.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands MotionHits=1
+ini Hands PowerStrikeSpeed=4.5
+ini Hands WeaponStopsAtWalls=1
+ini Hands WeaponStopsAtBodies=0
+ini Hands SwingsStopAtBodies=0
+ini Hands FittedBodyCapsules=1
+ini Hands BladeSlidesOffPeople=1
+ini Hands PushPeople=0
+# no knockback, as the tester plays (Hands.EnemyKnockback 0 % in the run's log): the body drops where it stood
+ini Hands EnemyKnockback=0
+ini Hands Dismemberment=1
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready tgm
+console-at ready player.placeatme 0001C45B 1 70 0
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at ready tai
+console-at ready player.setav strength 100
+console-at ready player.setav blade 100
+
+expect HandScript: finished
+expect Hands: struck
+expect Dismember: the killing strike on
+expect the killing blow cut
+expect 's head cut - 1 neck joint(s) released
+expect - kept, this swing took another part of theirs already
+# the later slashes meet nothing (the body dropped): every limb cut would be the killing swing's
+reject arm cut - 
+reject hand cut - 
+reject leg cut - 
+reject foot cut - 
+reject HandScript: WARNING
+reject CRASH
+
+wait 12
+right rot 0 0 0
+right pos 0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 12
+mark placed
+right pos -0.18 -0.62 -0.02
+wait 0.3
+# the grip held from the draw on (WeaponHold, dismember-killing-blow.txt)
+right grip 1
+wait 0.2
+right pos 0.20 -0.45 -0.30
+wait 2
+mark drawn
+# slash 1: back to the right slowly, then across at 0.36 below the eyes
+right rot 0 0 0
+right pos 0.30 -0.36 -0.25
+wait 0.15
+right pos 0.45 -0.36 -0.25
+wait 0.15
+right pos 0.60 -0.36 -0.25
+wait 0.15
+wait 0.5
+mark slash1_start
+right pos 0.60 -0.36 -0.25
+wait 0.01
+right pos 0.45 -0.36 -0.25
+wait 0.01
+right pos 0.30 -0.36 -0.25
+wait 0.01
+right pos 0.15 -0.36 -0.25
+wait 0.01
+right pos 0.00 -0.36 -0.25
+wait 0.01
+right pos -0.15 -0.36 -0.25
+wait 0.01
+right pos -0.30 -0.36 -0.25
+wait 0.01
+right pos -0.45 -0.36 -0.25
+wait 0.01
+right pos -0.60 -0.36 -0.25
+wait 0.01
+wait 0.8
+mark slash1
+# slash 2: back to the right slowly, then across at 0.31 below the eyes
+right rot 0 0 0
+right pos 0.30 -0.31 -0.25
+wait 0.15
+right pos 0.45 -0.31 -0.25
+wait 0.15
+right pos 0.60 -0.31 -0.25
+wait 0.15
+wait 0.5
+mark slash2_start
+right pos 0.60 -0.31 -0.25
+wait 0.01
+right pos 0.45 -0.31 -0.25
+wait 0.01
+right pos 0.30 -0.31 -0.25
+wait 0.01
+right pos 0.15 -0.31 -0.25
+wait 0.01
+right pos 0.00 -0.31 -0.25
+wait 0.01
+right pos -0.15 -0.31 -0.25
+wait 0.01
+right pos -0.30 -0.31 -0.25
+wait 0.01
+right pos -0.45 -0.31 -0.25
+wait 0.01
+right pos -0.60 -0.31 -0.25
+wait 0.01
+wait 0.8
+mark slash2
+# slash 3: back to the right slowly, then across at 0.40 below the eyes
+right rot 0 0 0
+right pos 0.30 -0.40 -0.25
+wait 0.15
+right pos 0.45 -0.40 -0.25
+wait 0.15
+right pos 0.60 -0.40 -0.25
+wait 0.15
+wait 0.5
+mark slash3_start
+right pos 0.60 -0.40 -0.25
+wait 0.01
+right pos 0.45 -0.40 -0.25
+wait 0.01
+right pos 0.30 -0.40 -0.25
+wait 0.01
+right pos 0.15 -0.40 -0.25
+wait 0.01
+right pos 0.00 -0.40 -0.25
+wait 0.01
+right pos -0.15 -0.40 -0.25
+wait 0.01
+right pos -0.30 -0.40 -0.25
+wait 0.01
+right pos -0.45 -0.40 -0.25
+wait 0.01
+right pos -0.60 -0.40 -0.25
+wait 0.01
+wait 0.8
+mark slash3
+wait 1
+mark end

@@ -1,0 +1,65 @@
+# A goblin's arm stretched (the tester, 2026-11-26: "teilweise auch noch
+# infinity arme bei creatures also goblins"; docs/dismemberment-spec.md,
+# "2026-11-26: creatures"). CGGoblinShamanNOWANDER (0003B52D, the "Goblin
+# Witch" whose head and right arm the tester cut, 2B009420) placed 200 units
+# ahead and killed; [Debug] TestCut cuts its head at "cut", then its right arm
+# at the shoulder at "cut_arm_far", the arm thrown 150 units/s to the body's
+# side. Its robe (ShamanChest, 38 bones, 15 of them the right arm's - 12
+# fingers) was taken whole to the arm by its bones: its clavicle went with the
+# arm, Spine2 and the neck stayed, and the 56 vertices of its shoulder on both
+# (pyffi) stretched from the body to the arm ("Shamanchest(head, 15/38)",
+# OBVR.log 2026-11-26 line 25547). Now a limb's shape whose vertices would
+# hang on both stays the body's and is drawn again for the part
+# (game/CutSkeletonLogic.h LimbShapeSideFor). The eye pictures at arm_07 and
+# end show the robe.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/dismember-goblin-witch.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Hands Dismemberment=1
+ini Debug TestCut=1
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.setangle z 0
+console-at placed player.placeatme 0003B52D 1 200 0
+console-at kill killall
+
+expect HandScript: finished
+expect Dismember: test cut at the mark - cut
+expect Dismember: test arm cut at the mark - cut
+expect 's right arm cut - 1 shoulder joint(s) released
+expect "Shamanchest" (15 of its 38 bones the part's) stays the body's and is drawn again for the part
+expect Shamanchest(body, 15/38)
+# the robe and the cape drawn again for the arm (the cape alone before)
+expect 's right arm - 2 of the body's shape(s) drawn again for the part, its skin going with it:
+expect Dismember: at the mark "end"
+reject Shamanchest(head, 15/38)
+reject HandScript: WARNING
+reject Necks: the bound left out
+reject - its cut forgotten
+reject CRASH
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark ready
+wait 0.5
+mark placed
+wait 1
+mark kill
+wait 3
+head pitch -25
+wait 0.5
+mark lying
+wait 0.5
+mark cut
+wait 0.7
+mark cut_07
+wait 0.5
+mark cut_arm_far
+wait 0.7
+mark arm_07
+wait 1.5
+mark end

@@ -612,7 +612,9 @@ not kept at first: it is laid at the neck and falls again.
 - **Limbs at a joint** (forearm, upper arm, lower leg): built 2026-11-05,
   see "Built 2026-11-05: the limbs" above.
 - **Creatures:** every skeleton names its head bone its own way; by bone
-  names per creature skeleton, after humans pass.
+  names per creature skeleton, after humans pass. Since 2026-11-26 the
+  joint and the stump are taken from the skeleton itself, not by name: see
+  "2026-11-26: creatures" below.
 - **Not planned:** cuts at any point along a limb (needs real triangle
   slicing), cutting in half, the living losing parts.
 - **A plugin of its own for flat players, without OBVR** (Nadi, 2026-10-30
@@ -946,6 +948,183 @@ nacken".
   boot), a bare foot (the stripped corpse's foot mesh was not run), the blade's sweep through a
   corpse's ankle and the killing strike's foot (unit-tested geometry only, as for the other
   limbs).
+
+### 2026-11-26: creatures - the goblin's head, the stretched arm, one part a swing
+
+The tester's Windows run of 2026-11-26 14:09-14:44 (DLL of main 8095bfd; OBVR.log in
+artifacts/win-run-2026-11-26, not in Git): "beheadden für ratten goblins (sollte das gehen?) kam
+nix. bei goblins blieb der kopf dran", "teilweise auch noch infinity arme bei creatures also
+goblins", and on the checklist "teilweise fliegt auch kopf UND arm ab obwohl nur kopf sollte". The
+run went through the Imperial Prison's tutorial (rats CGRat01/CGRatAmbushA, the zombie CGZombie,
+the goblins CGGoblin*).
+
+**Were creatures meant to lose their heads?** (Read) Not designed for: section 1 rule 5 ("Creatures
+wait"), section 5 ("by bone names per creature skeleton, after humans pass"). The code asked every
+actor for the human bones by name - "Bip01 Head", "Bip01 Spine2", "Bip01 Neck1" - so a creature
+with those names was cut as if human, any other never.
+
+**Rats: no neck found.** (Read) The rat's skeleton.nif has no "Bip01 Head"; its head bone is "Bip01
+Skull" (the enemy bars said "no head bone" for all three rat bases of the run). CollectNecks never
+found a neck, so every rat kill said "its sweep on misses the neck" (lines 9163, 9202, 10180,
+21580-23727). Not built (below).
+
+**Goblins: the cut ran, nothing came off.** (Read, pyffi on the vanilla goblin skeleton.nif the
+Windows install uses and the Linux install's ragdoll one)
+- The head's ragdoll joint is bhkRagdollConstraint(Head, Neck): the goblin's Neck has a body of its
+  own, hinged to Spine2, and there is no Neck1. The release looked only for a joint to Spine2's
+  body: "0 neck joint(s) released" at all six goblin heads of the run (lines 24995, 25100, 25244,
+  25316, 25402, 25541).
+- The head mesh (goblinhead.nif, 2964 vertices) is rigid, hung under Bip01 Head by its "Prn" extra
+  data: it stayed with the head bone, the bone with its neck. The chest's 14 head vertices
+  collapsed into a stump that followed Spine2 (no Neck1), and the head's still-jointed body was
+  "woken and sent off".
+
+**Every vanilla and Shivering Isles creature skeleton read** (pyffi, 45 skeleton.nif files): the head's
+joint goes to Spine2 (the human skeletons, zombie, xivilai, troll, spriggan, spider daedra, scamp,
+lich, imp, flame and frost atronach, minotaur, murk dweller), to Neck (goblin, bear, elytra, gnarl,
+grummite, slaughterfish, storm atronach; the rat's Skull), to Neck1 (sheep, hunger; the clannfear's
+Skull), to Neck2 (boar, deer, dog, mountain lion; the daedroth's Skull), to Spine1 with no Spine2 at
+all (ogre, baliwog, flesh atronach, gatekeeper, Jyggalag), to Spine03 (land dreugh); a horse's bones
+are Bip02; the undead skeleton, Dagon and the shambles have no head joint. In every one the part's own
+body holds its joint. The head hangs from Neck1 in the vanilla, the Windows and the Linux human
+skeleton.nif; the installed ones put scale nodes between the limbs ("Scale L Hand" is the hand's
+parent).
+
+**Fixed (built 2026-11-26), `game/CutSkeletonLogic.h` (cut_skeleton_test):**
+- The joints released are those the part's own body holds to a body outside the part
+  (`ReleasesPartJoint`; `game/CutJoints.cpp`, moved out of Dismember.cpp), whatever that body is
+  called. The head's stump follows the bone the head hangs from (`StumpBoneFrom`: Neck1 in a human
+  as before, the goblin's Neck); a limb keeps its named bone. The body a part is joined to falls
+  back on the stump's parent (`JointBoneFrom`: an ogre's Spine1), and the blade's neck on the bone
+  two up from the head where there is no Spine2 (`NeckLowFrom`; CollectNecks moved to
+  `game/Necks.cpp`).
+- Harness, Linux, headless, `--no-steamvr --parallel`, the old DLL the tester's (ce28813b,
+  deployed 13:26), the new built here:
+  - `dismember-goblin.txt` (CGGoblinPATROL01, the tester's goblin's base): old FAIL
+    (20261126-160118-slot1: "0 neck joint(s) released", the head 1.5 / 1.8 / 1.8 units from the cut
+    at cut_02 / cut_07 / end, the picture shows it on), new PASS (20261126-160259-slot1: "1 neck
+    joint(s) released", 12.3 / 34.8 / 40.8 units; the picture shows the head beside the capped
+    stump).
+  - `dismember-ogre.txt` (SQ01Ogre, no Spine2): old FAIL (20261126-162902-slot2: "no dead actor
+    within 400 units (0 actors near)" - no neck found), new PASS (-163022-slot2: "1 neck joint(s)
+    released", Ogre:0 the body's, the head 12.6 / 31.5 / 36.7 units off; the picture shows the
+    headless body and the head beside it).
+  - The same final build on the goblin again: PASS (-162545-slot3).
+
+**What a creature's head is made of** (Read, pyffi on the vanilla meshes):
+- A rigid head mesh of its own under the head bone: goblin, ogre, scamp, bear, dog and wolf, boar,
+  mountain lion, land dreugh, and under the Skull the rat and the clannfear. These come off whole
+  with the fix above (the body's few head vertices collapse at the stump).
+- The head inside the body's one skinned mesh: troll (1088 of 5476 vertices mostly on the head bone
+  or under it), xivilai 683, lich 955, imp 530, spriggan 718, flame atronach 580, frost atronach 996,
+  spider daedra 793, daedroth 1606, deer 652, sheep 802. That shape is the body's (a small share of
+  its bones), so the head's vertices collapse into the stump and only rigid parts fly (hair, horns,
+  eyes). For the ones jointed to Spine2 (troll, xivilai, lich, imp, spriggan, atronachs) this was so
+  before 2026-11-26 too; not reported. Probe `dismember-troll-probe.txt` (CreatureTroll, the final
+  build, 20261126-165112-slot2): "1 neck joint(s) released, ... (12 body-side bone pointers to the
+  stump, 0 part-side to the part: Troll01:0(body, 13/61), Troll01:1(body, 3/21) ...)", the head
+  bone 62.7 units from the cut at the end - nothing of the head's skin goes with it (the picture is
+  too far to show more). Needs the head drawn again for the part, as a limb is (`PartCopyWanted`,
+  today never for a head) - open, below.
+
+**The stretched arm (fixed).** (Read) The goblin witch 2B009420 (CGGoblinShamanNOWANDER) at its right
+arm cut: "Shamanchest(head, 15/38)" (line 25547). The robe holds both arms with all their fingers:
+15 of its 38 bones are the right arm's (12 of them fingers), so the third-of-its-bones rule gave it
+to the part. Its clavicle went with the arm, Spine2 and the neck stayed (the other arm is in the
+shape, so the middle stays), and 56 of its vertices (pyffi: on the right clavicle or upper arm and
+on Spine2 or the neck) hung on both - stretched from the body to the arm. "0 of the part's left on
+the body" did not see it: the shared middle is not counted.
+- (Derived, pyffi on the vanilla human meshes, not run) The same rule gives the vanilla "Arms"
+  shape (13 bones, 5 the right arm's) to the part at an arm cut (28 vertices span) and
+  "LowerBody:0" (6 bones, 2 the lower leg's) at a lower-leg cut (27 span): the same stretch on NPCs
+  with the vanilla body. The Linux harness's NPCs wear a mod body whose shapes were the body's.
+- **Fix:** a limb cut's shape the bones give the part goes there whole only when none of its
+  vertices hangs, by a hundredth of its weight or more, on both a bone going with the part and one
+  staying (`LimbShapeSideFor`, `VerticesSpanningCut`, `SpanWanted`, `SpanPossible`; the skin read
+  in place by `game/CutSkinSpan.cpp`). Otherwise it is the body's - its part collapses into the
+  stump - and drawn again for the part (the copy, whose other bones collapse at the part's joint:
+  it never stretches). A skin that does not read is the body's too. A rigid shape is not read (the
+  first build read the witch's head and helmet, which the bound gives the arm's side, and logged
+  their skin unread at every rescan). The log: "... "Shamanchest" (15 of its 38 bones the part's)
+  stays the body's and is drawn again for the part: taken whole, 56 of its vertices would hang on
+  both the part and the body and stretch".
+- Harness `dismember-goblin-witch.txt` (the witch, its head and then its right arm thrown aside by
+  TestCut): old FAIL (20261126-160426-slot1: "Shamanchest(head, 15/38)", the arm 63.6 units from
+  its cut; the eye picture at arm_07 shows a smeared band from the shoulder to the arm), new PASS
+  (-162737-slot2: "Shamanchest(body, 15/38)", "2 of the body's shape(s) drawn again for the part
+  ...: ShamanCape, Shamanchest", the arm 66.3 units off; at arm_07 the shoulder closed and the
+  sleeve on the arm, no band). The first run of the fix (-160627-slot1) logged the rigid shapes'
+  skin unread (fixed above) and was scored FAIL by the runner, "the game ended during the script"
+  with no marks seen, while its log holds every mark and "HandScript: finished" - the runner's
+  side, not looked into.
+- (Measured, an NPC) dismember-hand-far's bandit on the Linux mod body, the final build: "Foot:
+  upperMusc.002 (5 of its 14 bones the part's) stays the body's and is drawn again for the part:
+  taken whole, 128 of its vertices would hang on both the part and the body and stretch" at the
+  right arm's cut - the same stretch on a human body, stopped. The old DLL's run of the scenario
+  (-164748-slot2) drew the bandit in another outfit ("Cuirass(body, 5/18)" alone), so there is no
+  before for that shape: that it stretched before is derived from the rule (5 of 14 is a third),
+  not seen. The scenarios that passed with this build: dismember-limbs (-163316-slot2),
+  dismember-hand-far (-163510-slot2), dismember-limb-skin (-163640-slot2), dismember-marked-body
+  (-163835-slot2, eleven cuts, no shape turned).
+
+**One part a swing (built).** (Read) The zombie 2B001A50 (lines 21491-21526): one slash killed it; the
+killing strike took the head (its sweep on through the neck), the same frame's corpse rule took the
+right arm through its shoulder, a frame later the left arm (36 m/s). The goblins the same way:
+2B009630 the head, the right forearm (the killing strike's own limb) and the left hand; 2B009528
+the head and both arms. (Derived) A slash at the neck's base sweeps a plane through the neck and
+both shoulders, each within its reach (6 units round), and the corpse's rules apply from the frame
+the body is dead.
+- `game/CutStrokeLogic.h` (cut_stroke_test) and `CutVerdict::SwingTookAnother`: a swing - the hand
+  mode's swing serial, the one a body is struck once by - takes one part of each body it cuts; in a
+  frame the head is decided first (the killing strike, then the necks). A part kept says "swing N
+  through ...'s shoulder at ... - kept, this swing took another part of theirs already" from its
+  own budget. A new swing takes the next part.
+- **A design choice, made on the tester's words** ("obwohl nur kopf sollte"): a slash through two
+  limbs of a corpse also takes only one now, and across frames the part the blade reaches first
+  wins (a side slash that meets a corpse's shoulder a frame before its neck takes the arm). The
+  swing serial follows the hand mode's weapon-hand swing; with the roles swapped (left-handed)
+  that it is the weapon hand's is not verified.
+- Harness `dismember-one-a-swing.txt` (dismember-killing-blow's frozen beggar, a slash across the
+  shoulders, no knockback as the tester plays): old FAIL twice (20261126-162359-slot3,
+  -162546-slot4: swing 5 killed it, took the head and in the same frame "left arm cut - 1 shoulder
+  joint(s) released"), new PASS (-162200-slot3: swing 5 - "the killing strike on ...'s torso ...
+  its sweep on through the neck - the killing blow cut", "1 neck joint(s) released" - and both
+  shoulders "kept, this swing took another part of theirs already"). The later slashes meet
+  nothing: the body dropped.
+
+**Regressions with the final build** (md5 ee26b424, the runner's checksum 062d216a; the old DLL
+md5 ce28813b, the runner's fe4eaf76): dismember-limbs, -hand-far, -limb-skin and -marked-body PASS
+(above). dismember-corpse (-163153-slot2) and dismember-killing-blow (-164526-slot2) FAIL only on
+"Walkers: 'WGDM' 1 taken" and "1 taken": the Linux game has no OblivionWalkers.dll since
+2026-11-25 ("no Oblivion Walkers listening"), and the old DLL fails dismember-corpse the same way
+(-164943-slot2). Their cuts are as before ("1 neck joint(s) released", FaceGenFace the head's, the
+head 25.5 units off). The killing blow's thrust at the neck kept a shoulder too ("swing 7 through
+...'s shoulder at 35.4 m/s - kept"): one part a swing at work in an older scenario.
+
+**The size ratchet:** game/Dismember.cpp was at 990 of its 1000 lines; the joint's release went to
+CutJoints.cpp, the necks and two actor reads to Necks.cpp. StepDismember lost the test cut's block
+to TestCutHeadAtMark (201 -> 184 lines, the table lowered).
+
+**Open:**
+- The headset: the goblin's head off as seen, the witch's sleeve on the arm, one part a swing as
+  felt. The caps on creatures: the zombie neck plug at the head's own scale - on a goblin's neck
+  likely too big, not measured.
+- **Rats and other beasts (not built).** Feasible:
+  1. *The skull* (rat, clannfear, daedroth): the head part's bone by a short list of names ("Bip01
+     Head", then "Bip01 Skull") in BonesOfCut and CollectNecks; the joint and the stump need
+     nothing more. Small. The rat's head.nif, eyes and whiskers hang under the Skull and fly; the
+     body mesh's 193 head vertices (the skull's back, the ears on Ponytail1/2) collapse into the
+     stump unless 2 is built too.
+  2. *The head drawn again* for creatures whose head lies in the body's mesh (troll, xivilai, lich,
+     imp, spriggan, atronachs, deer, sheep, the rat's ears): `PartCopyWanted` for a head when a
+     shape's head share is a real part of the head - by vertices, not bones (the vanilla NPC
+     UpperBody has no vertex mostly on Bip01 Head, 112 partly - its collar; a troll's body 1088
+     mostly), read in place as the span is. Medium: the copy and its skin exist; the risk is the
+     threshold (NPC collars flying with the head) and the copy's taper at the neck, seen only in
+     pictures and the headset.
+  3. *The cap's size* by the creature's neck (the Neck body's capsule radius, or the head's bound),
+     not the human plug at the head's scale. Small-medium, the pictures decide.
+  The horse (Bip02 bones) and the skeleton (no head joint: its bones fall apart anyway) stay out.
 
 ## 6. Unknowns that gated the build (answered 2026-10-30, below)
 

@@ -11,6 +11,7 @@
 // ten statics now DismemberState's members. Harness: dismember-*.txt.
 
 #include "camera/hands/HandStep.h"
+#include "game/CutStrokeLogic.h"
 #include "game/Dismember.h"
 #include "game/DismemberLogic.h"
 #include "game/NeckReachLogic.h"
@@ -37,6 +38,11 @@ struct DismemberState {
 	game::NeckOf necksNow[8]{};
 	UInt32 necksNowCount = game::kNecksNotCollected;
 	UInt32 wristLines = 16;
+	// One part of a body a swing (game/CutStrokeLogic.h): this frame's swing
+	// (the hand mode's serial) and the bodies it has cut.
+	UInt32 swingSerial = 0;
+	game::SwingCuts swingCuts{};
+	UInt32 swingLines = 24;  // the parts a swing kept, said from a budget of their own
 };
 
 // What the cuts read of the rest of the frame.
