@@ -1,0 +1,52 @@
+# Arrows by the shield's contact rule ([Hands] ShieldBlockByContact=1;
+# game/ArrowShieldLogic.h, game/ArrowShield.cpp; Nadi, 2026-11-27, "go"): an
+# arrow whose impact lies on the shield's disc - or whose flight crossed it -
+# takes the shield's impact (attached to the shield's node instead of the
+# body's) and its blow is blocked; one beside it hits the body.
+#  1. The Arena shield (000733ED) worn; an archer from LL1BanditMissile100
+#     (0003407C, Oblivion.esm; combat-ring-archers.txt) placed, the player
+#     untouchable (tgm - the impact and the hit handler still run); 25 s with
+#     the shield held before the face, the head looking ahead - the archer's
+#     arrows come at it: "an arrow ... at the shield by contact - ... -
+#     blocked, the shield's impact", and the blow's cone takes that verdict
+#     (no "not taken by the shield's cone" line).
+#  2. 25 s with the shield hand low beside the hip: "THROUGH, the body's impact".
+# Where the archer stands and when it shoots is the game's: which verdicts
+# come depends on its shots; the lines give the point's distances to the disc
+# for each. Not run yet (written 2026-11-27 on Windows). Unknown until the run:
+# whether the contact point is on the shield or on the player's capsule behind
+# it (the segment fallback, "(by its flight)"), and whether the hit handler's
+# cone is asked with the arrow (the kept verdict taken) or the shooter.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/shield-block-arrow.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands ShieldBlockByContact=1
+console player.additem 000733ED 1
+console player.equipitem 000733ED
+console-at ready CloseAllMenus
+console-at ready player.placeatme 0003407C 1
+console-at ready tgm
+
+expect HandScript: finished
+expect Block: the arrow impact's block check (0060AD01) goes through a stub
+expect Contact: the shield's shape -
+expect Block angle: an arrow
+expect - blocked, the shield's impact
+expect - THROUGH, the body's impact
+reject not taken by the shield's cone
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.45 -0.25
+left pos -0.20 -0.45 -0.25
+wait 2
+mark ready
+# 1. The shield before the face.
+left pos -0.05 -0.10 -0.30
+left rot 0 0 0
+wait 25
+mark shield_ahead
+# 2. The shield hand low beside the hip.
+left pos -0.40 -0.60 0.05
+wait 25
+mark shield_aside

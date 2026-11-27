@@ -2101,6 +2101,16 @@ endif()
 
 add_test(NAME parry COMMAND parry_test)
 
+add_executable(arrow_shield_test ArrowShieldTest.cpp)
+
+target_include_directories(arrow_shield_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(arrow_shield_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME arrow_shield COMMAND arrow_shield_test)
+
 # The torch's shaft as a guard (game/TorchShaftLogic.h): pure.
 add_executable(torch_shaft_test TorchShaftTest.cpp)
 

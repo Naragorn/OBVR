@@ -400,16 +400,26 @@ inline BlockForces BlockForcesFor(bool targetIsPlayer, bool engineSaysBlocking, 
 // disc's place is the whole test, as in Blade & Sorcery. A blow the disc
 // cannot be judged against (an arrow, an attacker not placed, the disc
 // lost this frame) goes to the game's own cone while the shield hand is
-// raised as the old pose rule had it, and lands otherwise.
+// raised as the old pose rule had it, and lands otherwise - unless it is a
+// projectile whose impact was judged against the disc already
+// (game/ArrowShieldLogic.h): that verdict, kept for that projectile, decides
+// its damage too.
 enum class ShieldCone : UInt8 {
 	Original,    // not the shield's forced block, or the pose's fallback: the cone decides
 	Blocked,     // the shield is in the blow's way
 	NotBlocked,  // it is not: the blow lands
 };
 
-inline ShieldCone ShieldConeFor(bool targetIsPlayer, bool shieldForced, BlockAngle verdict, bool raised) {
+// A projectile's verdict kept from its impact (ArrowVerdicts::Take).
+enum class KeptArrow : UInt8 { None, Blocked, Through };
+
+inline ShieldCone ShieldConeFor(bool targetIsPlayer, bool shieldForced, BlockAngle verdict, bool raised,
+                                KeptArrow arrow = KeptArrow::None) {
 	if (!targetIsPlayer || !shieldForced) {
 		return ShieldCone::Original;
+	}
+	if (arrow != KeptArrow::None) {
+		return arrow == KeptArrow::Blocked ? ShieldCone::Blocked : ShieldCone::NotBlocked;
 	}
 	if (verdict == BlockAngle::Blocked) {
 		return ShieldCone::Blocked;

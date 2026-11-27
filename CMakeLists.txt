@@ -174,6 +174,7 @@ add_library(OBVR SHARED
 	src/game/StaggerSides.cpp
 	src/camera/hands/PotionBelt.cpp
 	src/game/HitShader.cpp
+	src/game/ArrowShield.cpp
 	src/game/BlockCone.cpp
 	src/game/HandGrip.cpp
 	src/game/DeathBody.cpp

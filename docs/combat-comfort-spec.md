@@ -166,6 +166,13 @@ against a weapon. A blocked blow is never fully stopped: at most `fBlockMax`
   with a shield worn still holds Block and is judged as before; the torch's
   pose block is unchanged. What the forced block gives and does not give
   against a held Block action: see free-weapons-spec, same section [R/D].
+  **Arrows** (built the same day): the projectile's impact 0x0060A640 is
+  judged against the disc at its Block check (0x0060AD01, a stub,
+  game/ArrowShield.cpp): its contact point on the disc (radius + 6, half
+  thickness + 10 units) or its flight crossing it - the shield's impact, and
+  the verdict kept for that arrow decides its blow at the hit handler's
+  cone; beside it - the body's, and the blow lands. Not judgeable (no point,
+  the disc lost): the old raised-hand fallback. The margins are guesses.
 - **Weapon guard** (`vr::IsWeaponGuard`, since 64e0d5d): the weapon hand up
   (no more than 20 cm below the eyes) and ahead, the blade held across the
   body (at least 0.7 sideways, at most 0.5 up or down), not swinging, with
