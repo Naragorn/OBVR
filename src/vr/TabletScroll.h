@@ -15,7 +15,7 @@
 //
 // How close the hands are is read on the controllers; where they are (the
 // ring) and how far it is unrolled on the drawn palms, which the tablet
-// stands between (section 26 of the spec: the palms sit 13 to 15 cm off the
+// stands between (section 27 of the spec: the palms sit 13 to 15 cm off the
 // controllers and never come closer than about 0.2 m).
 
 #include "core/MathFns.h"

@@ -36,6 +36,7 @@ inline constexpr float kTabletTouchSlopMetres = 0.02f;    // a move, not a finge
 inline constexpr float kTabletTouchSwipeMetres = 0.04f;   // sideways this far: a page
 inline constexpr float kTabletTouchNotchMetres = 0.02f;   // the finger's travel per wheel notch
 inline constexpr float kTabletTouchHoldSeconds = 0.5f;    // held still this long: the button stays down
+inline constexpr float kTabletTouchStillMetres = 0.01f;   // a tap's wobble (the headset's taps: 0.2-0.9 cm at their release)
 
 // ------------------------------------------------------------- The contact
 
@@ -47,6 +48,10 @@ struct TabletContactLimits {
 	float deep = 0.25f;         // a tip further through than this is a hand behind the panel
 	float pullBackTap = 0.02f;  // pulled back this far from its deepest point: let go (a tap's way out)
 	float pullBackMove = 0.05f; // the same while the finger scrolls or drags, whose depth wanders
+	// The same for a touch that has kept still on the glass (TabletTouchStill):
+	// the finger turned back, so the tap's click goes out now, not 2 cm later
+	// (Nadi, Windows 2026-11-27: the touch came a few frames late).
+	float pullBackStill = 0.006f;
 };
 
 // How a touch ended, for the log.
@@ -73,9 +78,10 @@ struct TabletContact {
 
 // `fingerOut`: the index out and the trigger let go (vr::FingerPokes).
 // `inside`: the tip's foot within the face. `moving`: the touch scrolls,
-// drags or turned a page.
+// drags or turned a page. `still`: it has not moved along the glass past a
+// tap's wobble (TabletTouchStill), so it lets go as soon as it turns back.
 inline TabletContact StepTabletContact(TabletContactState& s, bool fingerOut, bool inside, float depth, bool moving,
-                                       const TabletContactLimits& l = TabletContactLimits{}) {
+                                       const TabletContactLimits& l = TabletContactLimits{}, bool still = false) {
 	using Arm = TabletContactState::Arm;
 	TabletContact c;
 	if (!fingerOut || !inside) {
@@ -94,7 +100,7 @@ inline TabletContact StepTabletContact(TabletContactState& s, bool fingerOut, bo
 			return c;
 		}
 		c.onGlass = true;
-		const float pullBack = moving ? l.pullBackMove : l.pullBackTap;
+		const float pullBack = moving ? l.pullBackMove : (still ? l.pullBackStill : l.pullBackTap);
 		if (depth > l.release) {
 			c.end = TabletContactEnd::Lifted;
 		} else if (depth - s.deepest >= pullBack) {
@@ -222,6 +228,14 @@ inline void StepTabletTouchDown(TabletTouchState& s, const TabletTouchInput& in,
 		v.pageStep = dx < 0.0f ? 1 : -1;
 		v.event = TabletTouchEvent::PageTurn;
 	}
+}
+
+// The touch has kept still on the glass: down, not moved past a tap's wobble.
+// Its contact lets go as the finger turns back (pullBackStill); a touch that
+// has begun to move keeps the longer way out, so a drag's start that drifts
+// out a little is no tap.
+inline bool TabletTouchStill(const TabletTouchState& s) {
+	return s.phase == TabletTouchPhase::Down && s.travel < kTabletTouchStillMetres;
 }
 
 inline TabletTouchVerdict StepTabletTouch(TabletTouchState& s, const TabletTouchInput& in, float dtSeconds) {

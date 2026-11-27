@@ -363,6 +363,62 @@ void TestContact() {
 	Check(taps == 1 && cancels == 0 && down, "a poke 10 cm through the glass and out again: one tap, one click");
 }
 
+void TestStillTurn() {
+	std::printf("A still touch lets go as the finger turns back\n");
+	const TabletContactLimits l;
+	TabletContactState s;
+	StepTabletContact(s, true, true, 0.01f, false, l, true);
+	TabletContact c = StepTabletContact(s, true, true, -0.01f, false, l, true);
+	Check(c.touching, "a centimetre through: touching");
+	c = StepTabletContact(s, true, true, -0.007f, false, l, true);
+	Check(c.touching, "3 mm back, a hand's tremor: still touching");
+	c = StepTabletContact(s, true, true, -0.003f, false, l, true);
+	Check(!c.touching && c.end == TabletContactEnd::PulledBack && Near(c.deepest, -0.01f),
+	      "7 mm back from the deepest point: let go - the tap");
+	c = StepTabletContact(s, true, true, -0.009f, false, l, true);
+	Check(!c.touching, "6 mm in again behind the glass: no second touch (that takes 2 cm)");
+
+	TabletContactState moved;
+	StepTabletContact(moved, true, true, -0.01f, false, l, false);
+	c = StepTabletContact(moved, true, true, -0.003f, false, l, false);
+	Check(c.touching, "not still (it moved along the glass): 7 mm back is no let go");
+	c = StepTabletContact(moved, true, true, 0.011f, false, l, false);
+	Check(!c.touching && c.end == TabletContactEnd::PulledBack, "2 cm back: let go, as before");
+
+	TabletContactState scrolling;
+	StepTabletContact(scrolling, true, true, -0.01f, false, l, true);
+	c = StepTabletContact(scrolling, true, true, 0.0f, true, l, true);
+	Check(c.touching, "scrolling wins over still: a centimetre back, still on the glass");
+
+	TabletTouchState t;
+	Check(!TabletTouchStill(t), "idle: not a still touch");
+	StepTabletTouch(t, At(0.0f, 0.0f, true), kDt);
+	Check(TabletTouchStill(t), "down: still");
+	StepTabletTouch(t, At(0.008f, 0.0f, true), kDt);
+	Check(TabletTouchStill(t), "moved 8 mm: a tap's wobble, still");
+	StepTabletTouch(t, At(0.011f, 0.0f, true), kDt);
+	Check(!TabletTouchStill(t), "moved 1.1 cm: no longer still");
+	StepTabletTouch(t, At(0.0f, 0.0f, true), kDt);
+	Check(!TabletTouchStill(t), "back where it went down: the travel counts, not still");
+	TabletTouchState drag;
+	StepTabletTouch(drag, At(0.0f, 0.0f, true), kDt);
+	Drag(drag, 0.0f, 0.0f, 0.0f, 0.05f, 10);
+	Check(drag.phase == TabletTouchPhase::Scrolling && !TabletTouchStill(drag), "scrolling: not still");
+
+	// The flow as wired: down, a centimetre through, turned back 7 mm - the
+	// click in the frame the contact lets go, not 2 cm later.
+	TabletTouchState touch;
+	const float depths[] = {0.01f, -0.01f, -0.003f};
+	int tapAt = -1;
+	for (int i = 0; i < 3; ++i) {
+		const TabletContact k =
+			StepTabletContact(touch.contact, true, true, depths[i], false, l, TabletTouchStill(touch));
+		const TabletTouchVerdict v = StepTabletTouch(touch, At(0.0f, 0.0f, k.touching, k.onGlass), kDt);
+		tapAt = v.mouseDown && tapAt < 0 ? i : tapAt;
+	}
+	Check(tapAt == 2, "the click in the frame the finger is 7 mm on its way back");
+}
+
 void TestIndexTip() {
 	std::printf("The tap's tip from the drawn index finger\n");
 	const NiPoint3 tip = IndexTipBeyond(NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 2.0f, 0.0f});
@@ -405,6 +461,7 @@ int main() {
 	TestCancel();
 	TestMovedNoClick();
 	TestContact();
+	TestStillTurn();
 	TestIndexTip();
 	if (g_failures != 0) {
 		std::printf("%d check(s) failed\n", g_failures);

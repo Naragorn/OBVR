@@ -23,6 +23,7 @@
 #include "render/HeadsetRenderer.h"
 #include "render/HudLayer.h"
 #include "ui/SettingsMenuLayer.h"
+#include "vr/TabletClose.h"
 
 namespace obvr::camera::hands {
 
@@ -49,6 +50,7 @@ struct LaserTargetsState {
 	// the tablet is up (camera/hands/HandReachRead.h): the page lies before it.
 	HandReachState reach;
 	bool tabletUp = false;  // the tablet's menus were up at the last fill
+	vr::TabletCloseState tabletClose;  // its menus fading out after the close (vr/TabletClose.h): the walk goes on
 };
 
 // What the fill reads of the rest of the frame.

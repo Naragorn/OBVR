@@ -1,0 +1,78 @@
+# The tap's click as the finger turns back (Nadi's Windows run of
+# 2026-11-27: "die Berührung auf dem Tablet kommt ein paar Frames zu spät";
+# docs/inventory-tablet-spec.md 26.2). The finger on the Iron Longsword's
+# row (tablet-touch.txt's place and geometry: a point d metres up the
+# leant-back face at 0.0414 - 0.866 (0.377 - d) up and -0.4398 + 0.5
+# (0.377 - d) back, h metres off the glass along its normal (0, 0.5, 0.866),
+# the controller's tip 8 cm ahead; the row at d 0.26), in order:
+# - hover 2.5 cm in front, then at the glass (the touch begins), then 1 cm
+#   through it, 0.1 s each;
+# - turned back by 8 mm, still 2 mm behind the glass, and kept there 0.2 s
+#   (0.4 s on the glass in all, under the hold's 0.5 s): the tap's click
+#   goes out here now;
+# - then slid 25 cm to the side, off the face's edge: a touch still running
+#   ends there with nothing clicked.
+# With the DLL from before the click waited for 2 cm of the way out, so the
+# touch was still running at the slide and ended "off the face's edge" with
+# no tap (the reject below); with this change the tap comes at the turn and
+# the sword is equipped.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-touch-turn.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet DrawnFinger=0
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Tablet: at the mark the finger is over "Iron_Longsword"
+count 1 Tablet: the finger tapped
+expect where it went down - pulled back behind the glass
+expect Holster: the Iron Longsword, equipped
+reject nothing clicked - off the face's edge
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark open
+right pos -0.0600 -0.0474 -0.3597
+wait 0.4
+mark tap-hover
+right pos -0.0600 -0.0599 -0.3813
+wait 0.1
+right pos -0.0600 -0.0649 -0.3900
+wait 0.1
+right pos -0.0600 -0.0609 -0.3830
+wait 0.2
+mark turned
+right pos -0.3100 -0.0609 -0.3830
+wait 0.3
+right pos 0.15 -0.30 -0.15
+wait 1
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark closed
+wait 1

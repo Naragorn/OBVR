@@ -30,6 +30,13 @@ void PalmsToTablet(LaserTargetsState& state, vr::TabletFrame& tablet) {
 	tablet.held[1] = state.rightHeld;
 }
 
+// Up, or its menus fading out after the close, the left stick walks under
+// the tablet's menus (docs/inventory-tablet-spec.md 4.6 and 26.3; game/MenuPause.h).
+bool WalkUnderTablet(LaserTargetsState& state, const vr::TabletFrame& tablet) {
+	const bool closing = vr::StepTabletClose(state.tabletClose, tablet.up, tablet.menusGone);
+	return vr::TabletWalkFrame(tablet.up, closing, game::TabletWalkRefused());
+}
+
 }  // namespace
 
 void FillLaserTargets(LaserTargetsState& state, const HandStep& step, vr::HandModeFrame& frame,
@@ -94,8 +101,7 @@ void FillLaserTargets(LaserTargetsState& state, const HandStep& step, vr::HandMo
 	                                     step.config.hands.tablet.inScene, step.config.hands.tablet.figure,
 	                                     step.scriptMarked);
 	PalmsToTablet(state, frame.tablet);
-	// Up, the left stick walks under them (docs/inventory-tablet-spec.md 4.6; game/MenuPause.h).
-	frame.walkUnderTablet = frame.tablet.up && !game::TabletWalkRefused();
+	frame.walkUnderTablet = WalkUnderTablet(state, frame.tablet);
 	frame.walkUnderMenu = frame.walkUnderMenu || frame.walkUnderTablet;
 	// And the cinema screen when the frame is a flat one - the main menu,
 	// character creation, a loading screen - which has no quad: the laser

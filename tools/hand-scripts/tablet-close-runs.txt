@@ -1,0 +1,67 @@
+# The world runs on as the tablet closes (Nadi's Windows run of 2026-11-27:
+# "wenn ich das tablet schließe friert die welt ein paar frames ein";
+# docs/inventory-tablet-spec.md 26.3). After the close the game keeps menu
+# mode on while its menus fade out (about 17 frames at 72 Hz, 22 at 90 Hz)
+# with only the HUD's menus in the stack; the world paused through them as
+# behind any vanilla menu ("Menu pause: behind menu F1-F4 stack entry
+# (0x001) the world pauses as vanilla" right after "Tablet: put down"). It
+# runs on now, and the left stick walks on through them.
+# The left B opens the inventory on the left hand's tablet; the left stick
+# pushed forward walks the player under it; the left B closes it while the
+# stick stays pushed; the walk's end ("Tablet: walked") comes once the fade
+# is over. Before the change: the pause line at the close (the reject
+# below) and the walk said at the close itself.
+# The console takes its line for some seconds after a mark and eats the
+# stick's keys meanwhile, so the walk waits 8 s after one, and no mark falls
+# inside it. The walk's line says how far the feet went from the walk's
+# start to the fade's end; against the DLL from before, the line comes at
+# the close and the distance is that much shorter.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-close-runs.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands WalkDirection=head
+ini Tablet Enabled=1
+ini Tablet Unroll=vertical
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Tablet InScene=1
+ini Render UnpausedMenus=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: in the off hand, drawn into the eyes
+expect the sticks walk under menu
+expect Tablet: put down - the menus as before
+expect Menu pause: the tablet's menus fade out - the world runs on through the fade
+expect Tablet: closed - the menus' fade kept out of the room and the eyes
+expect Tablet: walked
+reject behind menu F1-F4 stack entry (0x001) the world pauses as vanilla
+reject HandScript: WARNING
+reject walked 0 units
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.25 -0.15
+right rot 40 32 0
+wait 1.5
+mark world
+wait 8
+left b 1
+wait 0.2
+left b 0
+wait 2
+left stick 0 1
+wait 1.3
+left b 1
+wait 0.2
+left b 0
+wait 1.0
+left stick 0 0
+wait 1
+mark closed
+wait 1

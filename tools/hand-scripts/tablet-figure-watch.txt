@@ -1,0 +1,106 @@
+# The figure behind its tab, watched for flicker (Nadi's Windows run of
+# 2026-11-27: "wenn ich den Reiter oben wähle, dann flackert die Figur im
+# Tablet"; docs/inventory-tablet-spec.md 26.1). Not a pass or fail of the
+# flicker itself: it collects what pins its cause.
+# tablet-figure-tab.txt's opening and press on the figure's tab; then the
+# tablet held still for 4 s (marks still-1, still-2), then the off hand
+# turned by 2 degrees every 0.1 s for 2 s (mark turned).
+# Look for:
+# - "Tablet: the figure's picture over 90 frames - its cut moved in N
+#   frame(s), by at most P layer pixels; not read in M frame(s)": said only
+#   when the figure's rectangle moved or was not read. Said while the hand
+#   is still: the cut itself moves (the figure's rectangle is read anew
+#   every 15 frames from its bones), and P says by how much; "not read":
+#   the tablet showed the page alone in those frames.
+# - Not said, and the film flickers only while the hand turns: the figure's
+#   picture is sampled too small without mipmaps (its hard edges crawl) -
+#   tools/film-flicker.py on the figure's part of the film, still against turned.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-figure-watch.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll --record 14
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet DrawnFinger=0
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect and the figure behind a tab
+expect Tablet: the figure's tab chosen
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+right pos -0.1404 0.0614 -0.4051
+wait 0.5
+right pos -0.1404 0.0414 -0.4398
+wait 0.5
+right pos -0.1404 0.0614 -0.4051
+wait 0.5
+right pos 0.15 -0.30 -0.15
+wait 2
+mark still-1
+wait 2
+mark still-2
+left rot 0 2 0
+wait 0.1
+left rot 0 4 0
+wait 0.1
+left rot 0 6 0
+wait 0.1
+left rot 0 8 0
+wait 0.1
+left rot 0 10 0
+wait 0.1
+left rot 0 12 0
+wait 0.1
+left rot 0 14 0
+wait 0.1
+left rot 0 16 0
+wait 0.1
+left rot 0 18 0
+wait 0.1
+left rot 0 20 0
+wait 0.1
+left rot 0 18 0
+wait 0.1
+left rot 0 16 0
+wait 0.1
+left rot 0 14 0
+wait 0.1
+left rot 0 12 0
+wait 0.1
+left rot 0 10 0
+wait 0.1
+left rot 0 8 0
+wait 0.1
+left rot 0 6 0
+wait 0.1
+left rot 0 4 0
+wait 0.1
+left rot 0 2 0
+wait 0.1
+left rot 0 0 0
+wait 0.1
+mark turned
+wait 1
