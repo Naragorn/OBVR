@@ -2961,3 +2961,27 @@ Without the shield everything worked again."
     swinging, with the blade each way). Harness, written, not run: torch-block-contact.txt;
     torch-block.txt, torch-block-sheathed.txt, block-angle.txt and block-creature.txt now pin
     WeaponBlockByContact=0 (they measure the pose's block).
+- **The wear of a block by contact (looked into 2026-11-27, Nadi: "go") - nothing to restore, no
+  patch.** The earlier note here ("the wear goes as for an unblocked hit") was wrong; read in the
+  assembly (dumpbin 0x005FFB9D..0x005FFC6D):
+  - The damage that lands is the blow's damage less the blocked share (0x005FFBA1..0x005FFBDB);
+    the wear below is by that damage. A forced block applies the share as a held one does, so a
+    blocked blow wears less in the same way [D].
+  - No wear on a creature target (0x005FFBEF, its base form type) or when nothing lands [R].
+  - The item: 0x005E5A00 picks one of the target's armour pieces at random, by game settings' slot
+    chances [R]. Any piece but a shield (slot mask bit 13 [R]; that bit 13 is the shield slot is
+    from xOBSE's list, not re-read) is worn by the landed damage. The shield is worn only when the
+    second Block check, 0x005FFC3F, says blocking and 0x005F23B0(Block) - the mastery - is under
+    Journeyman [R].
+  - That second check asks EDI, the handler's `this` - the attacker, not the target (the first
+    check, 0x005FF7DF, asks ESI, the target; the cone's attacker is EDI when there is no arrow) [R].
+    So for a blow at the player it asks the NPC's block, never the player's: the forced block
+    loses nothing there, and a reroute "yes when this blow was blocked by contact" would never apply
+    to the player's own wear. Vanilla's rule as read wears the defender's shield by the attacker's
+    block state - likely a slip in the original, not confirmed [D]; UESP's "from Journeyman the
+    shield takes no damage when blocking" matches the mastery test, but in vanilla it is the
+    attacker's [D].
+  - **What stays inexact:** the item worn is a random armour piece, never "the shield or blade
+    that stopped the blow" - in vanilla as now. Wearing the blocking item instead would be new
+    behaviour (the +0x2C4 call with that item), not a restoration; not built - a decision for Nadi.
+  - Recorded in ../OBNG/knowledge/blocking.md, "The wear after a blow".
