@@ -65,6 +65,7 @@ struct SeenPose {
 	NiPoint3 pos{0.0f, 0.0f, 0.0f};
 	bool valid = false;
 	bool fresh = false;  // noted since the drive last used it
+	bool floating = false;  // still on its way in to the hand (ReleaseSpeedFor)
 };
 SeenPose g_seen;
 UInt32 g_linesLeft = 12;
@@ -244,6 +245,7 @@ void Released(UInt32 player, Held& h, float throwStrength) {
 	// In the hand, the body goes to where the object was seen, so letting go
 	// does not jump it to where the spring had dragged it.
 	bool placed = false;
+	const bool floating = g_seen.valid && g_seen.ref == h.ref && g_seen.floating;
 	if (g_seen.valid && g_seen.ref == h.ref) {
 		alignas(16) float pos[4] = {g_seen.pos.x * kHavokPerUnit, g_seen.pos.y * kHavokPerUnit,
 		                            g_seen.pos.z * kHavokPerUnit, 0.0f};
@@ -274,17 +276,14 @@ void Released(UInt32 player, Held& h, float throwStrength) {
 	}
 	const NiPoint3 v = ThrowVelocity(h.velocities, throwStrength);
 	const bool thrown = v.LengthSquared() > 0.0f;
-	if (thrown) {
-		const UInt32 motion = Read(h.body + kBodyMotionOffset);
-		if (LooksLikeObject(motion) && LooksLikeObject(Read(motion))) {
-			using ActivateFn = void(__thiscall*)(void* body);
-			reinterpret_cast<ActivateFn>(kActivateBody)(reinterpret_cast<void*>(h.body));
-			alignas(16) float havok[4] = {v.x * kHavokPerUnit, v.y * kHavokPerUnit,
-			                              v.z * kHavokPerUnit, 0.0f};
-			using SetVelocityFn = void(__thiscall*)(void* motion, const float* v);
-			const UInt32 slot = Read(Read(motion) + kMotionSetLinearVelocitySlot);
-			reinterpret_cast<SetVelocityFn>(slot)(reinterpret_cast<void*>(motion), havok);
+	// Thrown: the hand's speed. Let go of on its way in: stopped, its spin too - the
+	// float's speed is not the hand's (ReleaseSpeedFor).
+	const ReleaseSpeed speed = ReleaseSpeedFor(thrown, floating);
+	if (speed != ReleaseSpeed::Kept && SendBodyOff(h.body, v)) {
+		if (speed == ReleaseSpeed::Thrown) {
 			g_justThrown = h.ref;
+		} else {
+			SpinBody(h.body, NiPoint3{0.0f, 0.0f, 0.0f});
 		}
 	}
 	const float given = math::Sqrt(v.LengthSquared());
@@ -295,7 +294,9 @@ void Released(UInt32 player, Held& h, float throwStrength) {
 		         : inside   ? "inside the player's capsule, its group waits until it is clear"
 		                    : "clear of the player, its group put back",
 		         placed ? "placed where it was seen, " : "",
-		         thrown ? "thrown with the hand's speed" : "set down",
+		         speed == ReleaseSpeed::Thrown    ? "thrown with the hand's speed"
+		         : speed == ReleaseSpeed::Stopped ? "stopped on its way in to the hand - the pull given up"
+		                                          : "set down",
 		         static_cast<double>(given));
 		if (h.grouped && capsule > 0.0f) {
 			OBVR_LOG("Hands: ... its middle %.0f units from the player's axis, capsule %.0f",
@@ -610,12 +611,13 @@ bool SpinBody(UInt32 body, const NiPoint3& radiansPerSecond, NiPoint3* readBack)
 	return true;
 }
 
-void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos) {
+void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos, bool floating) {
 	g_seen.ref = ref;
 	g_seen.rot = rot;
 	g_seen.pos = pos;
 	g_seen.valid = true;
 	g_seen.fresh = true;
+	g_seen.floating = floating;
 }
 
 float LastLetGoUnitsPerSecond() { return g_flight.given; }

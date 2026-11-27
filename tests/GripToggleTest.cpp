@@ -240,6 +240,8 @@ struct FakeFrame {
 	bool torchBesideTwoHander = false;
 	bool leftGripOnHandle = false;
 	bool bothHandsOnHandle = false;
+	bool pullRight = false;
+	bool pullLeft = false;
 };
 
 void TestFrameOf() {
@@ -265,6 +267,16 @@ void TestFrameOf() {
 	f.leftGripOnHandle = true;
 	Check(GripToggleFrameOf(f, true, true).keeps.left, "the other hand's grip on the handle: kept");
 	Check(GripToggleFrameOf(f, true, true).dt == kFrame, "the frame's time");
+	FakeFrame p;
+	Check(!GripToggleFrameOf(p, true, true).keeps.right && !GripToggleFrameOf(p, true, true).keeps.left,
+	      "nothing drawn, no pull: nothing kept");
+	p.pullRight = true;
+	g = GripToggleFrameOf(p, true, true);
+	Check(g.keeps.right && !g.keeps.left, "a weapon pulled to the weapon hand: that hand keeps it (game/PullHold.h)");
+	p.pullRight = false;
+	p.pullLeft = true;
+	g = GripToggleFrameOf(p, true, true);
+	Check(!g.keeps.right && g.keeps.left, "a torch or a bow pulled to the other hand: that hand keeps it");
 }
 
 }  // namespace

@@ -208,6 +208,19 @@ inline NiPoint3 ThrowVelocity(const VelocityHistory& h, float strength) {
 	return v * (ThrowEase(speed) * strength);
 }
 
+// What a release does to the body's speed (Nadi, Windows 2026-11-27: pulled
+// weapons "shot out past my hand"). A throw gives it the hand's. A hold let go
+// of while it still floated in to the hand (game::HeldObject, FloatWeight
+// under 1) is stopped where it was seen: the speed its body had was the
+// float's - OBVR's drive or the engine's spring pulling it at the hand - and
+// kept, it flew on past the hand at 560 to 740 units a second after "set down
+// (0 units/s)" in that run's log. Anything else keeps its own, as before.
+enum class ReleaseSpeed : UInt8 { Kept, Thrown, Stopped };
+
+inline ReleaseSpeed ReleaseSpeedFor(bool thrown, bool floating) {
+	return thrown ? ReleaseSpeed::Thrown : floating ? ReleaseSpeed::Stopped : ReleaseSpeed::Kept;
+}
+
 // The spin a thrown item leaves with (Nadi, 2026-10-26: a throw with a flick
 // of the wrist should tumble): the hand's turning speed - SteamVR's angular
 // velocity, world axes, radians a second - in the frame the throw's speed
@@ -469,8 +482,8 @@ void ForgetTakenRef(UInt32 ref);
 
 // Where the object was last seen in the hand (game::HeldObject writes it each
 // frame it places the object): on release, the body is put there before it
-// is sent off.
-void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos);
+// is sent off. `floating`: still on its way in to the hand (ReleaseSpeedFor).
+void NoteHeldPose(UInt32 ref, const NiMatrix33& rot, const NiPoint3& pos, bool floating);
 
 // The hkRigidBody held now, 0 for none - what the hands and the weapon do not
 // push (game/WorldPush.h): it is already in the hand.

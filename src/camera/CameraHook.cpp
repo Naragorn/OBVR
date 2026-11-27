@@ -15,6 +15,7 @@
 #include "camera/hands/DrawSpeed.h"
 #include "camera/hands/Gestures.h"
 #include "camera/hands/Grab.h"
+#include "camera/hands/GrabKeep.h"
 #include "camera/hands/Handover.h"
 #include "camera/hands/HandGeometry.h"
 #include "camera/hands/Held.h"
@@ -4857,28 +4858,10 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	// first step (camera/hands/Gestures.h).
 	FaceFighterForHandScript();
 	hands::UpdateYield(g_gestures, handStep, handShared, frame, active && !menuIsUp && frame.inWorld && !frame.settingsMenuOpen);
-	frame.grabHand = g_inventoryHold.ref != 0 ? (g_inventoryHold.left ? 1 : 0) : -1;
+	// The grab kept with the grip open: the inventory's item, a pull under the toggle (camera/hands/GrabKeep.h).
+	hands::NoteGrabHands(frame, g_inventoryHold, g_grab, active, config.hands.gripHold.toggle);
 	g_hand = g_handMode.Update(frame, config.hands);
-	// The inventory's item held in the hand that took it (game/InventoryGrab.h,
-	// step 4): its grab wanted while that hand's hold stays closed.
-	if (g_inventoryHold.ref != 0) {
-		const bool hold = g_inventoryHold.left ? g_hand.leftHold : g_hand.rightHold;
-		g_inventoryHold.seconds += dt == dt && dt > 0.0f ? dt : 0.0f;
-		if (!hold || !active || menuIsUp) {
-			OBVR_LOG("Inventory grab: the %s hand opened after %.2f s - %s", g_inventoryHold.left ? "other" : "weapon",
-			         static_cast<double>(g_inventoryHold.seconds),
-			         g_inventoryHold.grabbedSaid ? "let go as any held thing" : "it was never held");
-			g_inventoryHold = InventoryHold{};
-		} else {
-			g_hand.grabWanted = true;
-			g_hand.grabWithLeftHand = g_inventoryHold.left;
-			if (!g_inventoryHold.grabbedSaid && game::GrabbedRef() == g_inventoryHold.ref) {
-				g_inventoryHold.grabbedSaid = true;
-				OBVR_LOG("Inventory grab: %08X in the %s hand's grab after %.2f s", g_inventoryHold.ref,
-				         g_inventoryHold.left ? "other" : "weapon", static_cast<double>(g_inventoryHold.seconds));
-			}
-		}
-	}
+	hands::KeepGrabs(g_inventoryHold, g_grab, g_hand, active, menuIsUp, dt, config.hands.gripHold.toggle);
 	// Oblivion Walkers' grab on the body (camera/hands/WalkersShake.h): the
 	// call at the held hand, the strokes, the bite, the stick held still.
 	hands::StepWalkersShake(g_walkersShake, handStep, handShared, frame,

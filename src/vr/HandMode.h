@@ -799,13 +799,13 @@ struct HandModeFrame {
 	// gestures, vr::StepHolster).
 	EquippedKind equipped = EquippedKind::Nothing;
 	HolsterSlot equippedSlot = HolsterSlot::None;
-	// The other hand's shield or torch, worn, and what the four places keep -
-	// and whether that is worn now (the equipped weapon, a shield or torch
-	// equipped): the holster's memory, game/HolsterSlots.h.
+	// The other hand's shield or torch, worn, and what the four places keep - and whether that is worn now
+	// (the equipped weapon, a shield or torch equipped): the holster's memory, game/HolsterSlots.h.
 	OffHandItem offHand = OffHandItem::Nothing;
 	SlotItem slotItem[kHolsterSlotCount] = {};
 	bool slotWorn[kHolsterSlotCount] = {};
 	bool torchBesideTwoHander = false;  // HolsterInput's
+	bool pullRight = false, pullLeft = false;  // a pull to that hand under way (game/PullHold.h): the toggle keeps it
 	// The drawn weapon's weight, the item's own (game::WeaponWeightOf), while
 	// a swung weapon - a blade or a blunt one - is drawn in the hand; 0 with
 	// the fists, a bow, a staff, or nothing drawn. The weapon's lag is set by

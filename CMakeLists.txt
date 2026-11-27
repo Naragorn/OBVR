@@ -47,6 +47,7 @@ add_library(OBVR SHARED
 	src/camera/hands/DragLog.cpp
 	src/camera/hands/DrawSpeed.cpp
 	src/camera/hands/Grab.cpp
+	src/camera/hands/GrabKeep.cpp
 	src/camera/hands/Handover.cpp
 	src/camera/hands/HandsInMenus.cpp
 	src/camera/hands/Held.cpp
