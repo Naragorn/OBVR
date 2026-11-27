@@ -5081,10 +5081,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 
 	if (g_hand.blocking != g_handBlocking) {
 		g_handBlocking = g_hand.blocking;
-		OBVR_LOG("Hands: %s", g_handBlocking ? (g_hand.bowGuard    ? "the bow is held upright - blocking"
-		                                        : g_hand.fistGuard ? "both fists are up - blocking"
-		                                                           : "the left hand is up - blocking")
-		                                      : "the left hand is down - block released");
+		hands::LogBlockChange(g_hand, frame);  // with the walk's state (camera/hands/Locomotion.h)
 	}
 	// The bow by hand, each step (vr::StepArchery).
 	hands::StepArchery(g_archery, handStep, handShared, frame, g_bowVisual, g_deltaSeconds);

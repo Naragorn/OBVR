@@ -1,6 +1,7 @@
 #include "camera/hands/Locomotion.h"
 
 #include "core/Log.h"
+#include "core/MathFns.h"
 #include "game/AnalogWalk.h"
 #include "game/FatigueCost.h"
 #include "game/PlayerAim.h"
@@ -21,6 +22,22 @@ void LogArmSwing(LocomotionState& state, const HandStep& step, const HandShared&
 		         static_cast<double>(config.hands.armSwing.speedMetres));
 	}
 	state.swingWas = swinging;
+}
+
+void LogBlockChange(const vr::HandModeResult& hand, const vr::HandModeFrame& frame) {
+	if (!hand.blocking) {
+		OBVR_LOG("Hands: the left hand is down - block released");
+		return;
+	}
+	const float left = frame.left.valid ? math::Sqrt(frame.left.velocity.LengthSquared()) : -1.0f;
+	const float right = frame.right.valid ? math::Sqrt(frame.right.velocity.LengthSquared()) : -1.0f;
+	OBVR_LOG("Hands: %s - the stick pushed %.2f (its run %d), a run asked %d, the arms running %d; the hands at "
+	         "%.1f and %.1f m/s (left, right; -1 untracked)",
+	         hand.bowGuard    ? "the bow is held upright - blocking"
+	         : hand.fistGuard ? "both fists are up - blocking"
+	                          : "the left hand is up - blocking",
+	         static_cast<double>(hand.analogStick.amount), hand.analogRunning ? 1 : 0, hand.analogForcedRun ? 1 : 0,
+	         hand.armSwinging ? 1 : 0, static_cast<double>(left), static_cast<double>(right));
 }
 
 void StepAnalogWalk(LocomotionState& state, const HandStep& step, const HandShared& shared, bool flying,
