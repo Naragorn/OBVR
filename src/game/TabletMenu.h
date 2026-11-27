@@ -30,6 +30,7 @@ struct TabletMovedBox {
 // logged, so a change is said once.
 struct TabletMenuState {
 	UInt32 loggedPage = 0;
+	bool loggedBookScroll = false;  // the look of the book read alone, as last said
 	SInt32 loggedCrop[4] = {};
 	UInt32 loggedPopups = 0;
 	bool loggedMissing = false;

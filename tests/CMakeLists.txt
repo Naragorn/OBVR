@@ -2841,6 +2841,22 @@ if(NOT MSVC)
 endif()
 add_test(NAME menu_place COMMAND menu_place_test)
 
+# Books and letters in the hand (vr/TabletBook.h), through the hand mode too.
+add_executable(tablet_book_test
+	TabletBookTest.cpp
+	../src/vr/HandMode.cpp
+	../src/vr/HandSides.cpp
+	../src/vr/HeadOffset.cpp
+	../src/vr/Quaternion.cpp
+	../src/core/Rotation.cpp
+	../src/core/Smoothing.cpp
+)
+target_include_directories(tablet_book_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_book_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet_book COMMAND tablet_book_test)
+
 add_executable(head_cull_test HeadCullTest.cpp)
 target_include_directories(head_cull_test PRIVATE ../src)
 if(NOT MSVC)

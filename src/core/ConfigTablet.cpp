@@ -12,6 +12,7 @@ void ReadTabletStep(Config& config, const char* path) {
 	vr::TabletSettings& t = config.hands.tablet;
 	t.enabled = ReadBool("Tablet", "Enabled", t.enabled, path);
 	t.widthMetres = ReadFloat("Tablet", "WidthMetres", t.widthMetres, path);
+	t.bookWidthMetres = ReadFloat("Tablet", "BookWidthMetres", t.bookWidthMetres, path);
 	t.inScene = ReadBool("Tablet", "InScene", t.inScene, path);
 	t.drawnFinger = ReadBool("Tablet", "DrawnFinger", t.drawnFinger, path);
 	t.gripUp = ReadFloat("Tablet", "GripUp", t.gripUp, path);
@@ -32,6 +33,7 @@ void ReadTabletStep(Config& config, const char* path) {
 	}
 	// A page narrower than a hand or wider than both arms is no tablet.
 	t.widthMetres = t.widthMetres < 0.15f ? 0.15f : (t.widthMetres > 0.8f ? 0.8f : t.widthMetres);
+	t.bookWidthMetres = t.bookWidthMetres < 0.15f ? 0.15f : (t.bookWidthMetres > 0.8f ? 0.8f : t.bookWidthMetres);
 	t.gripShare = t.gripShare < 0.0f ? 0.0f : (t.gripShare > 1.0f ? 1.0f : t.gripShare);
 	// How it sits in the hand (vr::HeldPlace): half a turn either way at most,
 	// and within an arm's reach of the palm.
