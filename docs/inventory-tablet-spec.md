@@ -1932,7 +1932,7 @@ Three reports from the run (OBVR.log 13:38-13:55). Marks: [R] read in the
 code, the log or the EXE's decompiled functions, [D] derived from those,
 [G] guessed, not checked.
 
-### 26.1 The figure flickers - cause not pinned, an instrument added
+### 26.1 The figure flickers - its rectangle held steady, and an instrument
 
 Nadi: with the figure on its own page at the right, "the edge round the
 figure still flickers"; with the figure's tab chosen at the top, "the figure
@@ -1955,23 +1955,45 @@ flickers in the tablet".
   figure's page and its tab place the picture by that rectangle; the page's
   edge (`kFigurePageEdge`) is a strip 0.006 of the page's width - about 10
   of the layer's 4036 pixels, near a millimetre on a 0.34 m tablet.
-- Candidates, none confirmed: (a) the cut moves at every read, so the
-  figure jumps every 15 frames [G]; (b) a read fails now and then and the
-  tablet shows the page alone for 15 frames [G - in beside mode the log
-  would have said it, and did not]; (c) the picture itself crawls: the
-  figure's hard edges and the thin edge strip drawn smaller than the
-  layer has them, with a linear filter and no mip level set by
-  `render::TabletQuad` [G].
-- **Added** (no fix shipped): `vr/TabletFigureWatch.h` (pure,
-  tablet_figure_watch_test), called from `game::ReadTabletMenus` while the
-  figure is wanted. Logged once per 90 frames, and only when something
-  moved, at most 40 times a session: "Tablet: the figure's picture over 90
-  frames - its cut moved in N frame(s), by at most P layer pixels; not read
-  in M frame(s)". Cost: four float compares a frame, no allocation.
-- Next run, look for that line. Said while the tablet is held still: (a)
-  or (b), with how far and how often. Not said while it flickers: (c) -
-  then the harness film, `tablet-figure-watch.txt --record 14` through
+- [R code] Both layouts are made from that rectangle each frame.
+  `vr::SetFigurePage`: the figure's place and the page behind it take the
+  rectangle's width, and the tablet's face grows by it. `vr::SetFigureTab`:
+  the figure is fitted into the page and centred by the rectangle's width
+  and height.
+- **Cause [D: from the three logged reads and that code]:** the figure
+  breathes, so the reads differ - the log's three are 0.545, 0.544, 0.545 of
+  the screen at the left edge, about 4 of the layer's pixels. With each
+  read the figure's page got another width (its edge moved) and the figure
+  behind its tab another place, six times a second at 90 Hz.
+  tablet_figure_steady_test lays the logged reads out through both
+  functions: as they came, the fitted rectangles differ; held steady, they
+  are the same.
+- **Fix:** `vr::StepFigureSteady` (vr/TabletFigureSteady.h, pure), in
+  `ReadFigure` (game/TabletMenu.cpp). The rectangle taken is kept, wider
+  than read by 1.5 % of its height on every side (the breath's room, cut at
+  the screen's edges), while the reads stay inside it and no edge stands
+  more than 6 % of the height inside. A figure that is turned or changes
+  its gear outgrows or leaves it and is taken anew. Started over when the
+  tablet's menus go. Both numbers are guesses [G] from the 4 pixels of the
+  three reads; the turn's reads are not logged.
+- Not ruled out [G]: (b) a read that fails now and then, the tablet showing
+  the page alone for 15 frames - in beside mode the log would have said it,
+  and did not; (c) the picture itself crawling: the figure's hard edges and
+  the thin edge strip drawn smaller than the layer has them, with a linear
+  filter and no mip level set by `render::TabletQuad`.
+- **The instrument stays:** `vr/TabletFigureWatch.h` (pure,
+  tablet_figure_watch_test) watches the rectangle as read, not the steady
+  one. Logged once per 90 frames, only when a read moved, at most 40 times
+  a session: "Tablet: the figure's rectangle as read over 90 frames - it
+  moved in N frame(s), by at most P layer pixels (held steady on the
+  tablet); not read in M frame(s)". Cost: four float compares a frame, no
+  allocation.
+- Next run: that line with N of about 6 and P of a few pixels confirms the
+  cause. If the figure still flickers with it, P above 34 pixels says the
+  room is too small; "not read" above 0 is (b); else (c) - then the harness
+  film, `tablet-figure-watch.txt --record 14` through
   `tools/film-flicker.py`, still against turned.
+- Not run: the game, the harness, the headset.
 
 ### 26.2 The touch came late
 

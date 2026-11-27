@@ -6,15 +6,19 @@
 # tablet held still for 4 s (marks still-1, still-2), then the off hand
 # turned by 2 degrees every 0.1 s for 2 s (mark turned).
 # Look for:
-# - "Tablet: the figure's picture over 90 frames - its cut moved in N
-#   frame(s), by at most P layer pixels; not read in M frame(s)": said only
-#   when the figure's rectangle moved or was not read. Said while the hand
-#   is still: the cut itself moves (the figure's rectangle is read anew
-#   every 15 frames from its bones), and P says by how much; "not read":
-#   the tablet showed the page alone in those frames.
-# - Not said, and the film flickers only while the hand turns: the figure's
-#   picture is sampled too small without mipmaps (its hard edges crawl) -
-#   tools/film-flicker.py on the figure's part of the film, still against turned.
+# - "Tablet: the figure's rectangle as read over 90 frames - it moved in N
+#   frame(s), by at most P layer pixels (held steady on the tablet); not
+#   read in M frame(s)": said only when a read moved or failed. The reads
+#   move with the figure's breath (read anew every 15 frames from its
+#   bones); the tablet lays out the rectangle held steady
+#   (vr/TabletFigureSteady.h), so the figure and its page's edge stand
+#   still in the film while the hand is still. "not read": the tablet showed
+#   the page alone in those frames.
+# - The film still flickers while the hand is still, and P is over 34: the
+#   steady rectangle's room is too small. Flickers only while the hand
+#   turns: the figure's picture is sampled too small without mipmaps (its
+#   hard edges crawl) - tools/film-flicker.py on the figure's part of the
+#   film, still against turned.
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-figure-watch.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll --record 14
 
 ini Hands Enabled=1

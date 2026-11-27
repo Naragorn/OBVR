@@ -2799,6 +2799,14 @@ if(NOT MSVC)
 endif()
 add_test(NAME tablet_figure_watch COMMAND tablet_figure_watch_test)
 
+# The figure's rectangle held steady for the tablet (vr/TabletFigureSteady.h): pure.
+add_executable(tablet_figure_steady_test TabletFigureSteadyTest.cpp)
+target_include_directories(tablet_figure_steady_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_figure_steady_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet_figure_steady COMMAND tablet_figure_steady_test)
+
 # How far ahead the poses are predicted when the wait comes late (vr/PosePrediction.h): pure.
 add_executable(pose_prediction_test PosePredictionTest.cpp)
 target_include_directories(pose_prediction_test PRIVATE ../src)

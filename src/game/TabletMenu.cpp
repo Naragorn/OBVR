@@ -243,7 +243,9 @@ UInt32 JoinFaceMenus(TabletMenuState& state, const UInt32* stack, UInt32 count, 
 // The figure (game/MenuFigure.h), in HUD units. The walk over the model's
 // nodes costs about 0.015 ms; the figure only breathes and turns between two
 // of them, so it is read every kFigureReadFrames frames and the last kept
-// between.
+// between. What the tablet lays out is that rectangle held steady
+// (vr/TabletFigureSteady.h): each read differs by the breath, and the
+// figure's page and its tab are fitted to it.
 vr::UiRect ReadFigure(TabletMenuState& state, float screenWidth, float aspect) {
 	if (state.figureAge == 0 || state.figureAge >= kFigureReadFrames) {
 		state.figureRead = ReadMenuFigure(aspect, state.figure);
@@ -256,15 +258,21 @@ vr::UiRect ReadFigure(TabletMenuState& state, float screenWidth, float aspect) {
 	figure.right = state.figure.right * screenWidth;
 	figure.bottom = state.figure.bottom * vr::kHudUiHeightUnits;
 	figure.valid = state.figureRead;
-	return figure;
+	state.figureAsRead = figure;
+	vr::UiRect screen;
+	screen.right = screenWidth;
+	screen.bottom = vr::kHudUiHeightUnits;
+	screen.valid = true;
+	return vr::StepFigureSteady(state.figureSteady, figure, screen);
 }
 
-// The figure's rectangle watched while it is wanted on the tablet (vr/TabletFigureWatch.h).
-void WatchFigure(TabletMenuState& state, bool wanted, const vr::UiRect& figurePixels) {
-	const vr::FigureWatchReport w = vr::StepFigureWatch(state.figureWatch, wanted, figurePixels);
+// The figure's rectangle as read, watched while it is wanted on the tablet
+// (vr/TabletFigureWatch.h): how far the reads move under the steady one.
+void WatchFigure(TabletMenuState& state, bool wanted, const vr::UiRect& readPixels) {
+	const vr::FigureWatchReport w = vr::StepFigureWatch(state.figureWatch, wanted, readPixels);
 	if (w.say) {
-		OBVR_LOG("Tablet: the figure's picture over %u frames - its cut moved in %u frame(s), by at most %.0f layer "
-		         "pixels; not read in %u frame(s)",
+		OBVR_LOG("Tablet: the figure's rectangle as read over %u frames - it moved in %u frame(s), by at most %.0f "
+		         "layer pixels (held steady on the tablet); not read in %u frame(s)",
 		         w.frames, w.moves, static_cast<double>(w.mostPixels), w.drops);
 	}
 }
@@ -293,6 +301,7 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 	const UInt32 count = asked ? MenuStackEntries(stack, kMenuStackEntries) : 0;
 	if (!vr::TabletMenusUp(stack, count)) {
 		state.figureAge = 0;
+		state.figureSteady = vr::FigureSteadyState{};
 		state.loggedPage = kMenuIdNone;
 		state.loggedMissing = false;
 		PutBackBoxes(state, stack, count, nullptr, 0);
@@ -330,7 +339,8 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 	// the game draws it, unless it is off.
 	frame.popupUp = vr::BoxOverPage(rects);
 	const vr::UiRect figurePixels = vr::ToLayerPixels(figure, layerPixelsHeight);
-	WatchFigure(state, inScene && mode != vr::TabletFigure::Off, figurePixels);
+	const vr::UiRect readPixels = vr::ToLayerPixels(state.figureAsRead, layerPixelsHeight);
+	WatchFigure(state, inScene && mode != vr::TabletFigure::Off, readPixels);
 	if (inScene && mode == vr::TabletFigure::Beside && popups == 0) {
 		vr::SetFigurePage(frame, figurePixels);
 	} else if (inScene && mode == vr::TabletFigure::Tab) {
