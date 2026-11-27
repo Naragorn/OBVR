@@ -1010,3 +1010,49 @@ unverified. Without that, every frame would be copied through the CPU, which VR 
 their sync, poses back to Oblivion within the frame, OpenXR input in place of OpenVR's
 actions, and testing on Windows and on Linux (Proton). DLSS on top of that is huge again
 (motion vectors from a 2006 engine).
+
+## For later: the shield against its real mesh, and blows by real contact (noted 2026-11-27, nothing built)
+
+Nadi, 2026-11-27, after the shield's block by contact (`[Hands] ShieldBlockByContact`,
+docs/free-weapons-spec.md "The tester's Windows run of 2026-11-27", docs/combat-comfort-spec.md):
+two refinements weighed and put off. Kept here so they are not lost.
+
+### 1. A flight against the shield's triangles instead of its outline
+
+- **Now:** an arrow is judged against the shield's outline in its own plane - row spans read
+  from the model's vertices with the disc (game/ShieldShape) - and the disc's thickness.
+- **What triangles would add:** holes and cut-outs inside a shield (the outline fills them),
+  a strongly curved shield (the outline is a flat plate with a thickness), and the exact
+  point on the surface.
+- **What the player would notice [G]:** next to nothing on vanilla's shields (round, kite,
+  heater, tower: one to two units at the rim). Only a mod's shield with cut-outs or a deep
+  curve, and there only at its edge.
+- **What it would be good for beyond arrows:** a general "ray against a real mesh" - blades
+  against foes' shields and weapons, cut marks placed on the surface.
+- **Cost:** medium. OBVR reads vertices (`ForEachWorldVertex`, game/NearbyItems.h) and no
+  triangle lists anywhere: NiTriShapeData's indices and NiTriStripsData's strips are to be
+  read first (engine unknowns). At an event only, so the per-frame cost is none.
+- **Model and effort:** Opus 5.5 high.
+- **When:** when the mesh ray is wanted as a tool for more than arrows. Not for arrows alone.
+
+### 2. The outline, and real contact, for blows
+
+- **Now:** a blow is blocked when the shield's face is within `BlockShieldDegrees` (70) of
+  the line to the attacker's blade and that blade is within `BlockReachUnits` (40, about
+  0.57 m) of the disc - a circle of the longer spoke (game/BlockAngleLogic.h). Generous on
+  purpose since 2026-10-14.
+- **The outline alone:** narrows the zone only at a tall shield's sides, by the difference of
+  its two spokes - about 7 units of more than 50 on a kite shield [D]. Not felt.
+- **Where it would matter:** with the reach near 0 - blocked only when the foe's blade meets
+  the shield, as Blade & Sorcery has it. Two consequences:
+  - Blocking gets clearly harder: a choice about difficulty, Nadi's.
+  - The engine resolves a hit at one moment of the attack's animation, and the foe's blade is
+    often not at the shield then - why the reach came (the tester, 2026-10-14: "die höhe der
+    kreuzenden waffen scheinen egal zu sein"). Real contact needs the foe's blade followed
+    over the whole blow (a sweep, as the player's own blade has in game/MeleeSweep), then
+    judged against the outline.
+- **Cost:** the outline into the blow's rule alone: small. Real contact with the foe's sweep:
+  medium to large; the feel is unknown until the headset.
+- **Model and effort:** Opus 5.5 high for the sweep; Sonnet 5.5 medium for the outline alone.
+- **First, free:** play the block by contact as it is; if it is too easy, lower
+  `BlockReachUnits` in the INI. Only if real contact is wanted is the sweep worth building.
