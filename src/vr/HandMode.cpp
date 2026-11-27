@@ -5,7 +5,7 @@
 #include "core/Rotation.h"
 #include "game/MenuCursor.h"
 #include "vr/AttackControl.h"
-#include "vr/HandBlockLogic.h"
+#include "vr/HandBlockFrame.h"
 #include "vr/HeadOffset.h"
 #include "vr/QuickSaveChord.h"
 #include "vr/SheathReach.h"
@@ -332,27 +332,21 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 
 	// Gestures: the block the hands' pose makes (vr/HandBlockLogic.h) - none
-	// while the arms run by swinging (ArmSwingHoldsBlocks).
-	HandBlockFrame bf;
-	bf.menuMode = f.menuMode;
-	bf.leftValid = f.left.valid;
-	bf.rightValid = f.right.valid;
+	// while the arms run by swinging (ArmSwingHoldsBlocks); the shield's only
+	// until it guards by contact (vr/HandBlockFrame.h).
+	HandBlockFrame bf = HandBlockFrameOf(f, s);
 	bf.rightHandValid = r.rightHandValid;
-	bf.weaponDrawn = f.weaponSeen == WeaponSeen::Drawn;
-	bf.fistsUp = f.equipped == EquippedKind::Nothing;
-	bf.shieldEquipped = f.shieldEquipped;
-	bf.torchBlocks = s.torchBlocks && f.torchHeld;
 	bf.leftRelative = leftRelative;
 	bf.rightRelative = rightRelative;
 	bf.blade = NiPoint3{r.rightHandRotation.data[0][1], r.rightHandRotation.data[1][1], r.rightHandRotation.data[2][1]};
 	bf.rightSwinging = m_swing.swinging;
 	bf.leftSwinging = m_leftSwing.swinging;
-	bf.blockByAngle = s.blockByAngle;
 	bf.armsRun = ArmSwingHoldsBlocks(m_armSwing, s.armSwing);
 	const HandBlock block = DecideHandBlock(bf, s.gestures);
 	r.blocking = block.blocking;
 	r.blockWith = block.with;
 	r.fistGuard = block.fistGuard;
+	r.shieldPose = block.shield;
 	r.reachBack = f.right.valid && IsReachBackGesture(rightRelative, s.gestures);
 
 	// The swing, from the right hand's speed across the head-relative frame

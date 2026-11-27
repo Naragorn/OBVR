@@ -413,9 +413,7 @@ void TorchReleaseFollowsWeaponStep(Config& config, const char*) {
 	h.torchRelease.throwStrength = h.weaponRelease.throwStrength;
 }
 
-void TorchSpinFollowsWeaponStep(Config& config, const char*) {
-	config.hands.torchRelease.throwSpinStrength = config.hands.weaponRelease.throwSpinStrength;
-}
+// TorchSpinFollowsWeaponStep: core/ConfigDebug.cpp.
 
 void ReadHolsterSidesStep(Config& config, const char* path) {
 	vr::HolsterSettings& hs = config.hands.holster;
@@ -1008,6 +1006,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Int, "Hands", "DismemberMostCuts", hands.dismember.most),
 	OBVR_KEY(Bool, "Hands", "ShieldBash", hands.shieldBash.enabled),
 	OBVR_KEY(Bool, "Hands", "TorchBlocks", hands.torchBlocks),
+	OBVR_KEY(Bool, "Hands", "ShieldBlockByContact", hands.shieldBlockByContact),
 	OBVR_KEY(Bool, "Hands", "Yield", hands.yield),
 	OBVR_KEY(Bool, "Hands", "PommelStrikes", hands.pommel.enabled),
 	OBVR_KEY(Bool, "Hands", "HalfSwording", hands.halfSword.enabled),

@@ -65,7 +65,7 @@ int main() {
 	          Same(out, "press A on the right controller"),
 	      "activate: A on the weapon hand");
 	Check(ControlPhrase(kControlBlock, false, kBow, out, sizeof(out)) &&
-	          Same(out, "raise your shield, or hold your blade across the blow"),
+	          Same(out, "hold your shield or your blade across the blow"),
 	      "block");
 	Check(ControlPhrase(kControlCast, false, kBow, out, sizeof(out)) && Same(out, "pull the left trigger"),
 	      "cast: the other hand's trigger");

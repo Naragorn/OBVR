@@ -3,7 +3,7 @@
 # function_sizes_test allows it.
 # Smaller passes; larger fails. Rewrite with: function_sizes_test --print > tests/function-sizes.txt
 # file<TAB>function or (file globals) or (file lines)<TAB>lines or count
-src/camera/CameraHook.cpp	(file lines)	12421
+src/camera/CameraHook.cpp	(file lines)	12419
 src/camera/CameraHook.cpp	StepShoves	112
 src/camera/CameraHook.cpp	StepGrapple	296
 src/camera/CameraHook.cpp	StepEnemyHealthBars	168
@@ -11,13 +11,13 @@ src/camera/CameraHook.cpp	StepWeaponContact	532
 src/camera/CameraHook.cpp	StepHandContacts	386
 src/camera/CameraHook.cpp	StepReachOpen	162
 src/camera/CameraHook.cpp	StepOneHandTwoHander	109
-src/camera/CameraHook.cpp	UpdateHandMode	546
+src/camera/CameraHook.cpp	UpdateHandMode	544
 src/camera/CameraHook.cpp	OnFrameEnd	592
 src/camera/CameraHook.cpp	BeforeFirstScenePass	514
 src/camera/CameraHook.cpp	MaybeSubmitOverlays	930
 src/camera/CameraHook.cpp	UpdateCrosshairDepth	127
 src/camera/CameraHook.cpp	Install	240
-src/camera/CameraHook.cpp	(file globals)	372
+src/camera/CameraHook.cpp	(file globals)	371
 src/camera/FrameLogic.h	(file lines)	2316
 src/camera/hands/Archery.cpp	StepArchery	137
 src/camera/hands/ControlsOut.cpp	StepControlsOut	268
@@ -38,7 +38,7 @@ src/camera/hands/WalkersShake.cpp	StepWalkersShake	105
 src/camera/hands/WeaponFrame.cpp	StepWeaponFrame	150
 src/camera/hands/WeaponRelease.cpp	StepRelease	533
 src/camera/hands/WorldPush.cpp	StepWorldPush	201
-src/core/Config.cpp	(file lines)	1591
+src/core/Config.cpp	(file lines)	1590
 src/core/Config.cpp	Config::Load	178
 src/core/Config.cpp	(file globals)	2
 src/core/CrashHandler.cpp	(file globals)	3
@@ -207,8 +207,8 @@ src/ui/NativeControlsCard.h	ControlsCardFor	126
 src/vr/HandHud.h	(file lines)	1003
 src/vr/HandInput.h	(file lines)	2071
 src/vr/HandInput.h	StepLaserPress	106
-src/vr/HandMode.cpp	(file lines)	1361
-src/vr/HandMode.cpp	HandMode::Update	705
+src/vr/HandMode.cpp	(file lines)	1355
+src/vr/HandMode.cpp	HandMode::Update	699
 src/vr/HandMode.cpp	HandMode::SteerSettingsMenu	114
 src/vr/HandMode.cpp	HandMode::PointAtMenu	232
 src/vr/HandMode.h	(file lines)	1351

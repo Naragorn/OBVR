@@ -60,6 +60,28 @@ struct BlockAngleSettings {
 	float interposeUnits = 25.0f;  // [Hands] BlockInterposeUnits
 };
 
+// The shield as a guard by contact ([Hands] ShieldBlockByContact; Nadi,
+// 2026-11-27, "as Blade & Sorcery": no block state, a shield blocks a blow
+// when it is in its way). `byContact`: the rule holds this frame - on, a
+// shield worn and its disc read - so nothing presses the game's Block
+// control for the shield and every blow at the player is judged against the
+// disc (ParryLogic.h, ForceBlockForShield, ShieldConeFor). `raised`: the left
+// hand held as the old pose rule raised it (vr::IsBlockGesture), for a blow
+// the disc cannot be judged against (an arrow, an attacker not placed).
+struct ShieldGuardPose {
+	bool byContact = false;
+	bool raised = false;
+};
+
+// What the player guards with this frame: the pose's guard while one holds
+// the Block control, else the shield by contact, else nothing.
+inline BlockWith GuardWithFor(bool poseBlocking, BlockWith poseWith, bool shieldByContact) {
+	if (poseBlocking) {
+		return poseWith;
+	}
+	return shieldByContact ? BlockWith::Shield : BlockWith::None;
+}
+
 // The player's guard this frame, in the world (vr::HandMode names the pose;
 // the blade's span and the shield's disc come from the contact steps).
 struct BlockGuard {
@@ -72,6 +94,7 @@ struct BlockGuard {
 	NiPoint3 shieldNormal{0.0f, 0.0f, 1.0f};
 	float shieldRadius = 0.0f;     // the disc's, as the shield's shape reads it (game/ShieldShape)
 	float shieldHalfThick = 0.0f;  // half the disc's thickness
+	ShieldGuardPose shieldPose;    // the shield by contact (ShieldGuardPose)
 	// The player's upper body, for a blow without a blade: where it comes
 	// at - from the neck (`body`) down to the belly (`bodyLow`).
 	bool bodyValid = false;

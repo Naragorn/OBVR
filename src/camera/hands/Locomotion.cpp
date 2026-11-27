@@ -24,20 +24,41 @@ void LogArmSwing(LocomotionState& state, const HandStep& step, const HandShared&
 	state.swingWas = swinging;
 }
 
-void LogBlockChange(const vr::HandModeResult& hand, const vr::HandModeFrame& frame) {
-	if (!hand.blocking) {
-		OBVR_LOG("Hands: the left hand is down - block released");
-		return;
-	}
+namespace {
+
+// "Hands: <what> - " and the walk's state at that moment.
+void LogWithWalk(const char* what, const vr::HandModeResult& hand, const vr::HandModeFrame& frame) {
 	const float left = frame.left.valid ? math::Sqrt(frame.left.velocity.LengthSquared()) : -1.0f;
 	const float right = frame.right.valid ? math::Sqrt(frame.right.velocity.LengthSquared()) : -1.0f;
 	OBVR_LOG("Hands: %s - the stick pushed %.2f (its run %d), a run asked %d, the arms running %d; the hands at "
 	         "%.1f and %.1f m/s (left, right; -1 untracked)",
-	         hand.bowGuard    ? "the bow is held upright - blocking"
-	         : hand.fistGuard ? "both fists are up - blocking"
-	                          : "the left hand is up - blocking",
-	         static_cast<double>(hand.analogStick.amount), hand.analogRunning ? 1 : 0, hand.analogForcedRun ? 1 : 0,
-	         hand.armSwinging ? 1 : 0, static_cast<double>(left), static_cast<double>(right));
+	         what, static_cast<double>(hand.analogStick.amount), hand.analogRunning ? 1 : 0,
+	         hand.analogForcedRun ? 1 : 0, hand.armSwinging ? 1 : 0, static_cast<double>(left),
+	         static_cast<double>(right));
+}
+
+}  // namespace
+
+void LogBlockChange(LocomotionState& state, const vr::HandModeResult& hand, const vr::HandModeFrame& frame) {
+	if (hand.blocking != state.blockingWas) {
+		state.blockingWas = hand.blocking;
+		if (!hand.blocking) {
+			OBVR_LOG("Hands: the left hand is down - block released");
+		} else {
+			LogWithWalk(hand.bowGuard    ? "the bow is held upright - blocking"
+			            : hand.fistGuard ? "both fists are up - blocking"
+			                             : "the left hand is up - blocking",
+			            hand, frame);
+		}
+	}
+	const bool raised = hand.shieldPose.byContact && hand.shieldPose.raised;
+	if (raised != state.shieldRaisedWas && state.shieldRaisedLines > 0) {
+		--state.shieldRaisedLines;
+		LogWithWalk(raised ? "the shield hand is up - no block held, the shield blocks what it is in the way of"
+		                   : "the shield hand is down - the shield still blocks what it is in the way of",
+		            hand, frame);
+	}
+	state.shieldRaisedWas = raised;
 }
 
 void StepAnalogWalk(LocomotionState& state, const HandStep& step, const HandShared& shared, bool flying,

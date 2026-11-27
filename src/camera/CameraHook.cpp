@@ -720,7 +720,6 @@ long long g_handClockLast = 0;
 // The flat picture's laser lines, the first few.
 UInt32 g_flatLaserLinesLeft = 6;
 bool g_flatCursorInvalidReported = false;
-bool g_handBlocking = false;
 bool g_handReachBack = false;
 UInt32 g_handSwingLinesLeft = 60;
 
@@ -4773,6 +4772,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	g_gestures.yieldDrive.clickWanted = false;
 	g_grab.weaponTakeReadyClick = false;
 	frame.shieldEquipped = active && game::PlayerWearsShield();
+	frame.shieldDiscRead = frame.shieldEquipped && g_shieldDiscHave;  // the shield by contact (vr/HandBlockFrame.h)
 	frame.torchHeld = active && game::WornTorchForm() != nullptr;
 	frame.menusOnly = menusOnly;
 	frame.inWorld = game::PlayerInWorld();
@@ -5079,10 +5079,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 		s_grabPhase = grabPhase;
 	}
 
-	if (g_hand.blocking != g_handBlocking) {
-		g_handBlocking = g_hand.blocking;
-		hands::LogBlockChange(g_hand, frame);  // with the walk's state (camera/hands/Locomotion.h)
-	}
+	hands::LogBlockChange(g_locomotion, g_hand, frame);  // on a change, with the walk's state (camera/hands/Locomotion.h)
 	// The bow by hand, each step (vr::StepArchery).
 	hands::StepArchery(g_archery, handStep, handShared, frame, g_bowVisual, g_deltaSeconds);
 	if (g_hand.reachBack != g_handReachBack) {
@@ -11072,7 +11069,8 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// rule at the blow (game/BlockAngleLogic.h).
 		{
 			game::BlockGuard guard;
-			guard.with = g_hand.blocking ? g_hand.blockWith : game::BlockWith::None;
+			guard.with = game::GuardWithFor(g_hand.blocking, g_hand.blockWith, g_hand.shieldPose.byContact);
+			guard.shieldPose = g_hand.shieldPose;  // no Block held for it: its disc judged at the blow (game/Parry.h)
 			guard.bladeValid = g_blockBladeValid;
 			guard.bladeA = g_blockBladeA;
 			guard.bladeB = g_blockBladeB;

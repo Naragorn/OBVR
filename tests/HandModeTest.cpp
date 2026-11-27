@@ -10,6 +10,7 @@
 #include "game/KeyScanCodes.h"
 #include "vr/AttackControl.h"
 #include "vr/ButtonBindings.h"
+#include "vr/HandBlockFrame.h"
 #include "vr/HandBlockLogic.h"
 #include "vr/HandInput.h"
 #include "vr/HandMode.h"
@@ -2911,6 +2912,92 @@ void TestArmSwingRun() {
 	Check(!r.controls.run, "both the same way for a while: walks again");
 }
 
+// The shield by contact ([Hands] ShieldBlockByContact; Nadi, 2026-11-27):
+// his Windows run of that day held the shield hand at carry height ahead of
+// the chest while running, past IsBlockGesture's limits - 25 "the left hand
+// is up - blocking" lines, every sprint cut short. With the rule the raised
+// shield hand holds no Block; the pose is kept as `raised` for the blows the
+// disc cannot judge.
+void TestShieldBlockByContact() {
+	std::printf("The shield by contact: the raised shield hand holds no Block\n");
+	const GestureThresholds t;
+	HandBlockFrame f;
+	f.leftValid = true;
+	f.rightValid = true;
+	f.rightHandValid = true;
+	f.leftRelative = NiPoint3{-0.2f, 0.25f, -0.25f};  // carried ahead at the chest, as in the run
+	f.rightRelative = NiPoint3{0.2f, 0.1f, -0.6f};    // low
+	f.shieldEquipped = true;
+	f.shieldByContact = true;
+	HandBlock b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.with == obvr::game::BlockWith::None,
+	      "the shield carried ahead at the chest, the rule on: no Block held (main: blocking)");
+	Check(b.shield.byContact && b.shield.raised, "the shield guards by contact, its hand raised as the pose had it");
+	f.leftRelative = NiPoint3{-0.2f, 0.3f, -0.6f};  // hanging low
+	b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.shield.byContact && !b.shield.raised, "the shield hand low: by contact, not raised");
+	f.leftRelative = NiPoint3{-0.2f, 0.25f, -0.25f};
+	f.shieldByContact = false;
+	b = DecideHandBlock(f, t);
+	Check(b.blocking && b.with == obvr::game::BlockWith::Shield && !b.shield.byContact,
+	      "the rule off (or the disc unread): the raised shield blocks as before");
+	// The weapon's guard with a shield worn still holds Block.
+	f.shieldByContact = true;
+	f.weaponDrawn = true;
+	f.rightRelative = NiPoint3{0.1f, 0.4f, -0.1f};
+	f.blade = NiPoint3{1.0f, 0.0f, 0.0f};
+	b = DecideHandBlock(f, t);
+	Check(b.blocking && b.with == obvr::game::BlockWith::Weapon, "the weapon raised across: the weapon's, as before");
+	// The torch's pose block is untouched by the rule.
+	f.weaponDrawn = false;
+	f.shieldEquipped = false;
+	f.torchBlocks = true;
+	b = DecideHandBlock(f, t);
+	Check(b.blocking && b.with == obvr::game::BlockWith::Torch && !b.shield.raised,
+	      "a torch raised with the rule on: the torch's block as before");
+	f.torchBlocks = false;
+	f.shieldEquipped = true;
+	f.armsRun = true;
+	b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.shield.byContact && !b.shield.raised,
+	      "the arms running: no block, the shield still by contact, not raised");
+	f.armsRun = false;
+	f.menuMode = true;
+	b = DecideHandBlock(f, t);
+	Check(!b.blocking && !b.shield.byContact, "a menu up: nothing");
+}
+
+// The block's frame from the hand mode's (vr/HandBlockFrame.h): the shield
+// guards by contact only with the setting on, a shield worn and its disc
+// read; the rest carried over as HandMode::Update filled it before.
+void TestHandBlockFrameOf() {
+	std::printf("The block's frame from the hand mode's\n");
+	Check(ShieldBlocksByContact(true, true, true), "on, a shield, its disc read: by contact");
+	Check(!ShieldBlocksByContact(false, true, true), "ShieldBlockByContact=0: the pose, as before");
+	Check(!ShieldBlocksByContact(true, true, false), "the disc not read yet: the pose, never without a block");
+	Check(!ShieldBlocksByContact(true, false, true), "no shield worn: nothing");
+	HandModeFrame f;
+	HandSettings s;
+	f.left.valid = true;
+	f.menuMode = true;
+	f.weaponSeen = WeaponSeen::Drawn;
+	f.equipped = EquippedKind::Nothing;
+	f.shieldEquipped = true;
+	f.shieldDiscRead = true;
+	s.blockByAngle = true;
+	HandBlockFrame bf = HandBlockFrameOf(f, s);
+	Check(bf.menuMode && bf.leftValid && !bf.rightValid && bf.weaponDrawn && bf.fistsUp && bf.shieldEquipped &&
+	          bf.blockByAngle && bf.shieldByContact && !bf.torchBlocks,
+	      "the frame's fields carried over, the shield by contact by default");
+	s.shieldBlockByContact = false;
+	Check(!HandBlockFrameOf(f, s).shieldByContact, "the setting off: not by contact");
+	f.torchHeld = true;
+	s.torchBlocks = true;
+	Check(HandBlockFrameOf(f, s).torchBlocks, "a torch held with TorchBlocks: the torch blocks");
+	s.torchBlocks = false;
+	Check(!HandBlockFrameOf(f, s).torchBlocks, "TorchBlocks off: it does not");
+}
+
 // The block the hands' pose makes (vr/HandBlockLogic.h), each way to it and
 // what keeps it off.
 void TestDecideHandBlock() {
@@ -4968,6 +5055,8 @@ int main() {
 	TestGrabHandOverride();
 	TestArmSwingRun();
 	TestDecideHandBlock();
+	TestShieldBlockByContact();
+	TestHandBlockFrameOf();
 	TestArmSwingPumps();
 	TestLeftButtonsInHandMode();
 	TestQuickSaveChordInHandMode();

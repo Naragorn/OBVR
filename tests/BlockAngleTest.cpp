@@ -10,6 +10,7 @@
 #include <limits>
 
 #include "game/BlockAngleLogic.h"
+#include "game/ParryLogic.h"
 
 using namespace obvr::game;
 using obvr::NiPoint3;
@@ -410,8 +411,45 @@ void TestTorch() {
 	Check(v.verdict == BlockAngle::Engine, "the shaft not read: the engine's verdict stands");
 }
 
+// The shield by contact (ShieldGuardPose, ParryLogic.h ShieldConeFor): the
+// guard is the shield whenever no pose holds the Block control, and the
+// disc's verdict alone decides - a blade at the disc blocked, one beside it
+// or below it through, a creature by where it stands.
+void TestShieldByContact() {
+	std::printf("The shield by contact\n");
+	Check(GuardWithFor(false, BlockWith::None, true) == BlockWith::Shield, "no pose block, the rule on: the shield");
+	Check(GuardWithFor(true, BlockWith::Weapon, true) == BlockWith::Weapon,
+	      "the weapon's guard holding Block: the weapon, as before");
+	Check(GuardWithFor(false, BlockWith::None, false) == BlockWith::None, "the rule off, nothing raised: no guard");
+	Check(GuardWithFor(true, BlockWith::Shield, false) == BlockWith::Shield, "the rule off, the shield raised: the shield");
+	BlockAngleSettings s;
+	BlockGuard g = ShieldGuard();
+	g.shieldPose.byContact = true;
+	const auto cone = [&](const BlockBlow& b, bool raised) {
+		return ShieldConeFor(true, true, BlockAngleFor(s, g, b).verdict, raised);
+	};
+	Check(cone(Blade(NiPoint3{0.0f, 60.0f, 100.0f}, NiPoint3{0.0f, -1.0f, 0.0f}), false) == ShieldCone::Blocked,
+	      "a blade driven at the disc: blocked, the hand not raised");
+	Check(cone(Blade(NiPoint3{100.0f, 10.0f, 75.0f}, NiPoint3{0.0f, 0.0f, 1.0f}), true) == ShieldCone::NotBlocked,
+	      "a blade beside the shield, the hand raised: it lands");
+	Check(cone(Blade(NiPoint3{-25.0f, 40.0f, 30.0f}, NiPoint3{1.0f, 0.0f, 0.0f}), true) == ShieldCone::NotBlocked,
+	      "a cut at the belly under the shield: out of reach, it lands");
+	Check(cone(Body(NiPoint3{0.0f, 60.0f, 80.0f}), false) == ShieldCone::Blocked,
+	      "a creature ahead of the disc, no blade: blocked by where it stands");
+	Check(cone(Body(NiPoint3{100.0f, 10.0f, 100.0f}), false) == ShieldCone::NotBlocked,
+	      "a creature beside the shield: it lands");
+	Check(cone(BlockBlow{}, true) == ShieldCone::Original, "an arrow (no actor), the hand raised: the game's cone");
+	Check(cone(BlockBlow{}, false) == ShieldCone::NotBlocked, "an arrow, the hand down: it lands");
+	BlockGuard lost = g;
+	lost.shieldValid = false;
+	Check(ShieldConeFor(true, true, BlockAngleFor(s, lost, Body(NiPoint3{0.0f, 60.0f, 80.0f})).verdict, false) ==
+	          ShieldCone::NotBlocked,
+	      "the disc lost this frame, the hand down: it lands");
+}
+
 int main() {
 	TestLineAngle();
+	TestShieldByContact();
 	TestGaps();
 	TestWeapon();
 	TestWeaponReach();

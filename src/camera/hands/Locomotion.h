@@ -23,6 +23,9 @@ struct LocomotionState {
 	vr::SprintState sprint;
 	bool spentWas = false;
 	UInt32 spentLines = 8;
+	bool blockingWas = false;  // the block the pose holds, last frame (LogBlockChange)
+	bool shieldRaisedWas = false;  // the shield hand raised while it guards by contact
+	UInt32 shieldRaisedLines = 12;
 };
 
 // "Arm swing: running / walking again" when the swung arms start or stop
@@ -33,8 +36,10 @@ void LogArmSwing(LocomotionState& state, const HandStep& step, const HandShared&
 // start with the walk's state - the stick's push and its run, a run asked,
 // the arms' run - and both controllers' speeds, since the engine walks a
 // blocking player (free-weapons-spec, "Windows run of 2026-11-27": no run
-// with a shield). Once a change, never a frame.
-void LogBlockChange(const vr::HandModeResult& hand, const vr::HandModeFrame& frame);
+// with a shield). Once a change, never a frame. And, capped, the shield hand
+// raised or lowered while the shield guards by contact (vr/HandBlockFrame.h):
+// no Block is held then, the line says so with the same walk's state.
+void LogBlockChange(LocomotionState& state, const vr::HandModeResult& hand, const vr::HandModeFrame& frame);
 
 // The analog walk and the sprint this frame, with the hand controls running.
 // `flying`: the console's fly camera is on (its sticks are the camera's).

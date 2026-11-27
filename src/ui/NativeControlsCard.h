@@ -271,7 +271,7 @@ inline ControlsCardText ControlsCardFor(ControlsCardPage page, bool leftHanded, 
 			"Grab to hold. Let go at your chest to keep it.",
 			"Let go mid-swing to throw it.",
 			"Reach into chests, bodies and locks to open them.",
-			"Raise your shield arm to block.",
+			"Hold your shield in a blow's way to block.",
 			"Palms out and rock them gently to surrender.",
 		};
 		lines = l;

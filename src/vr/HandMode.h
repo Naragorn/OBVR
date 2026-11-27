@@ -269,8 +269,8 @@ struct HandSettings {
 	game::PommelSettings pommel;
 	// Half-swording a two-handed sword (vr/HalfSwordLogic.h).
 	vr::HalfSwordSettings halfSword;
-	// The raised torch blocks as a raised shield does ([Hands] TorchBlocks).
-	bool torchBlocks = true;
+	bool torchBlocks = true;  // the raised torch blocks as a raised shield does ([Hands] TorchBlocks)
+	bool shieldBlockByContact = true;  // the shield blocks what it is in the way of (vr/HandBlockFrame.h)
 	// Both palms out, rocked before a foe: the yield (vr/Yield.h, [Hands] Yield).
 	bool yield = true;
 	// The kick on the weapon hand's B (game/KickLogic.h); kickOnB follows its
@@ -774,8 +774,8 @@ struct HandModeFrame {
 	// frame, followed by StepReadyWeapon like the stick's: the yield raising
 	// the fists for the engine's block (vr/Yield.h), and lowering them after.
 	bool readyWeaponClick = false;
-	// A shield on the left arm: only then does the raised left hand block.
-	bool shieldEquipped = false;
+	bool shieldEquipped = false;  // a shield on the left arm: only then does the raised left hand block
+	bool shieldDiscRead = false;  // and its disc read from the model (game/ShieldShape): it guards by contact
 	// A torch in the left hand (the off hand): raised, it blocks with TorchBlocks.
 	bool torchHeld = false;
 	// The mode is off but the controllers still steer menus (ControllerMenus).
@@ -1195,8 +1195,8 @@ struct HandModeResult : MenuPlaceResult {  // the wrists and the tablet: TabletL
 	NiPoint3 leftSwingWay{0.0f, 0.0f, 0.0f};
 	SwingVerdict leftSwing = SwingVerdict::None;
 
-	// The ready-weapon click's progress this frame.
-	ReadyWeaponVerdict ready;
+	ReadyWeaponVerdict ready;  // the ready-weapon click's progress this frame
+	game::ShieldGuardPose shieldPose;  // the shield by contact, its hand raised (vr/HandBlockLogic.h)
 
 	// For the log, and for the block's angle rule: what the block is.
 	bool blocking = false;

@@ -1,0 +1,79 @@
+# The shield by contact ([Hands] ShieldBlockByContact=1; vr/HandBlockFrame.h,
+# game/ParryLogic.h ForceBlockForShield / ShieldConeFor; Nadi, 2026-11-27,
+# "as Blade & Sorcery"). His Windows run of that day: with a shield worn the
+# left hand carried ahead of the chest held the game's Block control (25 "the
+# left hand is up - blocking" lines) and the engine walked him, every sprint
+# over within a line or two. Now the raised shield hand holds no Block:
+#  1. the Arena shield (000733ED) worn, the left hand at carry height ahead of
+#     the chest while the left stick sprints forward for 2 s - no "blocking"
+#     line, the sprint lasts and the player covers a run's ground;
+#  2. a bandit (BanditMeleeMale4B, 00069AD1, attacks on sight) placed ahead, the
+#     player untouchable (tgm - the hit handler still runs), the shield held
+#     ahead of the face, the hand turned so its face looks ahead: its blows are
+#     forced as blocks for the shield ("a block forced for the shield by
+#     contact 1") and judged by the disc - "by contact ... - blocked";
+#  3. the shield hand held low beside the hip: the blows land ("THROUGH").
+# Which blows land in which phase depends on the bandit's swings; the "Block
+# angle" lines give the angle and the distance read for each. Not run yet
+# (written 2026-11-27 on Windows). The disc's normal in the hand's frame is
+# read from the model, so whether "rot 0 0 0" turns the face ahead is the
+# first thing the run shows (the degrees on the "by contact" lines).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/shield-block-contact.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands ShieldBlockByContact=1
+ini Hands AnalogWalk=1
+ini Hands ArmSwingRun=0
+ini Hands ReachOpens=0
+ini Hands CombatReach=85
+ini Hands BlockReachUnits=40
+ini Hands BlockShieldDegrees=70
+console player.additem 000733ED 1
+console player.equipitem 000733ED
+console-at settle CloseAllMenus
+console-at placed player.placeatme 00069AD1 1
+console-at placed tgm
+
+expect HandScript: finished
+expect Contact: the shield's shape -
+expect Hands: the shield hand is up - no block held, the shield blocks what it is in the way of
+expect AnalogWalk: sprinting
+expect a block forced for the shield by contact 1
+expect at the shield by contact (no block held, the block forced for the shield)
+expect - blocked
+expect THROUGH
+reject Hands: the left hand is up - blocking
+reject HandScript: WARNING
+# 2 s of sprint: a run's ground at the least (sprint.txt: 430 units in 1 s
+# at the sprint, 250 at the run; guessed - the walk a block gives is ~100 a
+# second, arm-swing-weapon.txt).
+moved sprint_on sprint_end 400
+
+wait 10
+right pos 0.20 -0.45 -0.25
+left pos -0.20 -0.45 -0.25
+mark settle
+wait 2
+# 1. Carried ahead of the chest, the forearm pointing ahead: the failing run's pose.
+left pos -0.20 -0.22 -0.30
+left rot 0 0 0
+wait 1
+left stick 0 1
+left click 1
+wait 0.5
+mark sprint_on
+wait 2
+mark sprint_end
+left click 0
+left stick 0 0
+wait 1
+# 2. The bandit ahead; the shield before the face.
+mark placed
+left pos -0.05 -0.10 -0.30
+left rot 0 0 0
+wait 15
+mark shield_ahead
+# 3. The shield hand low beside the hip.
+left pos -0.40 -0.60 0.05
+wait 15
+mark shield_aside
