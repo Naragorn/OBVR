@@ -1788,7 +1788,7 @@ justieren danach. ansonsten ging da alles."
   miss as before (section 21's open point). The right hand's hold and a
   left-handed player are covered by the unit tests, not run.
 
-## 25. Books and letters in the hand (asked 2026-11-27, not built)
+## 25. Books and letters in the hand (asked 2026-11-27; built 2026-11-27, not yet run - 25.7)
 
 The ask (Nadi, 2026-11-27): "bücher und letters wie das inventar in die
 hand mit swipes für nä seite usw." A book or a letter, read from the world
@@ -1796,7 +1796,7 @@ or from the inventory, sits in the off hand as the inventory's page does;
 the other hand's finger swipes to the next page and back and taps Take and
 Exit.
 
-### 25.1 What is there today [R]
+### 25.1 What was there before it [R]
 
 - The book menu (`kMenuIdBook`, 0x402) is a tablet menu only beside the
   F1-F4 pages: `vr::TabletCarriesMenu` lists it, but `vr::TabletMenusUp`
@@ -1892,7 +1892,7 @@ the page in case the finger's swipe misses.
 
 ### 25.5 Open for Nadi
 
-- **The world while reading:** (a) runs, as behind the inventory: walking
+- **The world while reading** (decided (a), Nadi 2026-11-27; built so): (a) runs, as behind the inventory: walking
   and looking round while reading, a fight goes on; (b) pauses, as vanilla
   and as today. Recommended (a), so the book in the hand behaves like the
   tablet. `MenuKeepsWorldRunning` already runs the world behind a book with
@@ -1925,3 +1925,83 @@ up and down off on a book), `BookWidthMetres`, B as Exit.
 
 Model: Sonnet 5.5 medium. It is mostly reuse of tested modules; the one
 engine unknown, whether a notch turns the page, is settled by task 1.
+
+### 25.7 What is built (2026-11-27, branch books-1127-win)
+
+Built: the DLL compiles (MSVC 32-bit) and the unit tests pass
+(`tablet_book_test`, `tablet_test`, all 300 of ctest on Windows). Not yet
+run in the game: no harness run, no headset.
+
+- **Which** (25.4.1): `vr::TabletMenusUp` is true for the book menu alone
+  as for the F1-F4 entry (`vr/TabletLogic.h`). `game::ReadTabletMenus` reads
+  it as a book read alone when no F1-F4 entry is in the stack
+  (`ReadBookAlone`, `game/TabletMenu.cpp`): its largest picture is the
+  paper, the face holds every picture of the menu (`vr::BookPaperOf`), so a
+  letter's roller and its Take and Exit below the sheet stay on it. No
+  figure. A box raised over it joins it as over the pages.
+- **The world** (25.5 (a)): `vr::TabletMenuRunsWorld` runs it behind a
+  book; a message box and a Generic box still pause it.
+- **Size** (25.4.3): `[Tablet] BookWidthMetres`, default 0.40, clamped to
+  0.15-0.8 as `WidthMetres` (`vr::TabletPaperWidthMetres`).
+- **The look**: `game::BookMenuScrollLook` reads the menu's user0 each frame
+  (the root and one trait, no walk of its tiles); `vr::TabletLookOf` makes
+  the tablet's look Pages, Book or Letter.
+- **Swipes** (25.4.4): `vr::TabletTouchInput::turns` and `scrolls`: a book
+  turns and does not scroll, a letter scrolls and does not turn. A turn on a
+  book sends one wheel notch (`vr::TabletTurnFor`): the finger moved left
+  (on) a notch down, moved right (back) a notch up. A letter's turn sends
+  nothing. Taps work as on the pages.
+- **The stick** (25.4.5): the right stick's flick sideways turns a book as
+  it turns the pages (the same `tabletPageStep`); up and down are the
+  wheel as in every menu - a letter scrolls, and on a book they turn its
+  pages as the mouse wheel does in vanilla.
+- **Closing** (25.4.6): not built as a click on Exit. The left B sends the
+  menu key as it does for the tablet; whether that closes the book menu is
+  book-probe.txt's question. If it does not, the left B must click
+  `book_exit` / `book_scroll_exit` under a book read alone.
+- **Steadying** (25.4.7): not built, as planned.
+- **The log**: at each hand-script mark while the book menu is loaded,
+  `Book: at the mark <name> the book's left page is <n>` or `the letter's
+  scroll bar is at <n>`, then the stack, user0, the left page (user9), the
+  bar (`book_scroll_bar`'s user7), the root's user7 and Take
+  (`game::LogBookMenuAtMark`). The read walks the tiles for the bar by
+  name, at marks only. `Tablet: a book (...) / a letter (...) read alone,
+  held in the hand` as the look changes; `Tablet: the finger / the right
+  stick turns the book's page on - a wheel notch down sent`.
+
+Read in Oblivion.exe 1.2.416 (`../OBNG/re/export/rea-all/functions/`) [R]:
+
+- `0x00596020` (the book menu's setup): user0 (0x0FAE) = 1.0 when the BOOK
+  record's flag 1 (a scroll) is set, else 2.0; user3 (0x0FB1, Take shown) =
+  1.0 when there is no reference or the record's flag 2 (can't be taken)
+  is set, else 2.0; user6 (0x0FB4) written -99999 then 0.
+- `0x00595DA0` (its wheel): with user0 == 1.0 (the scroll) it writes user9
+  (0x0FB7) to the notches (about -delta / 120) and back to 0, and when the
+  root's user7 (0x0FB5) moved it plays a sound and calls a vtable entry
+  (+0x14); else (the book) it writes user6 = +2.0 for a delta below 1 and
+  -2.0 otherwise, back to 0, and plays the user8 sound (0x0FB6) when user9
+  (the left page) moved. Which FPU value is the delta is not plain in the
+  decompile: [D] a notch up (a positive delta) turns back two pages.
+
+Derived [D]: a notch down is "on" (`vr::TabletTurnFor`); the root's user7
+is the letter's scroll measure, independent of a UI mod's bar name.
+
+Guessed [G], each checked by a scenario below: the left page counts from 0
+and steps by 2; a notch reaches the book menu whatever tile the cursor is
+over; the Nirnroot Missive is long enough to scroll; the swipes' places in
+book-world-in-hand.txt and letter-in-hand.txt lie on the paper (the face
+is measured by book-sweep.txt).
+
+Still to run (Linux harness, `--headless --no-steamvr --parallel --plugin
+build-linux-clangcl/OBVR.dll`):
+
+1. book-probe.txt and letter-probe.txt: the `Book: at the mark` line at
+   wheel_down, wheel_up and wheel_down_twice (a book: 0, 2, 0, 4 as
+   guessed; a letter: the bar and the root's user7 change); after_b,
+   after_tab, after_esc: whether the book menu left the stack.
+2. book-sweep.txt: `Tablet: at the mark the finger is over` for every grid
+   point; gives Prev, Next, Take and Exit on the face, for a Take tap in
+   book-world-in-hand.txt.
+3. book-world-in-hand.txt, letter-in-hand.txt, tablet-book.txt (the world
+   now runs behind a book from the inventory too).
+4. Films before and after (25.6 task 3), then the headset (25.6 task 4).

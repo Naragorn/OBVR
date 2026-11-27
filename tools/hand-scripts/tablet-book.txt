@@ -1,6 +1,7 @@
 # A book read from the inventory on the tablet (docs/inventory-tablet-spec.md
-# 7: the book is one of the popups the tablet carries, the world pausing for
-# it): "The Pig Children" (00024590) given by the console, the inventory
+# 7: the book is one of the popups the tablet carries; since spec 25.5 (a)
+# the world runs behind it, as behind the pages): "The Pig Children"
+# (00024590) given by the console, the inventory
 # opened on the off hand's tablet, the finger taps the book's row (at d 0.19,
 # found by tablet-book-sweep.txt, 20261120-110706-slot1; tablet-touch.txt's
 # geometry), the book opens over the page; then Esc, and the left B puts the
@@ -29,7 +30,8 @@ expect HandScript: finished
 expect Tablet: at the mark the finger is over "The_Pig_Children"
 expect Tablet: the finger tapped
 expect shown with 1 popup(s)
-expect the world pauses
+expect behind menu Book (0x402) the world keeps running
+reject behind menu Book (0x402) the world pauses
 reject HandScript: WARNING
 
 console-at ready player.additem 00024590 1
