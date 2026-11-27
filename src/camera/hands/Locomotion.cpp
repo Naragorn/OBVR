@@ -59,6 +59,14 @@ void LogBlockChange(LocomotionState& state, const vr::HandModeResult& hand, cons
 		            hand, frame);
 	}
 	state.shieldRaisedWas = raised;
+	const bool guardUp = hand.weaponPose.byContact && hand.weaponPose.raised;
+	if (guardUp != state.weaponRaisedWas && state.weaponRaisedLines > 0) {
+		--state.weaponRaisedLines;
+		LogWithWalk(guardUp ? "the weapon's guard is up - no block held, the blade blocks what it is in the way of"
+		                    : "the weapon's guard is down - the blade still blocks what it is in the way of",
+		            hand, frame);
+	}
+	state.weaponRaisedWas = guardUp;
 }
 
 void StepAnalogWalk(LocomotionState& state, const HandStep& step, const HandShared& shared, bool flying,

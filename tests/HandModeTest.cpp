@@ -2967,6 +2967,82 @@ void TestShieldBlockByContact() {
 	Check(!b.blocking && !b.shield.byContact, "a menu up: nothing");
 }
 
+// The weapon by contact ([Hands] WeaponBlockByContact; Nadi, 2026-11-27):
+// the guard pose of a drawn melee weapon whose blade is read presses no
+// Block; the pose is kept as `raised` for the blows the blade cannot judge,
+// and the swing as `swinging`.
+void TestWeaponBlockByContact() {
+	std::printf("The weapon by contact: the guard pose holds no Block\n");
+	const GestureThresholds t;
+	HandBlockFrame f;
+	f.leftValid = true;
+	f.rightValid = true;
+	f.rightHandValid = true;
+	f.weaponDrawn = true;
+	f.leftRelative = NiPoint3{-0.2f, 0.3f, -0.6f};   // the other hand low
+	f.rightRelative = NiPoint3{0.1f, 0.4f, -0.1f};   // up and ahead
+	f.blade = NiPoint3{1.0f, 0.0f, 0.0f};            // across the body
+	f.weaponByContact = true;
+	HandBlock b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.with == obvr::game::BlockWith::None,
+	      "the weapon raised across, the rule on: no Block held (main: the weapon's)");
+	Check(b.weapon.byContact && b.weapon.raised && !b.weapon.swinging, "by contact, its guard raised as the pose had it");
+	f.rightSwinging = true;
+	b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.weapon.byContact && !b.weapon.raised && b.weapon.swinging, "swinging: no guard, the swing kept");
+	f.rightSwinging = false;
+	f.blade = NiPoint3{0.0f, 1.0f, 0.0f};  // along the view
+	b = DecideHandBlock(f, t);
+	Check(!b.blocking && !b.weapon.raised, "the blade along the view: not raised");
+	f.blade = NiPoint3{1.0f, 0.0f, 0.0f};
+	f.weaponByContact = false;
+	b = DecideHandBlock(f, t);
+	Check(b.blocking && b.with == obvr::game::BlockWith::Weapon && !b.weapon.byContact,
+	      "the rule off (or the blade not read): the weapon's guard holds Block as before");
+	// A shield worn by contact with the weapon by contact: neither holds Block.
+	f.weaponByContact = true;
+	f.shieldEquipped = true;
+	f.shieldByContact = true;
+	f.leftRelative = NiPoint3{-0.2f, 0.25f, -0.25f};
+	b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.shield.byContact && b.weapon.byContact, "a shield and a weapon by contact: no Block held");
+	// The shield by the pose, the weapon by contact: the shield holds Block.
+	f.shieldByContact = false;
+	b = DecideHandBlock(f, t);
+	Check(b.blocking && b.with == obvr::game::BlockWith::Shield, "the shield by the pose still holds Block");
+	f.shieldEquipped = false;
+	// The fists and the torch are untouched by the rule.
+	f.fistsUp = true;
+	f.blade = NiPoint3{0.0f, 1.0f, 0.0f};
+	f.rightRelative = NiPoint3{0.1f, 0.4f, -0.1f};
+	f.leftRelative = NiPoint3{-0.1f, 0.4f, -0.1f};
+	b = DecideHandBlock(f, t);
+	Check(b.blocking && b.fistGuard, "the fists' guard holds Block as before");
+	f.fistsUp = false;
+	f.torchBlocks = true;
+	f.leftRelative = NiPoint3{-0.2f, 0.3f, -0.1f};
+	b = DecideHandBlock(f, t);
+	Check(b.blocking && b.with == obvr::game::BlockWith::Torch, "the torch's raise holds Block as before");
+	f.torchBlocks = false;
+	f.armsRun = true;
+	b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.weapon.byContact && !b.weapon.raised, "the arms running: by contact, not raised");
+	f.armsRun = false;
+	f.menuMode = true;
+	Check(!DecideHandBlock(f, t).weapon.byContact, "a menu up: nothing");
+	// The frame from the hand mode's: on, a blade read.
+	HandModeFrame hf;
+	HandSettings s;
+	hf.weaponSeen = WeaponSeen::Drawn;
+	hf.guardReads.weaponBlade = true;
+	Check(HandBlockFrameOf(hf, s).weaponByContact, "on by default with the blade read");
+	s.contactBlock.weapon = false;
+	Check(!HandBlockFrameOf(hf, s).weaponByContact, "WeaponBlockByContact=0: the pose");
+	s.contactBlock.weapon = true;
+	hf.guardReads.weaponBlade = false;
+	Check(!HandBlockFrameOf(hf, s).weaponByContact, "the blade not read (a staff, nothing drawn): the pose");
+}
+
 // The block's frame from the hand mode's (vr/HandBlockFrame.h): the shield
 // guards by contact only with the setting on, a shield worn and its disc
 // read; the rest carried over as HandMode::Update filled it before.
@@ -2983,13 +3059,13 @@ void TestHandBlockFrameOf() {
 	f.weaponSeen = WeaponSeen::Drawn;
 	f.equipped = EquippedKind::Nothing;
 	f.shieldEquipped = true;
-	f.shieldDiscRead = true;
+	f.guardReads.shieldDisc = true;
 	s.blockByAngle = true;
 	HandBlockFrame bf = HandBlockFrameOf(f, s);
 	Check(bf.menuMode && bf.leftValid && !bf.rightValid && bf.weaponDrawn && bf.fistsUp && bf.shieldEquipped &&
 	          bf.blockByAngle && bf.shieldByContact && !bf.torchBlocks,
 	      "the frame's fields carried over, the shield by contact by default");
-	s.shieldContact.enabled = false;
+	s.contactBlock.shield = false;
 	Check(!HandBlockFrameOf(f, s).shieldByContact, "the setting off: not by contact");
 	f.torchHeld = true;
 	s.torchBlocks = true;
@@ -5057,6 +5133,7 @@ int main() {
 	TestDecideHandBlock();
 	TestShieldBlockByContact();
 	TestHandBlockFrameOf();
+	TestWeaponBlockByContact();
 	TestArmSwingPumps();
 	TestLeftButtonsInHandMode();
 	TestQuickSaveChordInHandMode();

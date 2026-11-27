@@ -75,6 +75,8 @@ void TorchReleaseFollowsWeaponStep(Config& config, const char*) {
 	h.torchRelease.throwStrength = h.weaponRelease.throwStrength;
 }
 
+void HandsFollowFullVrStep(Config& config, const char*) { config.hands.enabled = config.fullVrMode; }
+
 void TorchSpinFollowsWeaponStep(Config& config, const char*) {
 	config.hands.torchRelease.throwSpinStrength = config.hands.weaponRelease.throwSpinStrength;
 }

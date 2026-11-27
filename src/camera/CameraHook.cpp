@@ -4778,7 +4778,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	g_gestures.yieldDrive.clickWanted = false;
 	g_grab.weaponTakeReadyClick = false;
 	frame.shieldEquipped = active && game::PlayerWearsShield();
-	frame.shieldDiscRead = frame.shieldEquipped && g_shieldDiscHave;  // the shield by contact (vr/HandBlockFrame.h)
+	frame.guardReads = game::GuardReads{frame.shieldEquipped && g_shieldDiscHave, g_blockBladeValid};  // HandBlockFrame.h
 	frame.torchHeld = active && game::WornTorchForm() != nullptr;
 	frame.menusOnly = menusOnly;
 	frame.inWorld = game::PlayerInWorld();
@@ -11075,8 +11075,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// rule at the blow (game/BlockAngleLogic.h).
 		{
 			game::BlockGuard guard;
-			guard.with = game::GuardWithFor(g_hand.blocking, g_hand.blockWith, g_hand.shieldPose.byContact);
-			guard.shieldPose = g_hand.shieldPose;  // no Block held for it: its disc judged at the blow (game/Parry.h)
+			vr::GuardPosesInto(g_hand, guard);  // by contact: no Block held, judged at the blow
 			guard.bladeValid = g_blockBladeValid;
 			guard.bladeA = g_blockBladeA;
 			guard.bladeB = g_blockBladeB;

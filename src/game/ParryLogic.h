@@ -378,19 +378,31 @@ inline bool ForceBlockForShield(bool targetIsPlayer, bool engineSaysBlocking, bo
 // parried one through (ConeForParry), so it is taken only when neither of
 // the others is - a parried attacker is still blocked under them, by the
 // cone's parry check that comes first.
+//
+// The weapon by contact (BlockAngleLogic.h, WeaponGuardPose; [Hands]
+// WeaponBlockByContact) is forced the same way as the shield, while its
+// blade is read and not swinging (ForceBlockForWeapon); both may hold, and
+// the cone asks both (ContactConeFor). The torch's needs nothing readied, so
+// it never meets a drawn weapon's.
+inline bool ForceBlockForWeapon(bool targetIsPlayer, bool engineSaysBlocking, bool weaponGuards) {
+	return targetIsPlayer && !engineSaysBlocking && weaponGuards;
+}
+
 struct BlockForces {
 	bool torch = false;
 	bool shield = false;
+	bool weapon = false;
 	bool parry = false;
-	bool Any() const { return torch || shield || parry; }
+	bool Any() const { return torch || shield || weapon || parry; }
 };
 
 inline BlockForces BlockForcesFor(bool targetIsPlayer, bool engineSaysBlocking, bool torchRaised, bool weaponReadied,
-                                  bool shieldGuards, bool anyStopped) {
+                                  bool shieldGuards, bool anyStopped, bool weaponGuards = false) {
 	BlockForces f;
 	f.torch = ForceBlockForTorch(targetIsPlayer, engineSaysBlocking, torchRaised, weaponReadied);
 	f.shield = !f.torch && ForceBlockForShield(targetIsPlayer, engineSaysBlocking, shieldGuards);
-	f.parry = !f.torch && !f.shield && ForceBlockForParry(targetIsPlayer, engineSaysBlocking, anyStopped);
+	f.weapon = !f.torch && ForceBlockForWeapon(targetIsPlayer, engineSaysBlocking, weaponGuards);
+	f.parry = !f.torch && !f.shield && !f.weapon && ForceBlockForParry(targetIsPlayer, engineSaysBlocking, anyStopped);
 	return f;
 }
 
@@ -428,6 +440,37 @@ inline ShieldCone ShieldConeFor(bool targetIsPlayer, bool shieldForced, BlockAng
 		return ShieldCone::NotBlocked;
 	}
 	return raised ? ShieldCone::Original : ShieldCone::NotBlocked;
+}
+
+// The cone's answer under a forced block by contact, with the shield's and
+// the weapon's verdicts for this blow (BlockAngleFor with each guard; the
+// weapon asked only when not swinging): either in the way - blocked (an
+// arrow kept on the shield counts as the shield's); none in the way and none
+// that cannot judge with its pose up - it lands; a guard that cannot judge
+// (no blade or disc this frame, an attacker not placed, an arrow) with its
+// old pose up - the game's own cone, as the pose's block had it.
+struct ContactVerdicts {
+	bool shieldAsked = false;
+	BlockAngle shield = BlockAngle::Engine;
+	bool shieldRaised = false;
+	bool weaponAsked = false;
+	BlockAngle weapon = BlockAngle::Engine;
+	bool weaponRaised = false;
+	KeptArrow arrow = KeptArrow::None;
+};
+
+inline ShieldCone ContactConeFor(bool targetIsPlayer, bool forced, const ContactVerdicts& c) {
+	if (!targetIsPlayer || !forced) {
+		return ShieldCone::Original;
+	}
+	const bool shieldBlocks = c.arrow == KeptArrow::Blocked || (c.shieldAsked && c.arrow == KeptArrow::None &&
+	                                                             c.shield == BlockAngle::Blocked);
+	if (shieldBlocks || (c.weaponAsked && c.weapon == BlockAngle::Blocked)) {
+		return ShieldCone::Blocked;
+	}
+	const bool shieldFalls = c.shieldAsked && c.arrow == KeptArrow::None && c.shield == BlockAngle::Engine && c.shieldRaised;
+	const bool weaponFalls = c.weaponAsked && c.weapon == BlockAngle::Engine && c.weaponRaised;
+	return shieldFalls || weaponFalls ? ShieldCone::Original : ShieldCone::NotBlocked;
 }
 
 enum class ParryCone : UInt8 {

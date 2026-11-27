@@ -47,14 +47,38 @@ namespace obvr::game {
 // Torch: the raised torch, its shaft judged as a blade (Nadi, 2026-10-31).
 enum class BlockWith : UInt8 { None, Shield, Weapon, Fists, Bow, Torch };
 
-// The shield by contact's settings ([Hands] ShieldBlockByContact,
-// BlockShieldReachUnits, BlockShieldInterposeUnits): the switch and the two
-// numbers its blows are judged by (BlockAngleSettings::shieldReachUnits,
-// shieldInterposeUnits).
-struct ShieldContactSettings {
-	bool enabled = true;
-	float reachUnits = 25.0f;
-	float interposeUnits = 6.0f;
+// The blocks by contact's settings: the shield's ([Hands]
+// ShieldBlockByContact, BlockShieldReachUnits, BlockShieldInterposeUnits -
+// the switch and the two numbers its blows are judged by,
+// BlockAngleSettings::shieldReachUnits, shieldInterposeUnits) and the drawn
+// weapon's ([Hands] WeaponBlockByContact, judged by the weapon's own numbers).
+struct ContactBlockSettings {
+	bool shield = true;
+	bool weapon = true;
+	float shieldReachUnits = 25.0f;
+	float shieldInterposeUnits = 6.0f;
+};
+
+// What the frame has read for the blocks by contact: the shield's disc
+// (game/ShieldShape) and the drawn melee weapon's blade line (the span the
+// angle rule judges, camera g_blockBladeValid: a blade or blunt weapon, one-
+// or two-handed, drawn and read, not passing through someone).
+struct GuardReads {
+	bool shieldDisc = false;
+	bool weaponBlade = false;
+};
+
+// The drawn weapon as a guard by contact ([Hands] WeaponBlockByContact; Nadi,
+// 2026-11-27: "the weapons' block the same way as the shield's"). `byContact`:
+// the rule holds this frame - on, a melee weapon drawn and its blade read -
+// so the weapon's guard pose presses no Block. `raised`: the old guard pose
+// (vr::IsWeaponGuard), for a blow the blade cannot be judged against.
+// `swinging`: the weapon hand in a swing - a blade passing a blow mid-swing
+// is no block (real contact mid-swing is the parry's).
+struct WeaponGuardPose {
+	bool byContact = false;
+	bool raised = false;
+	bool swinging = false;
 };
 
 struct BlockAngleSettings {
@@ -75,8 +99,8 @@ struct BlockAngleSettings {
 	// far past its outline the line from the blow to the chest may cross it
 	// (ShieldByContactVerdict). With the shield by the pose, reachUnits and the
 	// circle as before.
-	float shieldReachUnits = ShieldContactSettings{}.reachUnits;  // [Hands] BlockShieldReachUnits; 0 asks no distance
-	float shieldInterposeUnits = ShieldContactSettings{}.interposeUnits;  // [Hands] BlockShieldInterposeUnits
+	float shieldReachUnits = ContactBlockSettings{}.shieldReachUnits;  // [Hands] BlockShieldReachUnits; 0 asks no distance
+	float shieldInterposeUnits = ContactBlockSettings{}.shieldInterposeUnits;  // [Hands] BlockShieldInterposeUnits
 };
 
 // The shield as a guard by contact ([Hands] ShieldBlockByContact; Nadi,
@@ -93,8 +117,14 @@ struct ShieldGuardPose {
 };
 
 // What the player guards with this frame: the pose's guard while one holds
-// the Block control, else the shield by contact, else nothing.
-inline BlockWith GuardWithFor(bool poseBlocking, BlockWith poseWith, bool shieldByContact) {
+// the Block control, else the shield by contact, else the weapon by contact
+// (judged after the shield's - BlockCone's ContactConeAt asks both), else
+// nothing.
+inline BlockWith GuardWithFor(bool poseBlocking, BlockWith poseWith, bool shieldByContact,
+                              bool weaponByContact = false) {
+	if (!poseBlocking && !shieldByContact && weaponByContact) {
+		return BlockWith::Weapon;
+	}
 	if (poseBlocking) {
 		return poseWith;
 	}
@@ -114,6 +144,7 @@ struct BlockGuard {
 	float shieldRadius = 0.0f;     // the disc's, as the shield's shape reads it (game/ShieldShape)
 	float shieldHalfThick = 0.0f;  // half the disc's thickness
 	ShieldGuardPose shieldPose;    // the shield by contact (ShieldGuardPose)
+	WeaponGuardPose weaponPose;    // the weapon by contact (WeaponGuardPose)
 	// The disc's in-plane axes in the world (its axis[0] and axis[1]) and its
 	// outline along them, for the arrows (game/ArrowShieldLogic.h); the melee
 	// rule above takes the circle of shieldRadius.

@@ -36,15 +36,17 @@ const char* BlockWithName(BlockWith with) {
 }
 
 // The angle rule's verdict on a blow: the attacker's blade read now, the
-// guard as the frame left it; logged. `byContact`: the shield's own test
+// guard as the frame left it, judged as `with`; logged. `byContact`: the shield's and the weapon's own test
 // under its forced block (ParryLogic.h, ShieldConeFor) - asked whether or
 // not BlockByAngle is on, since nothing else decides that blow.
-BlockAngleVerdict JudgeBlow(void* attacker, bool byContact) {
+BlockAngleVerdict JudgeBlow(void* attacker, bool byContact, BlockWith with) {
+	BlockGuard guard = g_guard;
+	guard.with = with;
 	BlockAngleSettings settings = g_angle;
 	settings.enabled = settings.enabled || byContact;
 	BlockBlow blow;
 	const bool placed = ReadBlockBlow(reinterpret_cast<UInt32>(attacker), blow);
-	const BlockAngleVerdict v = BlockAngleFor(settings, g_guard, blow);
+	const BlockAngleVerdict v = BlockAngleFor(settings, guard, blow);
 	if (g_angleLinesLeft > 0) {
 		--g_angleLinesLeft;
 		// The shield by contact: its own reach, and what decided (ShieldByContactVerdict).
@@ -71,12 +73,15 @@ BlockAngleVerdict JudgeBlow(void* attacker, bool byContact) {
 			              static_cast<double>(v.interposeUnits), static_cast<double>(g_angle.interposeUnits));
 		}
 		OBVR_LOG("Block angle: a blow from %08X at the %s%s - %s%s, %.0f degrees (%s %.0f), %.0f units off (%s)%s - %s",
-		         reinterpret_cast<UInt32>(attacker), BlockWithName(g_guard.with),
-		         byContact ? " by contact (no block held, the block forced for the shield)" : "", v.why,
+		         reinterpret_cast<UInt32>(attacker), BlockWithName(guard.with),
+		         !byContact                        ? ""
+		         : guard.with == BlockWith::Shield ? " by contact (no block held, the block forced for the shield)"
+		                                           : " by contact (no block held, the block forced for the weapon)",
+		         v.why,
 		         placed ? (blow.bladeValid ? ", their blade read" : ", no blade on them") : ", not an actor",
 		         static_cast<double>(v.degrees),
-		         g_guard.with == BlockWith::Shield ? "at most" : "at least",
-		         static_cast<double>(g_guard.with == BlockWith::Shield
+		         guard.with == BlockWith::Shield ? "at most" : "at least",
+		         static_cast<double>(guard.with == BlockWith::Shield
 		                                 ? BlockSlackDegrees(g_angle.shieldDegrees, BlockAngleSettings{}.shieldDegrees)
 		                             : v.interposeUnits >= 0.0f
 		                                 ? 90.0f - BlockSlackDegrees(g_angle.bodyDegrees, BlockAngleSettings{}.bodyDegrees)
@@ -95,21 +100,33 @@ bool AngleKeepsBlock(void* attacker) {
 	if (!g_angle.enabled || g_guard.with == BlockWith::None) {
 		return true;
 	}
-	return JudgeBlow(attacker, false).verdict != BlockAngle::Through;
+	return JudgeBlow(attacker, false, g_guard.with).verdict != BlockAngle::Through;
 }
 
-// A blow under the block forced for the shield by contact (game/Parry.h,
-// ShieldForcedBlow): the disc's verdict decides (ParryLogic.h,
-// ShieldConeFor); Original leaves it to the game's cone below. An arrow
-// judged at its impact (game/ArrowShield.h) takes that verdict, the one its
-// impact showed.
-ShieldCone ShieldConeAt(void* attacker) {
-	if (!ShieldForcedBlow()) {
+// A blow under a block forced by contact (game/Parry.h, ShieldForcedBlow,
+// WeaponForcedBlow): the shield's verdict, then the weapon's (not while
+// swinging), decide (ParryLogic.h, ContactConeFor); Original leaves it to
+// the game's cone below. An arrow judged at its impact (game/ArrowShield.h)
+// takes that verdict for the shield, the one its impact showed.
+ShieldCone ContactConeAt(void* attacker) {
+	const bool shieldForced = ShieldForcedBlow();
+	const bool weaponForced = WeaponForcedBlow();
+	if (!shieldForced && !weaponForced) {
 		return ShieldCone::Original;
 	}
-	const KeptArrow arrow = TakeArrowVerdict(reinterpret_cast<UInt32>(attacker));
-	const BlockAngle verdict = arrow == KeptArrow::None ? JudgeBlow(attacker, true).verdict : BlockAngle::Engine;
-	return ShieldConeFor(true, true, verdict, g_guard.shieldPose.raised, arrow);
+	ContactVerdicts c;
+	c.arrow = TakeArrowVerdict(reinterpret_cast<UInt32>(attacker));
+	c.shieldAsked = shieldForced && g_guard.shieldPose.byContact;
+	c.shieldRaised = g_guard.shieldPose.raised;
+	if (c.shieldAsked && c.arrow == KeptArrow::None) {
+		c.shield = JudgeBlow(attacker, true, BlockWith::Shield).verdict;
+	}
+	c.weaponAsked = weaponForced && g_guard.weaponPose.byContact && !g_guard.weaponPose.swinging;
+	c.weaponRaised = g_guard.weaponPose.raised;
+	if (c.weaponAsked && c.shield != BlockAngle::Blocked && c.arrow != KeptArrow::Blocked) {
+		c.weapon = JudgeBlow(attacker, true, BlockWith::Weapon).verdict;
+	}
+	return ContactConeFor(true, true, c);
 }
 
 using ConeFn = bool(__cdecl*)(void* target, void* attacker, float* angleOut);
@@ -147,7 +164,7 @@ bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
 	const bool isPlayer = Player() != 0 && reinterpret_cast<UInt32>(target) == Player();
 	// The shield by contact: in the blow's way, blocked whichever way the
 	// player looks; not, it lands (game/Parry.h, ShieldForcedBlow).
-	const ShieldCone shield = isPlayer ? ShieldConeAt(attacker) : ShieldCone::Original;
+	const ShieldCone shield = isPlayer ? ContactConeAt(attacker) : ShieldCone::Original;
 	if (shield != ShieldCone::Original) {
 		if (shield == ShieldCone::Blocked && angleOut != nullptr) {
 			*angleOut = 0.0f;
@@ -223,6 +240,7 @@ void SetBlockGuard(const BlockGuard& guard, const BlockAngleSettings& settings) 
 	g_guard = guard;
 	g_angle = settings;
 	SetShieldGuard(guard.shieldPose.byContact);
+	SetWeaponGuard(guard.weaponPose.byContact && !guard.weaponPose.swinging);
 	SetArrowShieldGuard(guard);
 }
 

@@ -214,13 +214,7 @@ void ClampArmStretchStep(Config& config, const char*) {
 	}
 }
 
-void HandsFollowFullVrStep(Config& config, const char*) {
-	config.hands.enabled = config.fullVrMode;
-}
-
-// ReadSneakIndicatorStep: core/ConfigDebug.cpp.
-
-// ReadLoadingStageLookStep: core/ConfigDebug.cpp.
+// HandsFollowFullVrStep, ReadSneakIndicatorStep, ReadLoadingStageLookStep: core/ConfigDebug.cpp.
 
 void ReachCloseFollowsOpenStep(Config& config, const char*) {
 	vr::HandSettings& h = config.hands;
@@ -980,9 +974,10 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Int, "Hands", "DismemberMostCuts", hands.dismember.most),
 	OBVR_KEY(Bool, "Hands", "ShieldBash", hands.shieldBash.enabled),
 	OBVR_KEY(Bool, "Hands", "TorchBlocks", hands.torchBlocks),
-	OBVR_KEY(Bool, "Hands", "ShieldBlockByContact", hands.shieldContact.enabled),
-	OBVR_KEY(Float, "Hands", "BlockShieldReachUnits", hands.shieldContact.reachUnits),
-	OBVR_KEY(Float, "Hands", "BlockShieldInterposeUnits", hands.shieldContact.interposeUnits),
+	OBVR_KEY(Bool, "Hands", "ShieldBlockByContact", hands.contactBlock.shield),
+	OBVR_KEY(Bool, "Hands", "WeaponBlockByContact", hands.contactBlock.weapon),
+	OBVR_KEY(Float, "Hands", "BlockShieldReachUnits", hands.contactBlock.shieldReachUnits),
+	OBVR_KEY(Float, "Hands", "BlockShieldInterposeUnits", hands.contactBlock.shieldInterposeUnits),
 	OBVR_KEY(Bool, "Hands", "Yield", hands.yield),
 	OBVR_KEY(Bool, "Hands", "PommelStrikes", hands.pommel.enabled),
 	OBVR_KEY(Bool, "Hands", "HalfSwording", hands.halfSword.enabled),

@@ -28,8 +28,8 @@ inline game::BlockAngleSettings BlockAngleSettingsOf(const HandSettings& h) {
 	angle.reachUnits = h.blockReachUnits;
 	angle.bodyDegrees = h.blockBodyDegrees;
 	angle.interposeUnits = h.blockInterposeUnits;
-	angle.shieldReachUnits = h.shieldContact.reachUnits;
-	angle.shieldInterposeUnits = h.shieldContact.interposeUnits;
+	angle.shieldReachUnits = h.contactBlock.shieldReachUnits;
+	angle.shieldInterposeUnits = h.contactBlock.shieldInterposeUnits;
 	return angle;
 }
 
@@ -43,8 +43,30 @@ inline HandBlockFrame HandBlockFrameOf(const HandModeFrame& f, const HandSetting
 	bf.shieldEquipped = f.shieldEquipped;
 	bf.torchBlocks = s.torchBlocks && f.torchHeld;
 	bf.blockByAngle = s.blockByAngle;
-	bf.shieldByContact = ShieldBlocksByContact(s.shieldContact.enabled, f.shieldEquipped, f.shieldDiscRead);
+	bf.shieldByContact = ShieldBlocksByContact(s.contactBlock.shield, f.shieldEquipped, f.guardReads.shieldDisc);
+	// The weapon by contact ([Hands] WeaponBlockByContact): on, and the drawn
+	// melee weapon's blade read (the angle rule's span; a staff, the fists or
+	// a blade not read keep the pose). Until then its guard pose holds Block.
+	bf.weaponByContact = s.contactBlock.weapon && f.guardReads.weaponBlade;
 	return bf;
+}
+
+// The block the pose made, into the hand mode's result.
+inline void CopyHandBlock(HandModeResult& r, const HandBlock& block) {
+	r.blocking = block.blocking;
+	r.blockWith = block.with;
+	r.fistGuard = block.fistGuard;
+	r.shieldPose = block.shield;
+	r.weaponPose = block.weapon;
+}
+
+// The guards the frame's block judges with (game/BlockCone, SetBlockGuard):
+// the pose's while one holds Block, else the shield and the weapon by
+// contact (game/BlockAngleLogic.h, GuardWithFor), with their poses.
+inline void GuardPosesInto(const HandModeResult& hand, game::BlockGuard& g) {
+	g.with = game::GuardWithFor(hand.blocking, hand.blockWith, hand.shieldPose.byContact, hand.weaponPose.byContact);
+	g.shieldPose = hand.shieldPose;
+	g.weaponPose = hand.weaponPose;
 }
 
 }  // namespace obvr::vr
