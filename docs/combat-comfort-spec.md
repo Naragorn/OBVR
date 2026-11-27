@@ -146,6 +146,26 @@ against a weapon. A blocked blow is never fully stopped: at most `fBlockMax`
   least `BlockMinUp` above and `BlockMinForward` ahead of the eyes holds the
   game's block control. A raised shield always blocks. That is vanilla's
   block, so the engine decides what it stops and what it costs.
+  **Since 2026-11-27 not with a shield whose disc is read** (`[Hands]
+  ShieldBlockByContact=1`, the default): the shield blocks by contact, as in
+  Blade & Sorcery - see "The shield by contact" below. With the setting 0, or
+  until the shield's model is read, the raised shield blocks as above.
+- **The shield by contact** (built 2026-11-27, Nadi's choice "as B&S";
+  docs/free-weapons-spec.md, "The tester's Windows run of 2026-11-27", option
+  E). No pose holds the Block control for the shield. At every blow at the
+  player the hit handler's block check (0x005FF7DF, rerouted by
+  game/Parry.cpp) says yes (`ForceBlockForShield`), and the cone check
+  (0x005FF83E, game/BlockCone.cpp) answers with the disc alone
+  (`ShieldConeFor` over `BlockAngleFor` with the shield, whatever
+  `BlockByAngle` says): the disc's face within `BlockShieldDegrees` of the
+  line to their blade (their centre without one) and their blade/body within
+  `BlockReachUnits` of the disc - blocked; else the blow lands. A blow the
+  disc cannot be judged against (an arrow, an attacker not placed, the disc
+  lost for the frame) goes to the game's own cone while the shield hand is
+  raised as `IsBlockGesture` has it, and lands otherwise. A weapon's guard
+  with a shield worn still holds Block and is judged as before; the torch's
+  pose block is unchanged. What the forced block gives and does not give
+  against a held Block action: see free-weapons-spec, same section [R/D].
 - **Weapon guard** (`vr::IsWeaponGuard`, since 64e0d5d): the weapon hand up
   (no more than 20 cm below the eyes) and ahead, the blade held across the
   body (at least 0.7 sideways, at most 0.5 up or down), not swinging, with

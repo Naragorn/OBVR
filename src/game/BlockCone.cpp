@@ -33,15 +33,16 @@ const char* BlockWithName(BlockWith with) {
 	}
 }
 
-// The angle rule's say on a blow the engine would block: the attacker's
-// blade read now, the guard as the frame left it. True keeps the block.
-bool AngleKeepsBlock(void* attacker) {
-	if (!g_angle.enabled || g_guard.with == BlockWith::None) {
-		return true;
-	}
+// The angle rule's verdict on a blow: the attacker's blade read now, the
+// guard as the frame left it; logged. `byContact`: the shield's own test
+// under its forced block (ParryLogic.h, ShieldConeFor) - asked whether or
+// not BlockByAngle is on, since nothing else decides that blow.
+BlockAngleVerdict JudgeBlow(void* attacker, bool byContact) {
+	BlockAngleSettings settings = g_angle;
+	settings.enabled = settings.enabled || byContact;
 	BlockBlow blow;
 	const bool placed = ReadBlockBlow(reinterpret_cast<UInt32>(attacker), blow);
-	const BlockAngleVerdict v = BlockAngleFor(g_angle, g_guard, blow);
+	const BlockAngleVerdict v = BlockAngleFor(settings, g_guard, blow);
 	if (g_angleLinesLeft > 0) {
 		--g_angleLinesLeft;
 		const float reach = BlockReachUnits(g_angle.reachUnits, BlockAngleSettings{}.reachUnits);
@@ -56,8 +57,9 @@ bool AngleKeepsBlock(void* attacker) {
 			std::snprintf(interposeText, sizeof(interposeText), ", the blade %.0f off their line (at most %.0f)",
 			              static_cast<double>(v.interposeUnits), static_cast<double>(g_angle.interposeUnits));
 		}
-		OBVR_LOG("Block angle: a blow from %08X at the %s - %s%s, %.0f degrees (%s %.0f), %.0f units off (%s)%s - %s",
-		         reinterpret_cast<UInt32>(attacker), BlockWithName(g_guard.with), v.why,
+		OBVR_LOG("Block angle: a blow from %08X at the %s%s - %s%s, %.0f degrees (%s %.0f), %.0f units off (%s)%s - %s",
+		         reinterpret_cast<UInt32>(attacker), BlockWithName(g_guard.with),
+		         byContact ? " by contact (no block held, the block forced for the shield)" : "", v.why,
 		         placed ? (blow.bladeValid ? ", their blade read" : ", no blade on them") : ", not an actor",
 		         static_cast<double>(v.degrees),
 		         g_guard.with == BlockWith::Shield ? "at most" : "at least",
@@ -72,7 +74,25 @@ bool AngleKeepsBlock(void* attacker) {
 		             ? (v.across ? "THROUGH, the blow passes the guard" : "THROUGH, the guard stands wrong")
 		             : "left to the game");
 	}
-	return v.verdict != BlockAngle::Through;
+	return v;
+}
+
+// The angle rule's say on a blow the engine would block. True keeps the block.
+bool AngleKeepsBlock(void* attacker) {
+	if (!g_angle.enabled || g_guard.with == BlockWith::None) {
+		return true;
+	}
+	return JudgeBlow(attacker, false).verdict != BlockAngle::Through;
+}
+
+// A blow under the block forced for the shield by contact (game/Parry.h,
+// ShieldForcedBlow): the disc's verdict decides (ParryLogic.h,
+// ShieldConeFor); Original leaves it to the game's cone below.
+ShieldCone ShieldConeAt(void* attacker) {
+	if (!ShieldForcedBlow()) {
+		return ShieldCone::Original;
+	}
+	return ShieldConeFor(true, true, JudgeBlow(attacker, true).verdict, g_guard.shieldPose.raised);
 }
 
 using ConeFn = bool(__cdecl*)(void* target, void* attacker, float* angleOut);
@@ -108,6 +128,15 @@ bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
 		return false;
 	}
 	const bool isPlayer = Player() != 0 && reinterpret_cast<UInt32>(target) == Player();
+	// The shield by contact: in the blow's way, blocked whichever way the
+	// player looks; not, it lands (game/Parry.h, ShieldForcedBlow).
+	const ShieldCone shield = isPlayer ? ShieldConeAt(attacker) : ShieldCone::Original;
+	if (shield != ShieldCone::Original) {
+		if (shield == ShieldCone::Blocked && angleOut != nullptr) {
+			*angleOut = 0.0f;
+		}
+		return shield == ShieldCone::Blocked;
+	}
 	if (!BlockConeUsesGaze(g_enabled, reinterpret_cast<UInt32>(target), Player(), g_haveGaze)) {
 		const bool verdict = original(target, attacker, angleOut);
 		const bool blocked = verdict && (!isPlayer || AngleKeepsBlock(attacker));
@@ -174,6 +203,7 @@ void SetBlockCone(bool enabled, bool haveGaze, float headYaw) {
 void SetBlockGuard(const BlockGuard& guard, const BlockAngleSettings& settings) {
 	g_guard = guard;
 	g_angle = settings;
+	SetShieldGuard(guard.shieldPose.byContact);
 }
 
 }  // namespace obvr::game

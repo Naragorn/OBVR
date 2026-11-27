@@ -3,6 +3,7 @@
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/BladeContactLogic.h"
+#include "game/BlockAngleLogic.h"
 #include "game/GameAddresses.h"
 #include "game/NiMath.h"
 
@@ -360,6 +361,63 @@ inline bool ForceBlockForParry(bool targetIsPlayer, bool engineSaysBlocking, boo
 // blocks itself and is left alone.
 inline bool ForceBlockForTorch(bool targetIsPlayer, bool engineSaysBlocking, bool torchRaised, bool weaponReadied) {
 	return targetIsPlayer && !engineSaysBlocking && torchRaised && !weaponReadied;
+}
+
+// The block check for a blow while the shield guards by contact
+// (BlockAngleLogic.h, ShieldGuardPose; [Hands] ShieldBlockByContact): the
+// game's Block control is not held for the shield then, so the engine says
+// no; the check says yes for the player and the cone decides each blow by
+// the disc alone (ShieldConeFor). With the engine blocking already (a
+// weapon's guard, the keyboard) it is left alone, as for the torch.
+inline bool ForceBlockForShield(bool targetIsPlayer, bool engineSaysBlocking, bool shieldGuards) {
+	return targetIsPlayer && !engineSaysBlocking && shieldGuards;
+}
+
+// Which of the block check's forces holds at a blow. The torch's and the
+// shield's leave each blow to the cone; the parry's lets every blow but the
+// parried one through (ConeForParry), so it is taken only when neither of
+// the others is - a parried attacker is still blocked under them, by the
+// cone's parry check that comes first.
+struct BlockForces {
+	bool torch = false;
+	bool shield = false;
+	bool parry = false;
+	bool Any() const { return torch || shield || parry; }
+};
+
+inline BlockForces BlockForcesFor(bool targetIsPlayer, bool engineSaysBlocking, bool torchRaised, bool weaponReadied,
+                                  bool shieldGuards, bool anyStopped) {
+	BlockForces f;
+	f.torch = ForceBlockForTorch(targetIsPlayer, engineSaysBlocking, torchRaised, weaponReadied);
+	f.shield = !f.torch && ForceBlockForShield(targetIsPlayer, engineSaysBlocking, shieldGuards);
+	f.parry = !f.torch && !f.shield && ForceBlockForParry(targetIsPlayer, engineSaysBlocking, anyStopped);
+	return f;
+}
+
+// The cone's answer for a blow under the shield's forced block, from the
+// angle rule's verdict against the disc (BlockAngleFor with the shield):
+// in its way, blocked; not, it lands - whichever way the player looks, the
+// disc's place is the whole test, as in Blade & Sorcery. A blow the disc
+// cannot be judged against (an arrow, an attacker not placed, the disc
+// lost this frame) goes to the game's own cone while the shield hand is
+// raised as the old pose rule had it, and lands otherwise.
+enum class ShieldCone : UInt8 {
+	Original,    // not the shield's forced block, or the pose's fallback: the cone decides
+	Blocked,     // the shield is in the blow's way
+	NotBlocked,  // it is not: the blow lands
+};
+
+inline ShieldCone ShieldConeFor(bool targetIsPlayer, bool shieldForced, BlockAngle verdict, bool raised) {
+	if (!targetIsPlayer || !shieldForced) {
+		return ShieldCone::Original;
+	}
+	if (verdict == BlockAngle::Blocked) {
+		return ShieldCone::Blocked;
+	}
+	if (verdict == BlockAngle::Through) {
+		return ShieldCone::NotBlocked;
+	}
+	return raised ? ShieldCone::Original : ShieldCone::NotBlocked;
 }
 
 enum class ParryCone : UInt8 {

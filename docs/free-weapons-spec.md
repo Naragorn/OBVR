@@ -2605,3 +2605,71 @@ Without the shield everything worked again."
 
   A is the cheapest that matches what he asked (run with the shield equipped); the next run's
   block lines say whether his slow-downs were stick runs (A) or failed pumps (B).
+- **Decided 2026-11-27: E, the shield by contact, "as Blade & Sorcery" (built, branch
+  fix-shield-block-1127).** Nadi first chose C (a stricter pose: the shield's face turned to the
+  front), then, after hearing how B&S does it, E instead: B&S has no block state - "There is no
+  block or parry button; players deflect enemy strikes" (vrarwiki.com/wiki/Blade_%26_Sorcery) - a
+  shield stops what it is in the way of. C would still have held Block from a pose (so walked him
+  whenever the pose matched) and needed headset tuning of two angles; E holds no Block at all for
+  the shield, so a raised shield never walks the player. C's facing rule was not shipped.
+  - **The rule:** `[Hands] ShieldBlockByContact=1` (default; settings row "Shield blocks what hits
+    it", Combat: features). With a shield worn and its disc read (game/ShieldShape), the raised left
+    hand holds no Block (vr/HandBlockLogic.h, vr/HandBlockFrame.h `ShieldBlocksByContact`). At a
+    blow at the player the hit handler's block check is forced (game/ParryLogic.h
+    `ForceBlockForShield`, `BlockForcesFor`; game/Parry.cpp) and the cone answers with the disc's
+    verdict alone (`ShieldConeFor` over `BlockAngleFor` with the shield - the face within
+    BlockShieldDegrees (70) of the line to their blade or centre, their blade or body within
+    BlockReachUnits (40) of the disc; asked whatever BlockByAngle says): in the way, blocked; not,
+    the blow lands, whichever way he looks. A blow the disc cannot judge (an arrow - the cone gets
+    the arrow, not an actor; an attacker not placed; the disc lost for the frame) goes to the game's
+    own cone while the shield hand is raised as IsBlockGesture has it, and lands otherwise. A weapon
+    guard with a shield worn still holds Block and is judged as before; a parried attacker is still
+    blocked by the parry's cone first; the torch's pose block and the fist and bow guards are
+    unchanged. Until the disc is read (the model unread, or the hands' contact step not run) the
+    raised shield blocks by the pose as before; `ShieldBlockByContact=0` is the old rule exactly.
+  - **What the forced block gives [R]** (Oblivion.exe 1.2.0.416, the hit handler 0x005FEBF0,
+    ../OBNG/re/export/rea-all/functions/0x5febf0.c, read 2026-11-27): the block check
+    0x005E5670 is only "the process's current action is 6 (Block)" (`*(target+0x58)` vtable
+    +0x2D0 == 6) - nothing else of the Block action is asked there. Once it and the cone say yes,
+    the handler takes the blocking item from the equipped slots, not from the action (process
+    vtable +0xF8 / +0xEC: the shield or the weapon; neither sets the hand-to-hand flag at
+    0x005FF81D), the share from the Block skill and Luck (0x005474A0), the block's impact effect
+    and sound by that item (0x006AFFF0), and the attacker's call at vtable +0x3B4 with the share
+    (the recoil, 0x005F4F00 at 0x00600565, as read for the parry, ParryLogic.h). The same path
+    the parry and the torch have forced since 2026-10 (torch-parry.txt PASS 2026-10-25: "blocked
+    1.00 of it (the engine's own share 0.01, Block 10)").
+  - **What it does not give [R/D]:** (1) the walk - the Block action's own slowing (the point of
+    E). (2) The armour wear branch after the damage (the handler's second call of 0x005E5670) asks it again, not
+    rerouted: under a forced block it says "not blocking", so the wear goes as for an unblocked
+    hit; vanilla's held block below Journeyman Block wears the item (read: `blocking &&
+    FUN_005f23b0(0xF) < 2`; which item exactly - the shield or the armour piece hit, 0x005E5A00
+    picks one at random - is [D], not measured). (3) The arrow's impact at 0x0060A640 asks the
+    Block action and a shield for the "hit the shield" effect: an arrow at a shield held by
+    contact shows as a body hit (its damage still goes through the hit handler and the fallback
+    above) [D]. (4) Whatever else reads the player's Block action - callers of 0x005E5670 at
+    0x005F4AE0 (writes it into a struct, +0x49), 0x00603CA0 and 0x00615420 (the action's update),
+    0x00618xxx-0x006231E0 (combat AI), 0x0063D0C0, 0x00671620 - sees no block: an NPC that
+    reacts to a blocking player (a power attack against a block) does not [G, not read further].
+    (5) The first-person block animation (OBVR draws the arms from the hands; not checked) [G].
+    Block's experience: read as part of the blocked branch for the parry, not re-verified [D].
+  - **What is lost:** vanilla's walk while blocking with a shield (wanted gone); a shield raised
+    but not in the blow's way no longer blocks (wanted - B&S); arrows at a raised shield keep the
+    old cone through the fallback, arrows at a lowered one land.
+  - **Numbers:** none new - BlockShieldDegrees 70 and BlockReachUnits 40 are the angle rule's
+    since 2026-10-14 [M in the harness for the weapon and shield, 2026-10-14..27]; whether they fit
+    a shield held by contact in the headset is [G] until his next run.
+  - **Log:** the blow line "Parry: a blow at the player - ... a block forced for the shield by
+    contact 0/1" (capped at 24); right after it the cone's "Block angle: a blow from X at the shield
+    by contact (no block held, the block forced for the shield) - <why>, N degrees (at most 70), U
+    units off (at most 40) - blocked / THROUGH" (capped at 30) gives the angle and the distance
+    read. The shield hand raised or lowered under the rule: "Hands: the shield hand is up - no
+    block held, the shield blocks what it is in the way of - the stick pushed ..." (capped at 12,
+    camera/hands/Locomotion.cpp). "Hands: the left hand is up - blocking" stays for every pose
+    that still holds Block.
+  - **Tests:** hand_mode_test (the raised shield hand at carry height holds no Block - red against
+    main, 5 checks; the frame's fields; the weapon guard, the torch, the arms' run, a menu),
+    parry_test (the forces and their order, the shield cone, two attackers, a parried one under
+    the shield's force), block_angle_test (the guard's choice; a blade at the disc, beside it,
+    below it; a creature ahead and beside; an arrow raised/lowered; the disc lost). Harness,
+    written, not run: tools/hand-scripts/shield-block-contact.txt; shield-block.txt now pins
+    ShieldBlockByContact=0 (the old rule).

@@ -4,8 +4,11 @@
 # hand ... wenn ich links ein schild trage dann soll ich damit weiter blocken
 # können"). A shield is equipped at the start; the log must say it is worn,
 # and the raised left hand then blocks.
+# The old pose rule: ShieldBlockByContact=0 (since 2026-11-27 the shield by
+# contact holds no Block - shield-block-contact.txt).
 
 ini Hands Enabled=1
+ini Hands ShieldBlockByContact=0
 
 console player.additem 000733ED 1
 console player.equipitem 000733ED

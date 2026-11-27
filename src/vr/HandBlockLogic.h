@@ -5,7 +5,12 @@
 // - the left hand raised with a shield on that arm (the tester, 2026-09-29:
 //   "linke hand heben wenn kein schild equiped, darf nicht als block
 //   zählen"), or with a torch in it ([Hands] TorchBlocks) - LeftHandBlocks,
-//   IsBlockGesture;
+//   IsBlockGesture; the shield not while it guards by contact
+//   ([Hands] ShieldBlockByContact, Nadi 2026-11-27, "as Blade & Sorcery":
+//   the shield blocks the blows it is in the way of, at the blow -
+//   game/ParryLogic.h ForceBlockForShield - so a raised shield never walks
+//   the player; the pose is kept as `shield.raised` for the blows the disc
+//   cannot judge);
 // - else the weapon raised across the body with a weapon or the fists drawn
 //   (IsWeaponGuard; with the block's angle rule any raised blade not pointing
 //   ahead);
@@ -39,21 +44,34 @@ struct HandBlockFrame {
 	bool leftSwinging = false;
 	bool blockByAngle = false;    // [Hands] BlockByAngle
 	bool armsRun = false;         // ArmSwingHoldsBlocks
+	// The shield guards by contact (ShieldBlocksByContact): the raised
+	// shield hand holds no Block.
+	bool shieldByContact = false;
 };
 
 struct HandBlock {
 	bool blocking = false;
 	game::BlockWith with = game::BlockWith::None;
 	bool fistGuard = false;  // the block is both fists raised
+	// The shield by contact this frame, and its hand raised as the pose
+	// rule had it (game/BlockAngleLogic.h, ShieldGuardPose).
+	game::ShieldGuardPose shield;
 };
 
 inline HandBlock DecideHandBlock(const HandBlockFrame& f, const GestureThresholds& t) {
 	HandBlock b;
-	if (f.armsRun || f.menuMode) {
+	if (f.menuMode) {
 		return b;
 	}
-	b.blocking = LeftHandBlocks(f.leftValid && IsBlockGesture(f.leftRelative, t), f.shieldEquipped, f.torchBlocks);
-	b.with = b.blocking ? LeftWithFor(f.shieldEquipped, f.torchBlocks) : game::BlockWith::None;
+	b.shield.byContact = f.shieldByContact && f.shieldEquipped;
+	if (f.armsRun) {
+		return b;
+	}
+	const bool raised = f.leftValid && IsBlockGesture(f.leftRelative, t);
+	b.shield.raised = b.shield.byContact && raised;
+	const bool shieldPoses = f.shieldEquipped && !b.shield.byContact;
+	b.blocking = LeftHandBlocks(raised, shieldPoses, f.torchBlocks);
+	b.with = b.blocking ? LeftWithFor(shieldPoses, f.torchBlocks) : game::BlockWith::None;
 	if (!b.blocking && f.rightValid && f.rightHandValid && f.weaponDrawn) {
 		b.blocking = IsWeaponGuard(f.rightRelative, f.blade, f.rightSwinging, t, f.blockByAngle);
 		b.with = b.blocking ? game::BlockWith::Weapon : b.with;

@@ -46,13 +46,18 @@ struct ParryLines {
 	UInt32 torchForced = 12;
 };
 ParryLines g_lines;
-// The torch raised as the frame's guard, and whether a weapon or the fists
-// are readied (SetTorchGuard).
-struct TorchGuard {
-	bool raised = false;
+// The off hand's guards that force the block check: the torch raised as the
+// frame's guard and whether a weapon or the fists are readied
+// (SetTorchGuard); the shield guarding by contact this frame
+// (SetShieldGuard), and whether the blow being resolved had its block forced
+// for it (ShieldForcedBlow).
+struct OffHandGuards {
+	bool torchRaised = false;
 	bool weaponReadied = false;
+	bool shieldGuards = false;
+	bool shieldForced = false;
 };
-TorchGuard g_torch;
+OffHandGuards g_offHand;
 bool g_installed = false;
 
 UInt32 Player() { return *reinterpret_cast<const UInt32*>(addr::kPlayerPointer); }
@@ -64,7 +69,7 @@ using ShareFn = float(__cdecl*)(UInt32 block, UInt32 luck, float factor, UInt32 
 // is parried, and where each attacker's blade stood at that moment - the
 // timing the parry depends on (does a blow land before the blade reaches
 // the player, as Skyrim's do?).
-void LogBlow(bool engineBlocking, bool forced) {
+void LogBlow(bool engineBlocking, bool forced, bool shieldForced) {
 	if (g_lines.blow == 0) {
 		return;
 	}
@@ -85,9 +90,12 @@ void LogBlow(bool engineBlocking, bool forced) {
 			at += static_cast<UInt32>(n);
 		}
 	}
-	OBVR_LOG("Parry: a blow at the player - the engine says blocking %d, a block forced for a parry %d, %u parried; "
-	         "blades near: %s",
-	         engineBlocking ? 1 : 0, forced ? 1 : 0, g_ledger.count, g_foes.count > 0 ? foes : "none");
+	// The shield's verdict at this blow comes on the "Block angle:" line the
+	// cone writes right after (game/BlockCone.cpp): the angle and the distance.
+	OBVR_LOG("Parry: a blow at the player - the engine says blocking %d, a block forced for a parry %d, %u parried, "
+	         "a block forced for the shield by contact %d; blades near: %s",
+	         engineBlocking ? 1 : 0, forced ? 1 : 0, g_ledger.count, shieldForced ? 1 : 0,
+	         g_foes.count > 0 ? foes : "none");
 }
 
 UInt8 __fastcall OnBlockingCheck(void* target, void* /*edx*/) {
@@ -95,22 +103,26 @@ UInt8 __fastcall OnBlockingCheck(void* target, void* /*edx*/) {
 	const bool isPlayer = reinterpret_cast<UInt32>(target) == Player();
 	g_parriedBlow = 0;
 	g_stoppedBlow = 0;
-	// The raised torch's block, nothing readied: the cone decides each blow,
-	// so it is not the parry's forced block (that one lets every blow but
-	// the parried one through).
-	const bool torchForced =
-		g_installed && ForceBlockForTorch(isPlayer, engine != 0, g_torch.raised, g_torch.weaponReadied);
-	g_forced = g_installed && !torchForced &&
-	           ForceBlockForParry(isPlayer, engine != 0, AnyBlowStopped(g_enabled, g_ledger.count, g_heldFoe));
+	// The raised torch's block, nothing readied, and the shield by contact:
+	// the cone decides each blow, so neither is the parry's forced block
+	// (that one lets every blow but the parried one through) - ParryLogic.h,
+	// BlockForcesFor.
+	BlockForces forces;
+	if (g_installed) {
+		forces = BlockForcesFor(isPlayer, engine != 0, g_offHand.torchRaised, g_offHand.weaponReadied,
+		                        g_offHand.shieldGuards, AnyBlowStopped(g_enabled, g_ledger.count, g_heldFoe));
+	}
+	g_forced = forces.parry;
+	g_offHand.shieldForced = forces.shield;
 	if (isPlayer) {
-		LogBlow(engine != 0, g_forced);
-		if (torchForced && g_lines.torchForced > 0) {
+		LogBlow(engine != 0, g_forced, forces.shield);
+		if (forces.torch && g_lines.torchForced > 0) {
 			--g_lines.torchForced;
 			OBVR_LOG("Parry: a blow at the player with the torch raised and nothing readied - the block check says "
 			         "blocking for the cone to decide");
 		}
 	}
-	return g_forced || torchForced ? 1 : engine;
+	return forces.Any() ? 1 : engine;
 }
 
 float __cdecl OnBlockShare(UInt32 block, UInt32 luck, float factor, UInt32 flagA, UInt32 flagB) {
@@ -127,6 +139,7 @@ float __cdecl OnBlockShare(UInt32 block, UInt32 luck, float factor, UInt32 flagA
 	g_parriedBlow = 0;
 	g_stoppedBlow = 0;
 	g_forced = false;
+	g_offHand.shieldForced = false;
 	return share;
 }
 
@@ -302,9 +315,13 @@ void SetHeldFoe(UInt32 actor) {
 }
 
 void SetTorchGuard(bool raised, bool weaponReadied) {
-	g_torch.raised = raised;
-	g_torch.weaponReadied = weaponReadied;
+	g_offHand.torchRaised = raised;
+	g_offHand.weaponReadied = weaponReadied;
 }
+
+void SetShieldGuard(bool byContact) { g_offHand.shieldGuards = byContact; }
+
+bool ShieldForcedBlow() { return g_installed && g_offHand.shieldForced; }
 
 void ForgetParries() {
 	g_ledger = ParryLedger{};
@@ -315,8 +332,7 @@ void ForgetParries() {
 	g_haveBlade = false;
 	g_haveTorch = false;
 	g_stoppedBlow = 0;
-	g_torch.raised = false;
-	g_torch.weaponReadied = false;
+	g_offHand = OffHandGuards{};
 }
 
 }  // namespace obvr::game

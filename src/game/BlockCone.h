@@ -47,7 +47,10 @@ void SetBlockCone(bool enabled, bool haveGaze, float headYaw);
 // blade or the shield's face stands in the world - and the angle rule's
 // settings. At a blow, with the engine's own yes, the rule decides whether
 // the guard stands right to it (BlockAngleLogic.h, BlockAngleFor); the
-// attacker's blade is read then (game/BladeBodies.h, ReadBlockBlow).
+// attacker's blade is read then (game/BladeBodies.h, ReadBlockBlow). With
+// the shield guarding by contact (guard.shieldPose) the block check is forced
+// (game/Parry.h, SetShieldGuard) and the disc alone decides each blow,
+// whatever BlockByAngle says (ParryLogic.h, ShieldConeFor).
 void SetBlockGuard(const BlockGuard& guard, const BlockAngleSettings& settings);
 
 }  // namespace obvr::game

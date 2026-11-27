@@ -76,6 +76,17 @@ UInt32 HeldFoe();
 // ForceBlockForTorch).
 void SetTorchGuard(bool raised, bool weaponReadied);
 
+// Once a frame (from game/BlockCone's SetBlockGuard): whether the shield
+// guards by contact (BlockAngleLogic.h, ShieldGuardPose) - then, with the
+// engine not blocking, the hit handler's block check says yes for the player
+// (ParryLogic.h, ForceBlockForShield) and the cone judges each blow by the
+// disc (ShieldConeFor).
+void SetShieldGuard(bool byContact);
+
+// Whether the blow being resolved had its block forced for the shield by
+// contact (read by the cone, game/BlockCone.cpp).
+bool ShieldForcedBlow();
+
 // A blow the raised torch blocks (game/BlockCone, BlockWith::Torch): with
 // neither a weapon nor a shield the hit handler's hand-to-hand branch would
 // block none of it against an armed attacker (0x005FF890); marked, the

@@ -145,6 +145,51 @@ void TestHitHandler() {
 	      "the cost: as set, nothing for one out of reason");
 }
 
+// The shield by contact ([Hands] ShieldBlockByContact, Nadi 2026-11-27):
+// nothing holds the Block control for the shield, so the block check is
+// forced and the disc's verdict decides each blow at the cone.
+void TestShieldByContact() {
+	std::printf("The shield by contact at the hit handler\n");
+	Check(ForceBlockForShield(true, false, true), "the shield guarding, the engine not blocking: forced");
+	Check(!ForceBlockForShield(true, true, true), "the engine blocking already (a weapon's guard): its own yes");
+	Check(!ForceBlockForShield(true, false, false), "the rule off or the disc unread: the engine's no");
+	Check(!ForceBlockForShield(false, false, true), "someone else hit: never");
+	// Which force holds at one blow.
+	BlockForces f = BlockForcesFor(true, false, false, false, true, false);
+	Check(f.shield && !f.torch && !f.parry && f.Any(), "the shield alone: the shield's force");
+	f = BlockForcesFor(true, false, false, false, true, true);
+	Check(f.shield && !f.parry, "the shield and a parry in its window: the shield's, the parry's cone still first");
+	f = BlockForcesFor(true, false, false, false, false, true);
+	Check(!f.shield && f.parry, "a parry without the shield: the parry's force as before");
+	f = BlockForcesFor(true, false, true, false, false, true);
+	Check(f.torch && !f.shield && !f.parry, "the torch raised, nothing readied: the torch's force as before");
+	f = BlockForcesFor(true, true, false, false, true, true);
+	Check(!f.Any(), "the engine blocking already: nothing forced");
+	f = BlockForcesFor(false, false, false, false, true, true);
+	Check(!f.Any(), "not the player: nothing forced");
+	// The cone under the shield's force.
+	Check(ShieldConeFor(true, true, BlockAngle::Blocked, false) == ShieldCone::Blocked,
+	      "the shield in the blow's way: blocked, raised or not");
+	Check(ShieldConeFor(true, true, BlockAngle::Through, true) == ShieldCone::NotBlocked,
+	      "the shield out of its way: the blow lands, even with the hand raised");
+	Check(ShieldConeFor(true, true, BlockAngle::Engine, true) == ShieldCone::Original,
+	      "a blow the disc cannot judge (an arrow), the hand raised: the game's cone");
+	Check(ShieldConeFor(true, true, BlockAngle::Engine, false) == ShieldCone::NotBlocked,
+	      "a blow the disc cannot judge, the hand down: it lands");
+	Check(ShieldConeFor(true, false, BlockAngle::Through, false) == ShieldCone::Original,
+	      "not the shield's force (the engine blocking already): the cone and the angle rule as before");
+	Check(ShieldConeFor(false, true, BlockAngle::Blocked, true) == ShieldCone::Original, "not the player: the cone");
+	// Two attackers at one blow's frame: each judged by its own verdict, and
+	// a parried one blocked by the parry's cone before the shield's.
+	Check(ShieldConeFor(true, true, BlockAngle::Blocked, false) == ShieldCone::Blocked &&
+	          ShieldConeFor(true, true, BlockAngle::Through, false) == ShieldCone::NotBlocked,
+	      "two attackers, one at the shield, one beside it: one blocked, one lands");
+	Check(ConeForParry(true, true, f.parry) == ParryCone::Blocked &&
+	          ConeForParry(true, false, BlockForcesFor(true, false, false, false, true, true).parry) ==
+	              ParryCone::Original,
+	      "under the shield's force: a parried attacker blocked, another left to the shield");
+}
+
 void TestHeld() {
 	std::printf("Someone held by the off hand\n");
 	const UInt32 held = 0x1000;
@@ -334,6 +379,7 @@ int main() {
 	TestShield();
 	TestLedger();
 	TestHitHandler();
+	TestShieldByContact();
 	TestHeld();
 	TestWhatMeets();
 	TestHandToHandStub();

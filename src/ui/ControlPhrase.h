@@ -163,7 +163,7 @@ inline bool ControlPieces(UInt32 control, bool leftHanded, BowWords bow, bool ru
 		pieces[2] = " controller";
 		break;
 	case kControlBlock:
-		pieces[0] = "raise your shield, or hold your blade across the blow";
+		pieces[0] = "hold your shield or your blade across the blow";
 		break;
 	case kControlCast:
 		pieces[0] = "pull the ";

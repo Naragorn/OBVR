@@ -69,4 +69,8 @@ void ReadLetGoAndThrowStep(Config& config, const char* path) {
 	th.bounceBack.guideSeconds = ReadFloat("Hands", "BounceBackGuideSeconds", th.bounceBack.guideSeconds, path);
 }
 
+void TorchSpinFollowsWeaponStep(Config& config, const char*) {
+	config.hands.torchRelease.throwSpinStrength = config.hands.weaponRelease.throwSpinStrength;
+}
+
 }  // namespace obvr

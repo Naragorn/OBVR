@@ -21,5 +21,8 @@ void ReadSneakIndicatorStep(Config& config, const char* path);
 // ThrowHits and the bounce back, BounceBack, BounceBackShare,
 // BounceBackGuideSeconds (game/ThrowLogic.h, game/BounceBackLogic.h).
 void ReadLetGoAndThrowStep(Config& config, const char* path);
+// The torch's throw spins as the weapon's does (game/TorchRelease.h); moved
+// out of core/Config.cpp on 2026-11-27 to keep that file in its size.
+void TorchSpinFollowsWeaponStep(Config& config, const char* path);
 
 }  // namespace obvr
