@@ -417,6 +417,39 @@ void TestTouch() {
 	          r.tabletTouch.end == TabletContactEnd::PulledBack,
 	      "7 cm through the glass and 3 cm back: the tap, pulled back behind the glass");
 
+	// The tap's click as the finger turns back (Nadi, Windows 2026-11-27: the
+	// touch came a few frames late - the click waited for 2 cm of the way out).
+	HandMode turn;
+	f.right.position = NiPoint3{0.0f, 0.2f, glass};
+	r = turn.Update(f, s);
+	bool early = r.controls.menuClick;
+	f.right.position.z = glass - 0.02f;  // a centimetre through the glass
+	r = turn.Update(f, s);
+	early = early || r.controls.menuClick;
+	Check(!early, "a centimetre through the glass: no click yet");
+	f.right.position.z = glass - 0.012f;  // turned back by 8 mm, still behind the glass
+	r = turn.Update(f, s);
+	Check(r.controls.menuClick && r.tabletTouch.event == TabletTouchEvent::Tap &&
+	          r.tabletTouch.end == TabletContactEnd::PulledBack,
+	      "turned back by 8 mm: the tap's click in that frame");
+
+	// A drag's start that drifts out a little is no tap.
+	HandMode drift;
+	f.right.position = NiPoint3{0.0f, 0.2f, glass};
+	r = drift.Update(f, s);
+	bool drifted = r.controls.menuClick;
+	f.right.position.z = glass - 0.02f;
+	r = drift.Update(f, s);
+	drifted = drifted || r.controls.menuClick;
+	f.right.position.y = 0.2f - 0.015f;  // 1.5 cm down the glass, under the scroll's 2 cm
+	r = drift.Update(f, s);
+	drifted = drifted || r.controls.menuClick;
+	f.right.position.z = glass - 0.012f;  // and 8 mm out
+	r = drift.Update(f, s);
+	drifted = drifted || r.controls.menuClick;
+	Check(!drifted && r.tabletTouch.event == TabletTouchEvent::None,
+	      "moved 1.5 cm along the glass, then 8 mm out: still touching, no click");
+
 	HandMode bone;
 	f.right.position = NiPoint3{-0.1f - 0.05f, 0.1f, glass};
 	f.rightIndexTip.valid = true;

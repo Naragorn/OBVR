@@ -417,7 +417,8 @@ inline FingerVerdict StepFingerOnTarget(PokeState& poke, TabletTouchState& touch
 	limits.press = s.poke.press;
 	limits.release = s.poke.release;
 	limits.begin = s.poke.through;
-	const TabletContact contact = StepTabletContact(touch.contact, out, sample.inside, sample.depth, moving, limits);
+	const TabletContact contact =
+		StepTabletContact(touch.contact, out, sample.inside, sample.depth, moving, limits, TabletTouchStill(touch));
 	TabletTouchInput in;
 	in.onGlass = contact.onGlass;
 	in.touching = contact.touching;
