@@ -52,6 +52,8 @@ struct HandBlockFrame {
 	bool weaponByContact = false;
 	// The held torch guards by contact (HandBlockFrame.h): its raise holds no Block.
 	bool torchByContact = false;
+	// The fists guard by contact (HandBlockFrame.h): both forearms read.
+	bool fistsByContact = false;
 };
 
 struct HandBlock {
@@ -65,6 +67,8 @@ struct HandBlock {
 	game::WeaponGuardPose weapon;
 	// The torch by contact, its raise and the left hand's swing.
 	game::WeaponGuardPose torch;
+	// The fists by contact, both up as the pose had it, each arm's punch.
+	game::FistGuardPose fists;
 };
 
 inline HandBlock DecideHandBlock(const HandBlockFrame& f, const GestureThresholds& t) {
@@ -77,6 +81,9 @@ inline HandBlock DecideHandBlock(const HandBlockFrame& f, const GestureThreshold
 	b.weapon.swinging = b.weapon.byContact && f.rightSwinging;
 	b.torch.byContact = f.torchByContact && f.torchBlocks;
 	b.torch.swinging = b.torch.byContact && f.leftSwinging;
+	b.fists.byContact = f.fistsByContact && f.fistsUp && f.weaponDrawn;
+	b.fists.rightSwinging = b.fists.byContact && f.rightSwinging;
+	b.fists.leftSwinging = b.fists.byContact && f.leftSwinging;
 	if (f.armsRun) {
 		return b;
 	}
@@ -96,7 +103,11 @@ inline HandBlock DecideHandBlock(const HandBlockFrame& f, const GestureThreshold
 		b.with = b.blocking ? game::BlockWith::Weapon : b.with;
 	}
 	if (!b.blocking && f.rightValid && f.leftValid && f.fistsUp && f.weaponDrawn) {
-		b.blocking = IsFistGuard(f.rightRelative, f.leftRelative, f.rightSwinging, f.leftSwinging, t);
+		const bool guard = IsFistGuard(f.rightRelative, f.leftRelative, f.rightSwinging, f.leftSwinging, t);
+		// By contact a forearm in the way blocks at the blow (game/BlockCone
+		// JudgeFists); both fists up stay the fallback, holding no Block.
+		b.fists.raised = b.fists.byContact && guard;
+		b.blocking = guard && !b.fists.byContact;
 		b.fistGuard = b.blocking;
 		b.with = b.blocking ? game::BlockWith::Fists : b.with;
 	}

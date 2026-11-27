@@ -18,6 +18,7 @@
 #include "core/Types.h"
 #include "game/BlockAngleLogic.h"
 #include "game/BowVisual.h"
+#include "game/ForearmLines.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {
@@ -41,6 +42,7 @@ inline GuardReads GuardReadsFor(bool shieldDisc, bool weaponBlade, bool torchSha
 	NiPoint3 a;
 	NiPoint3 b;
 	r.bowLimb = BowLimbLine(a, b);
+	r.forearms = ForearmLinesRead();
 	return r;
 }
 

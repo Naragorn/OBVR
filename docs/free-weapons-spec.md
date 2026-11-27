@@ -3034,3 +3034,41 @@ Without the shield everything worked again."
     flat not raised, a menu), block_angle_test (the bow's limbs as the blade, named the bow; the
     pose guard left to the game; a cut across the upright bow blocked). Harness, not run:
     tools/hand-scripts/bow-block-contact.txt (the pose only); bow-block.txt pins the rule off.
+- **The fists by contact (built 2026-11-27).**
+  - **No move was needed:** the forearms' lines are read in their own unit, game/ForearmLines.cpp,
+    once a frame from BlockCone's SetBlockGuard - not in StepHandContacts (untouched, still 386).
+  - **The line [R/D]:** with the fists readied (nothing in the weapon slot, the weapon state
+    drawn), each arm from "Bip01 R/L Forearm" (the forearm bone's origin, its elbow end) to
+    "Bip01 R/L Finger2" (the knuckles, the hand span's far end) in the world. That the
+    first-person skeleton names its forearms so is the Bethesda naming the code already uses for
+    "Bip01 L ForearmTwist" [D, not seen in a log yet].
+  - **The pose before [R]:** IsFistGuard - both fists up before the face, neither punching - held
+    Block. By contact (both forearms read) it holds none; both up stay the fallback `raised`, and
+    each arm's swing flag takes that arm's say. One forearm in the way is enough (FistsVerdict),
+    as in Blade & Sorcery - the pose needed both.
+  - **At the blow:** forced like the others (`fistsContact`, after the torch's, before the
+    parry's). At the cone (BlockCone JudgeFists): an attacker with a blade read, with a weapon in
+    their process (vtable +0xEC with 1, the getter the hit handler calls) or not a living actor (an
+    arrow) - no say: a hand-to-hand block against a weapon or an arrow stops nothing (0x005FF890
+    `fldz`, ParryLogic.h), so the blow lands as the game has it and a capped line says "a fist's
+    guard does not stop a blade"; never logged as blocked. An unarmed attacker - each forearm not
+    punching judged by the weapon rule's no-blade branch (across their way to the chest within
+    BlockInterposeUnits 25, BlockBodyDegrees 70, their body within BlockReachUnits 40; GuardAsForearm),
+    either in the way - blocked; neither read with both fists up - the game's cone.
+  - **Share [R from ParryLogic.h]:** with neither a weapon nor a shield the hit handler's
+    hand-to-hand flag is set, and against an unarmed attacker the branch goes on to the share (only
+    an armed attacker or an arrow gets `fldz`) - so the hand-to-hand stub is not needed for an
+    unarmed blow, and none is marked.
+  - **What changes against vanilla:** an armed attacker's blow at a fist guard is no longer "a
+    block that stops nothing" (the engine's block reaction with no share) but a plain hit - the
+    damage the same.
+  - **Log:** "for the fists by contact 0/1" on the blow line; "at the fists by contact (no block
+    held, the block forced for the fists)" on the cone's; "Hands: the fists are up - no block held, a
+    forearm blocks an unarmed blow in its way" (capped).
+  - **Tests:** hand_mode_test (both up: no Block held by contact - before: Block; a punching arm,
+    one fist down, the arms' run, a menu, a weapon in hand; the frame's switch and the forearms
+    read), parry_test (the fists' force; FistsVerdict - one arm enough, a punching arm not asked,
+    none judged; the cone - in the way, armed lands, not in the way, unjudged up/armed/down),
+    block_angle_test (a forearm across an unarmed attacker's way blocked, one aside through, an
+    unread arm). Harness, not run: tools/hand-scripts/fist-block-contact.txt (the pose only; no
+    unarmed attacker placed); fist-block.txt pins the rule off.

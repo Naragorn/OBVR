@@ -201,9 +201,10 @@ against a weapon. A blocked blow is never fully stopped: at most `fBlockMax`
   the game's cone while the guard pose is up, else it lands. With a shield
   by contact too, either in the way blocks (the shield asked first). A
   held torch with its shaft read the same way since the same day (its shaft
-  judged as the blade). A staff, the fists and the bow keep their pose (what
-  each would take: free-weapons-spec; the staff and the bow since by their own lines,
-  game/StaffLine.h, game/BowVisual.h BowLimbLine). Details, the order of the
+  judged as the blade). The staff, the bow and the fists the same since
+  that day, each by its own line (game/StaffLine.h, game/BowVisual.h
+  BowLimbLine, game/ForearmLines.h; a forearm only against an unarmed
+  blow - a fist never stops a blade). Details, the order of the
   forces and what is lost: free-weapons-spec, "The weapons' block by
   contact".
 - The guard reads the blade as the controller's forward axis, the same axis

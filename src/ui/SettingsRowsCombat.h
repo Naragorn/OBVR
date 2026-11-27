@@ -135,7 +135,7 @@
 	},
 	{
 		"Combat: features", "Weapon blocks what it stops",
-		"Hold your blade, staff, torch or bow across the blow. Off, raise it to block, as before",
+		"Hold your blade, staff, torch, bow or forearm across the blow. Off, raise it to block, as before",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "WeaponBlockByContact",
 		+[](const Config& c) { return c.hands.contactBlock.weapon ? 1.0f : 0.0f; },

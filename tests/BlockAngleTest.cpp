@@ -456,6 +456,24 @@ void TestGuardAs() {
 	Check(BlockAngleFor(BlockAngleSettings{}, asBow, Blade(NiPoint3{-30.0f, 15.0f, 110.0f}, NiPoint3{1.0f, 0.0f, 0.0f})).verdict ==
 	          BlockAngle::Blocked,
 	      "a cut across the upright bow, met: blocked by the weapon's rule");
+	// A forearm as the guard: an unarmed attacker coming at the chest across
+	// the forearm held before it - blocked by the no-blade branch.
+	BlockGuard arms;
+	arms.armRValid = true;
+	arms.armRA = NiPoint3{20.0f, 10.0f, 95.0f};   // the elbow
+	arms.armRB = NiPoint3{-20.0f, 10.0f, 105.0f};  // the knuckles, across before the chest
+	arms.bodyValid = true;
+	arms.body = NiPoint3{0.0f, -15.0f, 130.0f};
+	arms.bodyLow = NiPoint3{0.0f, -15.0f, 80.0f};
+	const BlockGuard asArm = GuardAsForearm(arms, true);
+	Check(asArm.lineOf == BlockWith::Fists && asArm.bladeValid, "the right forearm as the blade, named the fists");
+	Check(BlockAngleFor(BlockAngleSettings{}, asArm, Body(NiPoint3{0.0f, 60.0f, 100.0f}, 30.0f)).verdict ==
+	          BlockAngle::Blocked,
+	      "an unarmed attacker ahead, the forearm across its way: blocked");
+	Check(BlockAngleFor(BlockAngleSettings{}, asArm, Body(NiPoint3{150.0f, 30.0f, 100.0f}, 30.0f)).verdict ==
+	          BlockAngle::Through,
+	      "one off to the side, the forearm not in its way: through");
+	Check(!GuardAsForearm(arms, false).bladeValid, "the left forearm unread: nothing to judge");
 }
 
 // The weapon by contact (WeaponGuardPose, ParryLogic.h ContactConeFor): the

@@ -52,6 +52,8 @@ inline HandBlockFrame HandBlockFrameOf(const HandModeFrame& f, const HandSetting
 	// The torch by contact (the same switch): TorchBlocks on, a torch held and its
 	// shaft read in the world (game/TorchShaftLogic.h); until then its raise holds Block.
 	bf.torchByContact = s.contactBlock.weapon && s.torchBlocks && f.torchHeld && f.guardReads.torchShaft;
+	// The fists by contact: both forearms read with the fists readied (game/ForearmLines.h).
+	bf.fistsByContact = s.contactBlock.weapon && f.guardReads.forearms;
 	return bf;
 }
 
@@ -63,6 +65,7 @@ inline void CopyHandBlock(HandModeResult& r, const HandBlock& block) {
 	r.shieldPose = block.shield;
 	r.weaponPose = block.weapon;
 	r.torchPose = block.torch;
+	r.fistPose = block.fists;
 }
 
 // The guards the frame's block judges with (game/BlockCone, SetBlockGuard):
@@ -73,6 +76,7 @@ inline void GuardPosesInto(const HandModeResult& hand, game::BlockGuard& g) {
 	g.shieldPose = hand.shieldPose;
 	g.weaponPose = hand.weaponPose;
 	g.torchPose = hand.torchPose;
+	g.fistPose = hand.fistPose;
 }
 
 // The bow's block into the hand mode's result (vr/HandBlockLogic.h, DecideBowBlock):

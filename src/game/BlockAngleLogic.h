@@ -69,6 +69,7 @@ struct GuardReads {
 	bool torchShaft = false;  // the held torch's shaft in the world this frame (camera g_torchWorldValid)
 	bool staffLine = false;   // the drawn staff's line (game/StaffLine.h), the last frame's
 	bool bowLimb = false;     // the drawn bow's limbs (game/BowVisual.h BowLimbLine), the last frame's
+	bool forearms = false;    // both forearms' lines with the fists readied (game/ForearmLines.h), the last frame's
 };
 
 // The drawn weapon as a guard by contact ([Hands] WeaponBlockByContact; Nadi,
@@ -82,6 +83,16 @@ struct WeaponGuardPose {
 	bool byContact = false;
 	bool raised = false;
 	bool swinging = false;
+};
+
+// The fists by contact (WeaponBlockByContact; game/ForearmLines.h): their guard
+// pose (both fists up, IsFistGuard) holds no Block; `raised` keeps it for
+// what the forearms cannot judge, and each arm's punch takes that arm's say.
+struct FistGuardPose {
+	bool byContact = false;
+	bool raised = false;
+	bool rightSwinging = false;
+	bool leftSwinging = false;
 };
 
 struct BlockAngleSettings {
@@ -165,6 +176,14 @@ struct BlockGuard {
 	NiPoint3 bowA{0.0f, 0.0f, 0.0f};
 	NiPoint3 bowB{0.0f, 0.0f, 0.0f};
 	BlockWith lineOf = BlockWith::None;  // what stands for the blade, for the log (GuardAs)
+	FistGuardPose fistPose;  // the fists by contact
+	// The forearms' lines in the world, elbow to knuckles (game/ForearmLines.h).
+	bool armRValid = false;
+	NiPoint3 armRA{0.0f, 0.0f, 0.0f};
+	NiPoint3 armRB{0.0f, 0.0f, 0.0f};
+	bool armLValid = false;
+	NiPoint3 armLA{0.0f, 0.0f, 0.0f};
+	NiPoint3 armLB{0.0f, 0.0f, 0.0f};
 	// The disc's in-plane axes in the world (its axis[0] and axis[1]) and its
 	// outline along them, for the arrows (game/ArrowShieldLogic.h); the melee
 	// rule above takes the circle of shieldRadius.
@@ -202,6 +221,19 @@ inline BlockGuard GuardAs(const BlockGuard& g, BlockWith with) {
 		out.bladeB = g.bowB;
 		out.lineOf = BlockWith::Bow;
 	}
+	return out;
+}
+
+// A forearm as the guard (the fists by contact): judged by the weapon's rule
+// with the arm's line, elbow to knuckles, as the blade - against an attacker
+// without a blade its no-blade branch (across their way to the chest).
+inline BlockGuard GuardAsForearm(const BlockGuard& g, bool right) {
+	BlockGuard out = g;
+	out.with = BlockWith::Weapon;
+	out.bladeValid = right ? g.armRValid : g.armLValid;
+	out.bladeA = right ? g.armRA : g.armLA;
+	out.bladeB = right ? g.armRB : g.armLB;
+	out.lineOf = BlockWith::Fists;
 	return out;
 }
 
