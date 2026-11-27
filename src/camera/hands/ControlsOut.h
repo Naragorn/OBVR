@@ -92,6 +92,7 @@ struct ControlsOutState {
 	// The page key the right stick's side sent (vr/TabletPages.h), held a few frames.
 	UInt32 pageKey = 0;
 	UInt32 pageKeyFrames = 0;
+	UInt32 bookTurnLinesLeft = 40;  // a book's or a letter's turns said (vr/TabletBook.h)
 	// The finger on the tablet's glass (vr/TabletTouch.h), said as it goes: the notches of its scroll summed until
 	// the list rests.
 	UInt32 touchLinesLeft = 200;

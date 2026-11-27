@@ -1,6 +1,7 @@
 #include "game/TabletMenu.h"
 
 #include "core/Log.h"
+#include "game/BookMenuRead.h"
 #include "game/GameAddresses.h"
 #include "game/HudTiles.h"
 #include "game/MenuFigure.h"
@@ -8,6 +9,7 @@
 #include "game/MenuPause.h"
 #include "game/MenuType.h"
 #include "platform/Win32Min.h"
+#include "vr/TabletBook.h"
 #include "vr/TabletClose.h"
 
 namespace obvr::game {
@@ -293,6 +295,50 @@ void FillFrame(vr::TabletFrame& frame, const vr::TabletRects& rects, UInt32 page
 	}
 }
 
+// A book, a note or a letter read alone - no F1-F4 entry under it
+// (docs/inventory-tablet-spec.md 25.4): its own pictures are the page
+// (vr::BookPaperOf), its look from its user0 (game/BookMenuRead.h); no
+// figure. A box raised over it (a script's message) joins it as over the
+// pages. Said as its look changes.
+vr::TabletFrame ReadBookAlone(TabletMenuState& state, const UInt32* stack, UInt32 count, float screenWidth,
+                              float layerPixelsHeight, bool onPage) {
+	vr::TabletFrame frame;
+	vr::PaperTile tiles[kPaperTilesMost];
+	const UInt32 read = ReadMenuPaper(kMenuIdBook, tiles, kPaperTilesMost);
+	vr::TabletRects rects = vr::BookPaperOf(tiles, read, screenWidth, vr::kHudUiHeightUnits);
+	UInt32 over[kMenuStackEntries];
+	UInt32 overCount = 0;
+	for (UInt32 i = 0; i < count; ++i) {
+		if (stack[i] != kMenuIdBook) {
+			over[overCount++] = stack[i];
+		}
+	}
+	bool itemInfo = false;
+	JoinFaceMenus(state, over, overCount, screenWidth, onPage && rects.valid, rects, itemInfo);
+	if (!rects.valid) {
+		if (!state.loggedMissing) {
+			state.loggedMissing = true;
+			OBVR_LOG("Tablet: no page read from the book menu - it stays on the menus' panel");
+		}
+		return frame;
+	}
+	FillFrame(frame, rects, kMenuIdBook, layerPixelsHeight);
+	frame.popupUp = vr::BoxOverPage(rects);
+	frame.bookScroll = BookMenuScrollLook();
+	if (state.loggedPage != kMenuIdBook || state.loggedBookScroll != frame.bookScroll) {
+		state.loggedPage = kMenuIdBook;
+		state.loggedBookScroll = frame.bookScroll;
+		OBVR_LOG("Tablet: a %s read alone, held in the hand - its paper at %.0f,%.0f..%.0f,%.0f layer pixels, the face "
+		         "%.0f,%.0f..%.0f,%.0f",
+		         frame.bookScroll ? "letter (the book menu's scroll look)" : "book (the book menu's book look)",
+		         static_cast<double>(frame.paper.left), static_cast<double>(frame.paper.top),
+		         static_cast<double>(frame.paper.right), static_cast<double>(frame.paper.bottom),
+		         static_cast<double>(frame.crop.left), static_cast<double>(frame.crop.top),
+		         static_cast<double>(frame.crop.right), static_cast<double>(frame.crop.bottom));
+	}
+	return frame;
+}
+
 vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWidth, float layerPixelsHeight,
                         bool inScene, vr::TabletFigure mode) {
 	vr::TabletFrame frame;
@@ -310,6 +356,9 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 		return frame;
 	}
 	const float screenWidth = vr::kHudUiHeightUnits * layerPixelsWidth / layerPixelsHeight;
+	if (!InStack(stack, count, kMenuIdBigFour)) {
+		return ReadBookAlone(state, stack, count, screenWidth, layerPixelsHeight, vr::BoxesOnPage(inScene, mode));
+	}
 	UInt32 pageId = kMenuIdNone;
 	vr::TabletRects rects = ReadShownPage(screenWidth, pageId);
 	state.figureSeen = false;
@@ -365,6 +414,9 @@ vr::TabletFrame ReadTabletMenus(TabletMenuState& state, bool wanted, float layer
 		state.costSeconds += seconds;
 		state.worstSeconds = seconds > state.worstSeconds ? seconds : state.worstSeconds;
 		++state.costFrames;
+	}
+	if (mark) {
+		LogBookMenuAtMark();
 	}
 	if (mark && state.costFrames > 0) {
 		OBVR_LOG("Tablet: %u frames up since the last mark - the read %.4f ms a frame on average, the worst %.4f ms",

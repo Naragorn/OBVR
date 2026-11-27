@@ -1,0 +1,84 @@
+# The book menu's scroll look probed (docs/inventory-tablet-spec.md 25.6
+# task 1, 25.7): the "Nirnroot Missive" (0004E95E), a letter - a BOOK record
+# with the scroll flag, drawn on the scroll look - dropped at the feet and
+# activated by the console; one wheel notch down and one up by the right
+# stick, the scroll bar's value read at each mark ("Book: at the mark"); then
+# the same closes as book-probe.txt: the left B, Tab, Esc.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/letter-probe.txt --headless --no-steamvr --parallel --plugin <OBVR.dll>
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet DrawnFinger=0
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+reject HandScript: WARNING
+
+console-at ready player.additem 0004E95E 1
+console-at ready player.drop 0004E95E 1
+console-at dropped {near}.activate player
+console-at after_b {near}.activate player
+console-at after_tab {near}.activate player
+wait 12
+mark ready
+wait 3
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+mark dropped
+wait 4
+mark open
+right stick 0 -1
+wait 0.1
+right stick 0 0
+wait 1.5
+mark wheel_down
+right stick 0 1
+wait 0.1
+right stick 0 0
+wait 1.5
+mark wheel_up
+right stick 0 -1
+wait 0.1
+right stick 0 0
+wait 0.5
+right stick 0 -1
+wait 0.1
+right stick 0 0
+wait 1.5
+mark wheel_down_twice
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark after_b
+wait 4
+mark reopened_b
+key 0x0F 1
+wait 0.2
+key 0x0F 0
+wait 2
+mark after_tab
+wait 4
+mark reopened_tab
+key 0x01 1
+wait 0.2
+key 0x01 0
+wait 2
+mark after_esc
+wait 1

@@ -23,6 +23,7 @@
 #include "vr/Holster.h"
 #include "vr/MenuPlace.h"
 #include "test/HandScriptRuntime.h"
+#include "vr/TabletBook.h"
 #include "vr/TabletPages.h"
 #include "vr/TabletPaper.h"
 
@@ -408,7 +409,23 @@ void LogTabletTouch(ControlsOutState& state, const vr::HandModeResult& hand) {
 	}
 }
 
-void StepTabletPageKey(ControlsOutState& state, const vr::HandModeResult& hand, UInt32 shown) {
+// A book's or a letter's turn (vr/TabletBook.h): a wheel notch on a book,
+// the menu's own turn; nothing on a letter. Said a few times.
+void TurnBook(ControlsOutState& state, const vr::HandModeResult& hand, vr::TabletLook look) {
+	const vr::TabletTurn turn = vr::TabletTurnFor(look, hand.tabletPageStep);
+	if (turn.wheel != 0) {
+		game::ScrollMouseWheel(turn.wheel);
+	}
+	if (state.bookTurnLinesLeft > 0) {
+		--state.bookTurnLinesLeft;
+		OBVR_LOG("Tablet: %s turns the %s %s%s", hand.tabletTouch.event == vr::TabletTouchEvent::PageTurn ? "the finger" : "the right stick",
+		         look == vr::TabletLook::Book ? "book's page" : "letter", hand.tabletPageStep > 0 ? "on" : "back",
+		         turn.wheel != 0 ? (turn.wheel > 0 ? " - a wheel notch up sent" : " - a wheel notch down sent")
+		                         : " - a letter has one page, nothing sent");
+	}
+}
+
+void StepTabletPageKey(ControlsOutState& state, const vr::HandModeResult& hand, const vr::TabletFrame& tablet) {
 	LogTabletTouch(state, hand);
 	if (state.pageKeyFrames > 0 && --state.pageKeyFrames == 0) {
 		game::TapKey(state.pageKey, false, false);
@@ -417,6 +434,12 @@ void StepTabletPageKey(ControlsOutState& state, const vr::HandModeResult& hand, 
 	if (hand.tabletPageStep == 0 || state.pageKey != 0) {
 		return;
 	}
+	const vr::TabletLook look = vr::TabletLookOf(tablet);
+	if (look != vr::TabletLook::Pages) {
+		TurnBook(state, hand, look);
+		return;
+	}
+	const UInt32 shown = tablet.page;
 	const UInt32 key = vr::TabletPageKeyAfter(shown, hand.tabletPageStep);
 	OBVR_LOG("Tablet: %s turns the page %s from %s%s",
 	         hand.tabletTouch.event == vr::TabletTouchEvent::PageTurn ? "the finger" : "the right stick",
@@ -450,7 +473,7 @@ void LogTabletWalk(ControlsOutState& state, const vr::HandModeResult& hand, cons
 		         known ? "" : " (the feet unread)");
 	}
 	state.tabletWalking = walking;
-	StepTabletPageKey(state, hand, frame.tablet.page);
+	StepTabletPageKey(state, hand, frame.tablet);
 }
 
 
@@ -675,7 +698,7 @@ void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandSh
 		// the engine's pace factor written for the push, the heading kept for
 		// the player's move, and the run key turned over under Always Run so
 		// the legs show the gait the push chose.
-		StepAnalogWalk(links.locomotion, handStep, handShared, flying, links.deltaSeconds, controls);
+		StepAnalogWalk(links.locomotion, handStep, handShared, flying, links.deltaSeconds, links.rolesSwapped, controls);
 		game::ApplyHandControls(controls, config.handKeys, config.hands.turnSpeed);
 		state.controlsHeld = true;
 		// Not while the sticks walk the player under a reached container's

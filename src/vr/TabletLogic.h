@@ -89,6 +89,7 @@ struct TabletSettings {
 	// How wide the page stands in the hand, metres. A page wider than the
 	// others (the map's) reaches further out at the same scale.
 	float widthMetres = 0.34f;
+	float bookWidthMetres = 0.40f;  // a book or a letter read alone in the hand (spec 25.4; TabletPaperWidthMetres)
 	// Drawn into the eyes' pictures, so the tapping hand is seen in front of
 	// it; off, the overlay that covers the hand (spec section 3).
 	bool inScene = true;
@@ -139,9 +140,10 @@ inline bool IsHudMenu(UInt32 menuId) {
 	       menuId == game::kMenuIdHudReticle || menuId == game::kMenuIdHudSubtitle;
 }
 
-// Whether the menus that are up are the tablet's: the F1-F4 entry in the
-// stack, and nothing beside it that the tablet does not carry - a
-// conversation, a container, the Esc menu keep their own panel.
+// Whether the menus that are up are the tablet's: the F1-F4 entry or a book
+// in the stack - a book, a note or a letter read from the world is held as
+// the page is (spec 25.4) - and nothing beside them that the tablet does not
+// carry: a conversation, a container, the Esc menu keep their own panel.
 inline bool TabletMenusUp(const UInt32* stack, UInt32 count) {
 	bool pages = false;
 	for (UInt32 i = 0; stack != nullptr && i < count; ++i) {
@@ -151,17 +153,16 @@ inline bool TabletMenusUp(const UInt32* stack, UInt32 count) {
 		if (!TabletCarriesMenu(stack[i])) {
 			return false;
 		}
-		pages = pages || stack[i] == game::kMenuIdBigFour;
+		pages = pages || stack[i] == game::kMenuIdBigFour || stack[i] == game::kMenuIdBook;
 	}
 	return pages;
 }
 
 // Whether the world keeps running behind the menu on top while the tablet's
-// menus are up. A message box and a book pause as vanilla: a question waits
-// for its answer, a page is read in peace.
+// menus are up. A message box pauses as vanilla: a question waits for its
+// answer. A book runs it, as the pages do (Nadi, 2026-11-27, spec 25.5 (a)).
 inline bool TabletMenuRunsWorld(UInt32 topMenuId) {
-	return TabletCarriesMenu(topMenuId) && topMenuId != game::kMenuIdMessage &&
-	       topMenuId != game::kMenuIdBook && topMenuId != game::kMenuIdGeneric;
+	return TabletCarriesMenu(topMenuId) && topMenuId != game::kMenuIdMessage && topMenuId != game::kMenuIdGeneric;
 }
 
 // The menus whose pictures join the tablet's face beside the page: every menu
@@ -436,7 +437,8 @@ struct TabletFrame {
 	// own rectangle, shown there instead of the page while its tab is chosen.
 	bool figureTab = false;
 	bool popupUp = false;  // a popup over the page: the page is shown whatever tab is chosen
-	UInt32 page = 0;       // the page shown: the inventory's, stats', magic's or map's menu id
+	UInt32 page = 0;       // the page shown: the inventory's, stats', magic's or map's menu id, or the book's
+	bool bookScroll = false;  // the book menu in its scroll look: a note or a letter (vr/TabletBook.h)
 	UiRect tabs[2];
 	UiRect figureFit;
 	float figureFitScale = 1.0f;
@@ -766,6 +768,11 @@ inline UiRect HoldFace(const TabletFrame& f) {
 	return f.figurePage ? UnionRect(f.outline, f.backing) : f.outline;
 }
 
+// How wide the page stands: a book or a letter read alone by its own width.
+inline float TabletPaperWidthMetres(const TabletFrame& f, const TabletSettings& s) {
+	return f.page == game::kMenuIdBook ? s.bookWidthMetres : s.widthMetres;
+}
+
 // `held`: the holding hand's held-item node; read, the page is turned like
 // the sword in that hand and held at the hold's edge before the palm - by
 // `reach`, the hand as it is drawn behind it (PageLiftMetres) - without the
@@ -779,10 +786,10 @@ inline TabletPlace PlaceTablet(const TabletFrame& f, const TabletSettings& s, bo
 	const float cropWidth = f.crop.right - f.crop.left;
 	const float cropHeight = f.crop.bottom - f.crop.top;
 	if (!s.enabled || !f.up || !f.paper.valid || !f.crop.valid || !(paperWidth > 0.0f) ||
-	    !(cropWidth > 0.0f) || !(cropHeight > 0.0f) || !(s.widthMetres > 0.0f)) {
+	    !(cropWidth > 0.0f) || !(cropHeight > 0.0f) || !(TabletPaperWidthMetres(f, s) > 0.0f)) {
 		return place;
 	}
-	const float metresPerPixel = s.widthMetres / paperWidth;
+	const float metresPerPixel = TabletPaperWidthMetres(f, s) / paperWidth;
 	const float share = holderPhysicalLeft ? s.gripShare : 1.0f - s.gripShare;
 	const float pageMiddleY = 0.5f * (f.paper.top + f.paper.bottom);
 	const UiRect side = HoldFace(f);

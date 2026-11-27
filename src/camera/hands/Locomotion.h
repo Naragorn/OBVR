@@ -12,6 +12,7 @@
 // LocomotionState's members. Harness: analog-walk.txt, arm-swing-run.txt.
 
 #include "camera/hands/HandStep.h"
+#include "camera/hands/Swim.h"
 #include "vr/AnalogWalkLogic.h"
 #include "vr/HandInput.h"
 
@@ -23,6 +24,7 @@ struct LocomotionState {
 	vr::SprintState sprint;
 	bool spentWas = false;
 	UInt32 spentLines = 8;
+	SwimArmsState swim;  // swimming with the arms (camera/hands/Swim.h)
 };
 
 // "Arm swing: running / walking again" when the swung arms start or stop
@@ -39,8 +41,10 @@ void LogBlockChange(const vr::HandModeResult& hand, const vr::HandModeFrame& fra
 // The analog walk and the sprint this frame, with the hand controls running.
 // `flying`: the console's fly camera is on (its sticks are the camera's).
 // `deltaSeconds`: the frame's (g_deltaSeconds), as the sprint's cost always
-// counted. Turns `controls.run` over for the gait the push chose.
+// counted. `rolesSwapped`: the hands' roles swapped (the swimming's buzz goes to
+// the physical hand). Turns `controls.run` over for the gait the push chose;
+// the arms' swimming (Swim.h) steps here too, as it owns the same request.
 void StepAnalogWalk(LocomotionState& state, const HandStep& step, const HandShared& shared, bool flying,
-                    float deltaSeconds, vr::HandControlsWanted& controls);
+                    float deltaSeconds, bool rolesSwapped, vr::HandControlsWanted& controls);
 
 }  // namespace obvr::camera::hands

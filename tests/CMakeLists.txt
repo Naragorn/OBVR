@@ -2857,6 +2857,22 @@ if(NOT MSVC)
 endif()
 add_test(NAME menu_place COMMAND menu_place_test)
 
+# Books and letters in the hand (vr/TabletBook.h), through the hand mode too.
+add_executable(tablet_book_test
+	TabletBookTest.cpp
+	../src/vr/HandMode.cpp
+	../src/vr/HandSides.cpp
+	../src/vr/HeadOffset.cpp
+	../src/vr/Quaternion.cpp
+	../src/core/Rotation.cpp
+	../src/core/Smoothing.cpp
+)
+target_include_directories(tablet_book_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_book_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet_book COMMAND tablet_book_test)
+
 add_executable(head_cull_test HeadCullTest.cpp)
 target_include_directories(head_cull_test PRIVATE ../src)
 if(NOT MSVC)
@@ -3187,3 +3203,13 @@ if(NOT MSVC)
 	target_compile_options(arm_draw_trace_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME arm_draw_trace COMMAND arm_draw_trace_test)
+
+# Swimming with the arms: a held hand pulled through the water carries the
+# swimmer the other way, the glide, the push back, the stick and the arms
+# together (vr/SwimStroke.h, docs/swimming-spec.md).
+add_executable(swim_stroke_test SwimStrokeTest.cpp)
+target_include_directories(swim_stroke_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(swim_stroke_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME swim_stroke COMMAND swim_stroke_test)

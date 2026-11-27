@@ -11,6 +11,7 @@
 #include "vr/DialogPanel.h"
 #include "vr/HandMode.h"
 #include "vr/HeadTracker.h"
+#include "vr/SwimStroke.h"
 #include "test/RecordingPlan.h"
 
 namespace obvr {
@@ -194,6 +195,10 @@ struct Config {
 	// hands and the blade (game/BodyGiveLogic.h). A prototype, off; here and
 	// not in vr::HandSettings, whose file may only shrink.
 	bool bodiesGive = false;
+	// [Hands] SwimStrokes, SwimStrength: the arms' strokes move the swimmer
+	// (vr/SwimStroke.h, docs/swimming-spec.md); here and not in
+	// vr::HandSettings, whose file may only shrink.
+	vr::SwimSettings swim;
 	game::HandKeyMap handKeys;
 	// [Hands] ArmorWearMult, WeaponWearMult, PlayerGearBreaksOff (game/GearWearLogic.h).
 	game::GearWearSettings gearWear;

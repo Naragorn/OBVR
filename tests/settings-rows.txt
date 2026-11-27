@@ -30,6 +30,8 @@ Moving|Analog walk|Push the stick a little to creep, all the way to run|Hands|An
 Moving|Run at stick push|How far you push the stick before you run. At 1, pushing alone never runs|Hands|AnalogRunFrom|||1|0.3|1|0.05|2|0|1|0.65|0.65|0|0|RW
 Moving|Sprint speed|How much faster a sprint is than a run. At 1 there's no sprint|Hands|SprintFactor|||1|1|2|0.1|1|0|1|1.4|1.4|0|0|RW
 Moving|Sprint fatigue|How much extra fatigue sprinting burns|Hands|SprintFatigue|||1|0|40|1|0|0|1|10|10|0|0|RW
+Moving|Swim with your arms|In the water, close your hand and pull to swim. The stick still swims too|Hands|SwimStrokes|||0|0|1|1|0|0|1|1|1|0|0|RW
+Moving|Stroke strength|How far each stroke carries you in the water|Hands|SwimStrength|||1|0.5|3|0.1|1|0|1|1|1|0|0|RW
 Moving|Walk direction|Walk where you look, where your hand points, or both|Hands|WalkDirection|||1|0|3|1|0|0|1|3|3|0|4|head|right|left|blend|RW
 Moving|Hold to sneak|Sneak only while you hold the right stick down. Off, a flick down toggles it|Hands|SneakHold|||0|0|1|1|0|0|1|0|0|0|0|RW
 Moving|Crouch to sneak|Crouch for real to sneak, stand up to stop|Hands|CrouchSneak|||0|0|1|1|0|0|1|1|1|0|0|RW

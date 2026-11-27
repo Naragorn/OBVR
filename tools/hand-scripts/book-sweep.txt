@@ -1,0 +1,485 @@
+# Where a book's buttons lie on the tablet (exploratory, for book-world-in-hand.txt):
+# "The Pig Children" (00024590) dropped and activated by the console, held in
+# the off hand (the book read alone, docs/inventory-tablet-spec.md 25); the
+# finger stepped over a grid 2.5 cm off the glass on tablet-touch.txt's plane
+# (a point d metres up the face at 0.0414 - 0.866 (0.377 - d) up and -0.4398 +
+# 0.5 (0.377 - d) back, off it along (0, 0.5, 0.866)); the tile under it at
+# each mark (g_<x cm>_<d cm>).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/book-sweep.txt --headless --no-steamvr --parallel --plugin <OBVR.dll>
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet DrawnFinger=0
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: at the mark the finger is over
+reject HandScript: WARNING
+
+console-at ready player.additem 00024590 1
+console-at ready player.drop 00024590 1
+console-at dropped {near}.activate player
+wait 12
+mark ready
+wait 3
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+mark dropped
+wait 4
+mark open
+right pos -0.2600 -0.2379 -0.2496
+wait 0.25
+mark g_-26_4
+right pos -0.2200 -0.2379 -0.2496
+wait 0.25
+mark g_-22_4
+right pos -0.1800 -0.2379 -0.2496
+wait 0.25
+mark g_-18_4
+right pos -0.1400 -0.2379 -0.2496
+wait 0.25
+mark g_-14_4
+right pos -0.1000 -0.2379 -0.2496
+wait 0.25
+mark g_-10_4
+right pos -0.0600 -0.2379 -0.2496
+wait 0.25
+mark g_-6_4
+right pos -0.0200 -0.2379 -0.2496
+wait 0.25
+mark g_-2_4
+right pos 0.0200 -0.2379 -0.2496
+wait 0.25
+mark g_2_4
+right pos 0.0600 -0.2379 -0.2496
+wait 0.25
+mark g_6_4
+right pos 0.1000 -0.2379 -0.2496
+wait 0.25
+mark g_10_4
+right pos 0.1400 -0.2379 -0.2496
+wait 0.25
+mark g_14_4
+right pos 0.1800 -0.2379 -0.2496
+wait 0.25
+mark g_18_4
+right pos -0.2600 -0.2033 -0.2697
+wait 0.25
+mark g_-26_8
+right pos -0.2200 -0.2033 -0.2697
+wait 0.25
+mark g_-22_8
+right pos -0.1800 -0.2033 -0.2697
+wait 0.25
+mark g_-18_8
+right pos -0.1400 -0.2033 -0.2697
+wait 0.25
+mark g_-14_8
+right pos -0.1000 -0.2033 -0.2697
+wait 0.25
+mark g_-10_8
+right pos -0.0600 -0.2033 -0.2697
+wait 0.25
+mark g_-6_8
+right pos -0.0200 -0.2033 -0.2697
+wait 0.25
+mark g_-2_8
+right pos 0.0200 -0.2033 -0.2697
+wait 0.25
+mark g_2_8
+right pos 0.0600 -0.2033 -0.2697
+wait 0.25
+mark g_6_8
+right pos 0.1000 -0.2033 -0.2697
+wait 0.25
+mark g_10_8
+right pos 0.1400 -0.2033 -0.2697
+wait 0.25
+mark g_14_8
+right pos 0.1800 -0.2033 -0.2697
+wait 0.25
+mark g_18_8
+right pos -0.2600 -0.1687 -0.2897
+wait 0.25
+mark g_-26_12
+right pos -0.2200 -0.1687 -0.2897
+wait 0.25
+mark g_-22_12
+right pos -0.1800 -0.1687 -0.2897
+wait 0.25
+mark g_-18_12
+right pos -0.1400 -0.1687 -0.2897
+wait 0.25
+mark g_-14_12
+right pos -0.1000 -0.1687 -0.2897
+wait 0.25
+mark g_-10_12
+right pos -0.0600 -0.1687 -0.2897
+wait 0.25
+mark g_-6_12
+right pos -0.0200 -0.1687 -0.2897
+wait 0.25
+mark g_-2_12
+right pos 0.0200 -0.1687 -0.2897
+wait 0.25
+mark g_2_12
+right pos 0.0600 -0.1687 -0.2897
+wait 0.25
+mark g_6_12
+right pos 0.1000 -0.1687 -0.2897
+wait 0.25
+mark g_10_12
+right pos 0.1400 -0.1687 -0.2897
+wait 0.25
+mark g_14_12
+right pos 0.1800 -0.1687 -0.2897
+wait 0.25
+mark g_18_12
+right pos -0.2600 -0.1340 -0.3097
+wait 0.25
+mark g_-26_16
+right pos -0.2200 -0.1340 -0.3097
+wait 0.25
+mark g_-22_16
+right pos -0.1800 -0.1340 -0.3097
+wait 0.25
+mark g_-18_16
+right pos -0.1400 -0.1340 -0.3097
+wait 0.25
+mark g_-14_16
+right pos -0.1000 -0.1340 -0.3097
+wait 0.25
+mark g_-10_16
+right pos -0.0600 -0.1340 -0.3097
+wait 0.25
+mark g_-6_16
+right pos -0.0200 -0.1340 -0.3097
+wait 0.25
+mark g_-2_16
+right pos 0.0200 -0.1340 -0.3097
+wait 0.25
+mark g_2_16
+right pos 0.0600 -0.1340 -0.3097
+wait 0.25
+mark g_6_16
+right pos 0.1000 -0.1340 -0.3097
+wait 0.25
+mark g_10_16
+right pos 0.1400 -0.1340 -0.3097
+wait 0.25
+mark g_14_16
+right pos 0.1800 -0.1340 -0.3097
+wait 0.25
+mark g_18_16
+right pos -0.2600 -0.0994 -0.3297
+wait 0.25
+mark g_-26_20
+right pos -0.2200 -0.0994 -0.3297
+wait 0.25
+mark g_-22_20
+right pos -0.1800 -0.0994 -0.3297
+wait 0.25
+mark g_-18_20
+right pos -0.1400 -0.0994 -0.3297
+wait 0.25
+mark g_-14_20
+right pos -0.1000 -0.0994 -0.3297
+wait 0.25
+mark g_-10_20
+right pos -0.0600 -0.0994 -0.3297
+wait 0.25
+mark g_-6_20
+right pos -0.0200 -0.0994 -0.3297
+wait 0.25
+mark g_-2_20
+right pos 0.0200 -0.0994 -0.3297
+wait 0.25
+mark g_2_20
+right pos 0.0600 -0.0994 -0.3297
+wait 0.25
+mark g_6_20
+right pos 0.1000 -0.0994 -0.3297
+wait 0.25
+mark g_10_20
+right pos 0.1400 -0.0994 -0.3297
+wait 0.25
+mark g_14_20
+right pos 0.1800 -0.0994 -0.3297
+wait 0.25
+mark g_18_20
+right pos -0.2600 -0.0647 -0.3497
+wait 0.25
+mark g_-26_24
+right pos -0.2200 -0.0647 -0.3497
+wait 0.25
+mark g_-22_24
+right pos -0.1800 -0.0647 -0.3497
+wait 0.25
+mark g_-18_24
+right pos -0.1400 -0.0647 -0.3497
+wait 0.25
+mark g_-14_24
+right pos -0.1000 -0.0647 -0.3497
+wait 0.25
+mark g_-10_24
+right pos -0.0600 -0.0647 -0.3497
+wait 0.25
+mark g_-6_24
+right pos -0.0200 -0.0647 -0.3497
+wait 0.25
+mark g_-2_24
+right pos 0.0200 -0.0647 -0.3497
+wait 0.25
+mark g_2_24
+right pos 0.0600 -0.0647 -0.3497
+wait 0.25
+mark g_6_24
+right pos 0.1000 -0.0647 -0.3497
+wait 0.25
+mark g_10_24
+right pos 0.1400 -0.0647 -0.3497
+wait 0.25
+mark g_14_24
+right pos 0.1800 -0.0647 -0.3497
+wait 0.25
+mark g_18_24
+right pos -0.2600 -0.0301 -0.3696
+wait 0.25
+mark g_-26_28
+right pos -0.2200 -0.0301 -0.3696
+wait 0.25
+mark g_-22_28
+right pos -0.1800 -0.0301 -0.3696
+wait 0.25
+mark g_-18_28
+right pos -0.1400 -0.0301 -0.3696
+wait 0.25
+mark g_-14_28
+right pos -0.1000 -0.0301 -0.3696
+wait 0.25
+mark g_-10_28
+right pos -0.0600 -0.0301 -0.3696
+wait 0.25
+mark g_-6_28
+right pos -0.0200 -0.0301 -0.3696
+wait 0.25
+mark g_-2_28
+right pos 0.0200 -0.0301 -0.3696
+wait 0.25
+mark g_2_28
+right pos 0.0600 -0.0301 -0.3696
+wait 0.25
+mark g_6_28
+right pos 0.1000 -0.0301 -0.3696
+wait 0.25
+mark g_10_28
+right pos 0.1400 -0.0301 -0.3696
+wait 0.25
+mark g_14_28
+right pos 0.1800 -0.0301 -0.3696
+wait 0.25
+mark g_18_28
+right pos -0.2600 0.0045 -0.3896
+wait 0.25
+mark g_-26_32
+right pos -0.2200 0.0045 -0.3896
+wait 0.25
+mark g_-22_32
+right pos -0.1800 0.0045 -0.3896
+wait 0.25
+mark g_-18_32
+right pos -0.1400 0.0045 -0.3896
+wait 0.25
+mark g_-14_32
+right pos -0.1000 0.0045 -0.3896
+wait 0.25
+mark g_-10_32
+right pos -0.0600 0.0045 -0.3896
+wait 0.25
+mark g_-6_32
+right pos -0.0200 0.0045 -0.3896
+wait 0.25
+mark g_-2_32
+right pos 0.0200 0.0045 -0.3896
+wait 0.25
+mark g_2_32
+right pos 0.0600 0.0045 -0.3896
+wait 0.25
+mark g_6_32
+right pos 0.1000 0.0045 -0.3896
+wait 0.25
+mark g_10_32
+right pos 0.1400 0.0045 -0.3896
+wait 0.25
+mark g_14_32
+right pos 0.1800 0.0045 -0.3896
+wait 0.25
+mark g_18_32
+right pos -0.2600 0.0392 -0.4097
+wait 0.25
+mark g_-26_36
+right pos -0.2200 0.0392 -0.4097
+wait 0.25
+mark g_-22_36
+right pos -0.1800 0.0392 -0.4097
+wait 0.25
+mark g_-18_36
+right pos -0.1400 0.0392 -0.4097
+wait 0.25
+mark g_-14_36
+right pos -0.1000 0.0392 -0.4097
+wait 0.25
+mark g_-10_36
+right pos -0.0600 0.0392 -0.4097
+wait 0.25
+mark g_-6_36
+right pos -0.0200 0.0392 -0.4097
+wait 0.25
+mark g_-2_36
+right pos 0.0200 0.0392 -0.4097
+wait 0.25
+mark g_2_36
+right pos 0.0600 0.0392 -0.4097
+wait 0.25
+mark g_6_36
+right pos 0.1000 0.0392 -0.4097
+wait 0.25
+mark g_10_36
+right pos 0.1400 0.0392 -0.4097
+wait 0.25
+mark g_14_36
+right pos 0.1800 0.0392 -0.4097
+wait 0.25
+mark g_18_36
+right pos -0.2600 0.0738 -0.4297
+wait 0.25
+mark g_-26_40
+right pos -0.2200 0.0738 -0.4297
+wait 0.25
+mark g_-22_40
+right pos -0.1800 0.0738 -0.4297
+wait 0.25
+mark g_-18_40
+right pos -0.1400 0.0738 -0.4297
+wait 0.25
+mark g_-14_40
+right pos -0.1000 0.0738 -0.4297
+wait 0.25
+mark g_-10_40
+right pos -0.0600 0.0738 -0.4297
+wait 0.25
+mark g_-6_40
+right pos -0.0200 0.0738 -0.4297
+wait 0.25
+mark g_-2_40
+right pos 0.0200 0.0738 -0.4297
+wait 0.25
+mark g_2_40
+right pos 0.0600 0.0738 -0.4297
+wait 0.25
+mark g_6_40
+right pos 0.1000 0.0738 -0.4297
+wait 0.25
+mark g_10_40
+right pos 0.1400 0.0738 -0.4297
+wait 0.25
+mark g_14_40
+right pos 0.1800 0.0738 -0.4297
+wait 0.25
+mark g_18_40
+right pos -0.2600 0.1085 -0.4497
+wait 0.25
+mark g_-26_44
+right pos -0.2200 0.1085 -0.4497
+wait 0.25
+mark g_-22_44
+right pos -0.1800 0.1085 -0.4497
+wait 0.25
+mark g_-18_44
+right pos -0.1400 0.1085 -0.4497
+wait 0.25
+mark g_-14_44
+right pos -0.1000 0.1085 -0.4497
+wait 0.25
+mark g_-10_44
+right pos -0.0600 0.1085 -0.4497
+wait 0.25
+mark g_-6_44
+right pos -0.0200 0.1085 -0.4497
+wait 0.25
+mark g_-2_44
+right pos 0.0200 0.1085 -0.4497
+wait 0.25
+mark g_2_44
+right pos 0.0600 0.1085 -0.4497
+wait 0.25
+mark g_6_44
+right pos 0.1000 0.1085 -0.4497
+wait 0.25
+mark g_10_44
+right pos 0.1400 0.1085 -0.4497
+wait 0.25
+mark g_14_44
+right pos 0.1800 0.1085 -0.4497
+wait 0.25
+mark g_18_44
+right pos -0.2600 0.1431 -0.4697
+wait 0.25
+mark g_-26_48
+right pos -0.2200 0.1431 -0.4697
+wait 0.25
+mark g_-22_48
+right pos -0.1800 0.1431 -0.4697
+wait 0.25
+mark g_-18_48
+right pos -0.1400 0.1431 -0.4697
+wait 0.25
+mark g_-14_48
+right pos -0.1000 0.1431 -0.4697
+wait 0.25
+mark g_-10_48
+right pos -0.0600 0.1431 -0.4697
+wait 0.25
+mark g_-6_48
+right pos -0.0200 0.1431 -0.4697
+wait 0.25
+mark g_-2_48
+right pos 0.0200 0.1431 -0.4697
+wait 0.25
+mark g_2_48
+right pos 0.0600 0.1431 -0.4697
+wait 0.25
+mark g_6_48
+right pos 0.1000 0.1431 -0.4697
+wait 0.25
+mark g_10_48
+right pos 0.1400 0.1431 -0.4697
+wait 0.25
+mark g_14_48
+right pos 0.1800 0.1431 -0.4697
+wait 0.25
+mark g_18_48
+right pos 0.15 -0.30 -0.15
+wait 0.5
+key 0x01 1
+wait 0.2
+key 0x01 0
+wait 1.5
+mark closed
+wait 1

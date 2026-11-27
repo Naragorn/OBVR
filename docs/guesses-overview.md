@@ -30,6 +30,7 @@ Each would be set from a headset run's log or the tester's word.
 | Arm-swing run from 0.7 m/s, held 0.35 s | `vr/ArmSwing.h`, `[Hands] ArmSwingSpeed`, `ArmSwingHoldSeconds` | the "Arm swing:" lines and the headset |
 | A pump of the run: the slower arm at half the faster's speed (2026-11-26) | `vr/ArmSwing.h`, `[Hands] ArmSwingBalance` | a pose recording of a sprint with the weapon drawn (Help / Save the last minute): both hands' speeds through the pumps |
 | A torch blow goes into them from a quarter of its speed there (2026-11-26) | `game/TorchTouchLogic.h` `kTorchIntoShare` | the "Shove: the torch met ... not into them" lines in the headset |
+| Swimming with the arms: 3 swim speeds at 1 m/s, the hands' speed to the 0.375, at most 4; the glide e over 6 s; strokes from 0.15 m/s (2026-11-27) | `vr/SwimStroke.h`, swimming-spec | the "Swim: at the mark" lines of swim-arms.txt and the headset; a rival mod's playtested values, not tried here |
 | Body capsule radii when not fitted | `game/BladeContactLogic.h` (a torso 13, a thigh 9, a calf 6) | only with `FittedBodyCapsules=0`; fitted is the default |
 
 ## 2. The player's body: proportions derived, not measured on people
@@ -57,6 +58,7 @@ Each would be set from a headset run's log or the tester's word.
 | A hand put into one's own chest | weapon-collision-spec |
 | Havok against a living person's controller (a phantom) | physical-combat-spec 3.1 |
 | Within the engine's activation reach | holding-objects-spec |
+| Whether the swimming controller keeps a step's z, and whether it tilts the step by the player's pitch | swimming-spec ("The step's height") |
 
 ## 4. Performance, not measured
 

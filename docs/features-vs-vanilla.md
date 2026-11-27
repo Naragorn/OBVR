@@ -93,6 +93,7 @@ The OBVR column names the INI key (OBVR.ini). A key's default is what ships.
 | Analog walking and sprint | Walk speed follows the stick. Pushing it all the way sprints at 1.4x and costs fatigue (`AnalogWalk`, `SprintFactor`). | PC: walk or run (Shift). A joystick walks analog. No sprint [U] | new (sprint) |
 | Walk direction | Head, hand or a blend of both (`WalkDirection`). | Where the camera looks [?] | comfort |
 | Arm-swing running | Swing your arms to run (`ArmSwingRun`, off by default). | None | new |
+| Swimming with the arms | In the water, close a hand and pull it through to swim; both hands count as one stroke. The stick still swims (`SwimStrokes`, `SwimStrength`). | The stick swims, where the head looks [U] | new |
 | Teleport | Optional, with a glide and a vignette (`Teleport*`). | None | comfort |
 | Snap and smooth turning | Snap 45° with a vignette (`SnapTurning`, `SnapTurnVignette`). | Mouse turn | comfort |
 | Room scale | Walk in the room. The body follows (`RoomScaleBody`). | None | new |

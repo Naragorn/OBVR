@@ -5483,8 +5483,9 @@ the direction the heading, the gait follows the push.
   at the pace factor 0.63 (the walk 114.5 a second: 72 expected); the rim ran
   at the run's 355 a second (346 in the first second) until a wall.
 - Open: the feel in the headset, swimming (the run's bit and the swim speed
-  unread), and a real gamepad plugged in at the same time (its stick writes
-  the same factor when deflected).
+  unread; since 2026-11-27 the arms swim by a step of their own, docs/swimming-spec.md,
+  and the stick's pace in water is still the engine's), and a real gamepad plugged in at the
+  same time (its stick writes the same factor when deflected).
 
 ### The sprint - built 2026-10-31
 
