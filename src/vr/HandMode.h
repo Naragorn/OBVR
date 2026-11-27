@@ -776,8 +776,7 @@ struct HandModeFrame {
 	bool readyWeaponClick = false;
 	bool shieldEquipped = false;  // a shield on the left arm: only then does the raised left hand block
 	game::GuardReads guardReads;  // the shield's disc and the blade read: they guard by contact (vr/HandBlockFrame.h)
-	// A torch in the left hand (the off hand): raised, it blocks with TorchBlocks.
-	bool torchHeld = false;
+	bool torchHeld = false;  // a torch in the left hand (the off hand): raised, it blocks with TorchBlocks
 	bool menusOnly = false;  // the mode is off but the controllers still steer menus (ControllerMenus)
 	// The roles were swapped this frame (vr::AssignHandRoles, left-handed in
 	// Full VR): what is about a controller's own shape goes by the physical
@@ -1197,6 +1196,7 @@ struct HandModeResult : MenuPlaceResult {  // the wrists and the tablet: TabletL
 	ReadyWeaponVerdict ready;  // the ready-weapon click's progress this frame
 	game::ShieldGuardPose shieldPose;  // the shield by contact, its hand raised (vr/HandBlockLogic.h)
 	game::WeaponGuardPose weaponPose;  // the weapon by contact, its guard raised (vr/HandBlockLogic.h)
+	game::WeaponGuardPose torchPose;   // the torch by contact, raised (vr/HandBlockLogic.h)
 
 	// For the log, and for the block's angle rule: what the block is.
 	bool blocking = false;

@@ -256,6 +256,49 @@ void TestWeaponByContact() {
 	      "two attackers: one into the blade blocked, one beside it lands");
 }
 
+// The torch by contact (WeaponBlockByContact): forced while its shaft is read
+// and its hand not swinging, the old raised-torch force (nothing readied)
+// left for the switch off; the cone asks its shaft as the weapon rule's
+// Torch case.
+void TestTorchByContact() {
+	std::printf("The torch by contact at the hit handler\n");
+	BlockForces f = BlockForcesFor(true, false, false, false, false, false, false, true);
+	Check(f.torchContact && !f.torch && !f.parry && f.Any(), "the torch by contact, nothing readied: its contact force");
+	f = BlockForcesFor(true, false, true, false, false, true, false, false);
+	Check(f.torch && !f.torchContact, "the switch off: the raised torch's old force, as before");
+	f = BlockForcesFor(true, false, false, true, false, true, true, true);
+	Check(f.torchContact && f.weapon && !f.parry, "torch and weapon by contact: both, the parry's cone first");
+	f = BlockForcesFor(true, true, false, false, false, false, false, true);
+	Check(!f.Any(), "the engine blocking already: nothing forced");
+	f = BlockForcesFor(false, false, false, false, false, false, false, true);
+	Check(!f.Any(), "not the player: nothing forced");
+	ContactVerdicts c;
+	c.torchAsked = true;
+	c.torch = BlockAngle::Blocked;
+	Check(ContactConeFor(true, true, c) == ShieldCone::Blocked, "the shaft across the blow: blocked");
+	c.torch = BlockAngle::Through;
+	c.torchRaised = true;
+	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "the shaft not in the way, raised: it lands");
+	c.torch = BlockAngle::Engine;
+	Check(ContactConeFor(true, true, c) == ShieldCone::Original, "the shaft unread, raised: the game's cone");
+	c.torchRaised = false;
+	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "the shaft unread, low: it lands");
+	c.torchAsked = false;  // the torch hand swinging
+	c.torchRaised = true;
+	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "the torch swinging: no say");
+	ContactVerdicts both;
+	both.torchAsked = true;
+	both.weaponAsked = true;
+	both.torch = BlockAngle::Through;
+	both.weapon = BlockAngle::Blocked;
+	Check(ContactConeFor(true, true, both) == ShieldCone::Blocked, "the blade in the way, the torch not: blocked");
+	both.weapon = BlockAngle::Through;
+	both.torch = BlockAngle::Blocked;
+	Check(ContactConeFor(true, true, both) == ShieldCone::Blocked, "the torch in the way, the blade not: blocked");
+	both.torch = BlockAngle::Through;
+	Check(ContactConeFor(true, true, both) == ShieldCone::NotBlocked, "neither: it lands");
+}
+
 void TestHeld() {
 	std::printf("Someone held by the off hand\n");
 	const UInt32 held = 0x1000;
@@ -447,6 +490,7 @@ int main() {
 	TestHitHandler();
 	TestShieldByContact();
 	TestWeaponByContact();
+	TestTorchByContact();
 	TestHeld();
 	TestWhatMeets();
 	TestHandToHandStub();

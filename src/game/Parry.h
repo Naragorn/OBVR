@@ -96,6 +96,14 @@ void SetWeaponGuard(bool guards);
 // Whether the blow being resolved had its block forced for the weapon.
 bool WeaponForcedBlow();
 
+// Once a frame (from game/BlockCone's SetBlockGuard): whether the held torch
+// guards by contact and its hand is not swinging - then, with the engine not
+// blocking, the block check says yes and the cone judges its shaft too.
+void SetTorchContactGuard(bool guards);
+
+// Whether the blow being resolved had its block forced for the torch by contact.
+bool TorchForcedBlow();
+
 // A blow the raised torch blocks (game/BlockCone, BlockWith::Torch): with
 // neither a weapon nor a shield the hit handler's hand-to-hand branch would
 // block none of it against an armed attacker (0x005FF890); marked, the

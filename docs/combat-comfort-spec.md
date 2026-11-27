@@ -200,7 +200,9 @@ against a weapon. A blocked blow is never fully stopped: at most `fBlockMax`
   and numbers (30 / 40 / 70 / 25, unchanged). A blow the blade cannot judge:
   the game's cone while the guard pose is up, else it lands. With a shield
   by contact too, either in the way blocks (the shield asked first). A
-  staff, the fists and the bow keep their pose. Details, the order of the
+  held torch with its shaft read the same way since the same day (its shaft
+  judged as the blade). A staff, the fists and the bow keep their pose (what
+  each would take: free-weapons-spec). Details, the order of the
   forces and what is lost: free-weapons-spec, "The weapons' block by
   contact".
 - The guard reads the blade as the controller's forward axis, the same axis

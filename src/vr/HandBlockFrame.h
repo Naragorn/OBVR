@@ -48,6 +48,9 @@ inline HandBlockFrame HandBlockFrameOf(const HandModeFrame& f, const HandSetting
 	// melee weapon's blade read (the angle rule's span; a staff, the fists or
 	// a blade not read keep the pose). Until then its guard pose holds Block.
 	bf.weaponByContact = s.contactBlock.weapon && f.guardReads.weaponBlade;
+	// The torch by contact (the same switch): TorchBlocks on, a torch held and its
+	// shaft read in the world (game/TorchShaftLogic.h); until then its raise holds Block.
+	bf.torchByContact = s.contactBlock.weapon && s.torchBlocks && f.torchHeld && f.guardReads.torchShaft;
 	return bf;
 }
 
@@ -58,6 +61,7 @@ inline void CopyHandBlock(HandModeResult& r, const HandBlock& block) {
 	r.fistGuard = block.fistGuard;
 	r.shieldPose = block.shield;
 	r.weaponPose = block.weapon;
+	r.torchPose = block.torch;
 }
 
 // The guards the frame's block judges with (game/BlockCone, SetBlockGuard):
@@ -67,6 +71,7 @@ inline void GuardPosesInto(const HandModeResult& hand, game::BlockGuard& g) {
 	g.with = game::GuardWithFor(hand.blocking, hand.blockWith, hand.shieldPose.byContact, hand.weaponPose.byContact);
 	g.shieldPose = hand.shieldPose;
 	g.weaponPose = hand.weaponPose;
+	g.torchPose = hand.torchPose;
 }
 
 }  // namespace obvr::vr

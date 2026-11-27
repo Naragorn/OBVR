@@ -17,6 +17,8 @@
 #      or:  tools\hand-script-run.ps1 -Script tools\hand-scripts\block-angle.txt
 
 ini Hands Enabled=1
+# The guards' pose rule (WeaponBlockByContact=0): this scenario measures the block the pose holds.
+ini Hands WeaponBlockByContact=0
 ini Hands Holsters=1
 ini Hands WeaponStopsAtBodies=1
 ini Hands CombatReach=85

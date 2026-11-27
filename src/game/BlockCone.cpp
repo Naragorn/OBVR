@@ -42,6 +42,12 @@ const char* BlockWithName(BlockWith with) {
 BlockAngleVerdict JudgeBlow(void* attacker, bool byContact, BlockWith with) {
 	BlockGuard guard = g_guard;
 	guard.with = with;
+	// The torch: its shaft in the world this frame stands for the blade.
+	if (with == BlockWith::Torch) {
+		guard.bladeValid = guard.torchValid;
+		guard.bladeA = guard.torchA;
+		guard.bladeB = guard.torchB;
+	}
 	BlockAngleSettings settings = g_angle;
 	settings.enabled = settings.enabled || byContact;
 	BlockBlow blow;
@@ -76,6 +82,7 @@ BlockAngleVerdict JudgeBlow(void* attacker, bool byContact, BlockWith with) {
 		         reinterpret_cast<UInt32>(attacker), BlockWithName(guard.with),
 		         !byContact                        ? ""
 		         : guard.with == BlockWith::Shield ? " by contact (no block held, the block forced for the shield)"
+		         : guard.with == BlockWith::Torch  ? " by contact (no block held, the block forced for the torch)"
 		                                           : " by contact (no block held, the block forced for the weapon)",
 		         v.why,
 		         placed ? (blow.bladeValid ? ", their blade read" : ", no blade on them") : ", not an actor",
@@ -104,14 +111,16 @@ bool AngleKeepsBlock(void* attacker) {
 }
 
 // A blow under a block forced by contact (game/Parry.h, ShieldForcedBlow,
-// WeaponForcedBlow): the shield's verdict, then the weapon's (not while
-// swinging), decide (ParryLogic.h, ContactConeFor); Original leaves it to
-// the game's cone below. An arrow judged at its impact (game/ArrowShield.h)
-// takes that verdict for the shield, the one its impact showed.
+// WeaponForcedBlow, TorchForcedBlow): the shield's verdict, then the
+// weapon's and the torch's (not while their hand swings), decide
+// (ParryLogic.h, ContactConeFor); Original leaves it to the game's cone
+// below. An arrow judged at its impact (game/ArrowShield.h) takes that
+// verdict for the shield, the one its impact showed.
 ShieldCone ContactConeAt(void* attacker) {
 	const bool shieldForced = ShieldForcedBlow();
 	const bool weaponForced = WeaponForcedBlow();
-	if (!shieldForced && !weaponForced) {
+	const bool torchForced = TorchForcedBlow();
+	if (!shieldForced && !weaponForced && !torchForced) {
 		return ShieldCone::Original;
 	}
 	ContactVerdicts c;
@@ -125,6 +134,17 @@ ShieldCone ContactConeAt(void* attacker) {
 	c.weaponRaised = g_guard.weaponPose.raised;
 	if (c.weaponAsked && c.shield != BlockAngle::Blocked && c.arrow != KeptArrow::Blocked) {
 		c.weapon = JudgeBlow(attacker, true, BlockWith::Weapon).verdict;
+	}
+	c.torchAsked = torchForced && g_guard.torchPose.byContact && !g_guard.torchPose.swinging;
+	c.torchRaised = g_guard.torchPose.raised;
+	if (c.torchAsked && c.shield != BlockAngle::Blocked && c.weapon != BlockAngle::Blocked) {
+		c.torch = JudgeBlow(attacker, true, BlockWith::Torch).verdict;
+		if (c.torch == BlockAngle::Blocked) {
+			// With nothing readied the hit handler's hand-to-hand branch would
+			// block none of it against an armed attacker: marked, the engine's
+			// own block share is taken (game/Parry.h, NoteTorchBlock).
+			NoteTorchBlock();
+		}
 	}
 	return ContactConeFor(true, true, c);
 }
@@ -241,6 +261,7 @@ void SetBlockGuard(const BlockGuard& guard, const BlockAngleSettings& settings) 
 	g_angle = settings;
 	SetShieldGuard(guard.shieldPose.byContact);
 	SetWeaponGuard(guard.weaponPose.byContact && !guard.weaponPose.swinging);
+	SetTorchContactGuard(guard.torchPose.byContact && !guard.torchPose.swinging);
 	SetArrowShieldGuard(guard);
 }
 
