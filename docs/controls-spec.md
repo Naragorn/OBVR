@@ -6390,3 +6390,41 @@ that stick", "Things with a fixed part").
     two-hander-from-fists, dummy-fist, trigger-weapon-away PASS (20261125-1458xx to -1503xx).
   - **Not done:** the headset (no Touch here), the other hand (its trigger casts; its strike
     needs no fist), an Index's squeeze-fist (`FistGripForce`) - its grip still grabs.
+
+## The same tester's evening report, 2026-11-25 (Quest 2, beta 9)
+
+Discord, 2026-11-25 19:50: mod conflicts with their INI fixes, bugs A to F and the tester's
+OBVR.ini changes. Sorted against what is built since beta 9 (read 2026-11-27, nothing run):
+
+- **Put it in its Place (Enhanced Grabbing 0.5): `sToggleGrab` and `sGrabby`** - fixed on
+  2026-11-19 (Beta 9 reports G and D above): OBVR turns the toggle off itself, and the grip's
+  grab key never goes down on a living actor. The tester's INI fixes are no longer needed with
+  that build. Its "SetAngle requires a reference" spam (its script, line 58) is the mod's.
+- **Basic Personal Hygiene: `ini_key=-1` makes the grab its wash key; a grip near water calls
+  `ToggleFirstPerson 0` and leaves the player in third person** - open, not OBVR's call. The
+  tester's fix (`ini_key 87`) stands. OBVR could take first person back after a mod's toggle;
+  not decided.
+- **AutoHUD (`con_ToggleMenus`) with Simple Saves Plus: a save made while hidden loads with
+  every menu invisible** - the mods', not OBVR's; noted for "invisible menus" reports
+  (`tm` restores them).
+- **A. Crash as the dialogue menu opens (Oblivion.exe+3E4A11 reading 00000088)** - fixed on
+  2026-11-19 (C above, game/FakeBone.h). New from this report: with BPH's aura off, 0 crashes
+  in about 37 dialogue openings. That fits the cause: the engine's random-bone read in
+  0x007E4960 places a particle on a random bone of a skin, so a particle effect on the player
+  (the aura) is what reaches the forearm stump's stand-ins. Derived, not run.
+- **B. After death the auto-reload never starts** (Loading menu up, no "loading from" in
+  obse.log, 30 s and more; one eye the held world, the other DeathGrey and the laser; the menu
+  key refused, "menu up already") - open. The line "the menu key n s after death" (2026-10,
+  above) says the game had a menu up already; which one and why the load never ran is not
+  read. Needs the OBVR.log of such a death.
+- **C. Crash at obvr.dll+16F86D as the main menu's film starts** - fixed on 2026-11-19 (H above).
+- **D. Access violation reading 40000020 at Oblivion.exe+25C640 while swinging, the game
+  window behind another** - open, seen once, no pattern; needs the crash log.
+- **E. Adjust Hands logs "saved", but only `HandsAdjusted=1` is written** - not reproduced.
+  The fit writes its six keys a hand (`RightHandRoll` ... `RightHandGripZ`) through the same
+  `SaveSetting` as `HandsAdjusted` (camera/CameraHook.cpp, the fit's commit) and logs "saved"
+  only when every write returned true. Needs the tester's OBVR.ini after a fit and the log's
+  "Config: OBVR wrote ..." lines (only the first eight are logged).
+- **F. The controller pictures show Index controllers on a Quest 2** - open, as A above: the
+  logs say oculus_touch and the card's Index drawings need "knuckles". Which screen is meant is
+  still to be asked.
