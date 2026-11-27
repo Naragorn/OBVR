@@ -1925,3 +1925,136 @@ up and down off on a book), `BookWidthMetres`, B as Exit.
 
 Model: Sonnet 5.5 medium. It is mostly reuse of tested modules; the one
 engine unknown, whether a notch turns the page, is settled by task 1.
+
+## 26. Windows run of 2026-11-27 (Nadi, headset at 90 Hz, OBVR.dll from d96cacb)
+
+Three reports from the run (OBVR.log 13:38-13:55). Marks: [R] read in the
+code, the log or the EXE's decompiled functions, [D] derived from those,
+[G] guessed, not checked.
+
+### 26.1 The figure flickers - cause not pinned, an instrument added
+
+Nadi: with the figure on its own page at the right, "the edge round the
+figure still flickers"; with the figure's tab chosen at the top, "the figure
+flickers in the tablet".
+
+- [R log] He tried both: `[Tablet] Figure` was set to beside at line 3276
+  and back to tab by 4112; the figure's page shows at 3362, 3690, 3834 and
+  goes only while an info box is up (3578, 3765), which is by design (the
+  game draws the box where that page would stand). The figure's tab was
+  chosen at 12554 and 18700 and left by the player's own press (12632);
+  the tab chosen did not flip by itself.
+- [R log] Nothing in the log alternates frame to frame for the figure: the
+  figure's rectangle was said only for the session's first three reads
+  (lines 2178, 2317, 2392, all 0.544-0.545..0.913 of the screen), the fit's
+  distance only when the bound changed with an equip (16957-17464, each
+  right after a tap), and the 2D pass's draw count ("Hud pass trace", 220
+  against 231) is logged in bursts after a menu change, not per frame.
+- [R code] The figure's rectangle is read every 15 frames from its bones
+  (`game::ReadMenuFigure`, TabletMenu.cpp `kFigureReadFrames`) and both the
+  figure's page and its tab place the picture by that rectangle; the page's
+  edge (`kFigurePageEdge`) is a strip 0.006 of the page's width - about 10
+  of the layer's 4036 pixels, near a millimetre on a 0.34 m tablet.
+- Candidates, none confirmed: (a) the cut moves at every read, so the
+  figure jumps every 15 frames [G]; (b) a read fails now and then and the
+  tablet shows the page alone for 15 frames [G - in beside mode the log
+  would have said it, and did not]; (c) the picture itself crawls: the
+  figure's hard edges and the thin edge strip drawn smaller than the
+  layer has them, with a linear filter and no mip level set by
+  `render::TabletQuad` [G].
+- **Added** (no fix shipped): `vr/TabletFigureWatch.h` (pure,
+  tablet_figure_watch_test), called from `game::ReadTabletMenus` while the
+  figure is wanted. Logged once per 90 frames, and only when something
+  moved, at most 40 times a session: "Tablet: the figure's picture over 90
+  frames - its cut moved in N frame(s), by at most P layer pixels; not read
+  in M frame(s)". Cost: four float compares a frame, no allocation.
+- Next run, look for that line. Said while the tablet is held still: (a)
+  or (b), with how far and how often. Not said while it flickers: (c) -
+  then the harness film, `tablet-figure-watch.txt --record 14` through
+  `tools/film-flicker.py`, still against turned.
+
+### 26.2 The touch came late
+
+Nadi: "the touch on the tablet comes a few frames late, not direct as one
+expects of a tablet".
+
+- [R log] 43 taps, every one "pulled back behind the glass": 0.08 to 0.30
+  s on the glass, mean 0.169 s, median 0.17 s; moved 0.2 to 1.4 cm along
+  it (all but two under 1 cm); at the deepest up to 2.0 cm through.
+- [R code] The touch begins with the tip 1.5 cm in front of the glass; a
+  tap's click went out when the tip had come 2 cm back from its deepest
+  point (`TabletContactLimits::pullBackTap`) or 4 cm out in front - so a
+  finger that went 1 cm through had to travel 3 cm in and 2 cm out first.
+  The button goes down in that frame and up the next.
+- [R EXE] The game clicks on the release, never on the press:
+  0x005821F0 (the interface's update) calls the menu's click (vtable +0x0C)
+  and plays the click sound only when the mouse button's state is "up now,
+  down before" (0x004031E0 with 2), and only on the tile it hovered; while
+  the button is held the hover does not change. No pressed look was found
+  in that path (the one use of "went down this frame", under the interface's
+  +0xB9, was not followed) [R, partly]. So a button sent down at the touch
+  could not be taken back: a drag or a swipe that began as a press would
+  click on its release. The click has to wait for the touch's verdict; the
+  hover under the finger already shows before the touch (the poke's hover).
+- **Changed** (`vr/TabletTouch.h`): a touch that has kept still on the
+  glass (`TabletTouchStill`: down, moved under 1 cm along it) lets go as
+  soon as the finger turns back 6 mm (`pullBackStill`) - the click goes out
+  in that frame. A touch that has moved 1 cm or more keeps the 2 cm way
+  out, so a drag that drifts outward on its way to the scroll's 2 cm is no
+  tap; a scroll, a page or a drag keeps its 5 cm. A second tap still needs
+  the finger 2 cm back in. `vr::StepFingerOnTarget` passes the flag.
+- [D] Before and after, from the log's taps with the speed taken as even
+  over the way in and out [G]: the click came 0.169 s after the touch
+  began on the mean (15 frames at 90 Hz); with 1.4 cm less of the way out
+  it comes 0.108 s after (10 frames) - about 61 ms, 5 to 6 frames sooner.
+  The engine's own frame for the release is unchanged. A finger that
+  slows at its turn gains more [G].
+- Tests: menu_place_test "turned back by 8 mm: the tap's click in that
+  frame" FAIL before the change, ok after; "moved 1.5 cm along the glass,
+  then 8 mm out: still touching" ok both; tablet_touch_test TestStillTurn
+  (new). Harness: `tablet-touch-turn.txt` (the tap at the turn, the sword
+  equipped; before, the touch ran on and ended off the face's edge with
+  nothing clicked). Not run.
+- Unverified, the headset's: whether 6 mm is above a hand's tremor at the
+  glass (a stray tap), and whether a scroll's start drifts out 6 mm before
+  it has moved 1 cm.
+
+### 26.3 The world froze as the tablet closed
+
+Nadi: "when I close the tablet the world freezes for a few frames".
+
+- [R log] 43 closes, "closed - the menus' fade kept out of the room and the
+  eyes (22 frame(s))" mostly (19, 21, 11 too): 0.24 s at 90 Hz. Each comes
+  right after "Tablet: put down" and "Menu pause: behind menu F1-F4 stack
+  entry (0x001) the world pauses as vanilla" (2433-2437, 12778-12781), and
+  "Combat ring: the world paused behind a menu" (2427).
+- [R EXE] Menu mode is the interface's state byte at +0x08 not being 1
+  (IsMenuMode 0x00578F60). When the last menu closes, 0x0057CEE0 sets it to
+  4 (leaving); 0x00583F40 sets it back to 1 only once no menu fades any
+  more. During those frames the stack holds only the HUD's menus (24.2,
+  measured 2026-11-26).
+- [R code] The world ran behind the tablet only while the F1-F4 entry was
+  in the stack (`vr::TabletMenusUp`); in the fade it is not, so
+  `WorldPausesForMenu` gave vanilla's answer: paused. The player's controls
+  stopped too (the walk under the tablet needs `frame.tablet.up`).
+- **Changed**: `vr::StepTabletRunsWorld` (vr/TabletClose.h): the world that
+  ran behind the tablet's menus runs on while menu mode stays on with only
+  the HUD's menus left - the fade; any other menu in the stack, a message
+  box or the Esc menu before the close, or a fade with no tablet before it,
+  keep vanilla's answer. `game::TabletRunsWorld` (MenuPause.cpp) asks it at
+  every redirected site; said once a close: "Menu pause: the tablet's menus
+  fade out - the world runs on through the fade". The walk goes on through
+  the fade too (`vr::TabletWalkFrame`, camera/hands/LaserTargets.cpp). The
+  fade stays out of the room and the eyes as before (24.2). Ending the
+  fade at once was the other way; it would mean writing the engine's state
+  byte and doing 0x00583F40's tail ourselves (the cursor, the HUD's
+  return) - more risk for the same result.
+- [D] Before: 22 frames (0.24 s) of the world standing still after each
+  close at 90 Hz; after: none.
+- Tests: tablet_close_test TestWorldRunsThroughFade and
+  TestWalkThroughFade (new functions, so red before as a build failure).
+  Harness: `tablet-close-runs.txt` (the walk goes on through the close; the
+  pause line rejected). Not run.
+- Unverified: that nothing in the world minds running while the engine's
+  state says "leaving" - the same subsystems run as while the tablet is
+  open, but in state 4 rather than 2 [G]; the headset.
