@@ -66,6 +66,7 @@ add_library(OBVR SHARED
 	src/camera/hands/LaserTargets.cpp
 	src/camera/hands/Lockpick.cpp
 	src/camera/hands/Locomotion.cpp
+	src/camera/hands/Swim.cpp
 	src/camera/hands/ReachRing.cpp
 	src/camera/hands/Rings.cpp
 	src/camera/hands/SlapTap.cpp
@@ -279,6 +280,7 @@ add_library(OBVR SHARED
 	src/game/PlayerHeadTrack.cpp
 	src/game/FlyCam.cpp
 	src/game/RoomFollow.cpp
+	src/game/SwimStep.cpp
 	src/game/AnalogWalk.cpp
 	src/game/SpellOrb.cpp
 	src/game/SpellRelease.cpp

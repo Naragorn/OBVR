@@ -3173,3 +3173,13 @@ if(NOT MSVC)
 	target_compile_options(sheath_hold_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME sheath_hold COMMAND sheath_hold_test)
+
+# Swimming with the arms: a held hand pulled through the water carries the
+# swimmer the other way, the glide, the push back, the stick and the arms
+# together (vr/SwimStroke.h, docs/swimming-spec.md).
+add_executable(swim_stroke_test SwimStrokeTest.cpp)
+target_include_directories(swim_stroke_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(swim_stroke_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME swim_stroke COMMAND swim_stroke_test)

@@ -697,7 +697,7 @@ void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandSh
 		// the engine's pace factor written for the push, the heading kept for
 		// the player's move, and the run key turned over under Always Run so
 		// the legs show the gait the push chose.
-		StepAnalogWalk(links.locomotion, handStep, handShared, flying, links.deltaSeconds, controls);
+		StepAnalogWalk(links.locomotion, handStep, handShared, flying, links.deltaSeconds, links.rolesSwapped, controls);
 		game::ApplyHandControls(controls, config.handKeys, config.hands.turnSpeed);
 		state.controlsHeld = true;
 		// Not while the sticks walk the player under a reached container's

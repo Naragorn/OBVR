@@ -24,7 +24,7 @@ void LogArmSwing(LocomotionState& state, const HandStep& step, const HandShared&
 }
 
 void StepAnalogWalk(LocomotionState& state, const HandStep& step, const HandShared& shared, bool flying,
-                    float deltaSeconds, vr::HandControlsWanted& controls) {
+                    float deltaSeconds, bool rolesSwapped, vr::HandControlsWanted& controls) {
 	const Config& config = step.config;
 	const bool menuIsUp = step.menuIsUp;
 	const vr::HandModeResult& hand = shared.hand;
@@ -64,6 +64,8 @@ void StepAnalogWalk(LocomotionState& state, const HandStep& step, const HandShar
 		         static_cast<double>(fatigue));
 	}
 	state.spentWas = state.sprint.spent;
+	// Swimming with the arms: the swimmer's step for the player's move, and the game shown a direction.
+	StepSwimArms(state.swim, step, shared, flying, rolesSwapped, request, controls);
 	float pace = 1.0f;
 	game::StepAnalogWalk(request, pace);
 	if (request.active) {
