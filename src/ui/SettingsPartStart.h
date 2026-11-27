@@ -250,6 +250,20 @@ inline constexpr SettingDefinition kStartRows[] = {
 		+[](Config& c, float v) { c.hands.analogWalk.sprintFatiguePerSecond = v; },
 	},
 	{
+		"Moving", "Swim with your arms", "In the water, close your hand and pull to swim. The stick still swims too",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "SwimStrokes",
+		+[](const Config& c) { return c.swim.enabled ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.swim.enabled = v != 0.0f; },
+	},
+	{
+		"Moving", "Stroke strength", "How far each stroke carries you in the water",
+		ItemKind::Number, 0.5f, 3.0f, 0.1f, 1, false,
+		"Hands", "SwimStrength",
+		+[](const Config& c) { return c.swim.strength; },
+		+[](Config& c, float v) { c.swim.strength = v; },
+	},
+	{
 		"Moving", "Walk direction", "Walk where you look, where your hand points, or both",
 		ItemKind::Number, 0.0f, static_cast<float>(vr::kWalkDirectionCount - 1), 1.0f, 0, false,
 		"Hands", "WalkDirection",

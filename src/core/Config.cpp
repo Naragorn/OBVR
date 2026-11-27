@@ -82,15 +82,6 @@ using config_read::ReadStereoMode;
 using config_read::ReadMenusInWorld;
 using config_read::ReadHexColor;
 
-const char* StereoModeName(vr::StereoMode mode) {
-	switch (mode) {
-		case vr::StereoMode::None: return "none";
-		case vr::StereoMode::AlternateEyes: return "aer";
-		case vr::StereoMode::DualPass: return "dual";
-	}
-	return "?";
-}
-
 vr::TrackerSource ReadSource(vr::TrackerSource fallback, const char* path) {
 	char buffer[32];
 	if (GetPrivateProfileStringA("Head", "Source", "", buffer, sizeof(buffer), path) == 0) {
@@ -114,17 +105,6 @@ vr::TrackerSource ReadSource(vr::TrackerSource fallback, const char* path) {
 
 	OBVR_LOG("Config: unknown Head.Source \"%s\", keeping the previous setting", buffer);
 	return fallback;
-}
-
-const char* SourceName(vr::TrackerSource source) {
-	switch (source) {
-		case vr::TrackerSource::None: return "none";
-		case vr::TrackerSource::Fixed: return "fixed";
-		case vr::TrackerSource::Simulated: return "simulated";
-		case vr::TrackerSource::OpenVR: return "openvr";
-		case vr::TrackerSource::OpenXR: return "openxr";
-	}
-	return "?";
 }
 
 // The reads that are not one key into one member: a word parsed into an
@@ -1138,6 +1118,8 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "GripCloseAt", hands.gripHold.closeAt),
 	OBVR_KEY(Float, "Hands", "GripOpenAt", hands.gripHold.openAt),
 	OBVR_KEY(Bool, "Hands", "GripToggle", hands.gripHold.toggle),
+	OBVR_KEY(Bool, "Hands", "SwimStrokes", swim.enabled),
+	OBVR_KEY(Float, "Hands", "SwimStrength", swim.strength),
 	OBVR_KEY(Bool, "Hands", "GrabEquipsWeapons", hands.weaponGrab.enabled),
 	OBVR_KEY(Bool, "Hands", "GrabEquipsTorches", hands.weaponGrab.torches),
 	OBVR_KEY(Float, "Hands", "WeaponGripReachMetres", hands.weaponGrab.gripReachMetres),
@@ -1373,7 +1355,7 @@ bool Config::Load(const char* fileName) {
 
 	OBVR_LOG("Config: HookEnabled=%d Source=%s Fixed=(P %.1f, R %.1f, Y %.1f)",
 	         cameraHookEnabled ? 1 : 0,
-	         SourceName(tracker.source),
+	         config_read::SourceName(tracker.source),
 	         static_cast<double>(tracker.fixedPitch),
 	         static_cast<double>(tracker.fixedRoll),
 	         static_cast<double>(tracker.fixedYaw));
@@ -1427,7 +1409,7 @@ bool Config::Load(const char* fileName) {
 	// using it, and that should be visible in the log without hunting.
 	OBVR_LOG("Config: Render.Enabled=%d GameFrame=%d Stereo=%s EyeSeparationScale=%.2f%s",
 	         tracker.renderToHeadset ? 1 : 0, tracker.submitGameFrame ? 1 : 0,
-	         StereoModeName(tracker.stereo),
+	         config_read::StereoModeName(tracker.stereo),
 	         static_cast<double>(tracker.eyeSeparationScale),
 	         tracker.renderToHeadset ? " - OBVR will claim the VR scene" : "");
 	OBVR_LOG("Config: Render.GameFovDegrees=%.1f IsFor4x3=%d SubmitAtFrameEnd=%d",

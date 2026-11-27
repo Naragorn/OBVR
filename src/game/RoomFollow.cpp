@@ -10,6 +10,7 @@
 #include "core/Memory.h"
 #include "game/AnalogWalk.h"
 #include "game/GameAddresses.h"
+#include "game/SwimStep.h"
 #include "vr/RoomFollowLogic.h"
 
 namespace obvr::game {
@@ -84,12 +85,16 @@ UInt32 __fastcall OBVR_PlayerMove(void* self, void* edx, float dt, float* step, 
 	// The walk's own step, as the engine handed it: given back after the call.
 	const float engineX = step[0];
 	const float engineY = step[1];
+	const float engineZ = step[2];
 	// The left stick's exact heading (game/AnalogWalk.h): the octant's step turned.
 	TurnAnalogStep(step);
+	// The arms' strokes while swimming (game/SwimStep.h): one more step, cut together with the stick's.
+	AddSwimStep(self, dt, step);
 	if (!g_pending) {
 		const UInt32 result = g_original(self, edx, dt, step, flags);
 		step[0] = engineX;
 		step[1] = engineY;
+		step[2] = engineZ;
 		return result;
 	}
 	g_pending = false;
@@ -127,6 +132,7 @@ UInt32 __fastcall OBVR_PlayerMove(void* self, void* edx, float dt, float* step, 
 	}
 	step[0] = engineX;
 	step[1] = engineY;
+	step[2] = engineZ;
 	return result;
 }
 

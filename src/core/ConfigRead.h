@@ -21,4 +21,25 @@ vr::StereoMode ReadStereoMode(vr::StereoMode fallback, const char* path);
 bool ReadMenusInWorld(const char* section, const char* key, bool fallback, const char* path);
 UInt32 ReadHexColor(const char* section, const char* key, UInt32 fallback, const char* path);
 
+// The words the log says a setting's value in (Config::Load's lines).
+inline const char* StereoModeName(vr::StereoMode mode) {
+	switch (mode) {
+		case vr::StereoMode::None: return "none";
+		case vr::StereoMode::AlternateEyes: return "aer";
+		case vr::StereoMode::DualPass: return "dual";
+	}
+	return "?";
+}
+
+inline const char* SourceName(vr::TrackerSource source) {
+	switch (source) {
+		case vr::TrackerSource::None: return "none";
+		case vr::TrackerSource::Fixed: return "fixed";
+		case vr::TrackerSource::Simulated: return "simulated";
+		case vr::TrackerSource::OpenVR: return "openvr";
+		case vr::TrackerSource::OpenXR: return "openxr";
+	}
+	return "?";
+}
+
 }  // namespace obvr::config_read
