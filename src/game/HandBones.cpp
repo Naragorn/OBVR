@@ -3,6 +3,7 @@
 #include "core/AddressSpace.h"
 #include "core/Log.h"
 #include "core/MathFns.h"
+#include "game/ArmDrawTrace.h"
 #include "game/BonePin.h"
 #include "game/FirstPersonArms.h"
 #include "game/FirstPersonHide.h"
@@ -275,6 +276,9 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
 	UpdateNodeTransforms(parent);
 	g_pinnedIn[rightHand ? 0 : 1] = g_pinFrame;
 	LogHandAtMark(rightHand, bone, wanted.pos, cameraPos);
+	if (!rightHand) {
+		TraceLeftArmInDraw(bone, cameraRot, wanted.rot, wanted.pos, g_pinFrame);  // the shield through a draw
+	}
 
 	if (!hand.reported) {
 		hand.reported = true;
