@@ -259,6 +259,16 @@ vr::UiRect ReadFigure(TabletMenuState& state, float screenWidth, float aspect) {
 	return figure;
 }
 
+// The figure's rectangle watched while it is wanted on the tablet (vr/TabletFigureWatch.h).
+void WatchFigure(TabletMenuState& state, bool wanted, const vr::UiRect& figurePixels) {
+	const vr::FigureWatchReport w = vr::StepFigureWatch(state.figureWatch, wanted, figurePixels);
+	if (w.say) {
+		OBVR_LOG("Tablet: the figure's picture over %u frames - its cut moved in %u frame(s), by at most %.0f layer "
+		         "pixels; not read in %u frame(s)",
+		         w.frames, w.moves, static_cast<double>(w.mostPixels), w.drops);
+	}
+}
+
 // The frame from the rectangles read, in the layer's pixels: the page, the
 // face as the game lays it out, and each popup where the game draws it.
 void FillFrame(vr::TabletFrame& frame, const vr::TabletRects& rects, UInt32 pageId, float layerPixelsHeight) {
@@ -286,6 +296,7 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 		state.loggedPage = kMenuIdNone;
 		state.loggedMissing = false;
 		PutBackBoxes(state, stack, count, nullptr, 0);
+		WatchFigure(state, false, vr::UiRect{});
 		frame.menusGone = asked && vr::OnlyHudMenus(stack, count);
 		return frame;
 	}
@@ -319,6 +330,7 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 	// the game draws it, unless it is off.
 	frame.popupUp = vr::BoxOverPage(rects);
 	const vr::UiRect figurePixels = vr::ToLayerPixels(figure, layerPixelsHeight);
+	WatchFigure(state, inScene && mode != vr::TabletFigure::Off, figurePixels);
 	if (inScene && mode == vr::TabletFigure::Beside && popups == 0) {
 		vr::SetFigurePage(frame, figurePixels);
 	} else if (inScene && mode == vr::TabletFigure::Tab) {

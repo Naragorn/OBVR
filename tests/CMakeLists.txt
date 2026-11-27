@@ -2791,6 +2791,14 @@ if(NOT MSVC)
 endif()
 add_test(NAME tablet_close COMMAND tablet_close_test)
 
+# The watch on the tablet's figure, for the log (vr/TabletFigureWatch.h): pure.
+add_executable(tablet_figure_watch_test TabletFigureWatchTest.cpp)
+target_include_directories(tablet_figure_watch_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_figure_watch_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet_figure_watch COMMAND tablet_figure_watch_test)
+
 # How far ahead the poses are predicted when the wait comes late (vr/PosePrediction.h): pure.
 add_executable(pose_prediction_test PosePredictionTest.cpp)
 target_include_directories(pose_prediction_test PRIVATE ../src)

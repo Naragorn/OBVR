@@ -10,6 +10,7 @@
 #include "core/Types.h"
 #include "render/MenuModelFit.h"
 #include "vr/TabletBoxes.h"
+#include "vr/TabletFigureWatch.h"
 #include "vr/TabletLogic.h"
 
 namespace obvr::game {
@@ -52,6 +53,8 @@ struct TabletMenuState {
 	render::FigureRect figure;
 	bool figureRead = false;
 	UInt32 figureAge = 0;
+	// What moved under the figure frame to frame (vr/TabletFigureWatch.h), said once in 90 frames when something did.
+	vr::FigureWatchState figureWatch;
 	// The read's cost between two hand-script marks (said at the mark).
 	double costSeconds = 0.0;
 	double worstSeconds = 0.0;
