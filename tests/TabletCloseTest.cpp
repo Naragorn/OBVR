@@ -70,6 +70,48 @@ void TestPageBack() {
 	Check(s.frames == 0, "the count starts over");
 }
 
+void TestWorldRunsThroughFade() {
+	std::printf("The world runs on through the close's fade\n");
+	bool ran = false;
+	Check(!StepTabletRunsWorld(ran, false, false, true), "no menu mode: the world is not the tablet's to run");
+	Check(StepTabletRunsWorld(ran, true, true, false), "the tablet's menus up, the world running behind them: runs");
+	Check(StepTabletRunsWorld(ran, true, true, false), "asked again the same frame: the same answer");
+	Check(StepTabletRunsWorld(ran, true, false, true),
+	      "closed - menu mode on, only the HUD's menus left as they fade: runs on (paused 22 frames before)");
+	Check(StepTabletRunsWorld(ran, true, false, true), "the fade's next frame, and the next site asking: runs on");
+	Check(!StepTabletRunsWorld(ran, false, false, true), "the fade over, menu mode off: the game's own answer");
+	Check(!StepTabletRunsWorld(ran, true, false, true), "a later menu's fade with no tablet before it: not the tablet's");
+
+	bool box = false;
+	StepTabletRunsWorld(box, true, true, false);
+	Check(!StepTabletRunsWorld(box, true, false, false),
+	      "a message box over the pages (the world pauses behind it): not the tablet's to run");
+	Check(!StepTabletRunsWorld(box, true, false, true), "the box and the pages closing from there: paused as before");
+
+	bool esc = false;
+	StepTabletRunsWorld(esc, true, true, false);
+	Check(!StepTabletRunsWorld(esc, true, false, false), "the Esc menu over the pages: its own answer");
+	Check(!StepTabletRunsWorld(esc, true, false, true), "and its fade: paused as vanilla");
+
+	bool back = false;
+	StepTabletRunsWorld(back, true, true, false);
+	StepTabletRunsWorld(back, true, false, true);
+	Check(StepTabletRunsWorld(back, true, true, false), "the pages opened again in the fade: up, running");
+}
+
+void TestWalkThroughFade() {
+	std::printf("The left stick walks through the close's fade\n");
+	Check(TabletWalkFrame(true, false, false), "the tablet up: walks");
+	Check(TabletWalkFrame(false, true, false), "its menus fading out after the close: walks on");
+	Check(!TabletWalkFrame(false, false, false), "neither: no walk under a menu");
+	Check(!TabletWalkFrame(true, false, true), "a site the walk needs refused: no walk, up");
+	Check(!TabletWalkFrame(false, true, true), "nor in the fade");
+	TabletCloseState s;
+	StepTabletClose(s, true, false);
+	const bool closing = StepTabletClose(s, false, true);
+	Check(TabletWalkFrame(false, closing, false), "as wired: the first closing frame walks");
+}
+
 }  // namespace
 
 int main() {
@@ -77,6 +119,8 @@ int main() {
 	TestClosing();
 	TestNotClosing();
 	TestPageBack();
+	TestWorldRunsThroughFade();
+	TestWalkThroughFade();
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);
 		return 1;

@@ -11,6 +11,7 @@
 #include "game/MenuPausePolicy.h"
 #include "game/PlayerControlSites.h"
 #include "vr/DialogPanel.h"
+#include "vr/TabletClose.h"
 #include "vr/TabletLogic.h"
 
 namespace obvr::game {
@@ -32,11 +33,17 @@ bool g_installTried = false;
 UInt32 g_sitesRedirected = 0;
 
 // Logged on change of answer, so a run says which menu first kept the world
-// running and when the world froze again, and no more.
-bool g_lastAnswerLogged = false;
-bool g_lastPaused = false;
-UInt32 g_lastTop = 0;
-UInt32 g_rememberedTop = kMenuIdNone;
+// running and when the world froze again, and no more; the menu last seen on
+// top (StablePauseMenuId); and the tablet's share as last given.
+struct PauseAnswer {
+	bool logged = false;
+	bool paused = false;
+	UInt32 top = 0;
+	UInt32 rememberedTop = kMenuIdNone;
+	bool tabletRan = false;       // vr::StepTabletRunsWorld
+	bool tabletFadeSaid = false;  // the fade after the close, said once a close
+};
+PauseAnswer g_answer;
 
 UInt32 TopVisibleMenuId() {
 	void* manager = *reinterpret_cast<void* const*>(addr::kInterfaceManagerPointer);
@@ -50,14 +57,22 @@ UInt32 TopVisibleMenuId() {
 }
 
 // The tablet's share of the answer: its switch on, its menus the ones that
-// are up, and the one on top a menu the world runs behind.
+// are up, and the one on top a menu the world runs behind - and the frames
+// those menus fade out on after the close (vr::StepTabletRunsWorld).
 bool TabletRunsWorld(bool menuMode, UInt32 top) {
-	if (!menuMode || !g_switches.tablet || !vr::TabletMenuRunsWorld(top)) {
-		return false;
-	}
 	UInt32 stack[kMenuStackEntries];
-	const UInt32 count = MenuStackEntries(stack, kMenuStackEntries);
-	return vr::TabletMenusUp(stack, count);
+	const bool asked = menuMode && g_switches.tablet;
+	const UInt32 count = asked ? MenuStackEntries(stack, kMenuStackEntries) : 0;
+	const bool upRuns = asked && vr::TabletMenuRunsWorld(top) && vr::TabletMenusUp(stack, count);
+	const bool runs = vr::StepTabletRunsWorld(g_answer.tabletRan, asked, upRuns, vr::OnlyHudMenus(stack, count));
+	const bool fade = runs && !upRuns;
+	if (fade != g_answer.tabletFadeSaid) {
+		g_answer.tabletFadeSaid = fade;
+		if (fade) {
+			OBVR_LOG("Menu pause: the tablet's menus fade out - the world runs on through the fade");
+		}
+	}
+	return runs;
 }
 
 // What the redirected sites call instead of IsMenuMode. Same shape: no
@@ -68,16 +83,16 @@ int __cdecl WorldPauseForMenu() {
 	const bool menuMode = IsMenuMode();
 	const bool asking = g_switches.Any();
 	const UInt32 observed = menuMode && asking ? TopVisibleMenuId() : kMenuIdNone;
-	const UInt32 top = StablePauseMenuId(menuMode, observed, g_rememberedTop);
-	g_rememberedTop = top;
+	const UInt32 top = StablePauseMenuId(menuMode, observed, g_answer.rememberedTop);
+	g_answer.rememberedTop = top;
 	const bool barter = menuMode && asking && BarterMenuUp();
 	const bool paused = WorldPausesForMenu(menuMode, g_switches.unpaused, top, g_switches.container, g_switches.lock,
 	                                       barter, TabletRunsWorld(menuMode, top));
 	if (menuMode && asking &&
-	    (!g_lastAnswerLogged || paused != g_lastPaused || top != g_lastTop)) {
-		g_lastAnswerLogged = true;
-		g_lastPaused = paused;
-		g_lastTop = top;
+	    (!g_answer.logged || paused != g_answer.paused || top != g_answer.top)) {
+		g_answer.logged = true;
+		g_answer.paused = paused;
+		g_answer.top = top;
 		OBVR_LOG("Menu pause: behind menu %s (0x%03X) the world %s%s", MenuIdName(top), top,
 		         paused ? "pauses as vanilla" : "keeps running", barter ? " (a merchant's barter)" : "");
 	}
@@ -356,7 +371,7 @@ void ApplyUnpausedMenus(bool wanted, bool containerWanted, bool lockWanted, bool
 	                        tabletWanted && installed};
 	if (!(now == g_switches)) {
 		g_switches = now;
-		g_lastAnswerLogged = false;
+		g_answer.logged = false;
 		if (g_installTried) {
 			OBVR_LOG("Menu pause: unpaused menus are now %s, the container's menu %s, the lock's minigame %s, "
 			         "the tablet's menus %s",
@@ -428,7 +443,7 @@ bool WorldPausedForMenus() {
 	if (!menuMode) {
 		return false;
 	}
-	const UInt32 top = StablePauseMenuId(menuMode, TopVisibleMenuId(), g_rememberedTop);
+	const UInt32 top = StablePauseMenuId(menuMode, TopVisibleMenuId(), g_answer.rememberedTop);
 	return WorldPausesForMenu(menuMode, g_switches.unpaused, top, g_switches.container, g_switches.lock,
 	                          BarterMenuUp(), TabletRunsWorld(menuMode, top));
 }

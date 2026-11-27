@@ -50,4 +50,29 @@ inline bool StepTabletClose(TabletCloseState& s, bool tabletUp, bool menusGone) 
 	return s.closing;
 }
 
+// Whether the world runs behind the tablet's menus (game/MenuPause.cpp; Nadi,
+// Windows 2026-11-27: "wenn ich das tablet schließe friert die welt ein paar
+// frames ein"). `upRuns`: the tablet's menus up and the one on top one the
+// world runs behind (TabletMenusUp, TabletMenuRunsWorld). After the close the
+// engine keeps menu mode on while its menus fade out - the interface's state
+// 4, set by 0x0057CEE0 when the last menu closes, back to 1 (the game) by
+// 0x00583F40 only once no menu fades any more; IsMenuMode 0x00578F60 is "the
+// state is not 1" - with only the HUD's menus in the stack (`onlyHud`, the
+// close's frames above). Those frames paused the world as vanilla: 22 of them
+// at 90 Hz in the run of 2026-11-27. The world that ran up to the close runs
+// on through them. Called several times a frame with the same answer.
+inline bool StepTabletRunsWorld(bool& ranLast, bool menuMode, bool upRuns, bool onlyHud) {
+	const bool runs = menuMode && (upRuns || (ranLast && onlyHud));
+	ranLast = runs;
+	return runs;
+}
+
+// Whether the left stick walks under the tablet (docs/inventory-tablet-spec.md
+// 4.6): its menus up, or fading out after the close (`closing`,
+// StepTabletClose) while the world runs on through the fade - unless a site
+// the walk needs could not be taken (`refused`, game::TabletWalkRefused).
+inline bool TabletWalkFrame(bool up, bool closing, bool refused) {
+	return (up || closing) && !refused;
+}
+
 }  // namespace obvr::vr
