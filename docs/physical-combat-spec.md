@@ -1627,3 +1627,36 @@ ways.
 - Whether a swing's kick and the engine's stagger animation fight each other.
 - The turn is kept in the world's axes: someone turning round while a joint
   swings back takes the turn with them wrongly for that moment.
+
+## The shield's weight (asked 2026-11-27, nothing built)
+
+Nadi, 2026-11-27, the evening the block went to contact (docs/block-by-contact-spec.md):
+"shields now also must get weight as swords do."
+
+- **What there is** [R]: the weapon hand trails the controller by the weapon's weight
+  (section 6; `vr::WeaponLagFor(weight, percent, twoHanded, swingThrough)`,
+  vr/WeaponWeight.h, applied in vr/HandMode.cpp and camera/hands/WeaponFrame.cpp;
+  `[Hands] WeaponWeight`, the one slider). The shield hand has no such lag: it is pinned to
+  the controller as an empty hand is.
+- **Why now** [D]: with the block by contact the shield has to be moved into the blow's
+  way. A tower shield that moves as fast as a buckler makes the heavy shield the better one
+  in every way; weight is what a small shield would win by.
+- **The wish:** the shield hand trails the controller by the worn shield's weight (the
+  form's weight, as the weapons take theirs), under the same slider.
+- **To decide when it is built:**
+  - the lag's curve for a shield (the weapon's as it is, or its own - a shield is moved
+    into place, not swung);
+  - what follows the lagged hand: the shield's disc and outline for the block and the
+    contacts (they must, or the block judges a shield that is not where it is drawn), the
+    shield bash's speed, the hand's own contact;
+  - what does not: the tablet in that hand, the torch, the bow, a spell;
+  - whether fatigue or Strength enter it (section 7's idea, not built for weapons either).
+- **Cost:** small to medium. Reused: `WeaponLagFor` and its tests, the left hand's pin,
+  the slider. New: the lag's state for the other hand, the shield's weight read, the
+  hand-offs above. Risk: the feel (a guess until the headset), and every reader of the
+  shield hand's pose that must take the lagged one. Tests: unit flows for the lag and the
+  hand-offs, a harness scenario (the shield hand jerked 30 cm: the shield arrives later
+  with a heavy shield than with a light one; the block's disc is where the shield is
+  drawn), the headset.
+- **Model and effort:** Opus 5.5 medium - ordinary code on a known mechanism, with many
+  readers of the hand's pose to find.

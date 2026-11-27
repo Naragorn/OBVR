@@ -166,6 +166,8 @@ a standing guard.
   shield / weapon / bow / torch by contact ...").
 - **The controls card** says "Hold your shield or blade in a blow's way." and does not
   list the staff, the torch, the bow and the forearm.
+- **Asked 2026-11-27, not built:** the shield's weight, as the weapons have theirs
+  (docs/physical-combat-spec.md, "The shield's weight").
 - **For later** (docs/next-up.md): a flight against the shield's triangles; the foe's blade
   followed over the whole blow, so the block comes when the blades meet and not 10 to 37
   units early; the parry against the shield's plate instead of a ball.

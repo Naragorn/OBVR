@@ -2196,3 +2196,31 @@ work at all."
 - Not verified: the gesture in the headset. Whether two Index controllers
   closed side by side at the chest always read under 0.20 m (his five
   did), and whether 0.5 s is enough for a natural squeeze.
+
+## 28. To fix: the view and the body step back as the inventory opens (Nadi, headset, 2026-11-27 evening)
+
+Nadi, after his second run of the day (OBVR.log 2026-11-27 23:34, the DLL of 23:04, main
+4f1124f plus the swimming and books branches): "at inventory open the view and body steps
+back one step. closing moves forward."
+
+- **Not fixed, not looked into.** Noted for the next round.
+- [R log] The log has no line for it: around an open (e.g. line 3967, "Tablet: in the off
+  hand, drawn into the eyes") and a close ("Tablet: put down", "Tablet: closed - the menus'
+  fade kept out of the room and the eyes (22 frame(s))") it says nothing of the camera's,
+  the room's or the body's place. So the first step is an instrument: the eyes' and the
+  body root's world place in the frame before and after the tablet's menus come and go,
+  logged at the open and the close only.
+- Candidates, none checked [G]:
+  - The engine moves the player's camera or model as a menu of the F1-F4 stack opens
+    (the first-person/third-person handling of the paperdoll; "Menu near shapes: the body
+    ..." is logged right at the open).
+  - OBVR's own steps that change with menu mode: the room follow or the body's place under
+    the head while the world runs behind the tablet, the eyes' forward offset
+    (`[Body] Eyes`), the physics step ("Hands: the physics step back to 0.01670 s" at the
+    open, "0.01670 s -> 0.01111 s" at the close).
+  - New since this day: the world runs on through the menus' fade at the close (26.3) -
+    if a place is taken at the menu's start and given back at its end, the close's step
+    forward would be that.
+- Evidence for the fix, when it is found: the harness can show it (tablet-walk.txt or a
+  new scenario reading the player's position and the eyes at the open and the close; a
+  film from the side).
