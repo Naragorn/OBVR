@@ -306,7 +306,7 @@ vr::TabletFrame ReadBookAlone(TabletMenuState& state, const UInt32* stack, UInt3
 	}
 	FillFrame(frame, rects, kMenuIdBook, layerPixelsHeight);
 	frame.popupUp = vr::BoxOverPage(rects);
-	frame.bookScroll = ReadBookMenu().scroll;
+	frame.bookScroll = BookMenuScrollLook();
 	if (state.loggedPage != kMenuIdBook || state.loggedBookScroll != frame.bookScroll) {
 		state.loggedPage = kMenuIdBook;
 		state.loggedBookScroll = frame.bookScroll;

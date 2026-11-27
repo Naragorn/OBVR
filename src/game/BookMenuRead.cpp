@@ -37,11 +37,28 @@ BookMenuRead ReadBookMenu() {
 	float takeable = 0.0f;
 	read.takeable = ReadTileNumber(root, kTraitUser3, takeable) && takeable == kXmlTrue;
 	read.pageRead = ReadTileNumber(root, kTraitUser9, read.leftPage);
+	read.rootScrollRead = ReadTileNumber(root, kTraitUser7, read.rootScroll);
 	// The bar by its vanilla name: a UI mod's may differ, then it is unread.
 	const void* const bar = FindTileNamed(root, "book_scroll_bar");
 	read.barRead = bar != nullptr && ReadTileNumber(bar, kTraitUser7, read.barValue);
 	return read;
 }
+
+bool BookMenuScrollLook() {
+	const void* const root = MenuRootTile(kMenuIdBook);
+	float user0 = 0.0f;
+	return root == nullptr || !ReadTileNumber(root, kTraitUser0, user0) || vr::BookMenuIsScroll(user0);
+}
+
+namespace {
+
+void SayNumber(char (&out)[48], bool read, float value) {
+	if (read) {
+		std::snprintf(out, sizeof(out), "%.0f", static_cast<double>(value));
+	}
+}
+
+}  // namespace
 
 void LogBookMenuAtMark() {
 	const BookMenuRead read = ReadBookMenu();
@@ -49,22 +66,20 @@ void LogBookMenuAtMark() {
 		return;
 	}
 	char page[48] = "unread";
-	if (read.pageRead) {
-		std::snprintf(page, sizeof(page), "%.0f", static_cast<double>(read.leftPage));
-	}
+	SayNumber(page, read.pageRead, read.leftPage);
 	char bar[48] = "unread";
-	if (read.barRead) {
-		std::snprintf(bar, sizeof(bar), "%.0f", static_cast<double>(read.barValue));
-	}
+	SayNumber(bar, read.barRead, read.barValue);
+	char rootScroll[48] = "unread";
+	SayNumber(rootScroll, read.rootScrollRead, read.rootScroll);
 	UInt32 stack[kMenuStackEntries];
 	const UInt32 count = IsMenuMode() ? MenuStackEntries(stack, kMenuStackEntries) : 0;
 	// The look's own measure first, so a scenario can expect or reject it at a mark.
 	OBVR_LOG("Book: at the mark %s %s%s - the book menu loaded, %s, user0 %.0f, the left page %s (user9), the scroll bar "
-	         "at %s, Take %s",
+	         "at %s (the root's user7 %s), Take %s",
 	         test::HandScriptMarkName(),
 	         read.scroll ? "the letter's scroll bar is at " : "the book's left page is ", read.scroll ? bar : page,
 	         MenuStackHas(stack, count, kMenuIdBook) ? "in the menu stack" : "not in the menu stack",
-	         static_cast<double>(read.user0), page, bar, read.takeable ? "shown" : "not shown");
+	         static_cast<double>(read.user0), page, bar, rootScroll, read.takeable ? "shown" : "not shown");
 }
 
 }  // namespace obvr::game
