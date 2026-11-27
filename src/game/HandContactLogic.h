@@ -7,6 +7,7 @@
 #include "game/BladeAroundLogic.h"
 #include "game/BladeContactLogic.h"
 #include "game/HandBodyLogic.h"
+#include "game/ShieldOutlineLogic.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {
@@ -313,6 +314,7 @@ struct ShieldDisc {
 	NiPoint3 centre{0.0f, 0.0f, 0.0f};  // in the hand's frame
 	NiPoint3 axis[3] = {NiPoint3{1.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 1.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 1.0f}};
 	float half[3] = {0.0f, 0.0f, 0.0f};  // the reach along each from the centre
+	ShieldOutline outline;  // its silhouette in its plane along axis[0] and axis[1] (ShieldOutlineLogic.h)
 	UInt32 vertices = 0;
 };
 

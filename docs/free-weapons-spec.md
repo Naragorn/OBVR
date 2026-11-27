@@ -2737,3 +2737,46 @@ Without the shield everything worked again."
     frame; full and expired slots; the stub's bytes, its calls and jumps). Red against f067265:
     "an arrow judged on the disc, the hand low: blocked" (it landed there), 3 checks. Harness,
     written, not run: tools/hand-scripts/shield-block-arrow.txt.
+- **Arrows by the shield's own outline (built 2026-11-27, Nadi: fit each shield's real shape).** The
+  world disc the block rules take keeps one radius, the longer spoke (HandContactLogic.h,
+  ShieldDiscInWorld), so a kite or tower shield was a circle too wide at its sides, and the arrows
+  added 6 units on top. For arrows the shield's silhouette is now read from its mesh.
+  - **Collected [R from the code]:** in the disc read's second walk (game/ShieldShape.cpp, the reach
+    along the axes - no third walk), each vertex's reach along the disc's first axis (the larger
+    scatter) and its second goes into 96 bins of 2.5 units over +-120 from the walk's centre, each
+    keeping the least and the most reach along the second axis (`OutlineBins`, about 1.2 KB on the
+    read's stack). When the walk is done the bins are laid onto 24 rows over the disc's own extent
+    along the first axis, from the disc's middle (`OutlineFromBins`); rows without a vertex take the
+    line between their nearest filled neighbours, none past the outermost; under 6 rows (a quarter)
+    with a vertex the outline is not taken and the circle stands in. Stored in ShieldDisc
+    (`ShieldOutline`: 24 spans of two floats, 24 flags, the start, the step, about 230 bytes).
+  - **When:** with the disc - when the shield's node or its bound changes, else every 90 frames
+    (kShieldDiscReadFrames) - never per frame. The world guard points to it and carries the disc's
+    two in-plane axes turned into the world (game/ShieldGuardLogic.h, `ShieldIntoGuard`).
+  - **Axes:** the rows lie along the first axis whatever its length; the lookup asks both in-plane
+    coordinates, so which spoke is longer (half[0] or half[1]) does not change a verdict, only the
+    rows' step. A disc turned or mirrored judges the same (shield_outline_test).
+  - **The rule (arrows only):** the point within the outline by the arrow's half width,
+    kArrowHalfWidthUnits 1.5 [G: an arrow's shaft and head about 3 units across; its bound was not
+    read], and within half the disc's thickness + 10 along its normal (kept: that margin is about
+    where the engine puts the contact point, not about the shield) - blocked. Else where the flight
+    from the projectile's position to the point crosses the disc's plane, by the same half width -
+    blocked; a flight that never reaches the plane, or crosses it off the outline - through. No
+    outline: the circle as built before (radius + 6, the segment into the disc grown by 3).
+  - **What the rows cost in accuracy [D]:** a row is 1/24 of the shield's length (3.3 units on an
+    80-unit kite) and takes the bins whose middle falls in it, so near a narrowing tip a row is up
+    to one bin wider than the shape: in the kite test a point 5.5 units beside the tip measures 3
+    units outside.
+  - **Log:** the shield's read line gains "outline R rows of 24, widest W, narrowest w" (" - not
+    taken, arrows by the circle" when under a quarter); the arrow's line says "inside / outside the
+    outline by U units (the arrow's half width 1.5)" in place of the radius when the outline decides.
+  - **Melee unchanged:** BlockAngleFor keeps its circle (shieldRadius) and BlockReachUnits; it could
+    take the outline later the same way (the guard carries it).
+  - **Tests:** shield_outline_test - a round shield's outline is its circle within a row's step; a
+    kite beside its tip off and at its wide top on; a square's corner on (outside the circle and its
+    margin) and past its side off; rows filled from sparse vertices, the kite's tip still narrow; too
+    few rows - no outline, the circle's verdict; the flight crossing at the top and beside the tip,
+    and never reaching the plane; a mirrored and a turned disc; the half width's edge both ways; the
+    guard's axes and pointer. Red against e598814's circle: 8 checks (a point beside the kite's tip
+    was on), green now. Harness: shield-block-arrow.txt's lines now show "outline ... rows" on the
+    read and "inside / outside the outline by" on each arrow.

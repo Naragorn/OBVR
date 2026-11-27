@@ -3197,3 +3197,13 @@ if(NOT MSVC)
 	target_compile_options(arm_draw_trace_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME arm_draw_trace COMMAND arm_draw_trace_test)
+
+add_executable(shield_outline_test ShieldOutlineTest.cpp)
+
+target_include_directories(shield_outline_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(shield_outline_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME shield_outline COMMAND shield_outline_test)

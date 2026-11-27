@@ -1,5 +1,7 @@
 #include "game/ArrowShield.h"
 
+#include <cstdio>
+
 #include "core/AddressSpace.h"
 #include "core/AroundCall.h"
 #include "core/Log.h"
@@ -52,6 +54,9 @@ ArrowShieldInput InputFor(UInt32 target, UInt32 projectile, const float* point) 
 	in.disc.normal = State().guard.shieldNormal;
 	in.disc.radius = State().guard.shieldRadius;
 	in.disc.halfThick = State().guard.shieldHalfThick;
+	in.outline = State().guard.shieldOutline;
+	in.axisA = State().guard.shieldAxisA;
+	in.axisB = State().guard.shieldAxisB;
 	in.pointValid = point != nullptr;
 	if (in.pointValid) {
 		in.point = NiPoint3{point[0], point[1], point[2]};
@@ -77,10 +82,19 @@ UInt32 __cdecl OnArrowAtTarget(UInt32 target, UInt32 projectile, const float* po
 	}
 	if (v.answer != ArrowAtShield::Vanilla && State().lines > 0) {
 		--State().lines;
-		OBVR_LOG("Block angle: an arrow %08X at the shield by contact - %s%s, its point %.0f units off the disc's "
-		         "middle (radius %.0f), %.0f off its plane (half thickness %.0f) - %s",
-		         projectile, v.why, v.bySegment ? " (by its flight)" : "", static_cast<double>(v.radialUnits),
-		         static_cast<double>(State().guard.shieldRadius), static_cast<double>(v.alongUnits),
+		char place[96];
+		if (v.byOutline) {
+			std::snprintf(place, sizeof(place), "%s the outline by %.1f units (the arrow's half width %.1f)",
+			              v.outlineUnits <= 0.0f ? "inside" : "outside",
+			              static_cast<double>(v.outlineUnits < 0.0f ? -v.outlineUnits : v.outlineUnits),
+			              static_cast<double>(kArrowHalfWidthUnits));
+		} else {
+			std::snprintf(place, sizeof(place), "its point %.0f units off the disc's middle (radius %.0f)",
+			              static_cast<double>(v.radialUnits), static_cast<double>(State().guard.shieldRadius));
+		}
+		OBVR_LOG("Block angle: an arrow %08X at the shield by contact - %s%s, %s, %.0f off its plane (half "
+		         "thickness %.0f) - %s",
+		         projectile, v.why, v.bySegment ? " (by its flight)" : "", place, static_cast<double>(v.alongUnits),
 		         static_cast<double>(State().guard.shieldHalfThick), AnswerName(v.answer));
 	}
 	return static_cast<UInt32>(v.answer);

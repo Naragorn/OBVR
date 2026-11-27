@@ -192,6 +192,7 @@
 #include "game/BladeBodies.h"
 #include "game/HandContactLogic.h"
 #include "game/Parry.h"
+#include "game/ShieldGuardLogic.h"
 #include "game/ShieldShape.h"
 #include "game/CombatReach.h"
 #include "game/SlowApproach.h"
@@ -3613,13 +3614,17 @@ HandShapeSpans MeasureHandShape(game::HandShape shape, int side, const NiMatrix3
 					if (g_shieldDiscHave) {
 						OBVR_LOG("Contact: the shield's shape - %u vertices, its centre %.1f %.1f %.1f in the hand's "
 						         "frame, spokes %.1f and %.1f units, %.1f thick; its normal %.2f %.2f %.2f (the "
-						         "bound %.1f round)",
+						         "bound %.1f round); outline %u rows of %u, widest %.1f, narrowest %.1f%s",
 						         g_shieldDisc.vertices, static_cast<double>(g_shieldDisc.centre.x),
 						         static_cast<double>(g_shieldDisc.centre.y), static_cast<double>(g_shieldDisc.centre.z),
 						         static_cast<double>(g_shieldDisc.half[0]), static_cast<double>(g_shieldDisc.half[1]),
 						         static_cast<double>(g_shieldDisc.half[2] * 2.0f),
 						         static_cast<double>(g_shieldDisc.axis[2].x), static_cast<double>(g_shieldDisc.axis[2].y),
-						         static_cast<double>(g_shieldDisc.axis[2].z), static_cast<double>(bound));
+						         static_cast<double>(g_shieldDisc.axis[2].z), static_cast<double>(bound),
+						         g_shieldDisc.outline.filledRead, game::kOutlineRows,
+						         static_cast<double>(g_shieldDisc.outline.widest),
+						         static_cast<double>(g_shieldDisc.outline.narrowest),
+						         g_shieldDisc.outline.valid ? "" : " - not taken, arrows by the circle");
 					} else {
 						OBVR_LOG("Contact: the shield's shape could not be read (%s) - its bound's ball, %.1f round, "
 						         "stands in",
@@ -11084,12 +11089,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 				const NiMatrix33 leftRot = g_cyclopeanCameraWorldTransform.rot * g_hand.leftHandRotation;
 				const NiPoint3 leftPos =
 					g_cyclopeanCameraWorldTransform.pos + g_cyclopeanCameraWorldTransform.rot * g_hand.leftHandOffsetUnits;
-				const game::BladeDisc d = game::ShieldDiscInWorld(g_shieldDisc, leftRot, leftPos, game::kStopperOwnShield);
-				guard.shieldValid = true;
-				guard.shieldCentre = d.centre;
-				guard.shieldNormal = d.normal;
-				guard.shieldRadius = d.radius;
-				guard.shieldHalfThick = d.halfThick;
+				game::ShieldIntoGuard(g_shieldDisc, leftRot, leftPos, guard);  // with its outline (game/ShieldGuardLogic.h)
 			}
 			game::BlockAngleSettings angle;
 			angle.enabled = GetConfig().hands.blockByAngle;

@@ -172,7 +172,12 @@ against a weapon. A blocked blow is never fully stopped: at most `fBlockMax`
   thickness + 10 units) or its flight crossing it - the shield's impact, and
   the verdict kept for that arrow decides its blow at the hit handler's
   cone; beside it - the body's, and the blow lands. Not judgeable (no point,
-  the disc lost): the old raised-hand fallback. The margins are guesses.
+  the disc lost): the old raised-hand fallback. Since the same day the
+  disc is the shield's own outline read from its mesh (24 rows along its
+  first axis, game/ShieldOutlineLogic.h), with the arrow's half width (1.5,
+  a guess) as the only margin in its plane; the circle (radius + 6) only when
+  the outline could not be read. The melee rule keeps its circle; it could
+  take the outline later.
 - **Weapon guard** (`vr::IsWeaponGuard`, since 64e0d5d): the weapon hand up
   (no more than 20 cm below the eyes) and ahead, the blade held across the
   body (at least 0.7 sideways, at most 0.5 up or down), not swinging, with

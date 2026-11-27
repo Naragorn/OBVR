@@ -5,6 +5,7 @@
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/BladeContactLogic.h"
+#include "game/ShieldOutlineLogic.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {
@@ -95,6 +96,12 @@ struct BlockGuard {
 	float shieldRadius = 0.0f;     // the disc's, as the shield's shape reads it (game/ShieldShape)
 	float shieldHalfThick = 0.0f;  // half the disc's thickness
 	ShieldGuardPose shieldPose;    // the shield by contact (ShieldGuardPose)
+	// The disc's in-plane axes in the world (its axis[0] and axis[1]) and its
+	// outline along them, for the arrows (game/ArrowShieldLogic.h); the melee
+	// rule above takes the circle of shieldRadius.
+	NiPoint3 shieldAxisA{1.0f, 0.0f, 0.0f};
+	NiPoint3 shieldAxisB{0.0f, 1.0f, 0.0f};
+	const ShieldOutline* shieldOutline = nullptr;
 	// The player's upper body, for a blow without a blade: where it comes
 	// at - from the neck (`body`) down to the belly (`bodyLow`).
 	bool bodyValid = false;
