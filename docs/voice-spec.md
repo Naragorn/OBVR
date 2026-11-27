@@ -1,11 +1,13 @@
 # Voice: talking to people and saying commands (spec, not built)
 
 Asked 2026-11-27 (Nadi, after a look at other VR mods' voice commands): a spec first.
-His four decisions:
+Nadi's four decisions:
 
-1. **Push to talk is A held**, and **"hello" said to someone you look at starts the
-   conversation** without a button.
-2. In a conversation, **saying a topic picks it**.
+1. **"hello" said to someone you look at starts the conversation** without a button. **A
+   held** is push to talk for the commands outside a conversation.
+2. In a conversation, **saying a topic picks it**, and **it listens the whole conversation**
+   with no button (Nadi, the same day: "warum eig a halten müssen, kann doch während des
+   gesamten gespräch lauschen").
 3. The recognition runs **on its own thread, only while it listens**.
 4. The recognised line **clicks the topic** through the menus' existing click.
 
@@ -38,7 +40,10 @@ What OBVR takes from them:
 
 - **Recognise against a short list of allowed lines, never free text.** Topics,
   "option N", a few commands and greetings. This is what keeps the false triggers down.
-- **Push to talk for everything but the greeting**, and a confidence floor on each list.
+- **A narrow window instead of a button where the list is short.** The greeting (someone
+  in front of you) and the conversation (its topics) listen on their own. Push to talk
+  only for the commands, which would otherwise listen all game. A confidence floor on
+  each list.
 
 ## 2. What the player does
 
@@ -46,8 +51,9 @@ What OBVR takes from them:
   "hey", "hi", "excuse me", "greetings", "hail"; in a German game, "hallo", "hey",
   "entschuldigung", "seid gegrüßt". The conversation opens as if you had pressed A on them.
   No button is needed. Holding A and saying it works too.
-- **In a conversation.** Hold A and say a topic's name, or "option 3", or "goodbye". The
-  topic is picked; letting go of A ends the listening.
+- **In a conversation.** Just say a topic's name, or "option 3", or "goodbye". No button:
+  it listens from the menu's opening to its close, except while the other one speaks
+  (section 5). Holding A works too and changes nothing.
 - **Anywhere else.** Hold A and say:
 
   | Line | Does |
@@ -74,9 +80,10 @@ What OBVR takes from them:
   - `MinConfidence` (0.5 in a conversation, 0.7 for commands, as DSN).
   - `Language` (`auto` = the game's language; the recogniser must be installed for it).
 
-## 3. A held: tap or talk
+## 3. A held: tap or talk (the commands only)
 
-A is Activate today (`vr::DefaultControlBindings`: `Activate = RightA`), and the right A's
+A is needed only for the commands: the greeting and the conversation listen without it.
+Inside a conversation A keeps whatever it does there today. A is Activate today (`vr::DefaultControlBindings`: `Activate = RightA`), and the right A's
 hold (`RightAHold`) is free [R]. Both must keep working:
 
 - **Press.** The audio capture starts at once, so the first word is not lost.
@@ -125,6 +132,22 @@ limit, a press during a pending result, a menu opening mid-hold, A rebound, Voic
   normalised (case, punctuation, the "<Persuasion>"-style markers removed). Add "option 1"
   to "option N", "goodbye", and the topic's first three words alone when the topic is
   longer than five words [G: people shorten long lines].
+- **Listening the whole conversation.**
+  - The recogniser starts as the dialogue menu opens and stops as it closes, with the grammar
+    above and nothing else. That makes it the safest window of all: a few short lines, and
+    the player is talking anyway.
+  - **The one hazard is the other one's voice.** With speakers or open-ear headphones (an
+    Index, a Quest's built-in audio), the microphone hears the NPC's line. A line that
+    contains a topic's name, or a "goodbye" at its end, would pick it.
+  - So while the speaker's voice plays, nothing is taken [open: how to read that a dialogue
+    voice is playing - the actor's lip-sync or its sound handle, or the menu's state while
+    the subtitle runs]. A result whose speech began while the voice played is dropped too:
+    SAPI gives each result's start in the audio stream [R: SAPI's `SPEVENT` stream position;
+    the mapping to game time is derived].
+  - The player can cut the line short as in vanilla (a click skips it). Talking over it is
+    not taken until it ends [D: talking over the NPC is too close to the echo to tell apart].
+  - If the echo still slips through in the headset, the fallback is A held in the
+    conversation too, as a setting (`[Voice] TopicsNeedA`, off) - not built unless needed.
 - **The match.** The recogniser returns one of the grammar's entries and a confidence. Below
   the floor: nothing. Two topics that normalise to the same text: the upper one.
 - **Picking it.** The same click the laser's trigger gives on that tile [R: the menus' click
@@ -170,7 +193,8 @@ German game's, a mod's long line).
 - **Per frame:** the poll (one atomic read when nothing is queued). Nothing else.
 - **On an event:**
   - the grammar rebuilt when the topic list changes;
-  - the recogniser started and stopped at A's press and release, and as the greeting's
+  - the recogniser started and stopped at A's press and release, as a conversation opens
+    and closes, and as the greeting's
     window opens and closes.
 - **What the recogniser costs** on its thread while it listens, and whether starting it
   makes a long frame, is **to be measured** with the profiler ([Performance] Enabled=1): a
@@ -189,6 +213,8 @@ German game's, a mod's long line).
     "goodbye": the menu closes.
   - `voice-command.txt`: "map" and "journal".
   - `voice-tap.txt`: A tapped still activates; held, no activation.
+  - `voice-echo.txt`: a topic said while the NPC's line still plays is not taken; said after
+    it, it is.
   - Each scenario runs once with the DLL before the feature (red) and once after.
 - **Windows, the headset:** the real microphone, the hit rate on topics, false greetings
   while the room is noisy, and whether Activate on the release is felt.
@@ -220,6 +246,7 @@ Model and effort: Opus 5.5 high (COM threading and the dialogue menu's unread ti
 ## 10. Open
 
 - The dialogue menu's topic tiles and their click ids (to read first).
+- How to read that the NPC's voice is playing (the echo gate, section 5).
 - Activating the greeted actor directly instead of the Activate control.
 - `TalkHoldSeconds`, `GreetMetres` and the confidence floors (guesses until the headset).
 - Voice on by default or off (spec: off, the onboarding asks).
