@@ -47,6 +47,7 @@ add_library(OBVR SHARED
 	src/camera/hands/DragLog.cpp
 	src/camera/hands/DrawSpeed.cpp
 	src/camera/hands/Grab.cpp
+	src/camera/hands/GrabKeep.cpp
 	src/camera/hands/Handover.cpp
 	src/camera/hands/HandsInMenus.cpp
 	src/camera/hands/Held.cpp
@@ -261,6 +262,7 @@ add_library(OBVR SHARED
 	src/game/ConsoleLine.cpp
 	src/game/SelfCheck.cpp
 	src/game/TeleportNoise.cpp
+	src/game/ArmDrawTrace.cpp
 	src/game/HandBones.cpp
 	src/game/HandAdjust.cpp
 	src/game/MeleeHits.cpp

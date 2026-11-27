@@ -22,8 +22,9 @@
 // weapon (not a bow - that is the other hand's, the weapon hand draws its
 // string by its own grip); the other hand a drawn bow, a torch it holds, a
 // weapon's handle or blade. Loose things the grab carries (potions, a body)
-// and the pull to the hand stay on the grip as before - they are the engine's
-// grab, on the grip's click.
+// stay on the grip as before - they are the engine's grab, on the grip's
+// click. A weapon, a bow or a torch pulled to a hand is that hand's from the
+// pull on (game/PullHold.h, 2026-11-27): one grip pulls, takes and keeps it.
 //
 // A grip that takes something may show it a few frames later (the take at a
 // grip, the draw from a place): the hold stays closed kTapSeconds after a
@@ -193,6 +194,9 @@ GripToggleFrame GripToggleFrameOf(const Frame& f, bool rightValid, bool leftVali
 	g.dt = f.dtSeconds;
 	g.keeps = GripKeepsOf(f.equipped, f.weaponSeen, f.offHand, f.torchBesideTwoHander,
 	                      f.leftGripOnHandle || f.bothHandsOnHandle);
+	// What a pull brings to a hand is that hand's from the pull on (game/PullHold.h).
+	g.keeps.right = g.keeps.right || f.pullRight;
+	g.keeps.left = g.keeps.left || f.pullLeft;
 	return g;
 }
 

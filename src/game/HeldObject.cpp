@@ -206,7 +206,7 @@ void StepHeldObject(bool enabled, bool holding, const HeldHand& hand, bool haveT
 		node->localTransform.pos = pose.pos;
 	}
 	UpdateChildTransforms(node);
-	NoteHeldPose(g_hold.ref, pose.rot, pose.pos);
+	NoteHeldPose(g_hold.ref, pose.rot, pose.pos, floated < 1.0f);
 }
 
 bool HeldObjectArrived() { return g_hold.arrived; }

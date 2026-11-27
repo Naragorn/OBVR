@@ -1,0 +1,43 @@
+# The shield through a draw and a sheathe (Nadi, Windows 2026-11-27: "the shield, when equipped, still flickers
+# around in the hand when I draw or sheathe the weapon"; free-weapons-spec, "Windows run of 2026-11-27"). The shield
+# and a sword equipped, the left hand held still in front, the sword drawn and sheathed twice by the ready key. Not a
+# fix's check: it runs the instrument (game/ArmDrawTraceLogic.h). Read the four "Arm draw trace:" lines: "the twist
+# bone (the shield's) moved against the pinned left hand at most N units a frame" with the controller still (its
+# turn near 0) says the draw's animation swings the shield round the pinned hand; the hand's and the twist's local
+# turns say which bone; "the twist under" names its parent; "frames without one" counts frames the pin missed.
+# Film it with --record 12 and the head turned to the left hand to see the flicker itself.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/shield-draw-trace.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+# The harness save's question box closed first.
+console-at settle CloseAllMenus
+console player.additem 000733ED 1
+console player.equipitem 000733ED
+console player.additem 00000C0C 1
+console player.equipitem 00000C0C
+
+expect HandScript: finished
+expect Hands: a shield worn - the raised left hand blocks
+count 2 Arm draw trace: through the draw (a shield worn 1)
+count 2 Arm draw trace: through the sheathe (a shield worn 1)
+reject HandScript: WARNING
+
+wait 20
+mark settle
+left pos -0.20 -0.35 -0.30
+left rot 0 0 0
+right pos 0.20 -0.45 -0.25
+wait 2
+mark ready
+key r
+wait 2
+mark drawn
+key r
+wait 2
+mark sheathed
+key r
+wait 2
+mark drawn_again
+key r
+wait 2
+mark sheathed_again

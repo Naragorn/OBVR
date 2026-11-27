@@ -29,6 +29,13 @@ struct LocomotionState {
 // the run.
 void LogArmSwing(LocomotionState& state, const HandStep& step, const HandShared& shared);
 
+// A block's start or end, from the hands' pose (vr/HandBlockLogic.h): at the
+// start with the walk's state - the stick's push and its run, a run asked,
+// the arms' run - and both controllers' speeds, since the engine walks a
+// blocking player (free-weapons-spec, "Windows run of 2026-11-27": no run
+// with a shield). Once a change, never a frame.
+void LogBlockChange(const vr::HandModeResult& hand, const vr::HandModeFrame& frame);
+
 // The analog walk and the sprint this frame, with the hand controls running.
 // `flying`: the console's fly camera is on (its sticks are the camera's).
 // `deltaSeconds`: the frame's (g_deltaSeconds), as the sprint's cost always

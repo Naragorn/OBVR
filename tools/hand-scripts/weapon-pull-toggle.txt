@@ -1,0 +1,45 @@
+# A weapon pulled to the hand by one short grip under the grip toggle (Nadi, Windows 2026-11-27, GripToggle=1:
+# "some of them shot out past my hand, so they were not equipped but shot on"; free-weapons-spec, "Windows run of
+# 2026-11-27"). The sword dropped at the feet, the weapon hand about a metre above it, the grip closed for 0.1 s and
+# opened while the sword is still on its way: with the toggle the hand keeps what the pull brings (game/PullHold.h),
+# so the grab stays on, the sword arrives, is taken, equipped and drawn, and the hand keeps it.
+# Before the fix: the grip's opening let the grab go mid-flight - "grab - grip open, the object let go", "let go of
+# ... set down (0 units/s)", then "flight of ... after the release" at 500-700 units/s and no take.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-pull-toggle.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands GrabEquipsWeapons=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+ini Hands PullReachMetres=2.0
+ini Hands WeaponHold=1
+ini Hands GripToggle=1
+console player.additem 00000C0C 1
+console player.drop 00000C0C 1
+
+expect HandScript: finished
+expect a grip pulls it to the hand
+expect Grip toggle: the weapon hand took hold - kept closed until the next grip
+expect pulled to the hand and taken
+expect Weapon grab: equipped and drawn - straight into the hand
+reject HandScript: WARNING
+reject NOT taken
+reject stayed in the engine's grab
+reject the pull given up
+reject Grip toggle: the weapon hand lost what it kept
+reject Weapon hold: let go
+
+wait 15
+head pitch -50
+right pos 0.05 -0.55 -0.70
+right rot -80 0 0
+wait 1.5
+mark near
+right grip 0.9
+wait 0.1
+right grip 0
+mark opened
+wait 3
+mark drawn
+wait 2
+mark kept

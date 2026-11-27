@@ -1,0 +1,38 @@
+# A pull given up is no launch (Nadi, Windows 2026-11-27: pulled weapons "shot out past my hand"; free-weapons-spec,
+# "Windows run of 2026-11-27"). The toggle off: the sword dropped at the feet, the weapon hand about a metre above
+# it, the grip closed for 0.1 s and opened while the sword is still on its way - the grab lets go and the sword must
+# stop where it was and fall (game/GrabPhysics.h ReleaseSpeedFor), not fly on with the pull's speed.
+# Look at: "Hands: let go of ... stopped on its way in to the hand - the pull given up", and the next "Hands: flight
+# of ... after the release" - its units/s per frame from about 0 rising with the fall, not 500-700 from the first
+# frame as in his log (lines 9646, 10463, 27303).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-pull-given-up.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands GrabEquipsWeapons=1
+ini Hands GripByPull=1
+ini Hands PullToHand=1
+ini Hands PullReachMetres=2.0
+ini Hands GripToggle=0
+console player.additem 00000C0C 1
+console player.drop 00000C0C 1
+
+expect HandScript: finished
+expect a grip pulls it to the hand
+expect Hands: grab - grip open, the object let go
+expect stopped on its way in to the hand - the pull given up
+expect Hands: flight of
+reject HandScript: WARNING
+reject pulled to the hand and taken
+
+wait 15
+head pitch -50
+right pos 0.05 -0.55 -0.70
+right rot -80 0 0
+wait 1.5
+mark near
+right grip 0.9
+wait 0.1
+right grip 0
+mark opened
+wait 3
+mark fallen

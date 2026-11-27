@@ -2479,3 +2479,129 @@ grab and NOT taken - ... the weapon hand's 0"). Now, as a torch (5.10):
   as the torch's); the grip at -2.7 along +y against the bow's real handle; a bow pulled while a
   torch or a shield is on the other hand (the game's equip decides what goes).
 
+
+## The tester's Windows run of 2026-11-27 (13:38-13:55, the DLL of main d96cacb)
+
+Nadi, headset, Index controllers at 90 Hz, `[Hands] GripToggle=1`, `PullReachMetres=2.0`,
+`GrabReachMetres=0.10`, `ArmSwingRun=1`. The line numbers below are his OBVR.log's (28,574
+lines); the run's earlier logs (OBVR-2026-11-27_12-33-19, _12-20-09) add nothing to these three.
+
+### Pulled weapons shot past the hand (fixed 2026-11-27, unit tests; harness and headset open)
+
+"Letting weapons fly to the hand with the grip worked again, but now some of them shot out past
+my hand, so they were not equipped but shot on. That was with hold-to-grip off" (the toggle on).
+- **The log [R]:** six pulls of a weapon to the hand. Three were taken (5953-5988, 6390-6478,
+  9645-9699): each grip stayed closed until "100% of the way ... at the catch". Three were not
+  (802D87A0 at 9614-9646, 87114A6C at 10395-10463, 89511504 at 27264-27303): each time "right grip
+  open" and "grab - grip open, the object let go" came at 98, 81 and 88 % of the way, then "let go
+  of ... inside the player's capsule ... placed where it was seen, set down (0 units/s)" and
+  "flight of ... after the release (OBVR gave 0 units/s), units/s per frame: 635 675 686 736 ...",
+  "691 571 593 ...", "679 557 570 ...": 8 to 10 m/s, on past the hand. The "Weapon hold: the
+  thrown ..." lines (27173, 27263, 27451) are drops from the hand at 0.2-0.4 m/s, not pulls; 24340
+  ("NOT taken ... began as a pull 0") is the inventory's grab of the other hand, no pull either.
+- **Cause, two parts [R in the code]:**
+  - The toggle kept a hand's hold closed only for what the hand keeps - a drawn weapon, a bow, a
+    torch (vr/GripToggle.h GripKeepsOf); the pull to the hand stayed "on the grip's click" by
+    design (its header said so). With the toggle on, one short grip is the take to him, so he
+    opened the grip in flight: the grab key went up (Grab.cpp `gripHeld` reads the click), the
+    engine let go, and the take on arrival (game::StepWeaponPull) never came - it also needs the
+    hold closed, which the toggle's 0.5 s tap time no longer gave.
+  - The release then launched it: game/GrabPhysics.cpp Released wrote a velocity only for a throw.
+    "Set down" left the body the speed it had, and in flight that speed is the float's - OBVR's
+    drive (DriveHeldBody, up to 150 Havok units a second) or the engine's spring pulling it at the
+    hand [D: which of the two moved it in which frame is not logged]. So every pull given up in
+    flight flew on, toggle or not.
+- **Fix [R]:**
+  - game/PullHold.h (new, pull_hold_test): with the toggle on, what a pull brings is the pulling
+    hand's from the grab key's going down until it hangs on the hand (PullHandsOf: the key down on
+    a weapon's, a bow's or a torch's pull, the arrival, the take). The hand mode's frame carries it
+    (HandModeFrame::pullRight/pullLeft, read by GripToggleFrameOf into the toggle's keeps), so the
+    toggle latches the hold at the pull; camera/hands/GrabKeep.cpp keeps the grab wanted while that
+    hand's hold is closed (PullKeepsGrab) and the grab's line on that hand, as the inventory's item
+    already was (that block moved there from UpdateHandMode as it was). The next grip opens the
+    hold and gives the pull up. Off, nothing changes: the pull is the grip's. Loose things (potions,
+    a body) stay on the grip either way.
+  - game/GrabPhysics.h ReleaseSpeedFor: a hold let go of while it still floated in
+    (game::HeldObject, FloatWeight under 1 - NoteHeldPose carries it) is stopped: no linear speed,
+    no spin; a throw keeps the hand's; anything else keeps its own as before. The log says "stopped
+    on its way in to the hand - the pull given up".
+- **Tests:** pull_hold_test (new, 37 checks: the hands a pull keeps, the grab kept, a run of
+  frames - one 0.06 s grip with the toggle keeps the grab 0.9 s and the hold closed at the arrival,
+  the code before let both go; the next grip gives up; the toggle off as before; the release's four
+  cases). grip_toggle_test's frame check: red against main's GripToggle.h ("a weapon pulled to the
+  weapon hand: that hand keeps it", "a torch or a bow pulled to the other hand" FAIL), green with
+  the fix. Not run: the harness and the headset.
+- **Harness, written, not run:** weapon-pull-toggle.txt (a 0.1 s grip, toggle on: "Grip toggle: the
+  weapon hand took hold", "pulled to the hand and taken", "equipped and drawn"; rejects "the pull
+  given up" and "Weapon hold: let go"), weapon-pull-given-up.txt (toggle off, the grip opened in
+  flight: "stopped on its way in to the hand - the pull given up"; the next "flight of" line must
+  start near 0 units/s and grow with the fall, not at 500-700). The hand's height there (0.55 under
+  the head, about a metre over the sword) is a guess for a flight long enough to open in.
+- **Open [G]:** a grip shorter than the reach's settle (2 frames) and the pick still starts no pull,
+  as before; a pull let go of while the hand swings is a throw with the hand's speed, as a throw
+  from the hand is; the feel of one grip taking in the headset.
+
+### The shield flickers in the hand at a draw or a sheathe (open, instrumented 2026-11-27)
+
+"The shield, when equipped, still flickers around in the hand when I draw or sheathe the weapon."
+The same open point as 5.16's "the shield one frame higher while the sword is drawn at the hip".
+- **The log [R]:** the shield was worn 25041-26963 (three draws and sheathes by the shoulder place,
+  25036-25088, 25950-25965). The sheath trace that shows the arms (game/SheathTrace.cpp, "arm turns"
+  of both forearms and twists) spent its eight windows before 17001, so no traced frame has the
+  shield. In the windows it has (no shield, the third-person body), the left forearm and its twist
+  turned 4, 12, 18, 18, 17 and 34 degrees in the six frames of one draw (10361-10411, f26039-26044)
+  and 0 before and after; whether the left controller moved then is not logged.
+- **Cause: not pinned.** Read [R]: the hand pin (game/HandBones.cpp PinHandBone) places the
+  first-person forearm so that the hand, with the local turn the animation gave it, lands on the
+  controller; the shield hangs on "Bip01 L ForearmTwist" (camera/FrameLogic.h). Guessed [G]: the
+  twist is the forearm's child beside the hand, so the draw's and the sheathe's animation (run ten
+  times faster) turning the wrist or the twist swings the forearm - and the shield - round a hand
+  that stays on the controller. If that holds, the fix is the sheaths' (83531dd) for the left arm:
+  through the draw and the sheathe the hand's and the twist's local turns stay those of the frame
+  before. Not built on a guess.
+- **Instrument (built):** game/ArmDrawTraceLogic.h (arm_draw_trace_test) and game/ArmDrawTrace.cpp,
+  called by the left hand's pin: one line when a draw or a sheathe ends - "Arm draw trace: through
+  the draw (a shield worn 1), N pins (M frames without one): the twist bone (the shield's) moved
+  against the pinned left hand at most X units a frame (pin K) and Y from where it began; a frame
+  turned the hand's local at most A degrees, the twist's B, the controller C in the camera's frame -
+  the hand under "...", the twist under "..."". Its own budget for windows with a shield (12) and
+  without (4). Read it so: X of several units with C near 0 and A or B large confirms the guess and
+  names the bone; X near 0 says the pin holds the shield and the flicker is elsewhere (a frame the
+  pin missed shows as M, or a write after the pin); the parents' names settle the hierarchy.
+- **Harness, written, not run:** shield-draw-trace.txt (shield and sword, the left hand still, the
+  ready key four times; four "Arm draw trace" lines with "a shield worn 1"). Film it with
+  `--record 12` for the picture.
+
+### No running with a shield (answered 2026-11-27: the engine's rule, set off by OBVR's block)
+
+"With the shield equipped I could not run - not sure whether OBVR or vanilla prevented it.
+Without the shield everything worked again."
+- **Answer:** both. The engine walks a blocking player - vanilla, measured 2026-11-26 in the harness
+  (../OBNG/knowledge/player-movement-pace.md, "A blocking player walks": 322 units a second with the
+  torch low, 107 raised into the block). What makes him block is OBVR: with a shield worn, the
+  left hand raised ahead past the block's height holds the game's Block control
+  (vr/HandBlockLogic.h, LeftHandBlocks). A runner's pumping shield arm, or a shield held up in
+  front while the stick runs, goes there; without a shield a raised empty hand does not block.
+- **The log [R]:** with the shield worn (25041-26963) 25 block starts, many in quick up-and-down
+  runs right before and after each of the four arm-swing runs (26066, 26084, 26154, 26484); each
+  run was short ("running" and "walking again" two to six lines apart; the lines carry no times), and
+  the block went down within a line or two of each start ("block released"; the run holds blocks off,
+  ArmSwingHoldsBlocks, as built 2026-11-26). Between runs the raised shield blocked. Not in the
+  log: whether the stick was pushed to a run at those blocks, and the arms' speeds - so whether his
+  pumps were too lopsided to start a run (ArmSwingBalance 0.5) cannot be told [G].
+- **Instrument (built):** the block's start line now carries the walk's state - "Hands: the left
+  hand is up - blocking - the stick pushed P (its run R), a run asked F, the arms running S; the
+  hands at L and Rv m/s" (camera/hands/Locomotion.cpp LogBlockChange, once per change). A block
+  with the stick's run 1 is a run the engine turned into a walk; hands at 1-3 m/s with the arms'
+  run 0 are pumps that did not count.
+- **Not changed: a product decision.** Options, none built:
+
+  | | What | Cost | What it risks |
+  |---|---|---|---|
+  | A | no shield block while the stick runs (its push past RunFrom or a run asked) | small: one input more to DecideHandBlock, hand_mode_test | a shield raised while running does not block; vanilla blocks and walks |
+  | B | a pump counts with a lower ArmSwingBalance for the shield arm (0.3) | small | a slash with the shield arm drawn back reads as a run more often |
+  | C | the shield blocks only with the arm well forward of the body (a stricter IsBlockGesture with a shield) | medium: the gesture's thresholds, headset tuning | blocks low or close are lost |
+  | D | as it is | none | running with a shield up stays a walk, as in vanilla |
+
+  A is the cheapest that matches what he asked (run with the shield equipped); the next run's
+  block lines say whether his slow-downs were stick runs (A) or failed pumps (B).
