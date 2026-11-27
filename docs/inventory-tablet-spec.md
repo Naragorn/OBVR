@@ -2065,7 +2065,7 @@ Nadi's headset run of 2026-11-27 (OBVR.dll from main d96cacb; OBVR.log
 13:38-13:55, two earlier logs of 12:20 and 12:33). Marks: [R] read in the
 log, the code or the live INI; [D] derived from that; [G] guessed.
 
-### 27.1 His tablet place as the default
+### 27.1 Nadi's tablet place as the default
 
 Nadi: "the values for the inventory tablet I now have in the INI are the
 values that should be the standard. As far as I know I could only go -10
