@@ -203,6 +203,7 @@
 #include "render/StreamReuse.h"
 #include "game/Insult.h"
 #include "game/VanityCamera.h"
+#include "vr/HandBlockFrame.h"
 #include "vr/SheathMirror.h"
 #include "vr/HolsterSign.h"
 #include "vr/WalkersShake.h"
@@ -11091,13 +11092,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 					g_cyclopeanCameraWorldTransform.pos + g_cyclopeanCameraWorldTransform.rot * g_hand.leftHandOffsetUnits;
 				game::ShieldIntoGuard(g_shieldDisc, leftRot, leftPos, guard);  // with its outline (game/ShieldGuardLogic.h)
 			}
-			game::BlockAngleSettings angle;
-			angle.enabled = GetConfig().hands.blockByAngle;
-			angle.bladeDegrees = GetConfig().hands.blockBladeDegrees;
-			angle.shieldDegrees = GetConfig().hands.blockShieldDegrees;
-			angle.reachUnits = GetConfig().hands.blockReachUnits;
-			angle.bodyDegrees = GetConfig().hands.blockBodyDegrees;
-			angle.interposeUnits = GetConfig().hands.blockInterposeUnits;
+			const game::BlockAngleSettings angle = vr::BlockAngleSettingsOf(GetConfig().hands);  // vr/HandBlockFrame.h
 			// The chest a blow without a blade comes at: a little below the
 			// eyes (derived; the body's own chest bone is not read here).
 			if (g_cyclopeanCameraWorldValid) {

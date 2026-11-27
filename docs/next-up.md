@@ -1037,22 +1037,25 @@ two refinements weighed and put off. Kept here so they are not lost.
 
 ### 2. The outline, and real contact, for blows
 
-- **Now:** a blow is blocked when the shield's face is within `BlockShieldDegrees` (70) of
-  the line to the attacker's blade and that blade is within `BlockReachUnits` (40, about
-  0.57 m) of the disc - a circle of the longer spoke (game/BlockAngleLogic.h). Generous on
-  purpose since 2026-10-14.
-- **The outline alone:** narrows the zone only at a tall shield's sides, by the difference of
-  its two spokes - about 7 units of more than 50 on a kite shield [D]. Not felt.
-- **Where it would matter:** with the reach near 0 - blocked only when the foe's blade meets
-  the shield, as Blade & Sorcery has it. Two consequences:
-  - Blocking gets clearly harder: a choice about difficulty, Nadi's.
-  - The engine resolves a hit at one moment of the attack's animation, and the foe's blade is
-    often not at the shield then - why the reach came (the tester, 2026-10-14: "die höhe der
-    kreuzenden waffen scheinen egal zu sein"). Real contact needs the foe's blade followed
-    over the whole blow (a sweep, as the player's own blade has in game/MeleeSweep), then
-    judged against the outline.
-- **Cost:** the outline into the blow's rule alone: small. Real contact with the foe's sweep:
-  medium to large; the feel is unknown until the headset.
-- **Model and effort:** Opus 5.5 high for the sweep; Sonnet 5.5 medium for the outline alone.
-- **First, free:** play the block by contact as it is; if it is too easy, lower
+- **Built 2026-11-27 (Nadi: blocking felt "oddly too generous and partly a few frames
+  delayed"):** with `ShieldBlockByContact` on, a blow at the shield is judged against its
+  outline as a plate, not a circle (game/BlockAngleLogic.h `ShieldByContactVerdict`,
+  game/ShieldPlateLogic.h); the shield has its own reach, `BlockShieldReachUnits` 25 (the
+  weapon keeps `BlockReachUnits` 40); a creature or fists are blocked only with the shield
+  between them and the chest (`BlockShieldInterposeUnits` 6 past the outline), and a blade
+  still short of the shield at the blow is blocked by the same "between". The face's angle
+  (70) stays. Details and the tally: docs/free-weapons-spec.md, "The blows by the outline".
+- **Stays for later - real contact:** the engine resolves a hit at one moment of the attack's
+  animation, and the foe's blade is 10 to 37 units from a guard in the way then (the tally).
+  Blocking only what the foe's blade actually meets needs that blade followed over the whole
+  blow (a sweep, as the player's own blade has in game/MeleeSweep), then judged against the
+  outline - and the blow's result held until the blade arrives. Cost: medium to large; the feel
+  is unknown until the headset. Model and effort: Opus 5.5 high.
+- **Also for later - the parry by the plate:** a foe's blade crossing the shield during its
+  attack is a parry already (game/ParryLogic.h WhatMeetsTheirBlade: the pulse and the shield's
+  sound at that moment, the next blow blocked whole), but against the shield's bound as a ball,
+  and only with a weapon drawn and WeaponParries on. Judging it against the plate is small
+  (ParryGuards takes the plate, a swept segment-to-plate test, the parry's frame fills it),
+  Sonnet 5.5 medium; not built here because the parry frame is filled in CameraHook's
+  StepWeaponContact, which sits at its size limit and would need a piece moved out first.
   `BlockReachUnits` in the INI. Only if real contact is wanted is the sweep worth building.

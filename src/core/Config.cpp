@@ -407,13 +407,7 @@ void ReadCrosshairPlaceStep(Config& config, const char* path) {
 	}
 }
 
-void TorchReleaseFollowsWeaponStep(Config& config, const char*) {
-	vr::HandSettings& h = config.hands;
-	h.torchRelease.releaseSeconds = h.weaponRelease.releaseSeconds;
-	h.torchRelease.throwStrength = h.weaponRelease.throwStrength;
-}
-
-// TorchSpinFollowsWeaponStep: core/ConfigDebug.cpp.
+// TorchReleaseFollowsWeaponStep, TorchSpinFollowsWeaponStep: core/ConfigDebug.cpp.
 
 void ReadHolsterSidesStep(Config& config, const char* path) {
 	vr::HolsterSettings& hs = config.hands.holster;
@@ -1006,7 +1000,9 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Int, "Hands", "DismemberMostCuts", hands.dismember.most),
 	OBVR_KEY(Bool, "Hands", "ShieldBash", hands.shieldBash.enabled),
 	OBVR_KEY(Bool, "Hands", "TorchBlocks", hands.torchBlocks),
-	OBVR_KEY(Bool, "Hands", "ShieldBlockByContact", hands.shieldBlockByContact),
+	OBVR_KEY(Bool, "Hands", "ShieldBlockByContact", hands.shieldContact.enabled),
+	OBVR_KEY(Float, "Hands", "BlockShieldReachUnits", hands.shieldContact.reachUnits),
+	OBVR_KEY(Float, "Hands", "BlockShieldInterposeUnits", hands.shieldContact.interposeUnits),
 	OBVR_KEY(Bool, "Hands", "Yield", hands.yield),
 	OBVR_KEY(Bool, "Hands", "PommelStrikes", hands.pommel.enabled),
 	OBVR_KEY(Bool, "Hands", "HalfSwording", hands.halfSword.enabled),

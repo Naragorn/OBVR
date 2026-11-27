@@ -2989,7 +2989,7 @@ void TestHandBlockFrameOf() {
 	Check(bf.menuMode && bf.leftValid && !bf.rightValid && bf.weaponDrawn && bf.fistsUp && bf.shieldEquipped &&
 	          bf.blockByAngle && bf.shieldByContact && !bf.torchBlocks,
 	      "the frame's fields carried over, the shield by contact by default");
-	s.shieldBlockByContact = false;
+	s.shieldContact.enabled = false;
 	Check(!HandBlockFrameOf(f, s).shieldByContact, "the setting off: not by contact");
 	f.torchHeld = true;
 	s.torchBlocks = true;

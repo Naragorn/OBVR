@@ -18,6 +18,21 @@ inline bool ShieldBlocksByContact(bool settingOn, bool shieldEquipped, bool disc
 	return settingOn && shieldEquipped && discRead;
 }
 
+// The block's angle rule's settings from [Hands] (game/BlockAngleLogic.h),
+// with the shield by contact's own reach and margin.
+inline game::BlockAngleSettings BlockAngleSettingsOf(const HandSettings& h) {
+	game::BlockAngleSettings angle;
+	angle.enabled = h.blockByAngle;
+	angle.bladeDegrees = h.blockBladeDegrees;
+	angle.shieldDegrees = h.blockShieldDegrees;
+	angle.reachUnits = h.blockReachUnits;
+	angle.bodyDegrees = h.blockBodyDegrees;
+	angle.interposeUnits = h.blockInterposeUnits;
+	angle.shieldReachUnits = h.shieldContact.reachUnits;
+	angle.shieldInterposeUnits = h.shieldContact.interposeUnits;
+	return angle;
+}
+
 inline HandBlockFrame HandBlockFrameOf(const HandModeFrame& f, const HandSettings& s) {
 	HandBlockFrame bf;
 	bf.menuMode = f.menuMode;
@@ -28,7 +43,7 @@ inline HandBlockFrame HandBlockFrameOf(const HandModeFrame& f, const HandSetting
 	bf.shieldEquipped = f.shieldEquipped;
 	bf.torchBlocks = s.torchBlocks && f.torchHeld;
 	bf.blockByAngle = s.blockByAngle;
-	bf.shieldByContact = ShieldBlocksByContact(s.shieldBlockByContact, f.shieldEquipped, f.shieldDiscRead);
+	bf.shieldByContact = ShieldBlocksByContact(s.shieldContact.enabled, f.shieldEquipped, f.shieldDiscRead);
 	return bf;
 }
 

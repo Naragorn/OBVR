@@ -6,6 +6,7 @@
 #include "core/Types.h"
 #include "game/BladeContactLogic.h"
 #include "game/ShieldOutlineLogic.h"
+#include "game/ShieldPlateLogic.h"
 #include "game/NiMath.h"
 
 namespace obvr::game {
@@ -46,6 +47,16 @@ namespace obvr::game {
 // Torch: the raised torch, its shaft judged as a blade (Nadi, 2026-10-31).
 enum class BlockWith : UInt8 { None, Shield, Weapon, Fists, Bow, Torch };
 
+// The shield by contact's settings ([Hands] ShieldBlockByContact,
+// BlockShieldReachUnits, BlockShieldInterposeUnits): the switch and the two
+// numbers its blows are judged by (BlockAngleSettings::shieldReachUnits,
+// shieldInterposeUnits).
+struct ShieldContactSettings {
+	bool enabled = true;
+	float reachUnits = 25.0f;
+	float interposeUnits = 6.0f;
+};
+
 struct BlockAngleSettings {
 	bool enabled = true;          // [Hands] BlockByAngle
 	float bladeDegrees = 30.0f;   // [Hands] BlockBladeDegrees: the blades within this of a right angle
@@ -59,6 +70,13 @@ struct BlockAngleSettings {
 	// blade rule's 60 refused).
 	float bodyDegrees = 70.0f;     // [Hands] BlockBodyDegrees
 	float interposeUnits = 25.0f;  // [Hands] BlockInterposeUnits
+	// The shield guarding by contact (ShieldGuardPose::byContact; Nadi,
+	// 2026-11-27, "oddly too generous"): its own reach to their blade, and how
+	// far past its outline the line from the blow to the chest may cross it
+	// (ShieldByContactVerdict). With the shield by the pose, reachUnits and the
+	// circle as before.
+	float shieldReachUnits = ShieldContactSettings{}.reachUnits;  // [Hands] BlockShieldReachUnits; 0 asks no distance
+	float shieldInterposeUnits = ShieldContactSettings{}.interposeUnits;  // [Hands] BlockShieldInterposeUnits
 };
 
 // The shield as a guard by contact ([Hands] ShieldBlockByContact; Nadi,
@@ -133,6 +151,8 @@ struct BlockAngleVerdict {
 	bool across = false;   // the angle's part: the guard stands right to the blow
 	bool met = false;      // the distance's part: the blow comes within the reach, or no reach is asked
 	float interposeUnits = -1.0f;  // a blow without a blade: the blade off its line to the chest; -1 not asked
+	const char* test = "";       // the shield by contact: what decided (ShieldByContactVerdict)
+	float betweenUnits = -1.0f;  // the shield by contact: the line from the blow to the chest off its face; -1 not asked
 	const char* why = "";
 };
 
@@ -203,6 +223,91 @@ inline float InterposeUnits(const NiPoint3& bladeA, const NiPoint3& bladeB, cons
 	return best;
 }
 
+// The guard's shield as a plate: its outline when read (and its in-plane
+// axes have a length), else the circle of the longer spoke.
+inline ShieldPlate PlateOf(const BlockGuard& g) {
+	ShieldPlate p;
+	p.centre = g.shieldCentre;
+	p.normal = g.shieldNormal * (1.0f / math::Sqrt(g.shieldNormal.LengthSquared()));
+	p.radius = g.shieldRadius;
+	p.halfThick = g.shieldHalfThick > 0.0f ? g.shieldHalfThick : 0.0f;
+	const float la = g.shieldAxisA.LengthSquared();
+	const float lb = g.shieldAxisB.LengthSquared();
+	if (g.shieldOutline != nullptr && g.shieldOutline->valid && la > 0.0f && lb > 0.0f) {
+		p.outline = g.shieldOutline;
+		p.axisA = g.shieldAxisA * (1.0f / math::Sqrt(la));
+		p.axisB = g.shieldAxisB * (1.0f / math::Sqrt(lb));
+	}
+	return p;
+}
+
+// A blow at the shield guarding by contact (ShieldGuardPose::byContact; Nadi,
+// 2026-11-27: blocking felt "oddly too generous"). Its face turned to the
+// blow, as by the pose (within shieldDegrees of the line to their blade's
+// middle, or to their centre without a blade), and in its way:
+// - a blade: within the shield's own reach (shieldReachUnits) of the plate -
+//   the outline given its thickness, not the circle of the longer spoke -
+//   or, failing that, the plate between the blade's middle and the nearest
+//   point of the chest (neck to belly), within shieldInterposeUnits of its
+//   face: the engine settles a blow before the blades meet (10 to 37 units
+//   apart for guards in the way, the tally in free-weapons-spec), so a
+//   shield squarely in the way may still be well short of the blade then;
+// - without a blade (a creature, the fists): the plate between their centre
+//   and the chest, within shieldInterposeUnits - their body's ball was
+//   always within the reach, so the face alone decided; without the chest
+//   read, their ball within the shield's reach of the plate.
+// No outline read: the same tests with the circle.
+inline BlockAngleVerdict ShieldByContactVerdict(const BlockAngleSettings& s, const BlockGuard& g, const BlockBlow& b) {
+	BlockAngleVerdict v;
+	const ShieldPlate plate = PlateOf(g);
+	const bool byOutline = plate.ByOutline();
+	const NiPoint3 theirBlade = b.bladeB - b.bladeA;
+	const bool theirs = b.bladeValid && theirBlade.LengthSquared() > 0.0f;
+	NiPoint3 from{0.0f, 0.0f, 0.0f};
+	if (theirs) {
+		from = (b.bladeA + b.bladeB) * 0.5f;
+		v.why = "the face to their blade";
+	} else if (b.centreValid) {
+		from = b.centre;
+		v.why = "the face to them";
+	} else {
+		v.why = "neither their blade nor where they are";
+		return v;
+	}
+	v.degrees = LineAngleDegrees(g.shieldNormal, from - g.shieldCentre);
+	if (!(v.degrees == v.degrees)) {
+		v.why = "they stand at the shield's centre";
+		return v;
+	}
+	v.across = v.degrees <= BlockSlackDegrees(s.shieldDegrees, BlockAngleSettings{}.shieldDegrees);
+	const float reach = BlockReachUnits(s.shieldReachUnits, BlockAngleSettings{}.shieldReachUnits);
+	const float margin = s.shieldInterposeUnits == s.shieldInterposeUnits && s.shieldInterposeUnits >= 0.0f
+	                         ? s.shieldInterposeUnits
+	                         : BlockAngleSettings{}.shieldInterposeUnits;
+	const NiPoint3 chest = NearestOnSegment(from, g.body, g.bodyLow);
+	if (theirs) {
+		v.units = SegmentPlateDistance(b.bladeA, b.bladeB, plate);
+		v.met = reach <= 0.0f || v.units <= reach;
+		v.test = byOutline ? "the outline's distance" : "the circle's distance";
+		if (!v.met && g.bodyValid) {
+			v.met = PlateBetween(from, chest, plate, margin, v.betweenUnits);
+			v.test = byOutline ? "the outline's distance, then between, by the outline"
+			                   : "the circle's distance, then between, by the circle";
+		}
+	} else if (g.bodyValid) {
+		v.met = PlateBetween(from, chest, plate, margin, v.betweenUnits);
+		v.units = v.betweenUnits;
+		v.test = byOutline ? "between, by the outline" : "between, by the circle";
+	} else {
+		const float gap = PointPlateDistance(b.centre, plate) - b.centreRadius;
+		v.units = gap > 0.0f ? gap : 0.0f;
+		v.met = reach <= 0.0f || v.units <= reach;
+		v.test = byOutline ? "their body's distance to the outline" : "their body's distance to the circle";
+	}
+	v.verdict = v.across && v.met ? BlockAngle::Blocked : BlockAngle::Through;
+	return v;
+}
+
 inline BlockAngleVerdict BlockAngleFor(const BlockAngleSettings& s, const BlockGuard& g, const BlockBlow& b) {
 	BlockAngleVerdict v;
 	if (!s.enabled) {
@@ -264,6 +369,9 @@ inline BlockAngleVerdict BlockAngleFor(const BlockAngleSettings& s, const BlockG
 		if (!(g.shieldRadius > 0.0f)) {
 			v.why = "the shield's disc without a size";
 			return v;
+		}
+		if (g.shieldPose.byContact) {
+			return ShieldByContactVerdict(s, g, b);
 		}
 		BladeDisc disc;
 		disc.centre = g.shieldCentre;

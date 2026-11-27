@@ -3207,3 +3207,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME shield_outline COMMAND shield_outline_test)
+
+add_executable(shield_plate_test ShieldPlateTest.cpp)
+
+target_include_directories(shield_plate_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(shield_plate_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME shield_plate COMMAND shield_plate_test)

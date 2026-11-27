@@ -2780,3 +2780,70 @@ Without the shield everything worked again."
     guard's axes and pointer. Red against e598814's circle: 8 checks (a point beside the kite's tip
     was on), green now. Harness: shield-block-arrow.txt's lines now show "outline ... rows" on the
     read and "inside / outside the outline by" on each arrow.
+- **The blows by the outline (built 2026-11-27; Nadi: blocking felt "oddly too generous and partly
+  a few frames delayed").** What he played was the run of 13:38-13:55, under the old rule (Block
+  held by the raised hand, the angle rule); no log with ShieldBlockByContact exists yet.
+  - **The tally [M]:** every "Block angle: a blow" line in C:\Steam\...\OBVR.log and the 29 logs in
+    OBVR-logs (2026-11-08 to 11-27): one blow ever at the shield - no blade on them, 21 degrees,
+    0 units off, blocked (26004 of today's run). With blades only the weapon's guard: blocked at 0,
+    0 (left to the game), 10, 14, 17, 21 (x2), 24, 26 (x2), 27, 34 (x2), 36 units; through by the
+    angle at 10, 19 (x2), 21, 24, 37, 46, 49; through by the distance at 44, 45, 46. Harness
+    block-angle.txt (2026-10-14): guards in the way 5 to 37 units, the guard held high 44 to 86.
+    So at the engine's hit moment a foe's blade is 10 to 37 units from a guard that is in its
+    way; there is no measurement for a shield.
+  - **The numbers:** BlockShieldReachUnits 25 [G, derived from the weapon's tally: the median of
+    the blocked guards in the way is 21; the shield's distance is to a plate, not to a blade's
+    line, so it reads smaller for the same place]. Because 25 cuts the far half of that range,
+    the "between" test is also a yes for blades (the tally shows guards in the way at 26 to 37
+    that a reach of 25 alone would let through). BlockShieldInterposeUnits 6 [G: a claw's or a
+    hand's width past the shield's edge; the weapon's 25 is for a blade's line and would make
+    the plate generous again]. BlockShieldDegrees 70 stays (one shield blow logged, at 21).
+  - **What decides a blow at the shield by contact** (game/BlockAngleLogic.h
+    ShieldByContactVerdict; the outline as a plate, game/ShieldPlateLogic.h; no outline: the
+    circle of the longer spoke, same tests):
+
+    | The blow | Blocked when the face is within 70 degrees of it and |
+    |---|---|
+    | a blade | the blade within 25 of the plate, or the plate between the blade's middle and the nearest point of the chest (neck to belly) within 6 of its edge |
+    | no blade (a creature, fists), the chest read | the plate between their centre and the nearest point of the chest, within 6 of its edge |
+    | no blade, the chest not read | their body's ball within 25 of the plate |
+    | ShieldBlockByContact=0 | as before: the circle, BlockReachUnits 40, the ball always within reach |
+
+  - **"A few frames delayed" - what can lag [read in OBVR's code unless marked]:**
+    (1) Under the old rule the block was the engine's Block action: OBVR pressed the control
+    from the pose in its frame, the engine turned the held control into action 6 in its own
+    input and actor update, and only then did the hit handler's check (0x005E5670: "action is
+    6") say yes. How many frames that takes, and whether the raise animation gates it, was not
+    read [unverified]; the forced block of the shield by contact does not wait for it at all.
+    (2) Under the old rule the pose flickered at the height limit (today's log: block up and
+    down on consecutive lines); a blow landing in a "down" frame went through - that reads as a
+    late block [D from the log]. Gone with the shield by contact (no pose holds the block).
+    (3) The shield's place the cone judges is the one the camera update left (game/BlockCone
+    SetBlockGuard, once a frame): at most a frame old at the blow [D].
+    (4) The engine settles the blow at one moment of the attack, while the foe's blade is still
+    10 to 37 units short of a guard in its way (the tally): the block's sound and the foe's
+    recoil come before the blades visibly meet - early, not late - and the blade is then seen
+    to arrive after the result. Holding the result until the blade arrives needs the foe's
+    blade followed over the whole blow (docs/next-up.md, "For later", point 2) [D].
+    (5) A foe's blade that crosses the shield during its attack is already a parry - the pulse
+    and the shield's sound at that moment, their next blow blocked whole for 0.8 s
+    (game/ParryLogic.h WhatMeetsTheirBlade) - but only with a weapon drawn and WeaponParries on,
+    and against the shield's bound as a ball. Judging that contact against the plate is small
+    and proposed (next-up.md), not built: the parry's frame is filled in CameraHook's
+    StepWeaponContact, at its size limit.
+  - **Log:** the "Block angle: a blow ... at the shield by contact" line names what decided - "by
+    the outline's distance", "by the outline's distance, then between, by the outline", "by
+    between, by the circle", "by their body's distance to the outline" - with the shield's reach
+    as "at most 25" and, for the between test, "the line to the chest U off the shield, at most
+    6"; capped at 30 as before.
+  - **Tests:** shield_plate_test - a blade beside a kite's tip and beside a tower's side through
+    (blocked on the circle: red, 2 checks), the same blocked by the pose as before; a blade before
+    the kite's top blocked; the reach's edge both ways, 0, no number, BlockReachUnits without a
+    say; a creature with the shield facing it but aside through (blocked before: red), between
+    blocked, a wider margin; a blade 47 off but the shield between blocked; no chest - the ball's
+    distance; no outline - the circle; what decided, named. 11 checks red against e3bdd8b, all
+    green; block_angle_test's shield-by-contact flows still green (the circle, no chest).
+  - **Settings:** [Hands] BlockShieldReachUnits=25, BlockShieldInterposeUnits=6 (OBVR.ini; Combat:
+    tuning, "Shield reach" and "Shield cover"); "Block reach" now says "your blade" (with
+    ShieldBlockByContact=0 it still also judges the raised shield, as before).
+  - **Melee and the outline, what stays:** the weapon's and the torch's rule keep their numbers.

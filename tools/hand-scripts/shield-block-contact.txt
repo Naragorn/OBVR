@@ -42,6 +42,11 @@ expect a block forced for the shield by contact 1
 expect at the shield by contact (no block held, the block forced for the shield)
 expect - blocked
 expect THROUGH
+# What decided each blow (game/BlockAngleLogic.h ShieldByContactVerdict): the
+# bandit's blade - "by the outline's distance" (reach "at most 25"), or "then
+# between, by the outline (the line to the chest U off the shield, at most 6)".
+expect by the outline's distance
+expect units off (at most 25)
 reject Hands: the left hand is up - blocking
 reject HandScript: WARNING
 # 2 s of sprint: a run's ground at the least (sprint.txt: 430 units in 1 s

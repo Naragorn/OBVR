@@ -1,6 +1,7 @@
 #include "game/BlockCone.h"
 
 #include <cstdio>
+#include <cstring>
 
 #include "camera/FrameLogic.h"
 #include "core/AroundCall.h"
@@ -46,15 +47,26 @@ BlockAngleVerdict JudgeBlow(void* attacker, bool byContact) {
 	const BlockAngleVerdict v = BlockAngleFor(settings, g_guard, blow);
 	if (g_angleLinesLeft > 0) {
 		--g_angleLinesLeft;
-		const float reach = BlockReachUnits(g_angle.reachUnits, BlockAngleSettings{}.reachUnits);
+		// The shield by contact: its own reach, and what decided (ShieldByContactVerdict).
+		const bool contactShield = v.test != nullptr && v.test[0] != 0;
+		const float reach = contactShield ? BlockReachUnits(g_angle.shieldReachUnits, BlockAngleSettings{}.shieldReachUnits)
+		                                  : BlockReachUnits(g_angle.reachUnits, BlockAngleSettings{}.reachUnits);
 		char reachText[32];
 		if (reach > 0.0f) {
 			std::snprintf(reachText, sizeof(reachText), "at most %.0f", static_cast<double>(reach));
 		} else {
 			std::snprintf(reachText, sizeof(reachText), "not asked");
 		}
-		char interposeText[48] = "";
-		if (v.interposeUnits >= 0.0f) {
+		char interposeText[128] = "";
+		if (contactShield) {
+			std::snprintf(interposeText, sizeof(interposeText), ", by %s", v.test);
+			if (v.betweenUnits >= 0.0f) {
+				const UInt32 at = static_cast<UInt32>(std::strlen(interposeText));
+				std::snprintf(interposeText + at, sizeof(interposeText) - at,
+				              " (the line to the chest %.0f off the shield, at most %.0f)",
+				              static_cast<double>(v.betweenUnits), static_cast<double>(g_angle.shieldInterposeUnits));
+			}
+		} else if (v.interposeUnits >= 0.0f) {
 			std::snprintf(interposeText, sizeof(interposeText), ", the blade %.0f off their line (at most %.0f)",
 			              static_cast<double>(v.interposeUnits), static_cast<double>(g_angle.interposeUnits));
 		}

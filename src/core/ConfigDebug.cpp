@@ -69,6 +69,12 @@ void ReadLetGoAndThrowStep(Config& config, const char* path) {
 	th.bounceBack.guideSeconds = ReadFloat("Hands", "BounceBackGuideSeconds", th.bounceBack.guideSeconds, path);
 }
 
+void TorchReleaseFollowsWeaponStep(Config& config, const char*) {
+	vr::HandSettings& h = config.hands;
+	h.torchRelease.releaseSeconds = h.weaponRelease.releaseSeconds;
+	h.torchRelease.throwStrength = h.weaponRelease.throwStrength;
+}
+
 void TorchSpinFollowsWeaponStep(Config& config, const char*) {
 	config.hands.torchRelease.throwSpinStrength = config.hands.weaponRelease.throwSpinStrength;
 }

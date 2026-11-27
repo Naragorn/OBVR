@@ -270,7 +270,7 @@ struct HandSettings {
 	// Half-swording a two-handed sword (vr/HalfSwordLogic.h).
 	vr::HalfSwordSettings halfSword;
 	bool torchBlocks = true;  // the raised torch blocks as a raised shield does ([Hands] TorchBlocks)
-	bool shieldBlockByContact = true;  // the shield blocks what it is in the way of (vr/HandBlockFrame.h)
+	game::ShieldContactSettings shieldContact;  // the shield blocks what it is in the way of (vr/HandBlockFrame.h)
 	// Both palms out, rocked before a foe: the yield (vr/Yield.h, [Hands] Yield).
 	bool yield = true;
 	// The kick on the weapon hand's B (game/KickLogic.h); kickOnB follows its
