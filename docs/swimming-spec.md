@@ -3,8 +3,10 @@
 Nadi, 2026-11-27: "go schwimmen mit den armen". While the game has the player swimming, the player's own arm strokes
 move them through the water. The stick keeps swimming as it does today.
 
-Status: built on branch `swim-1127`, not yet tried in the headset. What was read in the EXE, what the harness
-measured and what is a first guess is marked in each place (read, measured, derived, guessed).
+Status: built on branch `swim-1127` (WIP 87c7be8), finished on `swim-1127-win` (2026-11-27): compiles as the 32-bit
+DLL with MSVC, `swim_stroke_test` and the whole ctest suite green. Not yet run in the harness or tried in the headset:
+nothing below is measured in the game yet. What was read in the EXE, what is derived and what is a first guess is
+marked in each place (read, measured, derived, guessed).
 
 ## What the player does
 
@@ -39,10 +41,16 @@ pace of several swim speeds with a glide behind it are not in it. A step in the 
 collision and the surface to the game.
 
 The game still sees a swimmer: while the arms swim and the stick is idle, the analog walk is given a tiny push in the
-stroke's horizontal direction (`SwimNudge`). Its own step is then a few per cent of the swim speed, the swim animation
-plays, and the move keys show a direction (guessed, the rival mod's finding: Athletics trains only while the controls
-give a direction; not verified here). The engine's own step and the arms' are not added: the sum is cut to the longer of
+stroke's horizontal direction (`SwimNudgeDirection`, `kSwimNudgeAmount` 0.05). Its own step is then a few per cent of
+the swim speed (derived: the pace factor 0.05 / 0.65 = 0.08 of the walk's pace), the swim animation plays (guessed),
+and the move keys show a direction. The engine's own step and the arms' are not added: the sum is cut to the longer of
 the two (`CombineSwimStep`), so the tiny push costs nothing.
+
+Athletics trains from those keys, with no code of OBVR's own (read 2026-11-27, see "Read in the EXE" below): the
+game counts a swim use of Athletics for every second the movement flags hold "swimming" and any direction. That is the
+vanilla rule; the nudge only has to set a direction key, and it does whenever the glide is faster than
+`kSwimNudgeShowsAbove` (6 units a second). A glide slower than that trains nothing, as vanilla's swimmer who lets go
+of the keys.
 
 ### Speed
 
@@ -50,8 +58,9 @@ The game's own swim speed scales the strokes: `0x005E3920`, the swim walk speed 
 walk and run speed getters the analog walk already calls, first bytes `83 EC 10 56 8B F1 8B 06`, read in the EXE; its
 body is the formula over Speed, encumbrance and Athletics). A stroke with the hands at 1 m/s swims at 3 swim speeds, the
 hands' speed raised to 0.375 (the rival mod's 0.4, as three square roots: no pow in the plugin's runtime), at most 4
-swim speeds, times `[Hands] SwimStrength`. These numbers are the rival mod's playtested values; here they are a guess
-until the headset.
+swim speeds, times `[Hands] SwimStrength` (held at 3, the settings menu's top, when the INI says more; 0, below or not
+a number: no stroke). These numbers are the rival mod's playtested values; here they are a guess until the headset
+(docs/guesses-overview.md).
 
 ### Hand speed
 
@@ -107,7 +116,7 @@ riding, no fly camera, and the game's own state "swimming".
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `[Hands] SwimStrokes` | 1 | arm strokes move the swimmer |
-| `[Hands] SwimStrength` | 1 | the stroke's strength, 0.5 to 3 |
+| `[Hands] SwimStrength` | 1 | the stroke's strength, 0.5 to 3 in the menu; the INI past 3 is held at 3 |
 
 Row "Swim with your arms" and "Stroke strength" on the Moving page of the settings menu. Not asked on the start guide
 (a default-on switch with no surprise; the guide's revision is raised by hand with every beta, `ui/GuideRevision.h`).
@@ -119,7 +128,52 @@ Row "Swim with your arms" and "Stroke strength" on the Moving page of the settin
 - Whether the stroke feels like swimming, whether 3 swim speeds at 1 m/s is too fast or slow, the glide time, fatigue in
   the arms, whether the grip-close detection catches reliably at the speed of a stroke, and whether `GripToggle` players
   find a toggled catch odd (one grip catches, the next lets go).
-- Whether Athletics trains from the nudged controls.
+- Open: whether a vertical stroke moves the swimmer up and down (below). Not decided by reading; the harness's dive
+  marks answer it.
+- Open: whether the game tilts the arms' step by the player's pitch, so a crawl with the head down also dives (below).
+
+## Read in the EXE (2026-11-27, Windows session; OBNG `re/export/rea-all/functions/`)
+
+### Athletics: settled, no code needed
+
+- Read, `0x00671620` (the player's control handler): with the movement flags (the process's vtable `+0x2C0`) holding swim
+  `0x800` (`0x005E0530`) and any direction `0xF` (`0x005E05B0`), not on a horse, a timer at `+0x5A0` grows by the frame
+  time; past 1 second it calls the skill use (`vtable +0x39C`) with `(0x0D, 1, 0)`: Athletics, its use 1 (the swim
+  use; use 0 is the run, a few lines above under `0x200`), and starts again. The same `+0x39C` call with `0x1A`
+  (Acrobatics) is the landing's in `Actor::Move` 0x005EFAE0, which is how the slot was told apart.
+- Derived: the nudge's direction keys (`vr::AnalogStickKeys`, then `game::ApplyHandControls`) are the keys the analog
+  walk already walks with (measured in analog-walk.txt), so they set the direction flags and Athletics counts its swim
+  use as for a vanilla swimmer. Not measured: the harness can read the skill's use only from the stats, it does not.
+- So no own skill-use call: it would count twice whenever the stick swims too.
+
+### The step's height: read up to the character controller, open after it
+
+- Read, `Actor::Move` 0x005EFAE0 calls the controller's move `0x0065AF30` with the step as given. There the step is
+  turned into the world and back by `0x0070FDD0`, a rotation about z alone (cos, sin, 0 / -sin, cos, 0 / 0, 0, 1): the
+  step's z goes into the controller's input (`fStack_9c..94`) unchanged, in both branches (with and without the
+  controller's flag bit 11). The actor's three angles (`+0x20..+0x28`, pitch among them) go in beside it.
+- Not read: what the controller's swimming state (vtable `+0x80` of the controller, the Havok side) does with the input's
+  z and with the pitch. Vanilla's swimmer dives where it looks while moving forward, so the pitch is used somewhere past
+  this point; whether the input's z is kept, dropped or overruled by buoyancy is not known.
+- What follows for the code: `AddSwimStep` hands the stroke's z to Move as it is. If the harness shows the dive marks'
+  feet z not falling, the vertical part has to go another way (for instance as a pitch while the arms swim); if a level
+  crawl with the head pitched down falls, the arms' step needs the pitch taken out first. Neither is built.
+
+## What the Linux harness must check
+
+`python3 tools/hand-script-run.py tools/hand-scripts/swim-arms.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll`
+
+The runner asserts: the "Swim: the player swims" and "Swim: a hand holds the water" lines, `still water_a water_b 40`,
+`still open_a open_b 40`, `moved crawl_a crawl_b 150`, `moved breast_a breast_b 100`, `moved stick_a stick_b 150`, and
+no "HandScript: WARNING". Read by hand from the "Swim: at the mark" lines (the controller's state, the swimmer's speed,
+the units carried by the arms, the feet):
+
+- `placed` .. `water_a`: the state 5 (swimming); if the player stands on the lake's floor or the shore, the coordinates
+  (5400, 64600, z 300 after `cow Tamriel 1 15`) are wrong and the scenario proves nothing.
+- `crawl_b` and `breast_b`: the feet moved forward (the heading's way) and z about level.
+- `dive_a` .. `dive_b`: the feet's z. Falling: the step's z works. Level: the vertical stroke needs another way (above).
+- `stick_a` .. `stick_b`: the stick swims as before ("AnalogWalk: at the mark" lines too).
+- The old build (origin/main) for the before run: the crawl and the breaststroke leave the player where they were.
 
 ## Code
 

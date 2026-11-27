@@ -32,7 +32,7 @@ namespace obvr::vr {
 
 struct SwimSettings {
 	bool enabled = true;     // [Hands] SwimStrokes
-	float strength = 1.0f;   // [Hands] SwimStrength, 0..kSwimStrengthMost
+	float strength = 1.0f;   // [Hands] SwimStrength, 0..kSwimStrengthMost (the menu: 0.5..3)
 };
 
 // The hands slower than this (m/s against the head) are the tracking's wander.
@@ -40,7 +40,8 @@ inline constexpr float kSwimLeastHandSpeed = 0.15f;
 // The swimmer's speed with the hands at 1 m/s, in the game's swim speeds, and the most any stroke gives.
 inline constexpr float kSwimPullAtOneMetre = 3.0f;
 inline constexpr float kSwimPullMost = 4.0f;
-inline constexpr float kSwimStrengthMost = 4.0f;
+// The most strength counted, the settings menu's top: a hand-edited INI past it is held there.
+inline constexpr float kSwimStrengthMost = 3.0f;
 // The swim speed when the game's cannot be read, game units a second.
 inline constexpr float kSwimSpeedFallback = 60.0f;
 // The glide: e-fold time when slow, how much sooner when fast (the rate grows
@@ -73,14 +74,22 @@ inline float SwimSpeedOf(float gameSwimSpeed) {
 	return gameSwimSpeed == gameSwimSpeed && gameSwimSpeed > 1.0f ? gameSwimSpeed : kSwimSpeedFallback;
 }
 
+// The strength counted: at most kSwimStrengthMost; none, negative or not a number: 0 (no stroke).
+inline float SwimStrengthOf(float strength) {
+	if (!(strength > 0.0f)) {
+		return 0.0f;
+	}
+	return strength > kSwimStrengthMost ? kSwimStrengthMost : strength;
+}
+
 // The swimmer's speed a stroke gives, game units a second: the hands' speed
 // against the head (m/s) raised to 0.375, 3 swim speeds at 1 m/s, at most 4,
 // times the strength. None under kSwimLeastHandSpeed.
 inline float StrokeSpeed(float handMetresPerSecond, float swimSpeed, float strength) {
-	if (!(handMetresPerSecond >= kSwimLeastHandSpeed) || !(strength > 0.0f)) {
+	const float s = SwimStrengthOf(strength);
+	if (!(handMetresPerSecond >= kSwimLeastHandSpeed) || !(s > 0.0f)) {
 		return 0.0f;
 	}
-	const float s = strength > kSwimStrengthMost ? kSwimStrengthMost : strength;
 	float k = kSwimPullAtOneMetre * SwimPowerStep(handMetresPerSecond);
 	k = k > kSwimPullMost ? kSwimPullMost : k;
 	return k * SwimSpeedOf(swimSpeed) * s;
@@ -239,7 +248,7 @@ inline SwimVerdict StepSwim(SwimState& s, const SwimSettings& settings, const Sw
 			const float sweep = held == 2 ? swim_detail::Length(velocity[0] - velocity[1]) * 0.5f : 0.0f;
 			const bool clear = handSpeed >= kSwimPushBackShare * sweep;
 			s.glide = swim_detail::TakePull(s.glide, way, speed, clear, dt, v.pulling);
-			const float full = kSwimPullAtOneMetre * SwimSpeedOf(in.swimSpeed) * settings.strength;
+			const float full = kSwimPullAtOneMetre * SwimSpeedOf(in.swimSpeed) * SwimStrengthOf(settings.strength);
 			v.effort = v.pulling && full > 0.0f ? (speed < full ? speed / full : 1.0f) : 0.0f;
 		}
 	}

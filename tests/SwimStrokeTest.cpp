@@ -67,6 +67,10 @@ void TestStrokeSpeed() {
 	Check(vr::StrokeSpeed(0.1f, kSwim, 1.0f) == 0.0f, "under 0.15 m/s is the tracking's wander");
 	Check(Near(vr::StrokeSpeed(1.0f, kSwim, 2.0f), 6.0f * kSwim, 0.05f), "the strength scales it");
 	Check(vr::StrokeSpeed(1.0f, kSwim, 0.0f) == 0.0f, "strength 0: no stroke");
+	Check(Near(vr::StrokeSpeed(1.0f, kSwim, 10.0f), vr::StrokeSpeed(1.0f, kSwim, 3.0f), 0.01f),
+	      "a strength past the menu's top (3, an INI edited by hand) is held at 3");
+	Check(vr::StrokeSpeed(1.0f, kSwim, -1.0f) == 0.0f && vr::StrokeSpeed(1.0f, kSwim, kNaN) == 0.0f,
+	      "a negative strength or one that is no number: no stroke");
 	Check(vr::StrokeSpeed(1.0f, 0.0f, 1.0f) > 0.0f, "the game's swim speed unread: the fallback");
 	Check(vr::StrokeSpeed(kNaN, kSwim, 1.0f) == 0.0f, "a hand speed that is no number: none");
 	Check(Near(vr::SwimPowerStep(1.0f), 1.0f, 1e-5f) && Near(vr::SwimPowerStep(0.25f), 0.5946f, 0.001f),
@@ -119,6 +123,12 @@ void TestOneHand() {
 	      "a hand pulled back swims the player forward");
 	Check(Near(Speed(v.velocity), 3.0f * kSwim, 1.0f), "at 3 swim speeds with the hand at 1 m/s");
 	Check(v.effort > 0.9f && v.effort <= 1.0f, "the effort is the stroke against the full pull");
+	vr::SwimSettings strong;
+	strong.strength = 10.0f;
+	vr::SwimState hard;
+	const vr::SwimVerdict h = Run(hard, strong, in, 10);
+	Check(h.effort > 0.9f && h.effort <= 1.0f,
+	      "a strength held at its top: the same stroke is still full effort (the buzz does not fade)");
 	vr::SwimState up;
 	vr::SwimInput rise = Frame();
 	Hold(rise, 1, NiPoint3{0.0f, 0.0f, -0.8f});

@@ -38,7 +38,7 @@ src/camera/hands/WalkersShake.cpp	StepWalkersShake	105
 src/camera/hands/WeaponFrame.cpp	StepWeaponFrame	150
 src/camera/hands/WeaponRelease.cpp	StepRelease	533
 src/camera/hands/WorldPush.cpp	StepWorldPush	201
-src/core/Config.cpp	(file lines)	1591
+src/core/Config.cpp	(file lines)	1573
 src/core/Config.cpp	Config::Load	178
 src/core/Config.cpp	(file globals)	2
 src/core/CrashHandler.cpp	(file globals)	3
