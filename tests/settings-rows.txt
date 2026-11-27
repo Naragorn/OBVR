@@ -72,7 +72,7 @@ Combat: features|Half-sword with both hands|Your sword hand can let go of the ha
 Combat: features|Choke up|Grab maces, hammers and axes higher up the haft|Hands|ChokeUp|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Torch blocks|Block with a torch. Off, it only parries what it touches|Hands|TorchBlocks|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Shield blocks what hits it|Hold your shield in the blow's way. Off, raise your shield hand to block, as before|Hands|ShieldBlockByContact|||0|0|1|1|0|0|1|1|1|0|0|RW
-Combat: features|Weapon blocks what it stops|Hold your blade or torch across the blow. Off, raise it to block, as before|Hands|WeaponBlockByContact|||0|0|1|1|0|0|1|1|1|0|0|RW
+Combat: features|Weapon blocks what it stops|Hold your blade, staff, torch, bow or forearm across the blow. Off, raise it to block, as before|Hands|WeaponBlockByContact|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Drop the torch|Open your hand and the torch falls, still burning. Off, it stays in your hand|Hands|TorchDrop|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Shield bash|Ram your shield into someone to stagger them. Hit harder and they fall|Hands|ShieldBash|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Dismemberment|Swing fast to cut off a dead foe's head, hand, arm or leg|Hands|Dismemberment|||0|0|1|1|0|0|1|1|1|0|0|RW

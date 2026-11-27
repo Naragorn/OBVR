@@ -2920,8 +2920,8 @@ Without the shield everything worked again."
     the hand-to-hand stub (NoteTorchBlock) as before, so with nothing readied the engine's share
     by the Block skill is taken; with a weapon readied the engine reckons the weapon (or a worn
     shield) as the item [R, the slots asked at 0x005FF7F5..]. Unread shaft this frame: the game's
-    cone while raised - but that fallback does not mark the stub, so with nothing readied an armed
-    attacker's blow is then not blocked [D, a known gap]. Torch with a drawn weapon: both asked,
+    cone while raised, and since the next commit that cone's block is marked for the stub too
+    (BlockCone NoteIfTorch with `TorchFallsBack`). Torch with a drawn weapon: both asked,
     either in the way blocks; torch with nothing readied: the torch alone.
   - **The staff - not built.** Its line is not read: `MeleeInHand` takes types 0-3 only
     (`WeaponIsSwung`), and the blade span is read in CameraHook's StepWeaponContact under that same
@@ -2985,3 +2985,90 @@ Without the shield everything worked again."
     that stopped the blow" - in vanilla as now. Wearing the blocking item instead would be new
     behaviour (the +0x2C4 call with that item), not a restoration; not built - a decision for Nadi.
   - Recorded in ../OBNG/knowledge/blocking.md, "The wear after a blow".
+- **The staff by contact (built 2026-11-27).** No refactor was needed: the block reads the staff's
+  line on its own, outside StepWeaponContact (whose "swung weapon drawn" flag still keeps the
+  staff out of wall and body contact, the stoppers and the parry - types 0-3 as before).
+  - **The line [R/D]:** game/StaffLine.cpp, once a frame from BlockCone's SetBlockGuard: with a
+    staff (type 4) equipped and drawn, the first-person "Weapon" node, from the node along its own
+    y axis to its bound's far end (ParryLogic.h TheirBladeFromNode, in the world; refused outside
+    10 to 200 units). The same node and axis the player's blade span is read from [R]; that a
+    staff's model runs along that axis is derived, not seen - the guard-up line logs "Hands: the
+    staff's line - N units long, along x y z" once per raise to show it in the first run.
+  - **The pose before [R]:** a staff is the weapon guard (IsWeaponGuard with the weapon hand's
+    forward axis; KindOfWeaponType(4) is TwoHand, the weapon drawn, not the fists), so the staff's
+    guard held Block. Now `weaponByContact` holds with the staff's line read too
+    (vr/HandBlockFrame.h), and at the cone the weapon's rule judges the staff's line in place of a
+    blade (BlockAngleLogic.h GuardAs) - 30 / 40 / 70 / 25.
+  - **Gates:** the weapon hand's swing flag still gates it (a hand moving at a swing's speed is no
+    guard, whatever it holds) [decided]. The frame a staff fires is not known to the block code (the
+    staff's cast goes through the attack action; not read) - not gated [unverified].
+  - **Share [R/D]:** the hit handler takes the item from the equipped slots, the shield first,
+    else the weapon (process vtable +0xEC) - the staff is the weapon item, so a staff's block is a
+    weapon block, not hand to hand [D from the slot calls].
+  - **Tests:** hand_mode_test (a staff's line read turns the weapon by contact on - before: the
+    pose; off with the switch), block_angle_test (GuardAs: the torch's shaft and the staff's line as
+    the blade, a read blade kept, neither read; a cut across a staff held level blocked).
+    Harness, not run: tools/hand-scripts/staff-block-contact.txt.
+- **The bow by contact (built 2026-11-27).**
+  - **Moved first [R]:** the bow's block out of HandMode::Update into vr/HandBlockLogic.h
+    `DecideBowBlock` (pure) with a thin caller and vr/HandBlockFrame.h `ApplyBowBlock` - its
+    conditions unchanged: the bow hand's controller and the limb's axis read, no menu, the arms not
+    running, IsBowGuard (the bow hand no lower than 20 cm under the eyes and 12 ahead, the limb at
+    least 0.80 upright, no arrow out: archery's state None). HandMode::Update 695 -> 687 lines; the
+    pose checks in hand_mode_test pass the same as the old code's flows.
+  - **The line [R/D]:** game/BowVisual.cpp keeps, beside the limb's axis it already read (the bow
+    node's model y), the node's place and the tips' reach - 45 units scaled each way, the vanilla
+    bows' tips lying past |y| 45 (bowresearch's morph read, the file's own note) [the 45 as the
+    tips' reach is derived from that note, not measured]. `BowLimbLine` gives the tip-to-tip line in
+    the world; BlockCone puts it into the guard once a frame. The hand that holds it is whichever
+    the bow-by-hand code reads (`cl`, `leftRelative` - the other hand since d96cacb), unchanged.
+  - **The rule:** by contact the bow is the weapon's guard: `weaponPose` from DecideBowBlock
+    (by contact, the upright guard as `raised`, an arrow out as `swinging` - no say, as the pose
+    rule has it); at the cone the weapon's rule judges the limbs' line in place of a blade (GuardAs,
+    30 / 40 / 70 / 25); the log names it "at the bow by contact (... forced for the bow)". With the
+    rule off the bow's pose holds Block and its blow is left to the game, as before.
+  - **Share [D]:** the drawn bow is the weapon item in the equipped slots, so a bow's block is a
+    weapon block, not hand to hand.
+  - **Tests:** hand_mode_test (DecideBowBlock: the pose's flows as before - upright, an arrow out,
+    flat, the arms' run, a menu, unread; by contact: no Block held, raised, an arrow out no say,
+    flat not raised, a menu), block_angle_test (the bow's limbs as the blade, named the bow; the
+    pose guard left to the game; a cut across the upright bow blocked). Harness, not run:
+    tools/hand-scripts/bow-block-contact.txt (the pose only); bow-block.txt pins the rule off.
+- **The fists by contact (built 2026-11-27).**
+  - **No move was needed:** the forearms' lines are read in their own unit, game/ForearmLines.cpp,
+    once a frame from BlockCone's SetBlockGuard - not in StepHandContacts (untouched, still 386).
+  - **The line [R/D]:** with the fists readied (nothing in the weapon slot, the weapon state
+    drawn), each arm from "Bip01 R/L Forearm" (the forearm bone's origin, its elbow end) to
+    "Bip01 R/L Finger2" (the knuckles, the hand span's far end) in the world. That the
+    first-person skeleton names its forearms so is the Bethesda naming the code already uses for
+    "Bip01 L ForearmTwist" [D, not seen in a log yet].
+  - **The pose before [R]:** IsFistGuard - both fists up before the face, neither punching - held
+    Block. By contact (both forearms read) it holds none; both up stay the fallback `raised`, and
+    each arm's swing flag takes that arm's say. One forearm in the way is enough (FistsVerdict),
+    as in Blade & Sorcery - the pose needed both.
+  - **At the blow:** forced like the others (`fistsContact`, after the torch's, before the
+    parry's). At the cone (BlockCone JudgeFists): an attacker with a blade read, with a weapon in
+    their process (vtable +0xEC with 1, the getter the hit handler calls) or not a living actor (an
+    arrow) - no say: a hand-to-hand block against a weapon or an arrow stops nothing (0x005FF890
+    `fldz`, ParryLogic.h), so the blow lands as the game has it and a capped line says "a fist's
+    guard does not stop a blade"; never logged as blocked. An unarmed attacker - each forearm not
+    punching judged by the weapon rule's no-blade branch (across their way to the chest within
+    BlockInterposeUnits 25, BlockBodyDegrees 70, their body within BlockReachUnits 40; GuardAsForearm),
+    either in the way - blocked; neither read with both fists up - the game's cone.
+  - **Share [R from ParryLogic.h]:** with neither a weapon nor a shield the hit handler's
+    hand-to-hand flag is set, and against an unarmed attacker the branch goes on to the share (only
+    an armed attacker or an arrow gets `fldz`) - so the hand-to-hand stub is not needed for an
+    unarmed blow, and none is marked.
+  - **What changes against vanilla:** an armed attacker's blow at a fist guard is no longer "a
+    block that stops nothing" (the engine's block reaction with no share) but a plain hit - the
+    damage the same.
+  - **Log:** "for the fists by contact 0/1" on the blow line; "at the fists by contact (no block
+    held, the block forced for the fists)" on the cone's; "Hands: the fists are up - no block held, a
+    forearm blocks an unarmed blow in its way" (capped).
+  - **Tests:** hand_mode_test (both up: no Block held by contact - before: Block; a punching arm,
+    one fist down, the arms' run, a menu, a weapon in hand; the frame's switch and the forearms
+    read), parry_test (the fists' force; FistsVerdict - one arm enough, a punching arm not asked,
+    none judged; the cone - in the way, armed lands, not in the way, unjudged up/armed/down),
+    block_angle_test (a forearm across an unarmed attacker's way blocked, one aside through, an
+    unread arm). Harness, not run: tools/hand-scripts/fist-block-contact.txt (the pose only; no
+    unarmed attacker placed); fist-block.txt pins the rule off.

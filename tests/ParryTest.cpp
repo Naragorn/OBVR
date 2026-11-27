@@ -281,8 +281,10 @@ void TestTorchByContact() {
 	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "the shaft not in the way, raised: it lands");
 	c.torch = BlockAngle::Engine;
 	Check(ContactConeFor(true, true, c) == ShieldCone::Original, "the shaft unread, raised: the game's cone");
+	Check(TorchFallsBack(c), "and the stub is marked for it if that cone blocks (an armed attacker, nothing readied)");
 	c.torchRaised = false;
 	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "the shaft unread, low: it lands");
+	Check(!TorchFallsBack(c), "low: no stand-in, nothing marked");
 	c.torchAsked = false;  // the torch hand swinging
 	c.torchRaised = true;
 	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "the torch swinging: no say");
@@ -299,6 +301,40 @@ void TestTorchByContact() {
 	Check(ContactConeFor(true, true, both) == ShieldCone::NotBlocked, "neither: it lands");
 }
 
+
+// The fists by contact: forced while they guard; at the cone a forearm in an
+// unarmed blow's way blocks; an armed attacker or an arrow - no say.
+void TestFistsByContact() {
+	std::printf("The fists by contact at the hit handler\n");
+	BlockForces f = BlockForcesFor(true, false, false, true, false, false, false, false, true);
+	Check(f.fistsContact && !f.parry && f.Any(), "the fists by contact: their force");
+	f = BlockForcesFor(true, true, false, true, false, false, false, false, true);
+	Check(!f.Any(), "the engine blocking already: nothing forced");
+	Check(FistsVerdict(true, BlockAngle::Through, true, BlockAngle::Blocked) == BlockAngle::Blocked,
+	      "one forearm in the way is enough");
+	Check(FistsVerdict(true, BlockAngle::Through, false, BlockAngle::Blocked) == BlockAngle::Through,
+	      "the arm in the way punching (not asked): through");
+	Check(FistsVerdict(false, BlockAngle::Blocked, false, BlockAngle::Blocked) == BlockAngle::Engine,
+	      "both punching or unread: nothing judged");
+	ContactVerdicts c;
+	c.fistsAsked = true;
+	c.fists = BlockAngle::Blocked;
+	Check(ContactConeFor(true, true, c) == ShieldCone::Blocked, "an unarmed blow, a forearm in its way: blocked");
+	c.fistsArmed = true;
+	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked,
+	      "an armed attacker: a fist's guard stops no blade - it lands, never logged as blocked");
+	c.fistsArmed = false;
+	c.fists = BlockAngle::Through;
+	c.fistsRaised = true;
+	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "not in its way, the fists up: it lands");
+	c.fists = BlockAngle::Engine;
+	Check(ContactConeFor(true, true, c) == ShieldCone::Original, "unjudged, both up, unarmed: the game's cone");
+	c.fistsArmed = true;
+	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "unjudged, armed or an arrow: no stand-in");
+	c.fistsArmed = false;
+	c.fistsRaised = false;
+	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "unjudged, the fists down: it lands");
+}
 void TestHeld() {
 	std::printf("Someone held by the off hand\n");
 	const UInt32 held = 0x1000;
@@ -491,6 +527,7 @@ int main() {
 	TestShieldByContact();
 	TestWeaponByContact();
 	TestTorchByContact();
+	TestFistsByContact();
 	TestHeld();
 	TestWhatMeets();
 	TestHandToHandStub();

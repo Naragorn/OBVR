@@ -52,6 +52,8 @@ struct HandBlockFrame {
 	bool weaponByContact = false;
 	// The held torch guards by contact (HandBlockFrame.h): its raise holds no Block.
 	bool torchByContact = false;
+	// The fists guard by contact (HandBlockFrame.h): both forearms read.
+	bool fistsByContact = false;
 };
 
 struct HandBlock {
@@ -65,6 +67,8 @@ struct HandBlock {
 	game::WeaponGuardPose weapon;
 	// The torch by contact, its raise and the left hand's swing.
 	game::WeaponGuardPose torch;
+	// The fists by contact, both up as the pose had it, each arm's punch.
+	game::FistGuardPose fists;
 };
 
 inline HandBlock DecideHandBlock(const HandBlockFrame& f, const GestureThresholds& t) {
@@ -77,6 +81,9 @@ inline HandBlock DecideHandBlock(const HandBlockFrame& f, const GestureThreshold
 	b.weapon.swinging = b.weapon.byContact && f.rightSwinging;
 	b.torch.byContact = f.torchByContact && f.torchBlocks;
 	b.torch.swinging = b.torch.byContact && f.leftSwinging;
+	b.fists.byContact = f.fistsByContact && f.fistsUp && f.weaponDrawn;
+	b.fists.rightSwinging = b.fists.byContact && f.rightSwinging;
+	b.fists.leftSwinging = b.fists.byContact && f.leftSwinging;
 	if (f.armsRun) {
 		return b;
 	}
@@ -96,10 +103,50 @@ inline HandBlock DecideHandBlock(const HandBlockFrame& f, const GestureThreshold
 		b.with = b.blocking ? game::BlockWith::Weapon : b.with;
 	}
 	if (!b.blocking && f.rightValid && f.leftValid && f.fistsUp && f.weaponDrawn) {
-		b.blocking = IsFistGuard(f.rightRelative, f.leftRelative, f.rightSwinging, f.leftSwinging, t);
+		const bool guard = IsFistGuard(f.rightRelative, f.leftRelative, f.rightSwinging, f.leftSwinging, t);
+		// By contact a forearm in the way blocks at the blow (game/BlockCone
+		// JudgeFists); both fists up stay the fallback, holding no Block.
+		b.fists.raised = b.fists.byContact && guard;
+		b.blocking = guard && !b.fists.byContact;
 		b.fistGuard = b.blocking;
 		b.with = b.blocking ? game::BlockWith::Fists : b.with;
 	}
+	return b;
+}
+
+// The bow's block (moved out of HandMode::Update on 2026-11-27, when the bow
+// joined the blocks by contact): held upright before the face with no arrow
+// at it (IsBowGuard) - none while a menu is up, the controller or the limb
+// unread, or the arms run by swinging. By contact ([Hands]
+// WeaponBlockByContact, the drawn bow's limbs read - game/BowVisual.h
+// BowLimbLine) the guard holds no Block: the bow is the weapon by contact,
+// its upright guard kept as `raised` for the blows its limbs cannot judge,
+// and an arrow out (nocked, drawn) as `swinging` - no say then, as the pose
+// rule has it.
+struct BowBlockFrame {
+	bool valid = false;      // the bow hand's controller and the limb's axis read
+	bool menuMode = false;
+	bool armsRun = false;    // ArmSwingHoldsBlocks
+	NiPoint3 bowHandRelative{0.0f, 0.0f, 0.0f};
+	bool limbRead = false;   // the limb's axis has a length
+	float limbUpright = 0.0f;
+	bool arrowOut = false;   // an arrow nocked or drawn (archery's state not None)
+	bool byContact = false;  // WeaponBlockByContact and the limbs' line read
+};
+
+struct BowBlock {
+	bool blocking = false;   // the pose holds Block (the rule off)
+	game::WeaponGuardPose pose;
+};
+
+inline BowBlock DecideBowBlock(const BowBlockFrame& f, const GestureThresholds& t) {
+	BowBlock b;
+	b.pose.byContact = f.byContact && !f.menuMode;
+	b.pose.swinging = b.pose.byContact && f.arrowOut;
+	const bool guard = f.valid && !f.menuMode && !f.armsRun && f.limbRead &&
+	                   IsBowGuard(f.bowHandRelative, f.limbUpright, f.arrowOut, t);
+	b.pose.raised = b.pose.byContact && guard;
+	b.blocking = guard && !b.pose.byContact;
 	return b;
 }
 

@@ -194,6 +194,7 @@
 #include "game/Parry.h"
 #include "game/ShieldGuardLogic.h"
 #include "game/ShieldShape.h"
+#include "game/StaffLine.h"
 #include "game/CombatReach.h"
 #include "game/SlowApproach.h"
 #include "game/CombatRing.h"
@@ -4778,7 +4779,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	g_gestures.yieldDrive.clickWanted = false;
 	g_grab.weaponTakeReadyClick = false;
 	frame.shieldEquipped = active && game::PlayerWearsShield();
-	frame.guardReads = game::GuardReads{frame.shieldEquipped && g_shieldDiscHave, g_blockBladeValid, g_torchWorldValid};
+	frame.guardReads = game::GuardReadsFor(frame.shieldEquipped && g_shieldDiscHave, g_blockBladeValid, g_torchWorldValid);
 	frame.torchHeld = active && game::WornTorchForm() != nullptr;
 	frame.menusOnly = menusOnly;
 	frame.inWorld = game::PlayerInWorld();
@@ -11079,8 +11080,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			guard.bladeValid = g_blockBladeValid;
 			guard.bladeA = g_blockBladeA;
 			guard.bladeB = g_blockBladeB;
-			// The torch's shaft, in the world this frame: the blade when the torch guards (game/BlockCone).
-			guard.torchValid = g_torchWorldValid;
+			guard.torchValid = g_torchWorldValid;  // the torch's shaft: its blade when it guards (game/BlockCone)
 			guard.torchA = g_torchWorldA;
 			guard.torchB = g_torchWorldB;
 			if (g_shieldDiscHave && g_hand.leftHandValid && g_cyclopeanCameraWorldValid && game::PlayerWearsShield()) {

@@ -1,0 +1,47 @@
+# The staff by contact ([Hands] WeaponBlockByContact=1; game/StaffLine.h, game/BlockAngleLogic.h
+# GuardAs; Nadi, 2026-11-27: "go same for ... stab"). The Staff of Burden (000912BE) drawn over the
+# right shoulder (holster-staff.txt's reach), held across the body before a bandit (00069AD1), tgm,
+# the head facing it: the guard holds no Block ("the weapon's guard is up - no block held") and the
+# staff's line is logged once ("Hands: the staff's line - N units long, along x y z") - the first
+# look at whether the node's y axis runs along a staff; each blow is forced for the weapon by
+# contact and judged against that line ("at the weapon by contact ... - blocked / THROUGH").
+# Not run yet (written 2026-11-27 on Windows).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/staff-block-contact.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponHold=0
+ini Hands WeaponBlockByContact=1
+ini Hands CombatReach=85
+console player.additem 000912BE 1
+console player.equipitem 000912BE
+console-at placed player.placeatme 00069AD1 1
+console-at placed tgm
+
+expect HandScript: finished
+expect Holster: reach for the two-handed weapon - drawing
+expect Hands: the weapon's guard is up - no block held
+expect Hands: the staff's line -
+expect for the weapon by contact 1
+expect at the weapon by contact (no block held, the block forced for the weapon)
+reject Hands: the left hand is up - blocking
+reject HandScript: WARNING
+
+wait 20
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark staff_drawn
+# Held across the body, up and ahead.
+right pos 0.10 -0.15 -0.40
+right rot 0 90 0
+wait 2
+mark placed
+wait 3
+head face 1
+wait 30
+mark across_done

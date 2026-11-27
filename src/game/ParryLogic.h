@@ -394,18 +394,20 @@ struct BlockForces {
 	bool weapon = false;
 	bool parry = false;
 	bool torchContact = false;  // the torch by contact (its shaft judged at the cone)
-	bool Any() const { return torch || shield || weapon || torchContact || parry; }
+	bool fistsContact = false;  // the fists by contact (their forearms judged at the cone)
+	bool Any() const { return torch || shield || weapon || torchContact || fistsContact || parry; }
 };
 
 inline BlockForces BlockForcesFor(bool targetIsPlayer, bool engineSaysBlocking, bool torchRaised, bool weaponReadied,
                                   bool shieldGuards, bool anyStopped, bool weaponGuards = false,
-                                  bool torchGuards = false) {
+                                  bool torchGuards = false, bool fistGuards = false) {
 	BlockForces f;
 	f.torch = ForceBlockForTorch(targetIsPlayer, engineSaysBlocking, torchRaised, weaponReadied);
 	f.shield = !f.torch && ForceBlockForShield(targetIsPlayer, engineSaysBlocking, shieldGuards);
 	f.weapon = !f.torch && ForceBlockForWeapon(targetIsPlayer, engineSaysBlocking, weaponGuards);
 	f.torchContact = !f.torch && ForceBlockForWeapon(targetIsPlayer, engineSaysBlocking, torchGuards);
-	f.parry = !f.torch && !f.shield && !f.weapon && !f.torchContact &&
+	f.fistsContact = !f.torch && ForceBlockForWeapon(targetIsPlayer, engineSaysBlocking, fistGuards);
+	f.parry = !f.torch && !f.shield && !f.weapon && !f.torchContact && !f.fistsContact &&
 	          ForceBlockForParry(targetIsPlayer, engineSaysBlocking, anyStopped);
 	return f;
 }
@@ -463,8 +465,35 @@ struct ContactVerdicts {
 	bool torchAsked = false;  // the torch by contact, its hand not swinging
 	BlockAngle torch = BlockAngle::Engine;
 	bool torchRaised = false;
+	// The fists by contact: their forearms' verdict (FistsVerdict), their pose up,
+	// and the attacker armed or an arrow - a hand-to-hand block then stops
+	// nothing (0x005FF890), so the fists have no say at all.
+	bool fistsAsked = false;
+	BlockAngle fists = BlockAngle::Engine;
+	bool fistsRaised = false;
+	bool fistsArmed = false;
 	KeptArrow arrow = KeptArrow::None;
 };
+
+// The fists' verdict from each forearm's (a punching arm not asked): either in
+// the way - blocked; else either judged not in the way - through; else
+// nothing judged.
+inline BlockAngle FistsVerdict(bool rightAsked, BlockAngle right, bool leftAsked, BlockAngle left) {
+	if ((rightAsked && right == BlockAngle::Blocked) || (leftAsked && left == BlockAngle::Blocked)) {
+		return BlockAngle::Blocked;
+	}
+	if ((rightAsked && right == BlockAngle::Through) || (leftAsked && left == BlockAngle::Through)) {
+		return BlockAngle::Through;
+	}
+	return BlockAngle::Engine;
+}
+
+// The torch could not be judged and is raised: the game's cone stands in, and a
+// block it gives is marked for the hand-to-hand stub as the torch's (with
+// nothing readied the engine would block none of an armed attacker's blow).
+inline bool TorchFallsBack(const ContactVerdicts& c) {
+	return c.torchAsked && c.torch == BlockAngle::Engine && c.torchRaised;
+}
 
 inline ShieldCone ContactConeFor(bool targetIsPlayer, bool forced, const ContactVerdicts& c) {
 	if (!targetIsPlayer || !forced) {
@@ -473,13 +502,15 @@ inline ShieldCone ContactConeFor(bool targetIsPlayer, bool forced, const Contact
 	const bool shieldBlocks = c.arrow == KeptArrow::Blocked || (c.shieldAsked && c.arrow == KeptArrow::None &&
 	                                                             c.shield == BlockAngle::Blocked);
 	if (shieldBlocks || (c.weaponAsked && c.weapon == BlockAngle::Blocked) ||
-	    (c.torchAsked && c.torch == BlockAngle::Blocked)) {
+	    (c.torchAsked && c.torch == BlockAngle::Blocked) ||
+	    (c.fistsAsked && !c.fistsArmed && c.fists == BlockAngle::Blocked)) {
 		return ShieldCone::Blocked;
 	}
 	const bool shieldFalls = c.shieldAsked && c.arrow == KeptArrow::None && c.shield == BlockAngle::Engine && c.shieldRaised;
 	const bool weaponFalls = c.weaponAsked && c.weapon == BlockAngle::Engine && c.weaponRaised;
-	const bool torchFalls = c.torchAsked && c.torch == BlockAngle::Engine && c.torchRaised;
-	return shieldFalls || weaponFalls || torchFalls ? ShieldCone::Original : ShieldCone::NotBlocked;
+	const bool torchFalls = TorchFallsBack(c);
+	const bool fistsFall = c.fistsAsked && !c.fistsArmed && c.fists == BlockAngle::Engine && c.fistsRaised;
+	return shieldFalls || weaponFalls || torchFalls || fistsFall ? ShieldCone::Original : ShieldCone::NotBlocked;
 }
 
 enum class ParryCone : UInt8 {

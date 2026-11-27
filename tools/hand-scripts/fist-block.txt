@@ -6,6 +6,8 @@
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\fist-block.txt
 
 ini Hands Enabled=1
+# The fists' pose rule (WeaponBlockByContact=0): this scenario measures the block the pose holds.
+ini Hands WeaponBlockByContact=0
 ini Hands Fists=1
 console player.unequipitem 00000C0C
 console player.unequipitem 00025231

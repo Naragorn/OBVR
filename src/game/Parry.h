@@ -104,6 +104,14 @@ void SetTorchContactGuard(bool guards);
 // Whether the blow being resolved had its block forced for the torch by contact.
 bool TorchForcedBlow();
 
+// Once a frame: whether the fists guard by contact (their forearms read) -
+// then the block check says yes for the player and the cone judges the
+// forearms against an unarmed attacker (ParryLogic.h, ContactConeFor).
+void SetFistContactGuard(bool guards);
+
+// Whether the blow being resolved had its block forced for the fists.
+bool FistForcedBlow();
+
 // A blow the raised torch blocks (game/BlockCone, BlockWith::Torch): with
 // neither a weapon nor a shield the hit handler's hand-to-hand branch would
 // block none of it against an armed attacker (0x005FF890); marked, the

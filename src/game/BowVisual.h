@@ -52,6 +52,12 @@ bool BowShotAxis(NiPoint3& world);
 // is drawn by hand.
 bool BowLimbAxis(NiPoint3& world);
 
+// The drawn bow's limbs as a line in the world at the last StepBowVisual,
+// tip to tip (the node's place, its y axis, 45 units scaled each way): the
+// bow's line for the block by contact (game/BlockCone). False while no bow is
+// drawn by hand.
+bool BowLimbLine(NiPoint3& a, NiPoint3& b);
+
 // The arrow in the drawing hand (not on the string) in the world at the last
 // StepBowVisual - the hand's grip, its nock and its head, on the first-person
 // skeleton (game::ArrowBladeInWorld carries them to the world) - as the fist holds it - not as it is

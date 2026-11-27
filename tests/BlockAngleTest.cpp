@@ -411,6 +411,71 @@ void TestTorch() {
 	Check(v.verdict == BlockAngle::Engine, "the shaft not read: the engine's verdict stands");
 }
 
+// The guard as judged (GuardAs): the torch's shaft and the staff's line
+// stand for the blade; a read blade keeps its own.
+void TestGuardAs() {
+	std::printf("The guard as judged\n");
+	BlockGuard g;
+	g.torchValid = true;
+	g.torchA = NiPoint3{1.0f, 0.0f, 0.0f};
+	g.torchB = NiPoint3{2.0f, 0.0f, 0.0f};
+	g.staffValid = true;
+	g.staffA = NiPoint3{0.0f, 0.0f, 90.0f};
+	g.staffB = NiPoint3{0.0f, 0.0f, 210.0f};
+	BlockGuard t = GuardAs(g, BlockWith::Torch);
+	Check(t.with == BlockWith::Torch && t.bladeValid && t.bladeB.x == 2.0f, "the torch: its shaft as the blade");
+	BlockGuard w = GuardAs(g, BlockWith::Weapon);
+	Check(w.bladeValid && w.bladeB.z == 210.0f, "a staff, no blade read: its line as the blade");
+	// A staff's line judged as a blade: a cut across it, met - blocked.
+	BlockAngleSettings s;
+	const BlockGuard staff = GuardAs([&] {
+		BlockGuard h = g;
+		h.staffA = NiPoint3{-40.0f, 0.0f, 100.0f};
+		h.staffB = NiPoint3{40.0f, 0.0f, 100.0f};
+		return h;
+	}(), BlockWith::Weapon);
+	Check(BlockAngleFor(s, staff, Blade(NiPoint3{0.0f, 5.0f, 140.0f}, NiPoint3{0.0f, 0.0f, -1.0f})).verdict ==
+	          BlockAngle::Blocked,
+	      "a staff held across, a cut down onto it: blocked by the weapon's rule");
+	g.bladeValid = true;
+	g.bladeA = NiPoint3{5.0f, 5.0f, 5.0f};
+	w = GuardAs(g, BlockWith::Weapon);
+	Check(w.bladeA.x == 5.0f, "a blade read: its own line, not the staff's");
+	g.staffValid = false;
+	g.bladeValid = false;
+	Check(!GuardAs(g, BlockWith::Weapon).bladeValid, "neither read: nothing to judge (the pose's fallback)");
+	Check(GuardAs(g, BlockWith::Shield).with == BlockWith::Shield, "the shield as it is");
+	BlockGuard bow;
+	bow.bowValid = true;
+	bow.bowA = NiPoint3{-5.0f, 10.0f, 60.0f};
+	bow.bowB = NiPoint3{5.0f, 10.0f, 150.0f};
+	const BlockGuard asBow = GuardAs(bow, BlockWith::Weapon);
+	Check(asBow.bladeValid && asBow.lineOf == BlockWith::Bow && asBow.bladeB.z == 150.0f,
+	      "a bow by contact: its limbs as the blade, named the bow");
+	Check(!GuardAs(bow, BlockWith::Bow).bladeValid, "the bow's pose guard (the rule off): left to the game, as before");
+	Check(BlockAngleFor(BlockAngleSettings{}, asBow, Blade(NiPoint3{-30.0f, 15.0f, 110.0f}, NiPoint3{1.0f, 0.0f, 0.0f})).verdict ==
+	          BlockAngle::Blocked,
+	      "a cut across the upright bow, met: blocked by the weapon's rule");
+	// A forearm as the guard: an unarmed attacker coming at the chest across
+	// the forearm held before it - blocked by the no-blade branch.
+	BlockGuard arms;
+	arms.armRValid = true;
+	arms.armRA = NiPoint3{20.0f, 10.0f, 95.0f};   // the elbow
+	arms.armRB = NiPoint3{-20.0f, 10.0f, 105.0f};  // the knuckles, across before the chest
+	arms.bodyValid = true;
+	arms.body = NiPoint3{0.0f, -15.0f, 130.0f};
+	arms.bodyLow = NiPoint3{0.0f, -15.0f, 80.0f};
+	const BlockGuard asArm = GuardAsForearm(arms, true);
+	Check(asArm.lineOf == BlockWith::Fists && asArm.bladeValid, "the right forearm as the blade, named the fists");
+	Check(BlockAngleFor(BlockAngleSettings{}, asArm, Body(NiPoint3{0.0f, 60.0f, 100.0f}, 30.0f)).verdict ==
+	          BlockAngle::Blocked,
+	      "an unarmed attacker ahead, the forearm across its way: blocked");
+	Check(BlockAngleFor(BlockAngleSettings{}, asArm, Body(NiPoint3{150.0f, 30.0f, 100.0f}, 30.0f)).verdict ==
+	          BlockAngle::Through,
+	      "one off to the side, the forearm not in its way: through");
+	Check(!GuardAsForearm(arms, false).bladeValid, "the left forearm unread: nothing to judge");
+}
+
 // The weapon by contact (WeaponGuardPose, ParryLogic.h ContactConeFor): the
 // guard is the weapon when no pose holds Block and no shield guards by
 // contact; the blade's verdict with the weapon's own numbers decides.
@@ -486,6 +551,7 @@ void TestShieldByContact() {
 int main() {
 	TestLineAngle();
 	TestShieldByContact();
+	TestGuardAs();
 	TestWeaponByContact();
 	TestGaps();
 	TestWeapon();

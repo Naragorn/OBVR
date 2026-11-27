@@ -45,12 +45,15 @@ inline HandBlockFrame HandBlockFrameOf(const HandModeFrame& f, const HandSetting
 	bf.blockByAngle = s.blockByAngle;
 	bf.shieldByContact = ShieldBlocksByContact(s.contactBlock.shield, f.shieldEquipped, f.guardReads.shieldDisc);
 	// The weapon by contact ([Hands] WeaponBlockByContact): on, and the drawn
-	// melee weapon's blade read (the angle rule's span; a staff, the fists or
-	// a blade not read keep the pose). Until then its guard pose holds Block.
-	bf.weaponByContact = s.contactBlock.weapon && f.guardReads.weaponBlade;
+	// melee weapon's blade read (the angle rule's span), or the drawn staff's line
+	// (game/StaffLine.h); the fists or a line not read keep the pose. Until then
+	// its guard pose holds Block.
+	bf.weaponByContact = s.contactBlock.weapon && (f.guardReads.weaponBlade || f.guardReads.staffLine);
 	// The torch by contact (the same switch): TorchBlocks on, a torch held and its
 	// shaft read in the world (game/TorchShaftLogic.h); until then its raise holds Block.
 	bf.torchByContact = s.contactBlock.weapon && s.torchBlocks && f.torchHeld && f.guardReads.torchShaft;
+	// The fists by contact: both forearms read with the fists readied (game/ForearmLines.h).
+	bf.fistsByContact = s.contactBlock.weapon && f.guardReads.forearms;
 	return bf;
 }
 
@@ -62,6 +65,7 @@ inline void CopyHandBlock(HandModeResult& r, const HandBlock& block) {
 	r.shieldPose = block.shield;
 	r.weaponPose = block.weapon;
 	r.torchPose = block.torch;
+	r.fistPose = block.fists;
 }
 
 // The guards the frame's block judges with (game/BlockCone, SetBlockGuard):
@@ -72,6 +76,16 @@ inline void GuardPosesInto(const HandModeResult& hand, game::BlockGuard& g) {
 	g.shieldPose = hand.shieldPose;
 	g.weaponPose = hand.weaponPose;
 	g.torchPose = hand.torchPose;
+	g.fistPose = hand.fistPose;
+}
+
+// The bow's block into the hand mode's result (vr/HandBlockLogic.h, DecideBowBlock):
+// the pose's Block, or the bow as the weapon by contact.
+inline void ApplyBowBlock(HandModeResult& r, const BowBlock& bow) {
+	r.blocking = bow.blocking;
+	r.blockWith = bow.blocking ? game::BlockWith::Bow : game::BlockWith::None;
+	r.bowGuard = bow.blocking;
+	r.weaponPose = bow.pose;
 }
 
 }  // namespace obvr::vr

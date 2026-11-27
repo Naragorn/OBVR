@@ -2967,6 +2967,96 @@ void TestShieldBlockByContact() {
 	Check(!b.blocking && !b.shield.byContact, "a menu up: nothing");
 }
 
+
+// The fists by contact (WeaponBlockByContact, both forearms read): their
+// guard pose holds no Block; both fists up stay the fallback, each arm's
+// punch its own.
+void TestFistsBlockByContact() {
+	std::printf("The fists by contact: their guard holds no Block\n");
+	const GestureThresholds t;
+	HandBlockFrame f;
+	f.leftValid = true;
+	f.rightValid = true;
+	f.rightHandValid = true;
+	f.weaponDrawn = true;
+	f.fistsUp = true;
+	f.rightRelative = NiPoint3{0.1f, 0.4f, -0.1f};
+	f.leftRelative = NiPoint3{-0.1f, 0.4f, -0.1f};
+	f.blade = NiPoint3{0.0f, 1.0f, 0.0f};
+	HandBlock b = DecideHandBlock(f, t);
+	Check(b.blocking && b.fistGuard, "the rule off: both fists up hold Block, as before");
+	f.fistsByContact = true;
+	b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.fists.byContact && b.fists.raised, "by contact: no Block held, both up kept (red before)");
+	f.rightSwinging = true;
+	b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.fists.rightSwinging && !b.fists.leftSwinging && !b.fists.raised,
+	      "the right fist punching: that arm no say, the pair not up");
+	f.rightSwinging = false;
+	f.leftRelative = NiPoint3{-0.2f, 0.3f, -0.6f};
+	b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.fists.byContact && !b.fists.raised, "one fist down: by contact, not raised");
+	f.armsRun = true;
+	Check(DecideHandBlock(f, t).fists.byContact && !DecideHandBlock(f, t).fists.raised, "the arms running: not raised");
+	f.armsRun = false;
+	f.menuMode = true;
+	Check(!DecideHandBlock(f, t).fists.byContact, "a menu up: nothing");
+	f.menuMode = false;
+	f.fistsUp = false;
+	Check(!DecideHandBlock(f, t).fists.byContact, "a weapon in hand: not the fists");
+	HandModeFrame hf;
+	HandSettings s;
+	hf.guardReads.forearms = true;
+	Check(HandBlockFrameOf(hf, s).fistsByContact, "on by default with the forearms read");
+	s.contactBlock.weapon = false;
+	Check(!HandBlockFrameOf(hf, s).fistsByContact, "WeaponBlockByContact=0: the pose");
+	s.contactBlock.weapon = true;
+	hf.guardReads.forearms = false;
+	Check(!HandBlockFrameOf(hf, s).fistsByContact, "the forearms not read: the pose");
+}
+// The bow's block (vr/HandBlockLogic.h DecideBowBlock, moved out of
+// HandMode::Update): the pose as before with the rule off; by contact no
+// Block held, the guard kept as `raised`, an arrow out as `swinging`.
+void TestBowBlockByContact() {
+	std::printf("The bow's block, by the pose and by contact\n");
+	const GestureThresholds t;
+	BowBlockFrame f;
+	f.valid = true;
+	f.bowHandRelative = NiPoint3{-0.1f, 0.3f, -0.1f};  // ahead, up
+	f.limbRead = true;
+	f.limbUpright = 0.95f;
+	BowBlock b = DecideBowBlock(f, t);
+	Check(b.blocking && !b.pose.byContact, "the rule off: the upright bow holds Block, as before");
+	f.arrowOut = true;
+	Check(!DecideBowBlock(f, t).blocking, "an arrow out: no guard, as before");
+	f.arrowOut = false;
+	f.limbUpright = 0.3f;
+	Check(!DecideBowBlock(f, t).blocking, "the bow flat: no guard");
+	f.limbUpright = 0.95f;
+	f.armsRun = true;
+	Check(!DecideBowBlock(f, t).blocking, "the arms running: none");
+	f.armsRun = false;
+	f.menuMode = true;
+	Check(!DecideBowBlock(f, t).blocking, "a menu up: none");
+	f.menuMode = false;
+	f.valid = false;
+	Check(!DecideBowBlock(f, t).blocking, "the controller or the limb unread: none");
+	f.valid = true;
+	f.byContact = true;
+	b = DecideBowBlock(f, t);
+	Check(!b.blocking && b.pose.byContact && b.pose.raised && !b.pose.swinging,
+	      "by contact: no Block held, the guard raised (before: the bow's Block)");
+	f.arrowOut = true;
+	b = DecideBowBlock(f, t);
+	Check(!b.blocking && b.pose.swinging && !b.pose.raised, "by contact, an arrow out: no say");
+	f.arrowOut = false;
+	f.limbUpright = 0.3f;
+	b = DecideBowBlock(f, t);
+	Check(!b.blocking && b.pose.byContact && !b.pose.raised, "by contact, the bow flat: by contact, not raised");
+	f.menuMode = true;
+	Check(!DecideBowBlock(f, t).pose.byContact, "a menu up: nothing");
+}
+
 // The torch by contact (WeaponBlockByContact covers every guard but the
 // shield; Nadi, 2026-11-27: "go same for fackel"): the raised torch with its
 // shaft read presses no Block; its raise is kept as `raised`, the left
@@ -3101,7 +3191,11 @@ void TestWeaponBlockByContact() {
 	Check(!HandBlockFrameOf(hf, s).weaponByContact, "WeaponBlockByContact=0: the pose");
 	s.contactBlock.weapon = true;
 	hf.guardReads.weaponBlade = false;
-	Check(!HandBlockFrameOf(hf, s).weaponByContact, "the blade not read (a staff, nothing drawn): the pose");
+	Check(!HandBlockFrameOf(hf, s).weaponByContact, "no blade and no staff line read (nothing drawn): the pose");
+	hf.guardReads.staffLine = true;
+	Check(HandBlockFrameOf(hf, s).weaponByContact, "a staff drawn, its line read: by contact (184a4de: the pose)");
+	s.contactBlock.weapon = false;
+	Check(!HandBlockFrameOf(hf, s).weaponByContact, "a staff, WeaponBlockByContact=0: the pose");
 }
 
 // The block's frame from the hand mode's (vr/HandBlockFrame.h): the shield
@@ -5196,6 +5290,8 @@ int main() {
 	TestHandBlockFrameOf();
 	TestWeaponBlockByContact();
 	TestTorchBlockByContact();
+	TestBowBlockByContact();
+	TestFistsBlockByContact();
 	TestArmSwingPumps();
 	TestLeftButtonsInHandMode();
 	TestQuickSaveChordInHandMode();

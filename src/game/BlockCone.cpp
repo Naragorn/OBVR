@@ -8,9 +8,12 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/BladeBodies.h"
+#include "game/BowVisual.h"
+#include "game/ForearmLines.h"
 #include "game/GameAddresses.h"
 #include "game/ArrowShield.h"
 #include "game/Parry.h"
+#include "game/StaffLine.h"
 #include "game/PlayerAim.h"
 
 namespace obvr::game {
@@ -39,15 +42,7 @@ const char* BlockWithName(BlockWith with) {
 // guard as the frame left it, judged as `with`; logged. `byContact`: the shield's and the weapon's own test
 // under its forced block (ParryLogic.h, ShieldConeFor) - asked whether or
 // not BlockByAngle is on, since nothing else decides that blow.
-BlockAngleVerdict JudgeBlow(void* attacker, bool byContact, BlockWith with) {
-	BlockGuard guard = g_guard;
-	guard.with = with;
-	// The torch: its shaft in the world this frame stands for the blade.
-	if (with == BlockWith::Torch) {
-		guard.bladeValid = guard.torchValid;
-		guard.bladeA = guard.torchA;
-		guard.bladeB = guard.torchB;
-	}
+BlockAngleVerdict JudgeGuard(void* attacker, bool byContact, const BlockGuard& guard) {
 	BlockAngleSettings settings = g_angle;
 	settings.enabled = settings.enabled || byContact;
 	BlockBlow blow;
@@ -79,10 +74,13 @@ BlockAngleVerdict JudgeBlow(void* attacker, bool byContact, BlockWith with) {
 			              static_cast<double>(v.interposeUnits), static_cast<double>(g_angle.interposeUnits));
 		}
 		OBVR_LOG("Block angle: a blow from %08X at the %s%s - %s%s, %.0f degrees (%s %.0f), %.0f units off (%s)%s - %s",
-		         reinterpret_cast<UInt32>(attacker), BlockWithName(guard.with),
+		         reinterpret_cast<UInt32>(attacker),
+		         BlockWithName(guard.lineOf != BlockWith::None ? guard.lineOf : guard.with),
 		         !byContact                        ? ""
 		         : guard.with == BlockWith::Shield ? " by contact (no block held, the block forced for the shield)"
 		         : guard.with == BlockWith::Torch  ? " by contact (no block held, the block forced for the torch)"
+		         : guard.lineOf == BlockWith::Bow  ? " by contact (no block held, the block forced for the bow)"
+		         : guard.lineOf == BlockWith::Fists ? " by contact (no block held, the block forced for the fists)"
 		                                           : " by contact (no block held, the block forced for the weapon)",
 		         v.why,
 		         placed ? (blow.bladeValid ? ", their blade read" : ", no blade on them") : ", not an actor",
@@ -102,6 +100,12 @@ BlockAngleVerdict JudgeBlow(void* attacker, bool byContact, BlockWith with) {
 	return v;
 }
 
+// The same with the guard as judged with `with`: the torch's shaft, the
+// staff's or the bow's line stand for the blade (GuardAs).
+BlockAngleVerdict JudgeBlow(void* attacker, bool byContact, BlockWith with) {
+	return JudgeGuard(attacker, byContact, GuardAs(g_guard, with));
+}
+
 // The angle rule's say on a blow the engine would block. True keeps the block.
 bool AngleKeepsBlock(void* attacker) {
 	if (!g_angle.enabled || g_guard.with == BlockWith::None) {
@@ -110,17 +114,54 @@ bool AngleKeepsBlock(void* attacker) {
 	return JudgeBlow(attacker, false, g_guard.with).verdict != BlockAngle::Through;
 }
 
+// The fists by contact at a blow: an armed attacker or an arrow - a fist's
+// guard stops no blade (the engine's hand-to-hand block takes nothing then,
+// 0x005FF890), so no say and no "blocked"; an unarmed one - each forearm not
+// punching judged by the weapon's rule (its no-blade branch), either in the
+// way enough (game/ForearmLines.h, GuardAsForearm, ParryLogic.h FistsVerdict).
+void JudgeFists(void* attacker, bool forced, ContactVerdicts& c) {
+	static UInt32 s_armedLines = 8;
+	c.fistsAsked = forced && g_guard.fistPose.byContact;
+	c.fistsRaised = g_guard.fistPose.raised;
+	if (!c.fistsAsked) {
+		return;
+	}
+	BlockBlow blow;
+	const UInt32 who = reinterpret_cast<UInt32>(attacker);
+	const bool placed = ReadBlockBlow(who, blow);
+	c.fistsArmed = !placed || blow.bladeValid || AttackerArmedOrUnplaced(who);
+	if (c.fistsArmed) {
+		if (s_armedLines > 0) {
+			--s_armedLines;
+			OBVR_LOG("Block angle: a blow from %08X at the fists by contact - %s: a fist's guard does not stop a blade, "
+			         "it lands as the game has it",
+			         who, placed ? "they are armed" : "an arrow or not an actor");
+		}
+		return;
+	}
+	const FistGuardPose& p = g_guard.fistPose;
+	const bool right = !p.rightSwinging && g_guard.armRValid;
+	const bool left = !p.leftSwinging && g_guard.armLValid;
+	const BlockAngle r = right ? JudgeGuard(attacker, true, GuardAsForearm(g_guard, true)).verdict : BlockAngle::Engine;
+	const BlockAngle l = left && r != BlockAngle::Blocked
+	                         ? JudgeGuard(attacker, true, GuardAsForearm(g_guard, false)).verdict
+	                         : BlockAngle::Engine;
+	c.fists = FistsVerdict(right, r, left, l);
+}
+
 // A blow under a block forced by contact (game/Parry.h, ShieldForcedBlow,
 // WeaponForcedBlow, TorchForcedBlow): the shield's verdict, then the
 // weapon's and the torch's (not while their hand swings), decide
 // (ParryLogic.h, ContactConeFor); Original leaves it to the game's cone
 // below. An arrow judged at its impact (game/ArrowShield.h) takes that
 // verdict for the shield, the one its impact showed.
-ShieldCone ContactConeAt(void* attacker) {
+ShieldCone ContactConeAt(void* attacker, bool& torchFalls) {
+	torchFalls = false;
 	const bool shieldForced = ShieldForcedBlow();
 	const bool weaponForced = WeaponForcedBlow();
 	const bool torchForced = TorchForcedBlow();
-	if (!shieldForced && !weaponForced && !torchForced) {
+	const bool fistsForced = FistForcedBlow();
+	if (!shieldForced && !weaponForced && !torchForced && !fistsForced) {
 		return ShieldCone::Original;
 	}
 	ContactVerdicts c;
@@ -146,6 +187,8 @@ ShieldCone ContactConeAt(void* attacker) {
 			NoteTorchBlock();
 		}
 	}
+	JudgeFists(attacker, fistsForced, c);
+	torchFalls = TorchFallsBack(c);
 	return ContactConeFor(true, true, c);
 }
 
@@ -154,8 +197,8 @@ using ConeFn = bool(__cdecl*)(void* target, void* attacker, float* angleOut);
 // The raised torch blocked the player's blow: the hit handler takes the
 // engine's block share for it (game/Parry.h NoteTorchBlock).
 UInt32 g_torchBlockLines = 12;
-void NoteIfTorch(bool blocked, void* attacker) {
-	if (!blocked || g_guard.with != BlockWith::Torch) {
+void NoteIfTorch(bool blocked, void* attacker, bool torchFalls = false) {
+	if (!blocked || (g_guard.with != BlockWith::Torch && !torchFalls)) {
 		return;
 	}
 	NoteTorchBlock();
@@ -184,7 +227,8 @@ bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
 	const bool isPlayer = Player() != 0 && reinterpret_cast<UInt32>(target) == Player();
 	// The shield by contact: in the blow's way, blocked whichever way the
 	// player looks; not, it lands (game/Parry.h, ShieldForcedBlow).
-	const ShieldCone shield = isPlayer ? ContactConeAt(attacker) : ShieldCone::Original;
+	bool torchFalls = false;  // the torch by contact unjudged, raised: the game's cone stands in
+	const ShieldCone shield = isPlayer ? ContactConeAt(attacker, torchFalls) : ShieldCone::Original;
 	if (shield != ShieldCone::Original) {
 		if (shield == ShieldCone::Blocked && angleOut != nullptr) {
 			*angleOut = 0.0f;
@@ -195,7 +239,7 @@ bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
 		const bool verdict = original(target, attacker, angleOut);
 		const bool blocked = verdict && (!isPlayer || AngleKeepsBlock(attacker));
 		if (isPlayer) {
-			NoteIfTorch(blocked, attacker);
+			NoteIfTorch(blocked, attacker, torchFalls);
 		}
 		return blocked;
 	}
@@ -220,7 +264,7 @@ bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
 		         static_cast<double>(bodyAngle), bodyVerdict ? "would have blocked" : "would have missed");
 	}
 	const bool blocked = verdict && AngleKeepsBlock(attacker);
-	NoteIfTorch(blocked, attacker);
+	NoteIfTorch(blocked, attacker, torchFalls);
 	return blocked;
 }
 
@@ -258,10 +302,20 @@ void SetBlockCone(bool enabled, bool haveGaze, float headYaw) {
 
 void SetBlockGuard(const BlockGuard& guard, const BlockAngleSettings& settings) {
 	g_guard = guard;
+	g_guard.staffValid = ReadStaffLine(g_guard.staffA, g_guard.staffB);  // a staff drawn (game/StaffLine.h)
+	g_guard.bowValid = BowLimbLine(g_guard.bowA, g_guard.bowB);  // a bow drawn by hand (game/BowVisual.h)
+	const ForearmLines arms = ReadForearmLines();  // the fists readied (game/ForearmLines.h)
+	g_guard.armRValid = arms.rightValid;
+	g_guard.armRA = arms.rightA;
+	g_guard.armRB = arms.rightB;
+	g_guard.armLValid = arms.leftValid;
+	g_guard.armLA = arms.leftA;
+	g_guard.armLB = arms.leftB;
 	g_angle = settings;
 	SetShieldGuard(guard.shieldPose.byContact);
 	SetWeaponGuard(guard.weaponPose.byContact && !guard.weaponPose.swinging);
 	SetTorchContactGuard(guard.torchPose.byContact && !guard.torchPose.swinging);
+	SetFistContactGuard(guard.fistPose.byContact);
 	SetArrowShieldGuard(guard);
 }
 

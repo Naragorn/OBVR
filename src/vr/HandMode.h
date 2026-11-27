@@ -1197,7 +1197,7 @@ struct HandModeResult : MenuPlaceResult {  // the wrists and the tablet: TabletL
 	game::ShieldGuardPose shieldPose;  // the shield by contact, its hand raised (vr/HandBlockLogic.h)
 	game::WeaponGuardPose weaponPose;  // the weapon by contact, its guard raised (vr/HandBlockLogic.h)
 	game::WeaponGuardPose torchPose;   // the torch by contact, raised (vr/HandBlockLogic.h)
-
+	game::FistGuardPose fistPose;      // the fists by contact, both up (vr/HandBlockLogic.h)
 	// For the log, and for the block's angle rule: what the block is.
 	bool blocking = false;
 	game::BlockWith blockWith = game::BlockWith::None;
