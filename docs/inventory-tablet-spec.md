@@ -2224,3 +2224,67 @@ back one step. closing moves forward."
 - Evidence for the fix, when it is found: the harness can show it (tablet-walk.txt or a
   new scenario reading the player's position and the eyes at the open and the close; a
   film from the side).
+
+## 29. The evening run of 2026-11-27 (log of 23:34): read, nothing built
+
+The same run as section 28's note (the DLL of 23:04, main 4f1124f plus the swimming and
+books branches). Decided that evening: note everything, build nothing for now.
+
+### 29.1 The open gesture: 12 tries, none began
+
+"Tablet: both grips closed with the hands together, the scroll not begun - ..." [R]:
+
+| Log line | Refused for |
+|---|---|
+| 1937 | the controllers 0.34 m apart (at most 0.20) |
+| 9982 | the controllers 0.33 m apart |
+| 10041 | a hand holds something (a weapon out, a torch, a thing held, a two-hand grip) |
+| 10934 | the controllers 0.40 m apart |
+| 11074 | the controllers 0.34 m apart |
+| 16813, 16821, 16827 | a hand holds something |
+| 19958 | the controllers 0.24 m apart |
+| 28081, 28116, 28139 | the hands' middle 0.14, 0.14, 0.13 m past the inventory ring (its reach and 0.10) |
+
+No "unrolling" line in the run. So section 27's gates, made from the midday run's five
+tries (the controllers 2 to 9 cm apart there), do not fit what Nadi did in the evening:
+his controllers were 24 to 40 cm apart when the grips closed.
+
+- **Not known, to read first:** what he did in each try - the Holster lines at the same
+  grip presses give each hand's place from the head; which grip closed first and how far
+  apart in time; where the inventory ring stood against his hands' middle; and what the
+  hand held in the four "holds something" tries. His `[Hands] GripToggle=1` and the
+  toggle's new hold for pulls (game/PullHold.h, built the same day) may make an empty
+  hand read as holding [G: not checked].
+- **Not to do:** widen the numbers until it fires. If hands together at the ring, pulled
+  apart, is not the gesture he makes, the gesture is to be changed to the one he makes,
+  and the accident cases (a hand at the hip, the potion belt, a grab) tested against it.
+- **Cost:** small once the 12 tries are read. Model and effort: Opus 5.5 medium.
+
+### 29.2 The figure: the reads move, the tablet holds them
+
+"Tablet: the figure's rectangle as read over 90 frames - it moved in N frame(s), by at
+most P layer pixels (held steady on the tablet)" - 40 lines (the cap) [R]: 34 of them with
+P of 1 or 2 pixels in 1 to 6 frames of 90, four with 51 to 83 pixels (the figure turned or
+its gear changed); never "not read". That is 26.1's cause seen: the breathing figure's
+rectangle moves by a pixel or two at the reads, up to six times in 90 frames. Whether the
+flicker is gone for the eye is Nadi's to say - not said yet.
+
+### 29.3 The close, the touch
+
+- "Menu pause: the tablet's menus fade out - the world runs on through the fade": 33
+  times; each close's fade still 22 frames, the world no longer held through it [R].
+  Nadi's new report for the open and the close is section 28 (the view steps back and
+  forward) - whether the two are related is not looked into.
+- 23 taps, on the glass 0.157 s on average (0.169 s at midday). The time on the glass is
+  not the click's delay: the click goes out at the finger's turn since 26.2. No word from
+  Nadi on the feel yet.
+
+### 29.4 Books and letters, swimming
+
+- "Tablet: a letter (the book menu's scroll look) read alone, held in the hand": 3 times
+  [R] - a letter or note was read on the tablet. No line for a book with pages.
+- "Swim: the player swims - the arms' strokes are on", 5 x "a hand holds the water" and
+  5 x "the water let go", "out of the water" (docs/swimming-spec.md) [R]: the strokes ran.
+  How far each carried him and whether diving by a stroke works is not read from the log
+  yet.
+- Both branches (books-1127-win, swim-1127-win) are in the test DLL only, not on main.
