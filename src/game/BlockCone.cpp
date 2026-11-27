@@ -116,7 +116,8 @@ bool AngleKeepsBlock(void* attacker) {
 // (ParryLogic.h, ContactConeFor); Original leaves it to the game's cone
 // below. An arrow judged at its impact (game/ArrowShield.h) takes that
 // verdict for the shield, the one its impact showed.
-ShieldCone ContactConeAt(void* attacker) {
+ShieldCone ContactConeAt(void* attacker, bool& torchFalls) {
+	torchFalls = false;
 	const bool shieldForced = ShieldForcedBlow();
 	const bool weaponForced = WeaponForcedBlow();
 	const bool torchForced = TorchForcedBlow();
@@ -146,6 +147,7 @@ ShieldCone ContactConeAt(void* attacker) {
 			NoteTorchBlock();
 		}
 	}
+	torchFalls = TorchFallsBack(c);
 	return ContactConeFor(true, true, c);
 }
 
@@ -154,8 +156,8 @@ using ConeFn = bool(__cdecl*)(void* target, void* attacker, float* angleOut);
 // The raised torch blocked the player's blow: the hit handler takes the
 // engine's block share for it (game/Parry.h NoteTorchBlock).
 UInt32 g_torchBlockLines = 12;
-void NoteIfTorch(bool blocked, void* attacker) {
-	if (!blocked || g_guard.with != BlockWith::Torch) {
+void NoteIfTorch(bool blocked, void* attacker, bool torchFalls = false) {
+	if (!blocked || (g_guard.with != BlockWith::Torch && !torchFalls)) {
 		return;
 	}
 	NoteTorchBlock();
@@ -184,7 +186,8 @@ bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
 	const bool isPlayer = Player() != 0 && reinterpret_cast<UInt32>(target) == Player();
 	// The shield by contact: in the blow's way, blocked whichever way the
 	// player looks; not, it lands (game/Parry.h, ShieldForcedBlow).
-	const ShieldCone shield = isPlayer ? ContactConeAt(attacker) : ShieldCone::Original;
+	bool torchFalls = false;  // the torch by contact unjudged, raised: the game's cone stands in
+	const ShieldCone shield = isPlayer ? ContactConeAt(attacker, torchFalls) : ShieldCone::Original;
 	if (shield != ShieldCone::Original) {
 		if (shield == ShieldCone::Blocked && angleOut != nullptr) {
 			*angleOut = 0.0f;
@@ -195,7 +198,7 @@ bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
 		const bool verdict = original(target, attacker, angleOut);
 		const bool blocked = verdict && (!isPlayer || AngleKeepsBlock(attacker));
 		if (isPlayer) {
-			NoteIfTorch(blocked, attacker);
+			NoteIfTorch(blocked, attacker, torchFalls);
 		}
 		return blocked;
 	}
@@ -220,7 +223,7 @@ bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
 		         static_cast<double>(bodyAngle), bodyVerdict ? "would have blocked" : "would have missed");
 	}
 	const bool blocked = verdict && AngleKeepsBlock(attacker);
-	NoteIfTorch(blocked, attacker);
+	NoteIfTorch(blocked, attacker, torchFalls);
 	return blocked;
 }
 

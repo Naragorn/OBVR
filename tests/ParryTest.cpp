@@ -281,8 +281,10 @@ void TestTorchByContact() {
 	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "the shaft not in the way, raised: it lands");
 	c.torch = BlockAngle::Engine;
 	Check(ContactConeFor(true, true, c) == ShieldCone::Original, "the shaft unread, raised: the game's cone");
+	Check(TorchFallsBack(c), "and the stub is marked for it if that cone blocks (an armed attacker, nothing readied)");
 	c.torchRaised = false;
 	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "the shaft unread, low: it lands");
+	Check(!TorchFallsBack(c), "low: no stand-in, nothing marked");
 	c.torchAsked = false;  // the torch hand swinging
 	c.torchRaised = true;
 	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "the torch swinging: no say");

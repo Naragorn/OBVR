@@ -2920,8 +2920,8 @@ Without the shield everything worked again."
     the hand-to-hand stub (NoteTorchBlock) as before, so with nothing readied the engine's share
     by the Block skill is taken; with a weapon readied the engine reckons the weapon (or a worn
     shield) as the item [R, the slots asked at 0x005FF7F5..]. Unread shaft this frame: the game's
-    cone while raised - but that fallback does not mark the stub, so with nothing readied an armed
-    attacker's blow is then not blocked [D, a known gap]. Torch with a drawn weapon: both asked,
+    cone while raised, and since the next commit that cone's block is marked for the stub too
+    (BlockCone NoteIfTorch with `TorchFallsBack`). Torch with a drawn weapon: both asked,
     either in the way blocks; torch with nothing readied: the torch alone.
   - **The staff - not built.** Its line is not read: `MeleeInHand` takes types 0-3 only
     (`WeaponIsSwung`), and the blade span is read in CameraHook's StepWeaponContact under that same

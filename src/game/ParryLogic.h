@@ -466,6 +466,13 @@ struct ContactVerdicts {
 	KeptArrow arrow = KeptArrow::None;
 };
 
+// The torch could not be judged and is raised: the game's cone stands in, and a
+// block it gives is marked for the hand-to-hand stub as the torch's (with
+// nothing readied the engine would block none of an armed attacker's blow).
+inline bool TorchFallsBack(const ContactVerdicts& c) {
+	return c.torchAsked && c.torch == BlockAngle::Engine && c.torchRaised;
+}
+
 inline ShieldCone ContactConeFor(bool targetIsPlayer, bool forced, const ContactVerdicts& c) {
 	if (!targetIsPlayer || !forced) {
 		return ShieldCone::Original;
@@ -478,7 +485,7 @@ inline ShieldCone ContactConeFor(bool targetIsPlayer, bool forced, const Contact
 	}
 	const bool shieldFalls = c.shieldAsked && c.arrow == KeptArrow::None && c.shield == BlockAngle::Engine && c.shieldRaised;
 	const bool weaponFalls = c.weaponAsked && c.weapon == BlockAngle::Engine && c.weaponRaised;
-	const bool torchFalls = c.torchAsked && c.torch == BlockAngle::Engine && c.torchRaised;
+	const bool torchFalls = TorchFallsBack(c);
 	return shieldFalls || weaponFalls || torchFalls ? ShieldCone::Original : ShieldCone::NotBlocked;
 }
 
