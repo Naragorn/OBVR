@@ -305,11 +305,27 @@ inline constexpr SettingDefinition kCombatRows[] = {
 	},
 	{
 		"Combat: tuning", "Block reach",
-		"How close a blow must pass your blade or shield to be blocked. 0 ignores it",
+		"How close a blow must pass your blade to be blocked. 0 ignores it",
 		ItemKind::Number, 0.0f, 150.0f, 5.0f, 0, false,
 		"Hands", "BlockReachUnits",
 		+[](const Config& c) { return c.hands.blockReachUnits; },
 		+[](Config& c, float v) { c.hands.blockReachUnits = v; },
+	},
+	{
+		"Combat: tuning", "Shield reach",
+		"How close a blow must pass your shield to be blocked. 0 ignores it",
+		ItemKind::Number, 0.0f, 80.0f, 5.0f, 0, false,
+		"Hands", "BlockShieldReachUnits",
+		+[](const Config& c) { return c.hands.shieldContact.reachUnits; },
+		+[](Config& c, float v) { c.hands.shieldContact.reachUnits = v; },
+	},
+	{
+		"Combat: tuning", "Shield cover",
+		"How far past your shield's edge a blow at you still counts as covered. Higher is more forgiving",
+		ItemKind::Number, 0.0f, 30.0f, 1.0f, 0, false,
+		"Hands", "BlockShieldInterposeUnits",
+		+[](const Config& c) { return c.hands.shieldContact.interposeUnits; },
+		+[](Config& c, float v) { c.hands.shieldContact.interposeUnits = v; },
 	},
 	{
 		"Combat: tuning", "Fist tightness", "How far your fingers must curl to make a fist. 1 is all the way",

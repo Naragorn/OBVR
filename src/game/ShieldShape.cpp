@@ -25,11 +25,15 @@ struct ExtentWalk {
 	NiPoint3 centre;
 	NiPoint3 axes[3];
 	DiscExtent extent;
+	OutlineBins outline;  // the silhouette in the disc's plane (ShieldOutlineLogic.h)
 };
 
 void TakeIntoExtent(void* context, const NiPoint3& world) {
 	ExtentWalk& w = *static_cast<ExtentWalk*>(context);
-	w.extent.Add(ToBodyFrame(w.rot, w.pos, world), w.centre, w.axes);
+	const NiPoint3 p = ToBodyFrame(w.rot, w.pos, world);
+	w.extent.Add(p, w.centre, w.axes);
+	const NiPoint3 d = p - w.centre;
+	w.outline.Add(DotOf3(d, w.axes[0]), DotOf3(d, w.axes[1]));
 }
 
 struct ShaftWalk {
@@ -70,6 +74,9 @@ bool ReadShieldDisc(const NiAVObject* node, const NiMatrix33& handRot, const NiP
 				reason = "the model changed between the two readings";
 			} else if (!ShieldDiscFrom(second.centre, second.axes, second.extent, out)) {
 				reason = "what was read is no shield's disc (its size or its thickness)";
+			} else {
+				const DiscExtent& e = second.extent;
+				out.outline = OutlineFromBins(second.outline, e.low[0], e.high[0], (e.low[1] + e.high[1]) * 0.5f);
 			}
 		}
 	}

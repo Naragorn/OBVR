@@ -121,7 +121,9 @@ Combat: tuning|Power swing length|How long a swing must be to land as a power at
 Combat: tuning|Power thrust length|How far a thrust must go to land as a power attack|Hands|PowerThrustMetres|||1|0.2|1|0.05|2|0|1|0.6|0.6|0|0|RW
 Combat: tuning|Blade block leeway|How cleanly blades must cross to block. Higher is more forgiving|Hands|BlockBladeDegrees|||1|5|90|5|0|0|1|30|30|0|0|RW
 Combat: tuning|Shield block leeway|How far your shield can face away and still block. Higher is more forgiving|Hands|BlockShieldDegrees|||1|10|90|5|0|0|1|70|70|0|0|RW
-Combat: tuning|Block reach|How close a blow must pass your blade or shield to be blocked. 0 ignores it|Hands|BlockReachUnits|||1|0|150|5|0|0|1|40|40|0|0|RW
+Combat: tuning|Block reach|How close a blow must pass your blade to be blocked. 0 ignores it|Hands|BlockReachUnits|||1|0|150|5|0|0|1|40|40|0|0|RW
+Combat: tuning|Shield reach|How close a blow must pass your shield to be blocked. 0 ignores it|Hands|BlockShieldReachUnits|||1|0|80|5|0|0|1|25|25|0|0|RW
+Combat: tuning|Shield cover|How far past your shield's edge a blow at you still counts as covered. Higher is more forgiving|Hands|BlockShieldInterposeUnits|||1|0|30|1|0|0|1|6|6|0|0|RW
 Combat: tuning|Fist tightness|How far your fingers must curl to make a fist. 1 is all the way|Hands|FistCloseCurl|||1|0.4|0.95|0.05|2|0|1|0.9|0.9|0|0|RW
 Combat: tuning|Fist by squeeze|Squeeze the grip this hard to make a fist, for controllers without fingers. 0 is off|Hands|FistGripForce|||1|0|1|0.1|1|0|1|0.6|0.6|0|0|RW
 Combat: tuning|Stagger speed|How hard any blow must land to stagger someone|Hands|StaggerSpeed|||1|0.5|10|0.1|1|0|1|3|3|0|0|RW

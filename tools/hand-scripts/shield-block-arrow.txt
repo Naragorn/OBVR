@@ -17,6 +17,10 @@
 # whether the contact point is on the shield or on the player's capsule behind
 # it (the segment fallback, "(by its flight)"), and whether the hit handler's
 # cone is asked with the arrow (the kept verdict taken) or the shooter.
+# The shield's own outline (game/ShieldOutlineLogic.h): the read line says
+# "outline R rows of 24, widest W, narrowest w" (the Arena shield's shape -
+# " - not taken, arrows by the circle" when under a quarter of the rows were
+# read); each arrow's line "inside / outside the outline by U units".
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/shield-block-arrow.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
 
 ini Hands Enabled=1
@@ -30,6 +34,8 @@ console-at ready tgm
 expect HandScript: finished
 expect Block: the arrow impact's block check (0060AD01) goes through a stub
 expect Contact: the shield's shape -
+expect rows of 24, widest
+expect the outline by
 expect Block angle: an arrow
 expect - blocked, the shield's impact
 expect - THROUGH, the body's impact

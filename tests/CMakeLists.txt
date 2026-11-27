@@ -3223,3 +3223,22 @@ if(NOT MSVC)
 	target_compile_options(swim_stroke_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME swim_stroke COMMAND swim_stroke_test)
+add_executable(shield_outline_test ShieldOutlineTest.cpp)
+
+target_include_directories(shield_outline_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(shield_outline_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME shield_outline COMMAND shield_outline_test)
+
+add_executable(shield_plate_test ShieldPlateTest.cpp)
+
+target_include_directories(shield_plate_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(shield_plate_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME shield_plate COMMAND shield_plate_test)

@@ -35,6 +35,7 @@
 #include "core/Types.h"
 #include "game/BladeContactLogic.h"
 #include "game/NiMath.h"
+#include "game/ShieldOutlineLogic.h"
 
 namespace obvr::game {
 
@@ -47,8 +48,10 @@ enum class ArrowAtShield : UInt32 {
 };
 
 // The margins (guessed until the headset; the log prints the distances):
-// - in the disc's plane, past its rim: an arrow's head and fletching are a
-//   few units across, and the disc is the longer spoke's circle already;
+// - in the disc's plane, past its rim - only for the circle, when the
+//   shield's outline was not read (ShieldOutlineLogic.h; with it the arrow's
+//   half width is the margin, kArrowHalfWidthUnits): an arrow's head and
+//   fletching are a few units across, and the circle is the longer spoke's;
 // - along its normal, past its half thickness: the contact point is where
 //   the arrow's body met the target's collision, which may lie a step
 //   behind the shield (the step is not read - guessed);
@@ -59,6 +62,10 @@ inline constexpr float kArrowDiscFaceMarginUnits = 10.0f;
 inline constexpr float kArrowSegmentMarginUnits = 3.0f;
 // A segment shorter than this is no direction.
 inline constexpr float kArrowSegmentMinUnits = 1.0f;
+// With the outline read, the arrow's half width is the only margin in the
+// shield's plane (guessed: an arrow's shaft and head about 3 units across;
+// its bound was not read).
+inline constexpr float kArrowHalfWidthUnits = 1.5f;
 
 struct ArrowShieldInput {
 	bool targetIsPlayer = false;
@@ -70,6 +77,11 @@ struct ArrowShieldInput {
 	NiPoint3 point{0.0f, 0.0f, 0.0f};  // the contact point (game units)
 	bool fromValid = false;
 	NiPoint3 from{0.0f, 0.0f, 0.0f};   // the projectile's position at the callback: its last
+	// The shield's outline (ShieldOutlineLogic.h) and the disc's in-plane
+	// axes it is laid along, world; no outline: the circle of disc.radius.
+	const ShieldOutline* outline = nullptr;
+	NiPoint3 axisA{1.0f, 0.0f, 0.0f};
+	NiPoint3 axisB{0.0f, 1.0f, 0.0f};
 };
 
 struct ArrowShieldVerdict {
@@ -78,10 +90,66 @@ struct ArrowShieldVerdict {
 	float radialUnits = -1.0f;  // the point off the disc's middle, in its plane; -1 not read
 	float alongUnits = -1.0f;   // the point off its plane; -1 not read
 	bool bySegment = false;     // decided by the segment, not the point
+	bool byOutline = false;     // the outline decided, not the circle
+	float outlineUnits = 0.0f;  // outside the outline by this much (negative: inside)
 };
 
 inline bool FinitePoint(const NiPoint3& p) {
 	return std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z);
+}
+
+// A point's place against the outline: its reach along the disc's two
+// in-plane axes from the disc's middle (the axes of any length).
+inline float OutlineDistanceAt(const ArrowShieldInput& in, const NiPoint3& centre, const NiPoint3& p) {
+	const NiPoint3 off = p - centre;
+	const float la = std::sqrt(in.axisA.LengthSquared());
+	const float lb = std::sqrt(in.axisB.LengthSquared());
+	if (!(la > 0.0f) || !(lb > 0.0f)) {
+		return 1e9f;
+	}
+	return OutlineDistance(*in.outline, DotOf3(off, in.axisA) / la, DotOf3(off, in.axisB) / lb);
+}
+
+// The verdict by the shield's outline, `d` the disc with a unit normal and
+// `v` holding the point's distances: the point within the outline by the
+// arrow's half width (kArrowHalfWidthUnits) and within the face's margin
+// along the normal (kArrowDiscFaceMarginUnits, which is about where the
+// engine puts the contact point, not about the shield) - blocked; else
+// where the flight from its last position to the point crosses the disc's
+// plane, by the same half width; else through.
+inline ArrowShieldVerdict ArrowByOutline(const ArrowShieldInput& in, const BladeDisc& d, ArrowShieldVerdict v) {
+	v.byOutline = true;
+	v.outlineUnits = OutlineDistanceAt(in, d.centre, in.point);
+	if (v.outlineUnits <= kArrowHalfWidthUnits && v.alongUnits <= d.halfThick + kArrowDiscFaceMarginUnits) {
+		v.answer = ArrowAtShield::Blocked;
+		v.why = "its point on the shield";
+		return v;
+	}
+	v.answer = ArrowAtShield::Through;
+	v.why = "its point off the shield";
+	if (!in.fromValid || !FinitePoint(in.from) ||
+	    (in.point - in.from).LengthSquared() < kArrowSegmentMinUnits * kArrowSegmentMinUnits) {
+		return v;
+	}
+	v.bySegment = true;
+	const float sa = DotOf3(in.from - d.centre, d.normal);
+	const float sb = DotOf3(in.point - d.centre, d.normal);
+	const float slab = d.halfThick > 0.0f ? d.halfThick : 0.0f;
+	const bool crosses = (sa > 0.0f) != (sb > 0.0f) || (sa <= slab && sa >= -slab) || (sb <= slab && sb >= -slab);
+	if (!crosses) {
+		v.why = "its point off the shield, its flight short of its plane";
+		return v;
+	}
+	const float t = sa != sb ? sa / (sa - sb) : 0.0f;
+	const float clamped = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+	v.outlineUnits = OutlineDistanceAt(in, d.centre, in.from + (in.point - in.from) * clamped);
+	if (v.outlineUnits <= kArrowHalfWidthUnits) {
+		v.answer = ArrowAtShield::Blocked;
+		v.why = "its flight crossed the shield";
+		return v;
+	}
+	v.why = "its flight crossed the plane off the shield";
+	return v;
 }
 
 inline ArrowShieldVerdict ArrowAtShieldFor(const ArrowShieldInput& in) {
@@ -106,6 +174,10 @@ inline ArrowShieldVerdict ArrowAtShieldFor(const ArrowShieldInput& in) {
 	const NiPoint3 radial = off - d.normal * along;
 	v.radialUnits = std::sqrt(radial.LengthSquared());
 	v.alongUnits = along < 0.0f ? -along : along;
+	if (in.outline != nullptr && in.outline->valid) {
+		return ArrowByOutline(in, d, v);
+	}
+	// No outline read: the circle of the long spoke, as built first.
 	if (v.radialUnits <= d.radius + kArrowDiscRimMarginUnits &&
 	    v.alongUnits <= d.halfThick + kArrowDiscFaceMarginUnits) {
 		v.answer = ArrowAtShield::Blocked;

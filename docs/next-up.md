@@ -1010,3 +1010,52 @@ unverified. Without that, every frame would be copied through the CPU, which VR 
 their sync, poses back to Oblivion within the frame, OpenXR input in place of OpenVR's
 actions, and testing on Windows and on Linux (Proton). DLSS on top of that is huge again
 (motion vectors from a 2006 engine).
+
+## For later: the shield against its real mesh, and blows by real contact (noted 2026-11-27, nothing built)
+
+Nadi, 2026-11-27, after the shield's block by contact (`[Hands] ShieldBlockByContact`,
+docs/free-weapons-spec.md "The tester's Windows run of 2026-11-27", docs/combat-comfort-spec.md):
+two refinements weighed and put off. Kept here so they are not lost.
+
+### 1. A flight against the shield's triangles instead of its outline
+
+- **Now:** an arrow is judged against the shield's outline in its own plane - row spans read
+  from the model's vertices with the disc (game/ShieldShape) - and the disc's thickness.
+- **What triangles would add:** holes and cut-outs inside a shield (the outline fills them),
+  a strongly curved shield (the outline is a flat plate with a thickness), and the exact
+  point on the surface.
+- **What the player would notice [G]:** next to nothing on vanilla's shields (round, kite,
+  heater, tower: one to two units at the rim). Only a mod's shield with cut-outs or a deep
+  curve, and there only at its edge.
+- **What it would be good for beyond arrows:** a general "ray against a real mesh" - blades
+  against foes' shields and weapons, cut marks placed on the surface.
+- **Cost:** medium. OBVR reads vertices (`ForEachWorldVertex`, game/NearbyItems.h) and no
+  triangle lists anywhere: NiTriShapeData's indices and NiTriStripsData's strips are to be
+  read first (engine unknowns). At an event only, so the per-frame cost is none.
+- **Model and effort:** Opus 5.5 high.
+- **When:** when the mesh ray is wanted as a tool for more than arrows. Not for arrows alone.
+
+### 2. The outline, and real contact, for blows
+
+- **Built 2026-11-27 (Nadi: blocking felt "oddly too generous and partly a few frames
+  delayed"):** with `ShieldBlockByContact` on, a blow at the shield is judged against its
+  outline as a plate, not a circle (game/BlockAngleLogic.h `ShieldByContactVerdict`,
+  game/ShieldPlateLogic.h); the shield has its own reach, `BlockShieldReachUnits` 25 (the
+  weapon keeps `BlockReachUnits` 40); a creature or fists are blocked only with the shield
+  between them and the chest (`BlockShieldInterposeUnits` 6 past the outline), and a blade
+  still short of the shield at the blow is blocked by the same "between". The face's angle
+  (70) stays. Details and the tally: docs/free-weapons-spec.md, "The blows by the outline".
+- **Stays for later - real contact:** the engine resolves a hit at one moment of the attack's
+  animation, and the foe's blade is 10 to 37 units from a guard in the way then (the tally).
+  Blocking only what the foe's blade actually meets needs that blade followed over the whole
+  blow (a sweep, as the player's own blade has in game/MeleeSweep), then judged against the
+  outline - and the blow's result held until the blade arrives. Cost: medium to large; the feel
+  is unknown until the headset. Model and effort: Opus 5.5 high.
+- **Also for later - the parry by the plate:** a foe's blade crossing the shield during its
+  attack is a parry already (game/ParryLogic.h WhatMeetsTheirBlade: the pulse and the shield's
+  sound at that moment, the next blow blocked whole), but against the shield's bound as a ball,
+  and only with a weapon drawn and WeaponParries on. Judging it against the plate is small
+  (ParryGuards takes the plate, a swept segment-to-plate test, the parry's frame fills it),
+  Sonnet 5.5 medium; not built here because the parry frame is filled in CameraHook's
+  StepWeaponContact, which sits at its size limit and would need a piece moved out first.
+  `BlockReachUnits` in the INI. Only if real contact is wanted is the sweep worth building.
