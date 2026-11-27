@@ -53,6 +53,8 @@ HandSettings PlainSettings() {
 	s.laserOriginMetres = 0.0f;
 	s.laserDragScroll = false;
 	s.laserCursorDirect = true;
+	// The page placed by a quarter turn alone; the defaults of 2026-11-27 are tablet_test's.
+	s.tablet.held.leanDegrees = s.tablet.held.rollDegrees = s.tablet.held.acrossCm = s.tablet.held.outCm = 0.0f;
 	// An upright tablet 0.4 m wide, held at the middle of its lower edge.
 	s.tablet.enabled = true;
 	s.tablet.unroll = TabletUnroll::Vertical;  // opened by the B: held from below, the clipboard
@@ -557,9 +559,14 @@ void TestSword() {
 	                     further.transform.m[2][3] - kept.transform.m[2][3]};
 	Check(NearPoint(moved, Cross(keptRight, keptUp) * 0.03f),
 	      "and before the right hand as it is drawn: its own reach, on its own side");
-	// Turned a quarter, as by default (Nadi, 2026-11-26; section 24.4): the face
-	// away from the knuckles, the page across the palm, its middle on the hand.
+	// Turned a quarter (Nadi, 2026-11-26; section 24.4; the default turn, the
+	// other defaults of 2026-11-27 left out): the face away from the knuckles,
+	// the page across the palm, its middle on the hand.
 	s.tablet.held = HeldPlace{};
+	s.tablet.held.leanDegrees = 0.0f;
+	s.tablet.held.rollDegrees = 0.0f;
+	s.tablet.held.acrossCm = 0.0f;
+	s.tablet.held.outCm = 0.0f;
 	r = MenuPlaceResult{};
 	t = PlaceMenu(f, s, true, r);
 	Check(r.menuOnTablet && NearPoint(t.quad.up, left.blade) && NearPoint(t.quad.right, face) &&
@@ -668,8 +675,8 @@ void TestScroll() {
 	f.left.position = NiPoint3{-0.15f, -0.3f, -0.5f};
 	f.right.position = NiPoint3{0.15f, -0.3f, -0.5f};
 	r = mode.Update(f, s);
-	Check(r.menuOnTablet && !r.controls.menu && Near(r.tabletShare, (0.3f - 0.08f) / (0.4f - 0.08f)),
-	      "unrolling between the hands by their distance");
+	Check(r.menuOnTablet && !r.controls.menu && Near(r.tabletShare, (0.3f - 0.12f) / (0.4f - 0.12f)),
+	      "unrolling between the hands by how far they were pulled apart");
 	Check(Near(r.menuTransform.m[0][3], 0.15f) && Near(r.menuTransform.m[1][3], 0.0f) &&
 	          Near(r.menuTransform.m[0][0], 1.0f),
 	      "its middle between the hands, across from the left to the right, as the left controller's place");
@@ -708,6 +715,16 @@ void TestScroll() {
 	Check(Distance(g.left, g.right) < 0.20f &&
 	          NearPoint(g.left, palms.left.position + Rotate(palms.left.orientation, palms.tablet.palm[0])),
 	      "the palms read: measured there, together");
+	// The palms where the game read them on Nadi's hands (2026-11-27, OBVR.log
+	// 970-971: 13 to 15 cm behind the controllers, 4 to 5 cm outward): two
+	// controllers 12 cm apart turned in put them over 20 cm apart. How close the
+	// hands are is read on the controllers.
+	palms.tablet.palm[0] = NiPoint3{-0.041f, 0.012f, 0.134f};
+	palms.tablet.palm[1] = NiPoint3{0.047f, -0.004f, 0.147f};
+	g = ScrollFrameOf(palms, far, TabletPlace{});
+	Check(Distance(g.left, g.right) > 0.20f && NearPoint(g.leftController, palms.left.position) &&
+	          NearPoint(g.rightController, palms.right.position),
+	      "his palms read: over 20 cm apart; the controllers handed over as they are, 12 cm");
 }
 
 }  // namespace

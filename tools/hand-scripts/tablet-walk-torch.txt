@@ -10,6 +10,12 @@
 ini Hands Enabled=1
 ini Hands WalkDirection=head
 ini Tablet Enabled=1
+# The page in the hand as it was aimed at: a quarter turn alone (the defaults of
+# 2026-11-27 lean, tilt and move it).
+ini Tablet HeldLeanDegrees=0
+ini Tablet HeldRollDegrees=0
+ini Tablet HeldAcrossCm=0
+ini Tablet HeldOutCm=0
 ini Tablet Unroll=vertical
 ini Hands LeftHandGripX=0
 ini Hands LeftHandGripY=0

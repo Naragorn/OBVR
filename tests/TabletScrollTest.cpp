@@ -1,9 +1,10 @@
-// Checks the tablet as a scroll (vr/TabletScroll.h): the pose held with open
-// grips, both grips closed - the menus opened, the tablet unrolled by the
-// hands' distance - let go with one hand fully open (held by the other) or
-// short of it (rolled back, the menus closed), the free hand rolling it up,
-// a close owed to menus not yet open, the tablet opened by the left B, and
-// what keeps the gesture away.
+// Checks the tablet as a scroll (vr/TabletScroll.h): both grips closed soon
+// after each other with the hands together at the inventory ring - the menus
+// opened, the tablet unrolled by how far the hands are pulled apart - let go
+// with one hand fully open (held by the other) or short of it (rolled back,
+// the menus closed), the free hand rolling it up, a close owed to menus not
+// yet open, the tablet opened by the left B, Nadi's five refused tries of
+// 2026-11-27, and what keeps the gesture away.
 
 #include <cstdio>
 
@@ -29,7 +30,8 @@ bool Near(float a, float b, float tolerance = 0.001f) {
 }
 
 // The hands in the inventory ring (its default place: 17 cm ahead of the eyes,
-// 33 cm below them), `apart` metres apart.
+// 33 cm below them), `apart` metres apart - the drawn palms and the
+// controllers alike.
 TabletScrollFrame Hands(float apart, bool leftGrip, bool rightGrip) {
 	TabletScrollFrame f;
 	f.allowed = true;
@@ -39,6 +41,8 @@ TabletScrollFrame Hands(float apart, bool leftGrip, bool rightGrip) {
 	f.headForward = NiPoint3{0.0f, 0.0f, -1.0f};
 	f.left = NiPoint3{-0.5f * apart, -0.33f, -0.17f};
 	f.right = NiPoint3{0.5f * apart, -0.33f, -0.17f};
+	f.leftController = f.left;
+	f.rightController = f.right;
 	f.grip[0] = leftGrip;
 	f.grip[1] = rightGrip;
 	f.fullMetres = 0.40f;
@@ -46,196 +50,225 @@ TabletScrollFrame Hands(float apart, bool leftGrip, bool rightGrip) {
 	return f;
 }
 
-// Held still with open grips until ready.
-void MakeReady(TabletScrollState& s) {
-	for (int i = 0; i < 8; ++i) {
-		StepTabletScroll(s, Hands(0.12f, false, false));
-	}
+TabletScrollFrame InMenu(TabletScrollFrame f) {
+	f.menuMode = true;
+	return f;
+}
+
+// Brought together with open grips, both closed in one frame: unrolling.
+void Begin(TabletScrollState& s, float apart) {
+	StepTabletScroll(s, Hands(apart, false, false));
+	StepTabletScroll(s, Hands(apart, true, true));
 }
 
 void TestOpen() {
 	std::printf("Unrolling it open:\n");
 	TabletScrollState s;
 	TabletScrollResult r = StepTabletScroll(s, Hands(0.12f, false, false));
-	Check(r.phase == TabletScrollPhase::Idle, "the pose begun: not yet ready");
-	MakeReady(s);
-	Check(s.phase == TabletScrollPhase::Ready, "held 0.35 s with open grips: ready");
+	Check(r.phase == TabletScrollPhase::Idle && !r.menuKey, "the hands together, grips open: nothing yet");
 	r = StepTabletScroll(s, Hands(0.12f, true, true));
-	Check(r.phase == TabletScrollPhase::Unrolling && r.menuKey && r.betweenHands && r.gesture,
-	      "both grips closed: unrolling, the menus opened at once");
-	Check(Near(r.amount, (0.12f - 0.08f) / 0.32f), "unrolled by the hands' distance");
-	TabletScrollFrame f = Hands(0.30f, true, true);
-	f.menuMode = true;
-	r = StepTabletScroll(s, f);
-	Check(!r.menuKey && Near(r.amount, 0.22f / 0.32f), "pulled apart: further, no second key");
-	f = Hands(0.45f, true, true);
-	f.menuMode = true;
-	r = StepTabletScroll(s, f);
+	Check(r.phase == TabletScrollPhase::Unrolling && r.menuKey && r.betweenHands && r.gesture && r.amount == 0.0f,
+	      "both grips closed: unrolling from nothing, the menus opened at once");
+	r = StepTabletScroll(s, InMenu(Hands(0.30f, true, true)));
+	Check(!r.menuKey && Near(r.amount, 0.18f / 0.28f), "pulled apart: unrolled by the pull, to the tablet's width; no second key");
+	r = StepTabletScroll(s, InMenu(Hands(0.45f, true, true)));
 	Check(r.amount == 1.0f, "past the tablet's width: fully open");
-	f = Hands(0.45f, false, true);
-	f.menuMode = true;
-	r = StepTabletScroll(s, f);
+	r = StepTabletScroll(s, InMenu(Hands(0.45f, false, true)));
 	Check(r.phase == TabletScrollPhase::Held && r.holderRight && !r.betweenHands && !r.menuKey,
 	      "the left let go fully open: held by the right hand, the menus kept");
 
 	// Rolled up by the free hand, at the free end.
-	f = Hands(0.30f, true, true);
-	f.menuMode = true;
+	TabletScrollFrame f = InMenu(Hands(0.30f, true, true));
 	f.freeEndValid = true;
 	f.freeEnd = NiPoint3{f.left.x + 0.30f, f.left.y, f.left.z};  // over the page, not the end
 	r = StepTabletScroll(s, f);
 	Check(r.phase == TabletScrollPhase::Held, "the free hand's grip over the page: no rolling up (the item there is the inventory's)");
-	f = Hands(0.30f, false, true);
-	f.menuMode = true;
-	StepTabletScroll(s, f);
-	f = Hands(0.30f, true, true);
-	f.menuMode = true;
+	StepTabletScroll(s, InMenu(Hands(0.30f, false, true)));
+	f = InMenu(Hands(0.30f, true, true));
 	f.freeEndValid = true;
 	f.freeEnd = NiPoint3{f.left.x + 0.05f, f.left.y, f.left.z};
 	r = StepTabletScroll(s, f);
-	Check(r.phase == TabletScrollPhase::RollingUp && r.betweenHands, "the free hand's grip at the free end: rolling up");
-	f = Hands(0.30f, false, true);
-	f.menuMode = true;
-	r = StepTabletScroll(s, f);
+	Check(r.phase == TabletScrollPhase::RollingUp && r.betweenHands && Near(r.amount, 0.18f / 0.28f),
+	      "the free hand's grip at the free end: rolling up, from where the scroll began");
+	r = StepTabletScroll(s, InMenu(Hands(0.30f, false, true)));
 	Check(r.phase == TabletScrollPhase::Held && r.amount == 1.0f, "let go: held again, open");
-	f = Hands(0.30f, true, true);
-	f.menuMode = true;
+	f = InMenu(Hands(0.30f, true, true));
 	f.freeEndValid = true;
 	f.freeEnd = f.left;
 	StepTabletScroll(s, f);
-	f = Hands(0.07f, true, true);
-	f.menuMode = true;
-	r = StepTabletScroll(s, f);
-	Check(r.phase == TabletScrollPhase::AwaitRelease && r.menuKey, "the hands together: rolled up, the menus closed");
-	r = StepTabletScroll(s, Hands(0.07f, false, false));
+	r = StepTabletScroll(s, InMenu(Hands(0.16f, true, true)));
+	Check(r.phase == TabletScrollPhase::RollingUp && !r.menuKey, "the hands coming together: still rolling up");
+	r = StepTabletScroll(s, InMenu(Hands(0.14f, true, true)));
+	Check(r.phase == TabletScrollPhase::AwaitRelease && r.menuKey, "back where it began: rolled up, the menus closed");
+	r = StepTabletScroll(s, Hands(0.14f, false, false));
 	Check(r.phase == TabletScrollPhase::Idle, "both let go, the menus gone: idle");
-	TabletScrollFrame far = Hands(0.30f, true, true);
-	far.menuMode = true;
+
 	TabletScrollState held;
 	held.phase = TabletScrollPhase::Held;
-	far.right = NiPoint3{5.0f, 0.0f, 0.0f};
-	StepTabletScroll(held, Hands(0.30f, false, false));
-	held.phase = TabletScrollPhase::Held;
-	held.lastGrip[1] = false;
-	TabletScrollFrame away = Hands(1.5f, true, true);
-	away.menuMode = true;
+	TabletScrollFrame away = InMenu(Hands(1.5f, true, true));
 	r = StepTabletScroll(held, away);
 	Check(r.phase == TabletScrollPhase::Held, "no free end known: no rolling up");
 }
 
 void TestShort() {
-	std::printf("Let go short of open:\n");
+	std::printf("Let go short of open, or brought back:\n");
 	TabletScrollState s;
-	MakeReady(s);
-	StepTabletScroll(s, Hands(0.12f, true, true));
-	TabletScrollFrame f = Hands(0.25f, true, true);
-	f.menuMode = true;
-	StepTabletScroll(s, f);
-	f = Hands(0.25f, true, false);
-	f.menuMode = true;
-	TabletScrollResult r = StepTabletScroll(s, f);
+	Begin(s, 0.12f);
+	StepTabletScroll(s, InMenu(Hands(0.25f, true, true)));
+	TabletScrollResult r = StepTabletScroll(s, InMenu(Hands(0.25f, true, false)));
 	Check(r.phase == TabletScrollPhase::AwaitRelease && r.menuKey, "one hand let go half open: rolled back, closed");
 	r = StepTabletScroll(s, Hands(0.25f, true, false));
 	Check(r.phase == TabletScrollPhase::AwaitRelease, "a grip still closed: waits for the release");
 
-	// Both let go at once.
 	TabletScrollState both;
-	MakeReady(both);
-	StepTabletScroll(both, Hands(0.12f, true, true));
-	f = Hands(0.45f, true, true);
-	f.menuMode = true;
-	StepTabletScroll(both, f);
-	f = Hands(0.45f, false, false);
-	f.menuMode = true;
-	r = StepTabletScroll(both, f);
+	Begin(both, 0.12f);
+	StepTabletScroll(both, InMenu(Hands(0.45f, true, true)));
+	r = StepTabletScroll(both, InMenu(Hands(0.45f, false, false)));
 	Check(r.phase == TabletScrollPhase::AwaitRelease && r.menuKey, "both let go at once, even fully open: closed");
 
 	// The menus not yet up when it rolls back: the close waits for them.
 	TabletScrollState early;
-	MakeReady(early);
-	StepTabletScroll(early, Hands(0.12f, true, true));
+	Begin(early, 0.12f);
 	r = StepTabletScroll(early, Hands(0.12f, true, false));
 	Check(r.phase == TabletScrollPhase::AwaitRelease && !r.menuKey && early.closeOwed >= 0.0f,
 	      "let go before the menus came: no key yet, a close owed");
-	f = Hands(0.12f, false, false);
-	f.menuMode = true;
-	r = StepTabletScroll(early, f);
+	r = StepTabletScroll(early, InMenu(Hands(0.12f, false, false)));
 	Check(r.menuKey && early.closeOwed < 0.0f, "the menus up: the owed close sent");
 	TabletScrollState lost;
-	MakeReady(lost);
-	StepTabletScroll(lost, Hands(0.12f, true, true));
+	Begin(lost, 0.12f);
 	StepTabletScroll(lost, Hands(0.12f, false, false));
 	for (int i = 0; i < 25; ++i) {
 		StepTabletScroll(lost, Hands(0.12f, false, false));
 	}
 	Check(lost.closeOwed < 0.0f, "menus that never come: the owed close dropped after a second");
 
-	// Pressed back together while still unrolling.
+	// Pulled, then brought back together while both grips stay closed.
 	TabletScrollState back;
-	MakeReady(back);
-	StepTabletScroll(back, Hands(0.12f, true, true));
-	r = StepTabletScroll(back, Hands(0.06f, true, true));
-	Check(r.phase == TabletScrollPhase::AwaitRelease, "squeezed back together while unrolling: closed");
+	Begin(back, 0.12f);
+	StepTabletScroll(back, InMenu(Hands(0.30f, true, true)));
+	r = StepTabletScroll(back, InMenu(Hands(0.16f, true, true)));
+	Check(r.phase == TabletScrollPhase::Unrolling, "brought part of the way back: still unrolling");
+	r = StepTabletScroll(back, InMenu(Hands(0.14f, true, true)));
+	Check(r.phase == TabletScrollPhase::AwaitRelease && r.menuKey, "back where it began: rolled back, closed");
+	// Not yet pulled: a hand wobbling at the start closes nothing.
+	TabletScrollState wobble;
+	Begin(wobble, 0.12f);
+	StepTabletScroll(wobble, Hands(0.16f, true, true));
+	r = StepTabletScroll(wobble, Hands(0.08f, true, true));
+	Check(r.phase == TabletScrollPhase::Unrolling && r.amount == 0.0f, "a wobble before the pull: still unrolling, nothing shown");
 }
 
 void TestRefused() {
 	std::printf("What keeps the gesture away:\n");
 	TabletScrollState s;
-	TabletScrollFrame f = Hands(0.12f, false, false);
+	TabletScrollFrame f = Hands(0.12f, true, true);
 	f.handsEmpty = false;
-	for (int i = 0; i < 10; ++i) {
-		StepTabletScroll(s, f);
-	}
-	Check(s.phase == TabletScrollPhase::Idle, "a weapon or anything in a hand: never ready");
-	f = Hands(0.12f, false, false);
+	TabletScrollResult r = StepTabletScroll(s, f);
+	Check(r.phase == TabletScrollPhase::Idle && !r.menuKey && r.refused == TabletScrollRefusal::HandsHold,
+	      "a weapon or anything in a hand: refused");
+	s = TabletScrollState{};
+	f = Hands(0.12f, true, true);
 	f.allowed = false;
-	for (int i = 0; i < 10; ++i) {
-		StepTabletScroll(s, f);
+	r = StepTabletScroll(s, f);
+	Check(r.phase == TabletScrollPhase::Idle && r.refused == TabletScrollRefusal::NotAllowed,
+	      "not allowed (the tablet off, a menu of OBVR's): refused");
+	s = TabletScrollState{};
+	r = StepTabletScroll(s, Hands(0.30f, true, true));
+	Check(r.phase == TabletScrollPhase::Idle && r.refused == TabletScrollRefusal::Apart && Near(r.refusedBy, 0.30f),
+	      "the controllers 30 cm apart: refused, by their distance");
+	s = TabletScrollState{};
+	f = Hands(0.12f, true, true);
+	f.leftController.x = -0.10f;  // the palms together, the controllers 21 cm apart
+	f.rightController.x = 0.11f;
+	r = StepTabletScroll(s, f);
+	Check(r.refused == TabletScrollRefusal::Apart && Near(r.refusedBy, 0.21f), "measured on the controllers, not the palms");
+
+	// Where the hands are: the ring and its margin.
+	const float heights[3] = {0.25f, -0.80f, -0.33f};
+	const float aheads[3] = {-0.17f, -0.17f, -0.70f};
+	const char* where[3] = {"above the eyes: out of the ring", "together at the hip: out of the ring",
+	                        "together half a metre further out: out of the ring"};
+	for (int i = 0; i < 3; ++i) {
+		s = TabletScrollState{};
+		f = Hands(0.12f, true, true);
+		f.left.y = f.right.y = f.leftController.y = f.rightController.y = heights[i];
+		f.left.z = f.right.z = f.leftController.z = f.rightController.z = aheads[i];
+		r = StepTabletScroll(s, f);
+		Check(r.phase == TabletScrollPhase::Idle && !r.menuKey && r.refused == TabletScrollRefusal::OutOfRing, where[i]);
 	}
-	Check(s.phase == TabletScrollPhase::Idle, "not allowed (the tablet off, a menu of OBVR's): never ready");
-	TabletScrollState wide;
-	for (int i = 0; i < 10; ++i) {
-		StepTabletScroll(wide, Hands(0.40f, false, false));
+	s = TabletScrollState{};
+	f = Hands(0.12f, true, true);
+	f.left.y = f.right.y = 0.25f;
+	r = StepTabletScroll(s, f);
+	Check(Near(r.refusedBy, 0.32f), "  by how far the hands' middle is past the reach and its 10 cm");
+	s = TabletScrollState{};
+	f = Hands(0.12f, true, true);
+	f.left.y = f.right.y = -0.33f + 0.25f;  // 25 cm over the ring's centre: past 16 cm, within 26
+	r = StepTabletScroll(s, f);
+	Check(r.phase == TabletScrollPhase::Unrolling, "the hands' middle just past the ring's reach, within the margin: begins");
+	s = TabletScrollState{};
+	f = Hands(0.24f, true, true);
+	f.left.x = -0.30f;  // the left palm 30 cm aside, out of the ring; the middle still at it
+	f.right.x = 0.0f;
+	f.leftController.x = -0.08f;
+	f.rightController.x = 0.08f;
+	r = StepTabletScroll(s, f);
+	Check(r.phase == TabletScrollPhase::Unrolling, "one palm out of the ring, the hands' middle at it: begins");
+
+	// When the grips close.
+	TabletScrollState late;
+	StepTabletScroll(late, Hands(0.12f, true, false));
+	for (int i = 0; i < 20; ++i) {
+		StepTabletScroll(late, Hands(0.12f, true, false));
 	}
-	Check(wide.phase == TabletScrollPhase::Idle, "the hands too far apart: no pose");
-	TabletScrollState high;
-	f = Hands(0.12f, false, false);
-	f.left.y = 0.3f;
-	f.right.y = 0.3f;
-	for (int i = 0; i < 10; ++i) {
-		StepTabletScroll(high, f);
+	r = StepTabletScroll(late, Hands(0.12f, true, true));
+	Check(r.phase == TabletScrollPhase::Idle && !r.menuKey && r.refused == TabletScrollRefusal::Late && Near(r.refusedBy, 1.05f),
+	      "one grip held a second, then the other: refused - the second came 1.05 s late");
+	TabletScrollState soon;
+	StepTabletScroll(soon, Hands(0.12f, false, true));
+	for (int i = 0; i < 7; ++i) {
+		StepTabletScroll(soon, Hands(0.12f, false, true));
 	}
-	Check(high.phase == TabletScrollPhase::Idle, "the hands above the eyes: no pose");
-	TabletScrollState gripped;
-	for (int i = 0; i < 10; ++i) {
-		StepTabletScroll(gripped, Hands(0.12f, true, true));
+	r = StepTabletScroll(soon, Hands(0.12f, true, true));
+	Check(r.phase == TabletScrollPhase::Unrolling && r.menuKey, "the right first, the left 0.4 s after: begins");
+	TabletScrollState again;
+	for (int i = 0; i < 20; ++i) {
+		StepTabletScroll(again, Hands(0.12f, true, false));
 	}
-	Check(gripped.phase == TabletScrollPhase::Idle, "the grips closed all along: never ready, never opens");
+	StepTabletScroll(again, Hands(0.12f, false, false));
+	StepTabletScroll(again, Hands(0.12f, true, false));
+	r = StepTabletScroll(again, Hands(0.12f, true, true));
+	Check(r.phase == TabletScrollPhase::Unrolling, "a grip opened and closed again: its time starts anew");
+	TabletScrollState carried;
+	StepTabletScroll(carried, Hands(0.60f, true, true));
+	StepTabletScroll(carried, Hands(0.30f, true, true));
+	r = StepTabletScroll(carried, Hands(0.12f, true, true));
+	Check(r.phase == TabletScrollPhase::Idle && !r.menuKey && r.refused == TabletScrollRefusal::None,
+	      "grips closed elsewhere, brought to the ring closed: nothing opens, nothing said");
+
 	TabletScrollState one;
-	MakeReady(one);
-	TabletScrollResult r = StepTabletScroll(one, Hands(0.12f, true, false));
-	Check(r.phase != TabletScrollPhase::Unrolling && !r.menuKey, "one grip only: nothing opens");
+	r = StepTabletScroll(one, Hands(0.12f, true, false));
+	Check(r.phase == TabletScrollPhase::Idle && !r.menuKey, "one grip only: nothing opens");
 	TabletScrollState untracked;
-	MakeReady(untracked);
 	f = Hands(0.12f, true, true);
 	f.tracked = false;
 	r = StepTabletScroll(untracked, f);
 	Check(r.phase == TabletScrollPhase::Idle && !r.menuKey, "the hands lost: nothing opens");
 	TabletScrollState lostMid;
-	MakeReady(lostMid);
-	StepTabletScroll(lostMid, Hands(0.12f, true, true));
-	f = Hands(0.30f, true, true);
+	Begin(lostMid, 0.12f);
+	f = InMenu(Hands(0.30f, true, true));
 	f.tracked = false;
-	f.menuMode = true;
 	r = StepTabletScroll(lostMid, f);
 	Check(r.phase == TabletScrollPhase::AwaitRelease && r.menuKey, "the hands lost while unrolling: closed");
+	TabletScrollState offMid;
+	Begin(offMid, 0.12f);
+	f = InMenu(Hands(0.30f, true, true));
+	f.allowed = false;
+	r = StepTabletScroll(offMid, f);
+	Check(r.phase == TabletScrollPhase::AwaitRelease && r.menuKey, "no longer allowed while unrolling: closed");
 	TabletScrollState menu;
-	f = Hands(0.12f, false, false);
-	f.menuMode = true;
-	for (int i = 0; i < 10; ++i) {
-		StepTabletScroll(menu, f);
-	}
-	Check(menu.phase == TabletScrollPhase::Idle, "another menu up: no pose");
+	r = StepTabletScroll(menu, InMenu(Hands(0.12f, true, true)));
+	Check(menu.phase == TabletScrollPhase::Idle && !r.menuKey, "another menu up: nothing opens");
 }
 
 // Both grips closed with the hands together and the scroll does not begin:
@@ -243,110 +276,32 @@ void TestRefused() {
 // nothing, and nothing in the log to say what was missing).
 void TestSaysWhy() {
 	std::printf("Why a try did not begin it:\n");
-	// At the chest, where three of the run's five tries were made: the hands 2 cm
-	// ahead of the eyes, 25 cm below them. The scroll begins in the inventory
-	// ring only (Nadi, 2026-11-22), so it is the ring's place that decides:
-	// his, at 1 cm right, 6 cm behind the eyes' plane, 19 cm down, 40 cm across.
-	TabletScrollState chest;
-	TabletScrollFrame f = Hands(0.12f, false, false);
-	f.left.z = f.right.z = -0.02f;
-	f.left.y = f.right.y = -0.25f;
-	f.ring = NiPoint3{0.01f, -0.06f, -0.19f};
-	f.ringRadius = 0.20f;
-	for (int i = 0; i < 8; ++i) {
-		StepTabletScroll(chest, f);
-	}
-	Check(chest.phase == TabletScrollPhase::Ready, "the hands at the chest, in Nadi's ring: the pose holds");
-	f.grip[0] = f.grip[1] = true;
-	TabletScrollResult r = StepTabletScroll(chest, f);
-	Check(r.phase == TabletScrollPhase::Unrolling && r.menuKey && r.refused == TabletScrollRefusal::None,
-	      "both grips closed there: it unrolls, nothing refused");
-	TabletScrollState elsewhere;
-	f = Hands(0.12f, false, false);
-	f.left.z = f.right.z = -0.02f;
-	f.left.y = f.right.y = -0.25f;  // the same hands, the ring at its default place
-	for (int i = 0; i < 8; ++i) {
-		StepTabletScroll(elsewhere, f);
-	}
-	f.grip[0] = f.grip[1] = true;
-	r = StepTabletScroll(elsewhere, f);
-	Check(elsewhere.phase == TabletScrollPhase::Idle && !r.menuKey && r.refused == TabletScrollRefusal::OutOfRing &&
-	          Near(r.refusedBy, 0.0203f, 0.001f),
-	      "the same hands, the ring 18 cm away: not begun - out of the ring, by 2 cm");
-	TabletScrollState ahead;
-	f = Hands(0.12f, false, false);
-	f.left.z = f.right.z = -0.50f;  // half a metre out, where the gesture used to be
-	for (int i = 0; i < 8; ++i) {
-		StepTabletScroll(ahead, f);
-	}
-	Check(ahead.phase == TabletScrollPhase::Idle, "the hands half a metre out, away from the ring: no pose");
-	TabletScrollState oneOut;
-	f = Hands(0.12f, true, true);
-	f.left.x = -0.02f;  // the left in the ring, the right 17 cm higher
-	f.right.y = -0.16f;
-	r = StepTabletScroll(oneOut, f);
-	Check(r.refused == TabletScrollRefusal::OutOfRing && Near(r.refusedBy, 0.0203f, 0.001f),
-	      "one hand out of the ring: refused, by how far the hand is out");
+	TabletScrollState s;
+	TabletScrollFrame f = Hands(0.30f, true, true);
+	TabletScrollResult r = StepTabletScroll(s, f);
+	Check(r.refused == TabletScrollRefusal::Apart, "refused: said");
+	r = StepTabletScroll(s, f);
+	Check(r.refused == TabletScrollRefusal::None, "said once, on the frame the grips closed");
 	TabletScrollFrame turned = Hands(0.12f, false, false);
 	turned.headForward = NiPoint3{1.0f, 0.0f, 0.0f};  // facing +x: the ring 17 cm along +x
-	turned.left = NiPoint3{0.17f, -0.33f, -0.06f};
-	turned.right = NiPoint3{0.17f, -0.33f, 0.06f};
+	turned.left = turned.leftController = NiPoint3{0.17f, -0.33f, -0.06f};
+	turned.right = turned.rightController = NiPoint3{0.17f, -0.33f, 0.06f};
 	float by = 0.0f;
 	Check(ScrollPoseRefusal(turned, TabletScrollLimits{}, by) == TabletScrollRefusal::None,
 	      "the head turned: the ring turns with its heading");
 
-	// Closed at once, without the open hands held together first.
-	TabletScrollState quick;
-	StepTabletScroll(quick, Hands(0.12f, false, false));
-	StepTabletScroll(quick, Hands(0.12f, false, false));
-	r = StepTabletScroll(quick, Hands(0.12f, true, true));
-	Check(r.phase == TabletScrollPhase::Idle && !r.menuKey && r.refused == TabletScrollRefusal::NoDwell &&
-	          Near(r.refusedBy, 0.10f),
-	      "closed after 0.1 s: not begun - the dwell, and how long it had");
-	r = StepTabletScroll(quick, Hands(0.12f, true, true));
-	Check(r.refused == TabletScrollRefusal::None, "said once, on the frame the grips closed");
-
-	// One after the other counts as a try on the second.
-	TabletScrollState second;
-	StepTabletScroll(second, Hands(0.12f, true, false));
-	r = StepTabletScroll(second, Hands(0.12f, true, true));
-	Check(r.refused == TabletScrollRefusal::NoDwell, "the second grip closing: the try");
-
-	// Each thing that keeps it away, named.
-	TabletScrollState s;
-	f = Hands(0.30f, true, true);
-	r = StepTabletScroll(s, f);
-	Check(r.refused == TabletScrollRefusal::Apart && Near(r.refusedBy, 0.30f), "30 cm apart: the hands' distance");
-	s = TabletScrollState{};
-	f = Hands(0.12f, true, true);
-	f.left.y = f.right.y = 0.25f;
-	r = StepTabletScroll(s, f);
-	Check(r.refused == TabletScrollRefusal::OutOfRing && Near(r.refusedBy, 0.4231f, 0.001f),
-	      "above the eyes: out of the ring, by 42 cm");
-	s = TabletScrollState{};
-	f = Hands(0.12f, true, true);
-	f.handsEmpty = false;
-	r = StepTabletScroll(s, f);
-	Check(r.refused == TabletScrollRefusal::HandsHold, "a weapon out: the hands are not empty");
-	s = TabletScrollState{};
-	f = Hands(0.12f, true, true);
-	f.allowed = false;
-	r = StepTabletScroll(s, f);
-	Check(r.refused == TabletScrollRefusal::NotAllowed, "the tablet off: not allowed");
-
 	// What is no try at the scroll says nothing.
 	s = TabletScrollState{};
 	r = StepTabletScroll(s, Hands(0.60f, true, true));
-	Check(r.refused == TabletScrollRefusal::None, "the hands 60 cm apart: a two-handed grab, nothing said");
+	Check(r.refused == TabletScrollRefusal::None && r.refusedBy == 0.0f,
+	      "the controllers 60 cm apart: a two-handed grab, nothing said");
 	s = TabletScrollState{};
 	f = Hands(0.12f, true, true);
 	f.tracked = false;
 	r = StepTabletScroll(s, f);
 	Check(r.refused == TabletScrollRefusal::None, "a hand lost: nothing said");
 	s = TabletScrollState{};
-	f = Hands(0.12f, true, true);
-	f.menuMode = true;
-	r = StepTabletScroll(s, f);
+	r = StepTabletScroll(s, InMenu(Hands(0.12f, true, true)));
 	Check(r.refused == TabletScrollRefusal::None, "another menu up: nothing said");
 	s = TabletScrollState{};
 	r = StepTabletScroll(s, Hands(0.12f, true, false));
@@ -361,9 +316,8 @@ void TestSaysWhy() {
 void TestByButton() {
 	std::printf("Opened by the left B:\n");
 	TabletScrollState s;
-	TabletScrollFrame f = Hands(0.40f, false, false);
+	TabletScrollFrame f = InMenu(Hands(0.40f, false, false));
 	f.handsEmpty = false;
-	f.menuMode = true;
 	f.tabletUp = true;
 	TabletScrollResult r = StepTabletScroll(s, f);
 	Check(r.phase == TabletScrollPhase::Held && !r.holderRight && !r.menuKey, "held by the left hand, no key");
@@ -373,12 +327,92 @@ void TestByButton() {
 	r = StepTabletScroll(s, f);
 	Check(r.phase == TabletScrollPhase::Idle, "and is idle");
 
+	// Rolled up before any scroll has measured the hands together.
+	TabletScrollState b;
+	f = InMenu(Hands(0.34f, false, false));
+	f.tabletUp = true;
+	StepTabletScroll(b, f);
+	f = InMenu(Hands(0.34f, false, true));
+	f.freeEndValid = true;
+	f.freeEnd = f.right;
+	r = StepTabletScroll(b, f);
+	Check(r.phase == TabletScrollPhase::RollingUp && Near(r.amount, 0.10f / 0.16f),
+	      "opened by the B, the right takes its free end: rolling up towards the palms 0.24 m apart");
+	r = StepTabletScroll(b, InMenu(Hands(0.26f, true, true)));
+	Check(r.phase == TabletScrollPhase::RollingUp, "not yet there");
+	r = StepTabletScroll(b, InMenu(Hands(0.25f, true, true)));
+	Check(r.phase == TabletScrollPhase::AwaitRelease && r.menuKey, "the palms 0.25 m apart: rolled up, closed");
+
 	Check(TabletUnrollShare(0.0f) == 0.0f && TabletUnrollShare(-1.0f) == 0.0f, "not up: rolled");
 	Check(Near(TabletUnrollShare(0.5f * kTabletUnrollSeconds), 0.5f), "half the time: half unrolled");
 	Check(TabletUnrollShare(1.0f) == 1.0f, "after the time: open");
 	TabletScrollLimits l;
-	Check(UnrollAmount(0.05f, l, 0.40f) == 0.0f && UnrollAmount(1.0f, l, 0.40f) == 1.0f, "the amount clamped");
-	Check(Near(UnrollAmount(0.25f, l, 0.10f), (0.25f - 0.08f) / 0.17f), "a tablet narrower than the pose: full a little past it");
+	Check(UnrollAmount(0.05f, 0.12f, 0.40f, l) == 0.0f && UnrollAmount(1.0f, 0.12f, 0.40f, l) == 1.0f, "the amount clamped");
+	Check(Near(UnrollAmount(0.30f, 0.12f, 0.40f, l), 0.18f / 0.28f), "open when the palms stand the tablet's width apart");
+	Check(Near(UnrollAmount(0.35f, 0.29f, 0.34f, l), 0.06f / 0.12f),
+	      "begun nearly the tablet's width apart: open after a pull of 12 cm");
+}
+
+// Nadi's five tries of the Windows run of 2026-11-27 (OBVR.log 5815-5868):
+// each the controllers where the Holster line at the same grips put them
+// (right, forward, up from the eyes, metres), the drawn palms as far apart as
+// the refusal said. His ring: 2 cm right, 2 cm behind the eyes' plane, 23 cm
+// down, 20 cm across (his live INI). The palms' middle 10 cm back towards him
+// and 8 cm under the controllers' [G - the log has the palms' distance, not
+// their place]; the second grip 0.1 s after the first [G - not logged]. The
+// rules before this change refused these five frames as the run did: 0.24,
+// 0.06 out of the ring, 0.24, 0.29, 0.00 s.
+struct LoggedTry {
+	const char* what;
+	NiPoint3 leftController;  // right, forward, up from the eyes
+	NiPoint3 rightController;
+	float palmLeftRight;      // the palms' right (body frame), left hand
+	float palmRightRight;     // and right hand
+	float palmsApart;         // the drawn palms' distance as logged
+};
+
+NiPoint3 FromEyes(const NiPoint3& body) { return NiPoint3{body.x, body.z, -body.y}; }
+
+TabletScrollFrame TryFrame(const LoggedTry& t, bool leftGrip, bool rightGrip, float pull = 0.0f) {
+	TabletScrollFrame f = Hands(0.0f, leftGrip, rightGrip);
+	f.ring = NiPoint3{0.02f, -0.02f, -0.23f};
+	f.ringRadius = 0.20f;
+	f.fullMetres = 0.34f;
+	f.dt = 0.1f;
+	f.leftController = FromEyes(t.leftController + NiPoint3{-0.5f * pull, 0.0f, 0.0f});
+	f.rightController = FromEyes(t.rightController + NiPoint3{0.5f * pull, 0.0f, 0.0f});
+	const NiPoint3 mid = (t.leftController + t.rightController) * 0.5f;
+	f.left = FromEyes(NiPoint3{t.palmLeftRight - 0.5f * pull, mid.y - 0.10f, mid.z - 0.08f});
+	f.right = FromEyes(NiPoint3{t.palmRightRight + 0.5f * pull, mid.y - 0.10f, mid.z - 0.08f});
+	return f;
+}
+
+const LoggedTry kHisTries[5] = {
+	{"try 1 (refused: the palms 0.24 m apart)", {-0.04f, -0.01f, -0.23f}, {0.05f, -0.03f, -0.24f}, -0.115f, 0.125f, 0.24f},
+	{"try 2 (refused: a palm 0.06 m outside the ring)", {0.04f, 0.31f, -0.24f}, {0.10f, 0.29f, -0.23f}, -0.05f, 0.13f, 0.18f},
+	{"try 3 (refused: the palms 0.24 m apart)", {-0.04f, -0.07f, -0.22f}, {0.03f, -0.04f, -0.22f}, -0.125f, 0.115f, 0.24f},
+	{"try 4 (refused: the palms 0.29 m apart)", {-0.03f, 0.07f, -0.37f}, {-0.02f, 0.08f, -0.38f}, -0.17f, 0.12f, 0.29f},
+	{"try 5 (refused: 0.00 s with open grips)", {-0.03f, 0.01f, -0.17f}, {0.01f, 0.03f, -0.18f}, -0.09f, 0.07f, 0.16f},
+};
+
+void TestHisTries() {
+	std::printf("Nadi's five tries of 2026-11-27 begin it:\n");
+	for (const LoggedTry& t : kHisTries) {
+		const TabletScrollFrame open = TryFrame(t, false, false);
+		Check(Near(Distance(open.left, open.right), t.palmsApart, 0.005f), "  the palms as far apart as logged");
+		TabletScrollState s;
+		StepTabletScroll(s, open);
+		StepTabletScroll(s, TryFrame(t, true, false));
+		TabletScrollResult r = StepTabletScroll(s, TryFrame(t, true, true));
+		Check(r.phase == TabletScrollPhase::Unrolling && r.menuKey && r.refused == TabletScrollRefusal::None, t.what);
+		r = StepTabletScroll(s, InMenu(TryFrame(t, true, true, 0.20f)));
+		Check(r.phase == TabletScrollPhase::Unrolling && r.amount == 1.0f, "  pulled 20 cm further apart: fully open");
+	}
+	// Try 2's palms as the run refused them: the right one 6 cm outside the ring.
+	const TabletScrollFrame two = TryFrame(kHisTries[1], true, true);
+	const float l = OutsideRing(two, two.left);
+	const float r = OutsideRing(two, two.right);
+	Check(Near(l > r ? l : r, 0.06f, 0.005f), "try 2's further palm 0.06 m outside the ring, as logged");
 }
 
 }  // namespace
@@ -389,6 +423,7 @@ int main() {
 	TestRefused();
 	TestSaysWhy();
 	TestByButton();
+	TestHisTries();
 	std::printf("%d failure(s)\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }

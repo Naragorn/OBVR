@@ -222,15 +222,16 @@ void LogScrollRefusal(ControlsOutState& state, const vr::HandModeResult& hand) {
 		std::snprintf(reason, sizeof(reason), "a hand holds something (a weapon out, a torch, a thing held, a two-hand grip)");
 		break;
 	case vr::TabletScrollRefusal::Apart:
-		std::snprintf(reason, sizeof(reason), "the hands %.2f m apart (%.2f to %.2f)", by,
-		              static_cast<double>(l.closedMetres * 0.5f), static_cast<double>(l.poseMetres));
+		std::snprintf(reason, sizeof(reason), "the controllers %.2f m apart (at most %.2f)", by,
+		              static_cast<double>(l.togetherMetres));
 		break;
 	case vr::TabletScrollRefusal::OutOfRing:
-		std::snprintf(reason, sizeof(reason), "a hand %.2f m outside the inventory ring (both in it)", by);
+		std::snprintf(reason, sizeof(reason), "the hands' middle %.2f m past the inventory ring (its reach and %.2f)", by,
+		              static_cast<double>(l.ringMarginMetres));
 		break;
-	case vr::TabletScrollRefusal::NoDwell:
-		std::snprintf(reason, sizeof(reason), "the hands together with open grips for %.2f s first (%.2f wanted)", by,
-		              static_cast<double>(l.dwellSeconds));
+	case vr::TabletScrollRefusal::Late:
+		std::snprintf(reason, sizeof(reason), "the second grip %.2f s after the first (at most %.2f)", by,
+		              static_cast<double>(l.pairSeconds));
 		break;
 	default:
 		std::snprintf(reason, sizeof(reason), "the hands not tracked");

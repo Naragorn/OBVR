@@ -1925,3 +1925,119 @@ up and down off on a book), `BookWidthMetres`, B as Exit.
 
 Model: Sonnet 5.5 medium. It is mostly reuse of tested modules; the one
 engine unknown, whether a notch turns the page, is settled by task 1.
+
+## 26. Windows run of 2026-11-27: defaults and the open gesture
+
+Nadi's headset run of 2026-11-27 (OBVR.dll from main d96cacb; OBVR.log
+13:38-13:55, two earlier logs of 12:20 and 12:33). Marks: [R] read in the
+log, the code or the live INI; [D] derived from that; [G] guessed.
+
+### 26.1 His tablet place as the default
+
+Nadi: "the values for the inventory tablet I now have in the INI are the
+values that should be the standard. As far as I know I could only go -10
+to the back, it probably needs -15 to the back."
+
+- [R] His live INI, [Tablet]: HeldTurnDegrees=90, HeldOutCm=-10,
+  HeldAcrossCm=20, HeldUpCm=0, HeldLeanDegrees=25, HeldRollDegrees=-15.
+- [R] Why -10 was the end: the settings row "Hand menu distance"
+  (ui/SettingsPartHands.h) ran from -10 to 20. The INI reader
+  (core/ConfigTablet.cpp) allows +-40 cm and +-180 degrees and was not the
+  limit. "Hand menu sideways" ran from -20 to 20 and his 20 sat on its end.
+- **Changed:** `vr::HeldPlace`'s defaults are Turn 90, Lean 25, Roll -15,
+  Across 20, Up 0, Out -15 (his values, the distance 5 cm further back as he
+  asked); the shipped OBVR.ini and its comments say the same. The rows: the
+  distance -30 to 20, sideways -30 to 30. Height (-20 to 20), turn
+  (+-180), lean and tilt (+-90) were not at their ends and are unchanged.
+- A live INI that names a value keeps it: his `HeldOutCm=-10` stays until he
+  sets it in the game or the file.
+- Tests: tablet_test pins the new defaults; the geometric checks that take
+  one angle at a time (tablet_test, tablet_on_hand_test, menu_place_test)
+  now set the other values to 0 themselves; settings_list_test
+  (tests/settings-rows.txt, the four rows edited by hand).
+- Harness: the harness copies the live INI, which may or may not name these
+  keys, so every scenario that shows the tablet in the hand (43 tablet-*
+  files; not tablet-tiles, which only logs tile trees; not those with the
+  tablet off) now pins the place it was aimed at: `HeldLeanDegrees=0`,
+  `HeldRollDegrees=0`, `HeldOutCm=0` and, where not already set,
+  `HeldAcrossCm=0`. Not run.
+
+### 26.2 The open gesture refused every try
+
+Nadi: "the gesture at the stow spot to open the inventory tablet did not
+work at all."
+
+- [R in the log, OBVR.log 5815-5868] Five tries, all refused: the hands
+  0.24 m apart (0.04 to 0.20); a hand 0.06 m outside the inventory ring; the
+  hands 0.24 m apart; 0.29 m apart; together with open grips for 0.00 s
+  (0.35 wanted). The 12:20 and 12:33 logs have no try.
+- [R in the log, the Holster lines at the same grips] The controllers were
+  0.02 to 0.09 m apart in those tries: (-0.04 -0.01 -0.23) and
+  (0.05 -0.03 -0.24) right, forward, up from the eyes for the first; 0.06,
+  0.08, 0.02 and 0.05 m for the others. [D] Each Holster line is logged as
+  its own grip closes, a few frames apart, so this is near, not exact.
+- [R in the log, 970-971] The palms were read in the game (not the hand
+  bone fallback): right 0.047 -0.004 0.147, left -0.041 0.012 0.134 m in
+  each controller's frame - 13 to 15 cm behind the controller and 4 to 5 cm
+  outward. [R in the INI] His grip puts the hand bone 17 to 19 cm behind it
+  (`RightHandGripY` -0.188, `LeftHandGripY` -0.169).
+- **Cause** [D]: section 16 moved the measure from the wrists to the palms,
+  but the palms sit almost as far from the controllers. Their outward 9 cm
+  and the 14 cm lever turned with the wrists keep two drawn palms 0.24 m
+  and more apart whenever the controllers touch; the 0.20 m window could not
+  be met. Section 16's unit test had placed the palm 3 cm off the
+  controller, not where the game reads it, so it passed. The ring was
+  tested per hand: two hands side by side span 20 cm and more, so one of
+  them was out (try 2). The dwell asked for the pose held with open grips
+  for 0.35 s; it reset when one grip closed, and the palms were never close
+  enough while open (try 5). [R] With the old rules, unit frames built from
+  the five tries' numbers are refused exactly as the run was: 0.24, 0.06
+  out, 0.24, 0.29, 0.00 s.
+- [R in the code] GripToggle=1 does not matter here: the toggle changes
+  each hand's hold only while it keeps a weapon, a torch or a bow
+  (vr/GripToggle.h); the scroll reads the raw grip.
+- **Changed** (vr/TabletScroll.h, vr/MenuPlace.h `ScrollFrameOf`,
+  camera/hands/ControlsOut.cpp's refusal line). The gates, all at the
+  moment the second grip closes:
+
+  | Gate | Before | Now |
+  |---|---|---|
+  | Hands together | the drawn palms 0.04 to 0.20 m apart | the controllers at most 0.20 m apart |
+  | At the ring | each drawn palm inside the ring's reach | the palms' middle within the reach plus 0.10 m |
+  | Intent | 0.35 s held with both grips open, then both closed | both grips closed within 0.5 s of each other |
+  | Hands empty, in the world, no menu | as before | as before |
+
+  How far it is unrolled is the pull from where it began: 0 at the start,
+  open when the palms stand the tablet's width apart, or 12 cm further
+  apart than at the start when that is more (before: from a fixed 0.08 m,
+  so his start at 0.24 m would have shown it 60 % open at once). Brought
+  back to within a tenth of the start after unrolling a quarter, it rolls
+  back and closes (before: palms at 0.08 m, out of reach). Rolling up a
+  held tablet ends at the start's distance, or 0.24 m if no scroll has
+  begun yet (opened by the B) [D from his tries].
+- The log line says which gate: "the controllers X m apart (at most 0.20)",
+  "the hands' middle X m past the inventory ring (its reach and 0.10)",
+  "the second grip X s after the first (at most 0.50)", once per try, 40
+  lines a run.
+- Still kept away [D from the tests]: a hand holding anything, the tablet
+  off or OBVR's own menu up, another menu up, the controllers more than
+  0.20 m apart (more than 0.40: no line, a two-handed grab), the hands
+  together at the hip, above the eyes or half a metre further out, one grip
+  held longer than 0.5 s before the other, grips closed elsewhere and
+  carried to the ring closed, one grip alone.
+- [G] The 0.20 m together window and the 0.10 m ring margin are chosen
+  from five tries of one player with Index controllers; the 0.5 s pairing
+  has no measure in the log (no times between the two grips). A tracked
+  run with the frames logged would settle them.
+- Tests: tablet_scroll_test (his five tries begin and open fully with a
+  20 cm pull; every gate and refusal with its measure; the accidental cases
+  above; unrolling, rolling back, rolling up, the B), menu_place_test (his
+  read palms over 20 cm apart with the controllers 12 cm; the controllers
+  handed over as they are). Red before: the five tries refused as in the
+  run.
+- Harness: tablet-scroll.txt's out-of-ring try moved from 25 to 40 cm out
+  (25 cm is now within the margin) and expects the new line;
+  tablet-scroll-vertical.txt unchanged in its moves. Not run.
+- Not verified: the gesture in the headset. Whether two Index controllers
+  closed side by side at the chest always read under 0.20 m (his five
+  did), and whether 0.5 s is enough for a natural squeeze.

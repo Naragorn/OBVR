@@ -52,10 +52,12 @@ inline NiPoint3 DrawnHandOnController(const HandSettings& s, bool physicalLeft) 
 	return NiPoint3{x, z + s.handGripUpMetres, -(y + s.handGripForwardMetres)};
 }
 
-// A hand where it holds the tablet and where the scroll measures it, in
-// tracking space: its palm's middle when read (vr::TabletHoldPoint), else
-// its bone - the wrist, which on Nadi's grip (18 cm behind the controller)
-// read two hands held together 29 to 35 cm apart (2026-11-22).
+// A hand where it holds the tablet and where the scroll unrolls it and finds
+// the ring, in tracking space: its palm's middle when read
+// (vr::TabletHoldPoint), else its bone - the wrist. How close the hands are
+// the scroll reads on the controllers: on Nadi's grip the wrists read 29 to
+// 35 cm apart with the hands together (2026-11-22), the palms 24 to 29
+// (2026-11-27), the controllers 2 to 9.
 inline NiPoint3 HoldingHandAt(const HandModeFrame& f, const HandSettings& s, bool leftRole) {
 	const HandPose& hand = leftRole ? f.left : f.right;
 	const NiPoint3 bone = DrawnHandOnController(s, PhysicalLeftOf(leftRole, f.rolesSwapped));
@@ -162,6 +164,8 @@ inline TabletScrollFrame ScrollFrameOf(const HandModeFrame& f, const HandSetting
 	g.tracked = f.left.valid && f.right.valid && f.headValid;
 	g.left = HoldingHandAt(f, s, true);
 	g.right = HoldingHandAt(f, s, false);
+	g.leftController = f.left.position;  // how close the hands are: the controllers (TabletScrollLimits)
+	g.rightController = f.right.position;
 	g.head = f.headPosition;
 	NiPoint3 forward = Rotate(f.head, NiPoint3{0.0f, 0.0f, -1.0f});
 	forward.y = 0.0f;

@@ -78,6 +78,7 @@ void TestReach() {
 	const NiPoint3 palm{10.0f, 20.0f, 30.0f};
 	HeldPlace unturned;  // the sword's own flat (section 21); turned: below
 	unturned.turnDegrees = 0.0f;
+	unturned.leanDegrees = unturned.rollDegrees = unturned.acrossCm = unturned.outCm = 0.0f;
 	// A thumb's ball 4 cm before the flat, a knuckle 2 cm behind it, a finger between.
 	const NiPoint3 hand[] = {palm + NiPoint3{2.0f, 1.0f, 2.8f}, palm + NiPoint3{-3.0f, 0.0f, -1.4f},
 	                         palm + NiPoint3{5.0f, -2.0f, 0.7f}};
@@ -135,7 +136,8 @@ void TestReach() {
 	// Turned a quarter towards the head (section 24.4, the default): the two
 	// hands' faces both look away from their knuckles - here -x - and each
 	// hand's reach is taken that way: the knuckle 3 units out of the palm's middle.
-	const HeldPlace quarter;
+	HeldPlace quarter;  // the turn alone, without the defaults of 2026-11-27
+	quarter.leanDegrees = quarter.rollDegrees = quarter.acrossCm = quarter.outCm = 0.0f;
 	Check(NearPoint(TurnHeldPage(PageLikeTheSword(held, true), quarter, true).front, NiPoint3{-1.0f, 0.0f, 0.0f}) &&
 	          NearPoint(TurnHeldPage(PageLikeTheSword(held, false), quarter, false).front, NiPoint3{-1.0f, 0.0f, 0.0f}),
 	      "(turned a quarter, a left and a right hand's page face the same way: away from the knuckles)");
@@ -275,6 +277,7 @@ void TestOnTheHand() {
 	s.widthMetres = 0.40f;
 	s.gripShare = 0.25f;
 	s.held.turnDegrees = 0.0f;  // the sword's own flat; turned: tablet_test's TestHeldTurnedAndCentred
+	s.held.leanDegrees = s.held.rollDegrees = s.held.acrossCm = s.held.outCm = 0.0f;
 	TabletFrame f;
 	f.up = true;
 	f.paper = Rect(100.0f, 200.0f, 900.0f, 1000.0f);  // 800 x 800 pixels: 0.0005 m a pixel

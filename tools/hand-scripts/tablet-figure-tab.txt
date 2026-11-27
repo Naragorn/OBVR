@@ -8,6 +8,12 @@
 
 ini Hands Enabled=1
 ini Tablet Enabled=1
+# The page in the hand as it was aimed at: a quarter turn alone (the defaults of
+# 2026-11-27 lean, tilt and move it).
+ini Tablet HeldLeanDegrees=0
+ini Tablet HeldRollDegrees=0
+ini Tablet HeldAcrossCm=0
+ini Tablet HeldOutCm=0
 # The finger aimed as the controller's tip 8 cm ahead (PokeTipForward), not the drawn index finger's.
 ini Tablet DrawnFinger=0
 # Opened by the B up-and-down is held from below (the clipboard) - the place the beam and finger are aimed at.

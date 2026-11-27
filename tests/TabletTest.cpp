@@ -401,6 +401,7 @@ void TestHeldLikeTheSword() {
 	s.tiltDegrees = 30.0f;
 	s.gripShare = 0.25f;
 	s.held.turnDegrees = 0.0f;  // the sword's own flat; the turn: TestHeldTurnedAndCentred
+	s.held.leanDegrees = s.held.rollDegrees = s.held.acrossCm = s.held.outCm = 0.0f;
 	const UiRect paper = Rect(100.0f, 200.0f, 900.0f, 1000.0f);  // 800 x 800 pixels: 0.0005 m a pixel
 	const TabletFrame f = FrameOf(paper, paper);
 	// The left fist round its controller, the palm at +x against the handle:
@@ -518,9 +519,14 @@ void TestHeldTurnedAndCentred() {
 	const NiPoint3 palmSide = CrossOf(left.edge, left.blade);
 	const NiPoint3 away = left.edge * -1.0f;  // away from the knuckles: the thumb's and the wrist's way
 	const float lift = PageLiftMetres(HandReach{}, true);
-	Check(Near(s.held.turnDegrees, 90.0f) && Near(s.held.leanDegrees, 0.0f) && Near(s.held.rollDegrees, 0.0f) &&
-	          Near(s.held.acrossCm, 0.0f) && Near(s.held.upCm, 0.0f) && Near(s.held.outCm, 0.0f),
-	      "the defaults: a quarter turn, nothing else");
+	Check(Near(s.held.turnDegrees, 90.0f) && Near(s.held.leanDegrees, 25.0f) && Near(s.held.rollDegrees, -15.0f) &&
+	          Near(s.held.acrossCm, 20.0f) && Near(s.held.upCm, 0.0f) && Near(s.held.outCm, -15.0f),
+	      "the defaults: Nadi's of 2026-11-27 - a quarter turn, leant 25, tilted -15, 20 cm across, 15 cm back");
+	// The checks below take one angle or place at a time from a quarter turn alone.
+	s.held.leanDegrees = 0.0f;
+	s.held.rollDegrees = 0.0f;
+	s.held.acrossCm = 0.0f;
+	s.held.outCm = 0.0f;
 
 	TabletPlace p = PlaceTablet(f, s, true, palm, TabletHold::Side, left);
 	Check(p.valid && NearPoint(Column(p, 1), left.blade), "its up still the blade's way out of the fist");
@@ -1011,6 +1017,7 @@ void TestHeldByItsOutline() {
 	right.valid = true;
 	right.blade = NiPoint3{0.0f, 0.6f, -0.8f};
 	right.edge = NiPoint3{0.0f, -0.8f, -0.6f};
+	s.held.leanDegrees = s.held.rollDegrees = s.held.acrossCm = s.held.outCm = 0.0f;  // the turn alone
 	p = PlaceTablet(box, s, false, hand, TabletHold::Side, right);
 	Check(Near(AcrossFromHand(p, box, hand, 500.0f), 0.0f) && Near(AcrossFromHand(p, box, hand, 1300.0f), 0.40f),
 	      "held like the sword: the page's middle in the hand, the box out past the page's edge");

@@ -14,6 +14,12 @@
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-open-hitch-late.txt --headless --no-steamvr --parallel --run-timeout 300
 
 ini Tablet Enabled=1
+# The page in the hand as it was aimed at: a quarter turn alone (the defaults of
+# 2026-11-27 lean, tilt and move it).
+ini Tablet HeldLeanDegrees=0
+ini Tablet HeldRollDegrees=0
+ini Tablet HeldAcrossCm=0
+ini Tablet HeldOutCm=0
 ini Render LatePoseWait=1
 ini Tablet Unroll=vertical
 ini Hands Enabled=1

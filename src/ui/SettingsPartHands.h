@@ -483,7 +483,7 @@ inline constexpr SettingDefinition kHandsRows[] = {
 	},
 	{
 		"Laser & wrist menus", "Hand menu sideways", "Move the menu in your hand towards your middle, or away",
-		ItemKind::Number, -20.0f, 20.0f, 1.0f, 0, false,
+		ItemKind::Number, -30.0f, 30.0f, 1.0f, 0, false,
 		"Tablet", "HeldAcrossCm",
 		+[](const Config& c) { return c.hands.tablet.held.acrossCm; },
 		+[](Config& c, float v) { c.hands.tablet.held.acrossCm = v; },
@@ -497,7 +497,7 @@ inline constexpr SettingDefinition kHandsRows[] = {
 	},
 	{
 		"Laser & wrist menus", "Hand menu distance", "Move the menu in your hand closer to your eyes, or back to your palm",
-		ItemKind::Number, -10.0f, 20.0f, 1.0f, 0, false,
+		ItemKind::Number, -30.0f, 20.0f, 1.0f, 0, false,
 		"Tablet", "HeldOutCm",
 		+[](const Config& c) { return c.hands.tablet.held.outCm; },
 		+[](Config& c, float v) { c.hands.tablet.held.outCm = v; },
