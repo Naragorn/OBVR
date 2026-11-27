@@ -2673,3 +2673,67 @@ Without the shield everything worked again."
     below it; a creature ahead and beside; an arrow raised/lowered; the disc lost). Harness,
     written, not run: tools/hand-scripts/shield-block-contact.txt; shield-block.txt now pins
     ShieldBlockByContact=0 (the old rule).
+- **Arrows by the same rule (built 2026-11-27, Nadi: "go").** An arrow that hits the shield is
+  blocked and shows the shield's impact instead of the body's.
+  - **Read [R]** (Oblivion.exe 1.2.0.416, dumpbin and ../OBNG/re/export/rea-all/functions/
+    0x60a640.c, 0x60d950.c, 0x8afb50.c): the Havok contact callback 0x0060D950 calls the
+    projectile's impact with an actor, 0x0060A640 (thiscall, ecx = the projectile; [ebp+8] the
+    contact point in game units, [ebp+0Ch] the contact normal, [ebp+10h] the actor). It writes the
+    projectile's hit record (+0x5C: kind, point, normal, target +0x28, the node it hangs on +0x2C,
+    its local turn +0x30) and sets its state +0x60 to 1. The shield's branch is taken when
+    `call 005E5670` at 0x0060AD01 (the Block action), the process's shield (vtable +0xF8(1)), the
+    cone `006131D0(target, projectile, 0)` at 0x0060AD25 and the height test (the point's z at or
+    above the target's z + half its height, 0x005E0660) all say yes; both branches meet at
+    0x0060AD8B with al the answer and edi the point. The shield's branch looks for the node to hang
+    the arrow on with 0x008AFB50(root, 7): the first node whose collision object's filter has 7
+    in bits 8-12 (a ragdoll part number; that 7 is the left hand is [G] from Bethesda's part list,
+    not read). The body's branch takes the node nearest the point (0x008AFD70). After either, the
+    arrow's impact effect 0x006088F0 runs with that node, and a hard material (the switch on the
+    node's material: 0, 3, 5, 10, ...) sends it to 0x00608DA0 instead of sticking ([D]: a bounce).
+    Nothing in that stretch reads any state of the Block action but the one call - so a call-site
+    answer is enough; no stop. The damage is not decided here: 0x0060A640 never calls the hit
+    handler; the projectile's update later hands the hit to the shooter's AttackHandling
+    (0x005FEBF0, vtable +0x3AC, `(unused, arrowRef, target)` - GameAddresses.h), whose block check
+    is OBVR's (forced for the shield by contact) and whose cone gets the arrow as the attacker
+    ([R] earlier, BlockCone.h; that the arrow and not the shooter reaches the cone was not
+    re-traced through every assignment of ebp - [D], the log line below settles it).
+  - **The one place patched:** the call at 0x0060AD01 goes to a 55-byte stub
+    (`BuildArrowShieldStub`, game/ArrowShieldLogic.h; installed with the block cone): it asks
+    `ArrowAtShieldFor` and then (a) not the player, not an ArrowProjectile, or the shield not by
+    contact: jumps to the original 0x005E5670, whose `ret` comes back to 0x0060AD06 - the vanilla
+    test as it was; (b) Blocked: `mov edi,[ebp+8]` and on to 0x0060AD80 (`mov al,1`), the shield's
+    branch; (c) Through: on to 0x0060AD84, the body's; (d) not judgeable: back to 0x0060AD06 with
+    Block's yes when the hand is raised as the old pose rule has it (the rest of vanilla's test
+    decides), else the body's. One site, because the whole four-part test is replaced only when
+    the disc can judge: the cone and the height test would otherwise veto a shield the arrow did
+    hit (an arrow from the side, a shield held low).
+  - **The rule** (pure, `ArrowAtShieldFor`): the point within the disc's radius + 6 units in its
+    plane and within its half thickness + 10 units along its normal - blocked. Else the segment
+    from the projectile's position at the callback (+0x2C; taken as its last position - [G], the
+    Havok step's order is not read) to the point entering the disc grown by 3 units
+    (`SegmentEntersDisc`) - blocked; else through. A point not finite, or the disc not placed this
+    frame: as raised / the body, as above. The margins are guesses: 6 for the arrow's head and
+    fletching past a rim, 10 for a contact point that may lie a little behind the shield, 3 for
+    half an arrow's width; the projectile's speed and step were not read. If the point turns out
+    to lie on the player's capsule behind a shield held out, the segment decides ("by its
+    flight" in the line).
+  - **One decision for both:** the verdict is kept for the projectile (`ArrowVerdicts`, 8 slots,
+    keyed by its reference, about a second) and the hit handler's cone takes it for the same
+    attacker pointer (`TakeArrowVerdict` in `ShieldConeAt`, `ShieldConeFor(..., KeptArrow)`): a
+    second arrow or a melee attacker never matches another projectile's slot. Kept verdicts
+    nobody took are dropped with a capped line ("not taken by the shield's cone" - the cone was
+    asked with the shooter, or the engine blocked by itself).
+  - **Setting off or disc unread:** `byContact` is false, the callback answers Vanilla and the
+    stub jumps to the original call - the test runs as in vanilla. The 5 bytes at 0x0060AD01 are
+    the stub's call either way (the patch is installed once); the behaviour is vanilla's.
+  - **Log:** "Block angle: an arrow X at the shield by contact - <why> (by its flight), its point U
+    units off the disc's middle (radius R), D off its plane (half thickness H) - blocked, the
+    shield's impact / THROUGH, the body's impact / not judged - the game's test, as raised"
+    (capped at 24; inside the Havok callback, no allocation).
+  - **Tests:** arrow_shield_test (the point on the disc, past the rim within the margin, beside,
+    before and behind the plane beyond the margin; the segment crossing and missing, no
+    direction, no position; no usable point raised/lowered; the disc lost or without a normal;
+    the setting off; not the player; two arrows in one frame; an arrow and a melee blow in one
+    frame; full and expired slots; the stub's bytes, its calls and jumps). Red against f067265:
+    "an arrow judged on the disc, the hand low: blocked" (it landed there), 3 checks. Harness,
+    written, not run: tools/hand-scripts/shield-block-arrow.txt.

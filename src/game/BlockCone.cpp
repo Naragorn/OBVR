@@ -8,6 +8,7 @@
 #include "core/Memory.h"
 #include "game/BladeBodies.h"
 #include "game/GameAddresses.h"
+#include "game/ArrowShield.h"
 #include "game/Parry.h"
 #include "game/PlayerAim.h"
 
@@ -87,12 +88,16 @@ bool AngleKeepsBlock(void* attacker) {
 
 // A blow under the block forced for the shield by contact (game/Parry.h,
 // ShieldForcedBlow): the disc's verdict decides (ParryLogic.h,
-// ShieldConeFor); Original leaves it to the game's cone below.
+// ShieldConeFor); Original leaves it to the game's cone below. An arrow
+// judged at its impact (game/ArrowShield.h) takes that verdict, the one its
+// impact showed.
 ShieldCone ShieldConeAt(void* attacker) {
 	if (!ShieldForcedBlow()) {
 		return ShieldCone::Original;
 	}
-	return ShieldConeFor(true, true, JudgeBlow(attacker, true).verdict, g_guard.shieldPose.raised);
+	const KeptArrow arrow = TakeArrowVerdict(reinterpret_cast<UInt32>(attacker));
+	const BlockAngle verdict = arrow == KeptArrow::None ? JudgeBlow(attacker, true).verdict : BlockAngle::Engine;
+	return ShieldConeFor(true, true, verdict, g_guard.shieldPose.raised, arrow);
 }
 
 using ConeFn = bool(__cdecl*)(void* target, void* attacker, float* angleOut);
@@ -173,6 +178,8 @@ bool __cdecl OnBlockCone(void* target, void* attacker, float* angleOut) {
 }  // namespace
 
 void InstallBlockCone() {
+	// The arrow impact's block check with it: the shield by contact judges arrows too (game/ArrowShield.h).
+	InstallArrowShield();
 	const UInt32 displacement = mem::CallRelativeDisplacement(kCallBlockConeCheck, kBlockConeCheck);
 	const UInt8 expected[5] = {0xE8, static_cast<UInt8>(displacement & 0xFF),
 	                           static_cast<UInt8>((displacement >> 8) & 0xFF),
@@ -204,6 +211,7 @@ void SetBlockGuard(const BlockGuard& guard, const BlockAngleSettings& settings) 
 	g_guard = guard;
 	g_angle = settings;
 	SetShieldGuard(guard.shieldPose.byContact);
+	SetArrowShieldGuard(guard);
 }
 
 }  // namespace obvr::game
