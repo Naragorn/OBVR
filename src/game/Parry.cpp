@@ -56,6 +56,8 @@ struct OffHandGuards {
 	bool weaponReadied = false;
 	bool shieldGuards = false;
 	bool shieldForced = false;
+	bool weaponGuards = false;  // the drawn blade by contact, not swinging (SetWeaponGuard)
+	bool weaponForced = false;
 };
 OffHandGuards g_offHand;
 bool g_installed = false;
@@ -69,7 +71,7 @@ using ShareFn = float(__cdecl*)(UInt32 block, UInt32 luck, float factor, UInt32 
 // is parried, and where each attacker's blade stood at that moment - the
 // timing the parry depends on (does a blow land before the blade reaches
 // the player, as Skyrim's do?).
-void LogBlow(bool engineBlocking, bool forced, bool shieldForced) {
+void LogBlow(bool engineBlocking, bool forced, bool shieldForced, bool weaponForced) {
 	if (g_lines.blow == 0) {
 		return;
 	}
@@ -93,8 +95,8 @@ void LogBlow(bool engineBlocking, bool forced, bool shieldForced) {
 	// The shield's verdict at this blow comes on the "Block angle:" line the
 	// cone writes right after (game/BlockCone.cpp): the angle and the distance.
 	OBVR_LOG("Parry: a blow at the player - the engine says blocking %d, a block forced for a parry %d, %u parried, "
-	         "a block forced for the shield by contact %d; blades near: %s",
-	         engineBlocking ? 1 : 0, forced ? 1 : 0, g_ledger.count, shieldForced ? 1 : 0,
+	         "a block forced for the shield by contact %d, for the weapon by contact %d; blades near: %s",
+	         engineBlocking ? 1 : 0, forced ? 1 : 0, g_ledger.count, shieldForced ? 1 : 0, weaponForced ? 1 : 0,
 	         g_foes.count > 0 ? foes : "none");
 }
 
@@ -110,12 +112,14 @@ UInt8 __fastcall OnBlockingCheck(void* target, void* /*edx*/) {
 	BlockForces forces;
 	if (g_installed) {
 		forces = BlockForcesFor(isPlayer, engine != 0, g_offHand.torchRaised, g_offHand.weaponReadied,
-		                        g_offHand.shieldGuards, AnyBlowStopped(g_enabled, g_ledger.count, g_heldFoe));
+		                        g_offHand.shieldGuards, AnyBlowStopped(g_enabled, g_ledger.count, g_heldFoe),
+		                        g_offHand.weaponGuards);
 	}
 	g_forced = forces.parry;
 	g_offHand.shieldForced = forces.shield;
+	g_offHand.weaponForced = forces.weapon;
 	if (isPlayer) {
-		LogBlow(engine != 0, g_forced, forces.shield);
+		LogBlow(engine != 0, g_forced, forces.shield, forces.weapon);
 		if (forces.torch && g_lines.torchForced > 0) {
 			--g_lines.torchForced;
 			OBVR_LOG("Parry: a blow at the player with the torch raised and nothing readied - the block check says "
@@ -140,6 +144,7 @@ float __cdecl OnBlockShare(UInt32 block, UInt32 luck, float factor, UInt32 flagA
 	g_stoppedBlow = 0;
 	g_forced = false;
 	g_offHand.shieldForced = false;
+	g_offHand.weaponForced = false;
 	return share;
 }
 
@@ -322,6 +327,10 @@ void SetTorchGuard(bool raised, bool weaponReadied) {
 void SetShieldGuard(bool byContact) { g_offHand.shieldGuards = byContact; }
 
 bool ShieldForcedBlow() { return g_installed && g_offHand.shieldForced; }
+
+void SetWeaponGuard(bool guards) { g_offHand.weaponGuards = guards; }
+
+bool WeaponForcedBlow() { return g_installed && g_offHand.weaponForced; }
 
 void ForgetParries() {
 	g_ledger = ParryLedger{};

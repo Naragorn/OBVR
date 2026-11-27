@@ -190,6 +190,72 @@ void TestShieldByContact() {
 	      "under the shield's force: a parried attacker blocked, another left to the shield");
 }
 
+// The weapon by contact ([Hands] WeaponBlockByContact, Nadi 2026-11-27): no
+// Block held from the guard pose; the block check forced for a drawn blade
+// not swinging, and the cone asks the shield's and the weapon's verdicts.
+void TestWeaponByContact() {
+	std::printf("The weapon by contact at the hit handler\n");
+	Check(ForceBlockForWeapon(true, false, true), "the blade guarding, the engine not blocking: forced");
+	Check(!ForceBlockForWeapon(true, true, true), "the engine blocking already: its own yes");
+	Check(!ForceBlockForWeapon(true, false, false), "the rule off, the blade unread or swinging: the engine's no");
+	Check(!ForceBlockForWeapon(false, false, true), "someone else hit: never");
+	BlockForces f = BlockForcesFor(true, false, false, true, false, false, true);
+	Check(f.weapon && !f.shield && !f.parry && f.Any(), "the weapon alone: its force");
+	f = BlockForcesFor(true, false, false, true, true, true, true);
+	Check(f.shield && f.weapon && !f.parry, "shield and weapon, a parry in its window: both forces, the parry's cone first");
+	f = BlockForcesFor(true, false, false, true, false, true, false);
+	Check(!f.weapon && f.parry, "a parry, the weapon swinging (not guarding): the parry's force as before");
+	f = BlockForcesFor(true, true, false, true, true, false, true);
+	Check(!f.Any(), "the engine blocking already: nothing forced");
+	f = BlockForcesFor(false, false, false, true, true, false, true);
+	Check(!f.Any(), "not the player: nothing forced");
+	// The cone: either guard in the way blocks; none: the pose's fallback
+	// for a guard that cannot judge, else the blow lands.
+	ContactVerdicts c;
+	c.weaponAsked = true;
+	c.weapon = BlockAngle::Blocked;
+	Check(ContactConeFor(true, true, c) == ShieldCone::Blocked, "the blade in the blow's way: blocked");
+	c.weapon = BlockAngle::Through;
+	c.weaponRaised = true;
+	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "the blade not in its way, the pose up: it lands");
+	c.weapon = BlockAngle::Engine;
+	Check(ContactConeFor(true, true, c) == ShieldCone::Original, "cannot judge, the pose up: the game's cone");
+	c.weaponRaised = false;
+	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "cannot judge, the pose down: it lands");
+	c.arrow = KeptArrow::None;
+	c.weaponRaised = true;
+	Check(ContactConeFor(true, true, c) == ShieldCone::Original, "an arrow (no blade to judge), the guard up: the game's cone");
+	c.weaponRaised = false;
+	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "an arrow, the guard down: it lands");
+	c.weaponAsked = false;  // swinging: the weapon has no say
+	c.weaponRaised = true;
+	Check(ContactConeFor(true, true, c) == ShieldCone::NotBlocked, "the weapon swinging: no say, it lands");
+	// A shield and a weapon.
+	ContactVerdicts both;
+	both.shieldAsked = true;
+	both.weaponAsked = true;
+	both.shield = BlockAngle::Blocked;
+	both.weapon = BlockAngle::Through;
+	Check(ContactConeFor(true, true, both) == ShieldCone::Blocked, "the shield in the way, the weapon not: blocked");
+	both.shield = BlockAngle::Through;
+	both.weapon = BlockAngle::Blocked;
+	Check(ContactConeFor(true, true, both) == ShieldCone::Blocked, "the weapon in the way, the shield not: blocked");
+	both.weapon = BlockAngle::Through;
+	Check(ContactConeFor(true, true, both) == ShieldCone::NotBlocked, "neither in the way: it lands");
+	both.arrow = KeptArrow::Blocked;
+	Check(ContactConeFor(true, true, both) == ShieldCone::Blocked, "an arrow kept on the shield: blocked");
+	Check(ContactConeFor(true, false, both) == ShieldCone::Original, "not forced: the cone and the angle rule as before");
+	Check(ContactConeFor(false, true, both) == ShieldCone::Original, "not the player: the cone");
+	// Two attackers at once: each blow its own verdicts.
+	ContactVerdicts one;
+	one.weaponAsked = true;
+	one.weapon = BlockAngle::Blocked;
+	ContactVerdicts two = one;
+	two.weapon = BlockAngle::Through;
+	Check(ContactConeFor(true, true, one) == ShieldCone::Blocked && ContactConeFor(true, true, two) == ShieldCone::NotBlocked,
+	      "two attackers: one into the blade blocked, one beside it lands");
+}
+
 void TestHeld() {
 	std::printf("Someone held by the off hand\n");
 	const UInt32 held = 0x1000;
@@ -380,6 +446,7 @@ int main() {
 	TestLedger();
 	TestHitHandler();
 	TestShieldByContact();
+	TestWeaponByContact();
 	TestHeld();
 	TestWhatMeets();
 	TestHandToHandStub();

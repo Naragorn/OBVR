@@ -1,0 +1,79 @@
+# The weapons' block by contact ([Hands] WeaponBlockByContact=1; vr/HandBlockLogic.h,
+# game/ParryLogic.h ForceBlockForWeapon / ContactConeFor; Nadi, 2026-11-27, "ja go"):
+# the guard pose of a drawn sword holds no Block; a blow is blocked when the
+# blade is in its way at the blow (the weapon's angle rule, its numbers unchanged).
+#  1. The Steel Longsword drawn by the holster (block-angle.txt's draw), the guard
+#     held level across the body while the stick sprints forward 2 s: no
+#     "blocking" line, "the weapon's guard is up - no block held", and a run's
+#     ground covered (the walk a held block gives would not).
+#  2. A bandit (00069AD1) placed, tgm, the head facing it (`head face 1`); 25 s
+#     with the guard level across: its blows "a block forced for the weapon by
+#     contact 1", "at the weapon by contact (no block held, the block forced for
+#     the weapon) - the blades ... - blocked" when they cross.
+#  3. 25 s with the blade held along the view (pointing at the bandit): the
+#     blows "THROUGH, the guard stands wrong" - the blade is not in their way.
+# Which verdicts come depends on the bandit's swings. Not run yet (written
+# 2026-11-27 on Windows); the 400 units of the sprint are a guess (sprint.txt:
+# 430 in 1 s at the sprint).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weapon-block-contact.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponBlockByContact=1
+ini Hands WeaponStopsAtBodies=1
+ini Hands CombatReach=85
+ini Hands BlockByAngle=1
+ini Hands AnalogWalk=1
+ini Hands ArmSwingRun=0
+ini Hands ReachOpens=0
+console-at ready player.additem 00000C0C 1
+console-at ready player.equipitem 00000C0C
+console-at placed player.placeatme 00069AD1 1
+console-at placed tgm
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Hands: the weapon's guard is up - no block held, the blade blocks what it is in the way of
+expect AnalogWalk: sprinting
+expect a block forced for the weapon by contact 1
+expect at the weapon by contact (no block held, the block forced for the weapon)
+expect - blocked
+expect THROUGH, the guard stands wrong
+reject Hands: the left hand is up - blocking
+reject HandScript: WARNING
+moved sprint_on sprint_end 400
+
+wait 12
+wait 1
+mark ready
+wait 4
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.00 -0.45 -0.35
+wait 2
+mark drawn
+# 1. The guard level across, sprinting by the stick.
+right pos 0.10 -0.15 -0.40
+right rot 0 90 0
+wait 1
+left stick 0 1
+left click 1
+wait 0.5
+mark sprint_on
+wait 2
+mark sprint_end
+left click 0
+left stick 0 0
+wait 1
+# 2. The bandit; the guard level across.
+mark placed
+wait 3
+head face 1
+wait 25
+mark level_done
+# 3. The blade along the view.
+right rot 0 0 0
+wait 25
+mark along_done

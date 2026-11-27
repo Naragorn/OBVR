@@ -411,6 +411,42 @@ void TestTorch() {
 	Check(v.verdict == BlockAngle::Engine, "the shaft not read: the engine's verdict stands");
 }
 
+// The weapon by contact (WeaponGuardPose, ParryLogic.h ContactConeFor): the
+// guard is the weapon when no pose holds Block and no shield guards by
+// contact; the blade's verdict with the weapon's own numbers decides.
+void TestWeaponByContact() {
+	std::printf("The weapon by contact\n");
+	Check(GuardWithFor(false, BlockWith::None, false, true) == BlockWith::Weapon, "no pose block, the weapon by contact: the weapon");
+	Check(GuardWithFor(false, BlockWith::None, true, true) == BlockWith::Shield, "with a shield by contact too: the shield first");
+	Check(GuardWithFor(true, BlockWith::Fists, false, true) == BlockWith::Fists, "the fists' guard holding Block: the fists");
+	BlockAngleSettings s;
+	const BlockGuard g = WeaponGuard();  // level across the body
+	const auto cone = [&](const BlockBlow& b, bool raised) {
+		ContactVerdicts c;
+		c.weaponAsked = true;
+		c.weaponRaised = raised;
+		c.weapon = BlockAngleFor(s, g, b).verdict;
+		return ContactConeFor(true, true, c);
+	};
+	// Their blade coming down onto ours: across, met - blocked.
+	Check(cone(Blade(NiPoint3{0.0f, 5.0f, 140.0f}, NiPoint3{0.0f, 0.0f, -1.0f}), false) == ShieldCone::Blocked,
+	      "a cut down across the blade: blocked, the pose not even up");
+	// Their blade along ours: not across - lands, the pose up or not.
+	Check(cone(Blade(NiPoint3{-25.0f, 5.0f, 104.0f}, NiPoint3{1.0f, 0.0f, 0.0f}), true) == ShieldCone::NotBlocked,
+	      "a blade along ours: it lands though the guard is up");
+	// Across but far below: past the reach.
+	Check(cone(Blade(NiPoint3{0.0f, 5.0f, 40.0f}, NiPoint3{0.0f, 0.0f, -1.0f}), true) == ShieldCone::NotBlocked,
+	      "across but 60 below the blade: it lands");
+	BlockGuard unread = g;
+	unread.bladeValid = false;
+	ContactVerdicts c;
+	c.weaponAsked = true;
+	c.weaponRaised = true;
+	c.weapon = BlockAngleFor(s, unread, Blade(NiPoint3{0.0f, 5.0f, 140.0f}, NiPoint3{0.0f, 0.0f, -1.0f})).verdict;
+	Check(c.weapon == BlockAngle::Engine && ContactConeFor(true, true, c) == ShieldCone::Original,
+	      "the blade not read, the guard up: the game's cone");
+}
+
 // The shield by contact (ShieldGuardPose, ParryLogic.h ShieldConeFor): the
 // guard is the shield whenever no pose holds the Block control, and the
 // disc's verdict alone decides - a blade at the disc blocked, one beside it
@@ -450,6 +486,7 @@ void TestShieldByContact() {
 int main() {
 	TestLineAngle();
 	TestShieldByContact();
+	TestWeaponByContact();
 	TestGaps();
 	TestWeapon();
 	TestWeaponReach();

@@ -47,6 +47,9 @@ struct HandBlockFrame {
 	// The shield guards by contact (ShieldBlocksByContact): the raised
 	// shield hand holds no Block.
 	bool shieldByContact = false;
+	// The drawn weapon guards by contact (HandBlockFrame.h,
+	// WeaponBlocksByContact): its guard pose holds no Block.
+	bool weaponByContact = false;
 };
 
 struct HandBlock {
@@ -56,6 +59,8 @@ struct HandBlock {
 	// The shield by contact this frame, and its hand raised as the pose
 	// rule had it (game/BlockAngleLogic.h, ShieldGuardPose).
 	game::ShieldGuardPose shield;
+	// The weapon by contact, its guard pose and its swing (WeaponGuardPose).
+	game::WeaponGuardPose weapon;
 };
 
 inline HandBlock DecideHandBlock(const HandBlockFrame& f, const GestureThresholds& t) {
@@ -64,6 +69,8 @@ inline HandBlock DecideHandBlock(const HandBlockFrame& f, const GestureThreshold
 		return b;
 	}
 	b.shield.byContact = f.shieldByContact && f.shieldEquipped;
+	b.weapon.byContact = f.weaponByContact && f.weaponDrawn;
+	b.weapon.swinging = b.weapon.byContact && f.rightSwinging;
 	if (f.armsRun) {
 		return b;
 	}
@@ -73,7 +80,11 @@ inline HandBlock DecideHandBlock(const HandBlockFrame& f, const GestureThreshold
 	b.blocking = LeftHandBlocks(raised, shieldPoses, f.torchBlocks);
 	b.with = b.blocking ? LeftWithFor(shieldPoses, f.torchBlocks) : game::BlockWith::None;
 	if (!b.blocking && f.rightValid && f.rightHandValid && f.weaponDrawn) {
-		b.blocking = IsWeaponGuard(f.rightRelative, f.blade, f.rightSwinging, t, f.blockByAngle);
+		const bool guard = IsWeaponGuard(f.rightRelative, f.blade, f.rightSwinging, t, f.blockByAngle);
+		// By contact the guard pose is kept for the blows the blade cannot
+		// judge and holds no Block (game/ParryLogic.h, ForceBlockForWeapon).
+		b.weapon.raised = b.weapon.byContact && guard;
+		b.blocking = guard && !b.weapon.byContact;
 		b.with = b.blocking ? game::BlockWith::Weapon : b.with;
 	}
 	if (!b.blocking && f.rightValid && f.leftValid && f.fistsUp && f.weaponDrawn) {

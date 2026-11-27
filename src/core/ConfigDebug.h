@@ -26,5 +26,7 @@ void ReadLetGoAndThrowStep(Config& config, const char* path);
 // that file in its size.
 void TorchReleaseFollowsWeaponStep(Config& config, const char* path);
 void TorchSpinFollowsWeaponStep(Config& config, const char* path);
+// The hands follow Full VR (moved out of core/Config.cpp the same day).
+void HandsFollowFullVrStep(Config& config, const char* path);
 
 }  // namespace obvr

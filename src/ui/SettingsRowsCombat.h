@@ -130,8 +130,16 @@
 		"Hold your shield in the blow's way. Off, raise your shield hand to block, as before",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "ShieldBlockByContact",
-		+[](const Config& c) { return c.hands.shieldContact.enabled ? 1.0f : 0.0f; },
-		+[](Config& c, float v) { c.hands.shieldContact.enabled = v != 0.0f; },
+		+[](const Config& c) { return c.hands.contactBlock.shield ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.contactBlock.shield = v != 0.0f; },
+	},
+	{
+		"Combat: features", "Weapon blocks what it stops",
+		"Hold your blade across the blow. Off, raise your weapon to block, as before",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Hands", "WeaponBlockByContact",
+		+[](const Config& c) { return c.hands.contactBlock.weapon ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.contactBlock.weapon = v != 0.0f; },
 	},
 	{
 		"Combat: features", "Drop the torch", "Open your hand and the torch falls, still burning. Off, it stays in your hand",

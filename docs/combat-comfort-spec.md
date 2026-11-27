@@ -192,6 +192,17 @@ against a weapon. A blocked blow is never fully stopped: at most `fBlockMax`
   (no more than 20 cm below the eyes) and ahead, the blade held across the
   body (at least 0.7 sideways, at most 0.5 up or down), not swinging, with
   the weapon drawn (fists included). It holds the same block control.
+  **Since 2026-11-27 not for a drawn sword, mace or axe whose blade is read**
+  (`[Hands] WeaponBlockByContact=1`, the default; Nadi: "ja go"): no pose
+  holds Block; at every blow the block check is forced (game/ParryLogic.h
+  `ForceBlockForWeapon`) while the weapon hand is not swinging, and the cone
+  blocks only when the blade is in the blow's way by the weapon's own rule
+  and numbers (30 / 40 / 70 / 25, unchanged). A blow the blade cannot judge:
+  the game's cone while the guard pose is up, else it lands. With a shield
+  by contact too, either in the way blocks (the shield asked first). A
+  staff, the fists and the bow keep their pose. Details, the order of the
+  forces and what is lost: free-weapons-spec, "The weapons' block by
+  contact".
 - The guard reads the blade as the controller's forward axis, the same axis
   the strike by motion runs along.
 - **The block looks along the view** (`[Look] BlockFacesView`, on by default,

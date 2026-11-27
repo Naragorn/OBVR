@@ -26,6 +26,8 @@ struct LocomotionState {
 	bool blockingWas = false;  // the block the pose holds, last frame (LogBlockChange)
 	bool shieldRaisedWas = false;  // the shield hand raised while it guards by contact
 	UInt32 shieldRaisedLines = 12;
+	bool weaponRaisedWas = false;  // the weapon's guard pose up while it guards by contact
+	UInt32 weaponRaisedLines = 12;
 };
 
 // "Arm swing: running / walking again" when the swung arms start or stop

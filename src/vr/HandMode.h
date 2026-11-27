@@ -270,7 +270,7 @@ struct HandSettings {
 	// Half-swording a two-handed sword (vr/HalfSwordLogic.h).
 	vr::HalfSwordSettings halfSword;
 	bool torchBlocks = true;  // the raised torch blocks as a raised shield does ([Hands] TorchBlocks)
-	game::ShieldContactSettings shieldContact;  // the shield blocks what it is in the way of (vr/HandBlockFrame.h)
+	game::ContactBlockSettings contactBlock;  // the shield blocks what it is in the way of (vr/HandBlockFrame.h)
 	// Both palms out, rocked before a foe: the yield (vr/Yield.h, [Hands] Yield).
 	bool yield = true;
 	// The kick on the weapon hand's B (game/KickLogic.h); kickOnB follows its
@@ -775,11 +775,10 @@ struct HandModeFrame {
 	// the fists for the engine's block (vr/Yield.h), and lowering them after.
 	bool readyWeaponClick = false;
 	bool shieldEquipped = false;  // a shield on the left arm: only then does the raised left hand block
-	bool shieldDiscRead = false;  // and its disc read from the model (game/ShieldShape): it guards by contact
+	game::GuardReads guardReads;  // the shield's disc and the blade read: they guard by contact (vr/HandBlockFrame.h)
 	// A torch in the left hand (the off hand): raised, it blocks with TorchBlocks.
 	bool torchHeld = false;
-	// The mode is off but the controllers still steer menus (ControllerMenus).
-	bool menusOnly = false;
+	bool menusOnly = false;  // the mode is off but the controllers still steer menus (ControllerMenus)
 	// The roles were swapped this frame (vr::AssignHandRoles, left-handed in
 	// Full VR): what is about a controller's own shape goes by the physical
 	// side (vr::PhysicalLeftOf), and the arms draw mirrored (ArmsRestOffset).
@@ -1197,6 +1196,7 @@ struct HandModeResult : MenuPlaceResult {  // the wrists and the tablet: TabletL
 
 	ReadyWeaponVerdict ready;  // the ready-weapon click's progress this frame
 	game::ShieldGuardPose shieldPose;  // the shield by contact, its hand raised (vr/HandBlockLogic.h)
+	game::WeaponGuardPose weaponPose;  // the weapon by contact, its guard raised (vr/HandBlockLogic.h)
 
 	// For the log, and for the block's angle rule: what the block is.
 	bool blocking = false;

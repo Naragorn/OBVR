@@ -2847,3 +2847,61 @@ Without the shield everything worked again."
     tuning, "Shield reach" and "Shield cover"); "Block reach" now says "your blade" (with
     ShieldBlockByContact=0 it still also judges the raised shield, as before).
   - **Melee and the outline, what stays:** the weapon's and the torch's rule keep their numbers.
+- **The weapons' block by contact (built 2026-11-27; Nadi: "ja go" - the weapons' block the same
+  way as the shield's).** `[Hands] WeaponBlockByContact=1` (default; settings row "Weapon blocks
+  what it stops", Combat: features).
+  - **The rule:**
+
+    | | Blocked when |
+    |---|---|
+    | a drawn sword, mace or axe (one- or two-handed: game types 0-3, `MeleeInHand`) whose blade is read | at the blow the blade is in its way by the weapon's own rule and numbers, unchanged (game/BlockAngleLogic.h, the Weapon case: their blade crossing within BlockBladeDegrees 30 of a right angle and within BlockReachUnits 40; against no blade, across their way to the chest - BlockBodyDegrees 70, BlockInterposeUnits 25) - and the weapon hand is not swinging |
+    | the same, a blow the blade cannot judge (the blade not read this frame, an attacker not placed, an arrow) | the game's cone while the old guard pose is up (IsWeaponGuard), else it lands |
+    | a shield by contact as well | the shield's verdict first, then the blade's: either in the way blocks |
+    | parried (their blade met ours, 0.8 s) | blocked by the parry's cone, asked first, as before |
+    | a staff, the fists, the bow, the torch | unchanged: their pose holds Block |
+    | WeaponBlockByContact=0, or the blade not read | the guard pose holds Block, exactly as before |
+
+  - **"The blade read" [R]:** camera `g_blockBladeValid` = a melee weapon drawn (`MeleeInHand`:
+    types 0-3 drawn) and its span read from the drawn node (`StepBladeSpanCache`) and not passing
+    through someone this frame (`!v.through`) - the same flag the angle rule's guard takes
+    (`guard.bladeValid`). BlockAngleFor answers Engine for the weapon exactly when that span is
+    missing or of no length, when the attacker has neither a blade nor a place, or when the
+    attacker stands in the blade (the angle no number). A staff (type 4) is no swung weapon, so it
+    keeps its pose. The two-hand hold and the half-sword: the span is read off the drawn weapon
+    node as placed that frame, so the blade line is wherever those holds put the weapon [D].
+  - **The order of the forces at the block check [R, game/ParryLogic.h BlockForcesFor]:** the
+    torch's (nothing readied - never together with a drawn weapon), then the shield's and the
+    weapon's (both may hold; the cone asks both, ContactConeFor), then the parry's alone - its
+    force lets every blow but the parried one through, so it is taken only without a guard by
+    contact. At the cone the parry is asked first, as before, then the shield, then the blade.
+  - **The share with a shield worn [R/D]:** the hit handler takes the blocking item from the
+    equipped slots, the shield's getter (process vtable +0xF8) asked first; with a shield worn a
+    block is reckoned as the shield's whatever stopped the blow. So a blow the blade stopped while
+    a shield hangs on the arm gets the shield's share - a known inexactness, not fixed (it would
+    take answering those slot calls for one blow). The values of the two factors were not read
+    here.
+  - **What is lost [D, the shield's list applies]:** vanilla's walk while guarding (wanted gone);
+    the second Block check in the wear branch (a forced block counts as not blocking there);
+    whatever reads the player's Block action - the combat AI (0x006189E0-0x006231E0) and the
+    others listed for the shield - so an NPC that reacts to a guarding player (a power attack
+    into a block) sees none [G, not read further]; the first-person block animation [G]. Nothing
+    weapon-specific in the hit handler asks the action beyond the check OBVR answers [R, the same
+    reading as the shield's].
+  - **The torch:** not changed. It would take the same parts again - the shaft's read flag into
+    the hand mode's frame, its pose kept as `raised`, a third verdict in ContactConeFor and the
+    left hand's swing flag - small, but more than a few lines; its ForceBlockForTorch (with
+    nothing readied) stays as it is.
+  - **Log:** the blow line "... a block forced for the shield by contact 0/1, for the weapon by
+    contact 0/1"; the cone's "Block angle: a blow from X at the weapon by contact (no block held,
+    the block forced for the weapon) - the blades, N degrees (at least 60), U units off (at most
+    40) - blocked / THROUGH ..."; "Hands: the weapon's guard is up - no block held, the blade blocks
+    what it is in the way of - the stick pushed ..." (capped at 12). "Hands: ... blocking" stays
+    for what still holds Block.
+  - **Tests:** hand_mode_test (the guard pose holds no Block with the rule on - red on main, 6
+    checks; swinging; along the view; off; shield and weapon; the fists, the torch, the arms'
+    run, a menu; the frame's switch and the blade read), parry_test (the weapon's force and the
+    order; the cone: in the way, not, cannot judge with the pose up/down, an arrow, swinging, the
+    shield and the weapon each way, two attackers, not forced, not the player), block_angle_test
+    (the guard's choice; a cut across the blade blocked with the pose down, a blade along ours and
+    one far below landing with the pose up, the blade unread - the game's cone). Harness, written,
+    not run: tools/hand-scripts/weapon-block-contact.txt.

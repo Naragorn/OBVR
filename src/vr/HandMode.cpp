@@ -332,8 +332,8 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	}
 
 	// Gestures: the block the hands' pose makes (vr/HandBlockLogic.h) - none
-	// while the arms run by swinging (ArmSwingHoldsBlocks); the shield's only
-	// until it guards by contact (vr/HandBlockFrame.h).
+	// while the arms run by swinging (ArmSwingHoldsBlocks); the shield's and the
+	// weapon's only until they guard by contact (vr/HandBlockFrame.h).
 	HandBlockFrame bf = HandBlockFrameOf(f, s);
 	bf.rightHandValid = r.rightHandValid;
 	bf.leftRelative = leftRelative;
@@ -342,11 +342,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	bf.rightSwinging = m_swing.swinging;
 	bf.leftSwinging = m_leftSwing.swinging;
 	bf.armsRun = ArmSwingHoldsBlocks(m_armSwing, s.armSwing);
-	const HandBlock block = DecideHandBlock(bf, s.gestures);
-	r.blocking = block.blocking;
-	r.blockWith = block.with;
-	r.fistGuard = block.fistGuard;
-	r.shieldPose = block.shield;
+	CopyHandBlock(r, DecideHandBlock(bf, s.gestures));
 	r.reachBack = f.right.valid && IsReachBackGesture(rightRelative, s.gestures);
 
 	// The swing, from the right hand's speed across the head-relative frame

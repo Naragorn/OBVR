@@ -87,6 +87,15 @@ void SetShieldGuard(bool byContact);
 // contact (read by the cone, game/BlockCone.cpp).
 bool ShieldForcedBlow();
 
+// Once a frame (from game/BlockCone's SetBlockGuard): whether the drawn weapon
+// guards by contact and is not swinging (BlockAngleLogic.h, WeaponGuardPose) -
+// then, with the engine not blocking, the block check says yes for the player
+// (ParryLogic.h, ForceBlockForWeapon) and the cone judges the blade too.
+void SetWeaponGuard(bool guards);
+
+// Whether the blow being resolved had its block forced for the weapon.
+bool WeaponForcedBlow();
+
 // A blow the raised torch blocks (game/BlockCone, BlockWith::Torch): with
 // neither a weapon nor a shield the hit handler's hand-to-hand branch would
 // block none of it against an armed attacker (0x005FF890); marked, the
