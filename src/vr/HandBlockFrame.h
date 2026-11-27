@@ -75,4 +75,13 @@ inline void GuardPosesInto(const HandModeResult& hand, game::BlockGuard& g) {
 	g.torchPose = hand.torchPose;
 }
 
+// The bow's block into the hand mode's result (vr/HandBlockLogic.h, DecideBowBlock):
+// the pose's Block, or the bow as the weapon by contact.
+inline void ApplyBowBlock(HandModeResult& r, const BowBlock& bow) {
+	r.blocking = bow.blocking;
+	r.blockWith = bow.blocking ? game::BlockWith::Bow : game::BlockWith::None;
+	r.bowGuard = bow.blocking;
+	r.weaponPose = bow.pose;
+}
+
 }  // namespace obvr::vr

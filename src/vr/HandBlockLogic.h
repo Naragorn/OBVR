@@ -103,4 +103,40 @@ inline HandBlock DecideHandBlock(const HandBlockFrame& f, const GestureThreshold
 	return b;
 }
 
+// The bow's block (moved out of HandMode::Update on 2026-11-27, when the bow
+// joined the blocks by contact): held upright before the face with no arrow
+// at it (IsBowGuard) - none while a menu is up, the controller or the limb
+// unread, or the arms run by swinging. By contact ([Hands]
+// WeaponBlockByContact, the drawn bow's limbs read - game/BowVisual.h
+// BowLimbLine) the guard holds no Block: the bow is the weapon by contact,
+// its upright guard kept as `raised` for the blows its limbs cannot judge,
+// and an arrow out (nocked, drawn) as `swinging` - no say then, as the pose
+// rule has it.
+struct BowBlockFrame {
+	bool valid = false;      // the bow hand's controller and the limb's axis read
+	bool menuMode = false;
+	bool armsRun = false;    // ArmSwingHoldsBlocks
+	NiPoint3 bowHandRelative{0.0f, 0.0f, 0.0f};
+	bool limbRead = false;   // the limb's axis has a length
+	float limbUpright = 0.0f;
+	bool arrowOut = false;   // an arrow nocked or drawn (archery's state not None)
+	bool byContact = false;  // WeaponBlockByContact and the limbs' line read
+};
+
+struct BowBlock {
+	bool blocking = false;   // the pose holds Block (the rule off)
+	game::WeaponGuardPose pose;
+};
+
+inline BowBlock DecideBowBlock(const BowBlockFrame& f, const GestureThresholds& t) {
+	BowBlock b;
+	b.pose.byContact = f.byContact && !f.menuMode;
+	b.pose.swinging = b.pose.byContact && f.arrowOut;
+	const bool guard = f.valid && !f.menuMode && !f.armsRun && f.limbRead &&
+	                   IsBowGuard(f.bowHandRelative, f.limbUpright, f.arrowOut, t);
+	b.pose.raised = b.pose.byContact && guard;
+	b.blocking = guard && !b.pose.byContact;
+	return b;
+}
+
 }  // namespace obvr::vr

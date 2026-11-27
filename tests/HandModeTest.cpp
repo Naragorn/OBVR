@@ -2967,6 +2967,49 @@ void TestShieldBlockByContact() {
 	Check(!b.blocking && !b.shield.byContact, "a menu up: nothing");
 }
 
+// The bow's block (vr/HandBlockLogic.h DecideBowBlock, moved out of
+// HandMode::Update): the pose as before with the rule off; by contact no
+// Block held, the guard kept as `raised`, an arrow out as `swinging`.
+void TestBowBlockByContact() {
+	std::printf("The bow's block, by the pose and by contact\n");
+	const GestureThresholds t;
+	BowBlockFrame f;
+	f.valid = true;
+	f.bowHandRelative = NiPoint3{-0.1f, 0.3f, -0.1f};  // ahead, up
+	f.limbRead = true;
+	f.limbUpright = 0.95f;
+	BowBlock b = DecideBowBlock(f, t);
+	Check(b.blocking && !b.pose.byContact, "the rule off: the upright bow holds Block, as before");
+	f.arrowOut = true;
+	Check(!DecideBowBlock(f, t).blocking, "an arrow out: no guard, as before");
+	f.arrowOut = false;
+	f.limbUpright = 0.3f;
+	Check(!DecideBowBlock(f, t).blocking, "the bow flat: no guard");
+	f.limbUpright = 0.95f;
+	f.armsRun = true;
+	Check(!DecideBowBlock(f, t).blocking, "the arms running: none");
+	f.armsRun = false;
+	f.menuMode = true;
+	Check(!DecideBowBlock(f, t).blocking, "a menu up: none");
+	f.menuMode = false;
+	f.valid = false;
+	Check(!DecideBowBlock(f, t).blocking, "the controller or the limb unread: none");
+	f.valid = true;
+	f.byContact = true;
+	b = DecideBowBlock(f, t);
+	Check(!b.blocking && b.pose.byContact && b.pose.raised && !b.pose.swinging,
+	      "by contact: no Block held, the guard raised (before: the bow's Block)");
+	f.arrowOut = true;
+	b = DecideBowBlock(f, t);
+	Check(!b.blocking && b.pose.swinging && !b.pose.raised, "by contact, an arrow out: no say");
+	f.arrowOut = false;
+	f.limbUpright = 0.3f;
+	b = DecideBowBlock(f, t);
+	Check(!b.blocking && b.pose.byContact && !b.pose.raised, "by contact, the bow flat: by contact, not raised");
+	f.menuMode = true;
+	Check(!DecideBowBlock(f, t).pose.byContact, "a menu up: nothing");
+}
+
 // The torch by contact (WeaponBlockByContact covers every guard but the
 // shield; Nadi, 2026-11-27: "go same for fackel"): the raised torch with its
 // shaft read presses no Block; its raise is kept as `raised`, the left
@@ -5200,6 +5243,7 @@ int main() {
 	TestHandBlockFrameOf();
 	TestWeaponBlockByContact();
 	TestTorchBlockByContact();
+	TestBowBlockByContact();
 	TestArmSwingPumps();
 	TestLeftButtonsInHandMode();
 	TestQuickSaveChordInHandMode();

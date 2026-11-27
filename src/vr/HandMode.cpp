@@ -635,23 +635,15 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		r.archery = StepArchery(m_archery, ain, s.archery);
 		r.arrowStrike = ArrowStabs(s.motionHits, s.archery, bowDrawn, r.archery.state);
 		// With the bow by hand the bow is the guard, not the empty weapon hand
-		// across the body: held upright in front, with no arrow at it
-		// (vr::IsBowGuard) - none in the hand either.
+		// across the body (vr/HandBlockLogic.h DecideBowBlock). Always: vanilla
+		// blocks with a bow (the tester, 2026-10-01).
 		if (bowDrawn && s.archery.enabled) {
-			r.blocking = false;
-			r.blockWith = game::BlockWith::None;
-			// Always: vanilla blocks with a bow (the tester, 2026-10-01: "das ist
-			// vanilla funktionalität daher immer drin").
-			if (cl.valid && f.bowLimbValid && !f.menuMode && !ArmSwingHoldsBlocks(m_armSwing, s.armSwing)) {
-				const NiPoint3 limb = TrackingRotate(cl.orientation, f.bowLimbLocal);
-				const float length = math::Sqrt(limb.LengthSquared());
-				const bool arrowOut = r.archery.state != ArrowState::None;
-				r.blocking = length > 1e-4f && IsBowGuard(leftRelative, limb.y / length, arrowOut, s.gestures);
-			}
-			r.bowGuard = r.blocking;
-			if (r.blocking) {
-				r.blockWith = game::BlockWith::Bow;
-			}
+			const NiPoint3 limb = TrackingRotate(cl.orientation, f.bowLimbLocal);
+			const float length = math::Sqrt(limb.LengthSquared());
+			const BowBlockFrame bow{cl.valid && f.bowLimbValid, f.menuMode, ArmSwingHoldsBlocks(m_armSwing, s.armSwing),
+			                        leftRelative, length > 1e-4f, length > 1e-4f ? limb.y / length : 0.0f,
+			                        r.archery.state != ArrowState::None, s.contactBlock.weapon && f.guardReads.bowLimb};
+			ApplyBowBlock(r, DecideBowBlock(bow, s.gestures));
 		}
 		if (s.archery.takeWithTrigger) {
 			in.rightTrigger = in.rightTrigger && !r.archery.claimsGrip;

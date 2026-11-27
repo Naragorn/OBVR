@@ -8,6 +8,7 @@
 #include "core/Log.h"
 #include "core/Memory.h"
 #include "game/BladeBodies.h"
+#include "game/BowVisual.h"
 #include "game/GameAddresses.h"
 #include "game/ArrowShield.h"
 #include "game/Parry.h"
@@ -74,10 +75,12 @@ BlockAngleVerdict JudgeBlow(void* attacker, bool byContact, BlockWith with) {
 			              static_cast<double>(v.interposeUnits), static_cast<double>(g_angle.interposeUnits));
 		}
 		OBVR_LOG("Block angle: a blow from %08X at the %s%s - %s%s, %.0f degrees (%s %.0f), %.0f units off (%s)%s - %s",
-		         reinterpret_cast<UInt32>(attacker), BlockWithName(guard.with),
+		         reinterpret_cast<UInt32>(attacker),
+		         BlockWithName(guard.lineOf != BlockWith::None ? guard.lineOf : guard.with),
 		         !byContact                        ? ""
 		         : guard.with == BlockWith::Shield ? " by contact (no block held, the block forced for the shield)"
 		         : guard.with == BlockWith::Torch  ? " by contact (no block held, the block forced for the torch)"
+		         : guard.lineOf == BlockWith::Bow  ? " by contact (no block held, the block forced for the bow)"
 		                                           : " by contact (no block held, the block forced for the weapon)",
 		         v.why,
 		         placed ? (blow.bladeValid ? ", their blade read" : ", no blade on them") : ", not an actor",
@@ -257,6 +260,7 @@ void SetBlockCone(bool enabled, bool haveGaze, float headYaw) {
 void SetBlockGuard(const BlockGuard& guard, const BlockAngleSettings& settings) {
 	g_guard = guard;
 	g_guard.staffValid = ReadStaffLine(g_guard.staffA, g_guard.staffB);  // a staff drawn (game/StaffLine.h)
+	g_guard.bowValid = BowLimbLine(g_guard.bowA, g_guard.bowB);  // a bow drawn by hand (game/BowVisual.h)
 	g_angle = settings;
 	SetShieldGuard(guard.shieldPose.byContact);
 	SetWeaponGuard(guard.weaponPose.byContact && !guard.weaponPose.swinging);

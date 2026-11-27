@@ -7,6 +7,8 @@
 # Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\bow-block.txt
 
 ini Hands Enabled=1
+# The bow's pose rule (WeaponBlockByContact=0): this scenario measures the block the pose holds.
+ini Hands WeaponBlockByContact=0
 ini Hands Holsters=1
 ini Hands BowByHand=1
 console player.additem 00025231 1

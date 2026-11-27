@@ -68,6 +68,7 @@ struct GuardReads {
 	bool weaponBlade = false;
 	bool torchShaft = false;  // the held torch's shaft in the world this frame (camera g_torchWorldValid)
 	bool staffLine = false;   // the drawn staff's line (game/StaffLine.h), the last frame's
+	bool bowLimb = false;     // the drawn bow's limbs (game/BowVisual.h BowLimbLine), the last frame's
 };
 
 // The drawn weapon as a guard by contact ([Hands] WeaponBlockByContact; Nadi,
@@ -158,6 +159,12 @@ struct BlockGuard {
 	bool staffValid = false;
 	NiPoint3 staffA{0.0f, 0.0f, 0.0f};
 	NiPoint3 staffB{0.0f, 0.0f, 0.0f};
+	// The drawn bow's limbs in the world (game/BowVisual.h BowLimbLine): the
+	// weapon's blade when the bow is the weapon by contact (GuardAs).
+	bool bowValid = false;
+	NiPoint3 bowA{0.0f, 0.0f, 0.0f};
+	NiPoint3 bowB{0.0f, 0.0f, 0.0f};
+	BlockWith lineOf = BlockWith::None;  // what stands for the blade, for the log (GuardAs)
 	// The disc's in-plane axes in the world (its axis[0] and axis[1]) and its
 	// outline along them, for the arrows (game/ArrowShieldLogic.h); the melee
 	// rule above takes the circle of shieldRadius.
@@ -181,10 +188,19 @@ inline BlockGuard GuardAs(const BlockGuard& g, BlockWith with) {
 		out.bladeValid = g.torchValid;
 		out.bladeA = g.torchA;
 		out.bladeB = g.torchB;
+		out.lineOf = BlockWith::Torch;
 	} else if (with == BlockWith::Weapon && !g.bladeValid && g.staffValid) {
 		out.bladeValid = true;
 		out.bladeA = g.staffA;
 		out.bladeB = g.staffB;
+	} else if (with == BlockWith::Weapon && !g.bladeValid && g.bowValid) {
+		// The bow by contact is the weapon's guard: its limbs stand for the
+		// blade, judged by the weapon's rule (the pose's Bow guard is left to
+		// the game, as before).
+		out.bladeValid = true;
+		out.bladeA = g.bowA;
+		out.bladeB = g.bowB;
+		out.lineOf = BlockWith::Bow;
 	}
 	return out;
 }

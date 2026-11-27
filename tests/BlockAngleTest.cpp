@@ -445,6 +445,17 @@ void TestGuardAs() {
 	g.bladeValid = false;
 	Check(!GuardAs(g, BlockWith::Weapon).bladeValid, "neither read: nothing to judge (the pose's fallback)");
 	Check(GuardAs(g, BlockWith::Shield).with == BlockWith::Shield, "the shield as it is");
+	BlockGuard bow;
+	bow.bowValid = true;
+	bow.bowA = NiPoint3{-5.0f, 10.0f, 60.0f};
+	bow.bowB = NiPoint3{5.0f, 10.0f, 150.0f};
+	const BlockGuard asBow = GuardAs(bow, BlockWith::Weapon);
+	Check(asBow.bladeValid && asBow.lineOf == BlockWith::Bow && asBow.bladeB.z == 150.0f,
+	      "a bow by contact: its limbs as the blade, named the bow");
+	Check(!GuardAs(bow, BlockWith::Bow).bladeValid, "the bow's pose guard (the rule off): left to the game, as before");
+	Check(BlockAngleFor(BlockAngleSettings{}, asBow, Blade(NiPoint3{-30.0f, 15.0f, 110.0f}, NiPoint3{1.0f, 0.0f, 0.0f})).verdict ==
+	          BlockAngle::Blocked,
+	      "a cut across the upright bow, met: blocked by the weapon's rule");
 }
 
 // The weapon by contact (WeaponGuardPose, ParryLogic.h ContactConeFor): the

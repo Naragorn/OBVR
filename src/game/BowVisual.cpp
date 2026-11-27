@@ -295,7 +295,27 @@ void NoteFistOffLine(const NiPoint3& lineTarget, const NiPoint3& fistTarget, con
 // The bow's shot axis as the last step found it, and the string's draw.
 bool g_shotValid = false;
 NiPoint3 g_shot{0.0f, 1.0f, 0.0f};
-NiPoint3 g_limb{0.0f, 0.0f, 1.0f};
+// The limbs: their axis, and their line in the world for the block by contact
+// (BowLimbLine) - the bow node's place and the tips' reach.
+struct BowLimbRead {
+	NiPoint3 axis{0.0f, 0.0f, 1.0f};
+	NiPoint3 centre{0.0f, 0.0f, 0.0f};
+	float halfUnits = 0.0f;
+};
+BowLimbRead g_limb;
+
+// The limbs as read off the drawn bow's node: the model's y from grip to
+// tip, the node's place, and the tips' reach - past |y| 45 on the vanilla
+// bows (bowresearch's morph read), so 45 units scaled each way.
+constexpr float kBowTipReachUnits = 45.0f;
+
+BowLimbRead LimbOf(const NiAVObject& bow, float scale) {
+	BowLimbRead r;
+	r.axis = bow.worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+	r.centre = bow.worldTransform.pos;
+	r.halfUnits = kBowTipReachUnits * scale;
+	return r;
+}
 bool g_inHandValid = false;
 NiPoint3 g_inHandNock{0.0f, 0.0f, 0.0f};
 NiPoint3 g_inHandHead{0.0f, 0.0f, 0.0f};
@@ -341,7 +361,18 @@ bool BowLimbAxis(NiPoint3& world) {
 	if (!g_shotValid) {
 		return false;
 	}
-	world = g_limb;
+	world = g_limb.axis;
+	return true;
+}
+
+bool BowLimbLine(NiPoint3& a, NiPoint3& b) {
+	const float l2 = g_limb.axis.LengthSquared();
+	if (!g_shotValid || !(l2 > 0.0f) || !(g_limb.halfUnits > 0.0f)) {
+		return false;
+	}
+	const NiPoint3 half = g_limb.axis * (g_limb.halfUnits / math::Sqrt(l2));
+	a = g_limb.centre - half;
+	b = g_limb.centre + half;
 	return true;
 }
 
@@ -398,7 +429,7 @@ void StepBowVisual(const BowVisualInput& in) {
 		g_shotValid = true;
 		// The limbs: the model's y (its tips lie past |y| 45, bowresearch's
 		// morph read of the vanilla bows).
-		g_limb = bow->worldTransform.rot * NiPoint3{0.0f, 1.0f, 0.0f};
+		g_limb = LimbOf(*bow, bowScale);
 	}
 	const NiPoint3 rest = bow->worldTransform.pos +
 	                      bow->worldTransform.rot * (NiPoint3{0.0f, vr::kArrowRestOnBowY, vr::kArrowRestOnBowZ} * bowScale);

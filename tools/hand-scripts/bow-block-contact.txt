@@ -1,0 +1,61 @@
+# The bow by contact ([Hands] WeaponBlockByContact=1; vr/HandBlockLogic.h DecideBowBlock, game/BowVisual.h
+# BowLimbLine): bow-block.txt's moves with the rule on - the upright bow holds no Block ("the weapon's
+# guard is up - no block held"), no "the bow is held upright - blocking" line. Blows at the bow need an
+# attacker; this one shows the pose only. Not run yet (written 2026-11-27 on Windows).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/bow-block-contact.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+# The bow held upright in front blocks (vr::IsBowGuard; the tester,
+# 2026-10-01: "dass man mit bow blocken kann wenn ich den senkrecht vor mir
+# hochhalte"), as the bow blocks in vanilla. The bow is drawn from behind the
+# left shoulder, raised upright before the eyes (the controller turned up 90
+# degrees: the bow stands upright, as in bow-by-hand), then laid flat, then
+# raised again and lowered; an arrow taken from the quiver ends the guard.
+# Run with: tools\hand-script-run.ps1 -Script tools\hand-scripts\bow-block.txt
+
+ini Hands Enabled=1
+ini Hands WeaponBlockByContact=1
+ini Hands Holsters=1
+ini Hands BowByHand=1
+console player.additem 00025231 1
+console player.equipitem 00025231
+console-at arrows player.additem 00017829 20
+console-at arrows_on player.equipitem 00017829
+
+expect HandScript: finished
+expect Hands: the weapon's guard is up - no block held
+reject Hands: the bow is held upright - blocking
+expect Hands: bow by hand - an arrow taken from the quiver
+reject HandScript: WARNING
+
+wait 16
+mark arrows
+wait 3
+mark arrows_on
+wait 12
+left pos -0.18 -0.15 0.12
+wait 0.3
+left grip 1
+wait 0.2
+left grip 0
+left pos -0.25 -0.10 -0.45
+left rot 90 0 0
+wait 3
+mark upright
+dump
+wait 1
+left rot 0 0 0
+wait 1
+mark flat
+dump
+wait 1
+left rot 90 0 0
+wait 1
+mark upright_again
+right pos 0.15 -0.10 0.12
+wait 0.3
+right trigger 1
+wait 0.5
+mark arrow_taken
+dump
+right trigger 0
+wait 1

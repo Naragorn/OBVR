@@ -207,8 +207,8 @@ src/ui/NativeControlsCard.h	ControlsCardFor	126
 src/vr/HandHud.h	(file lines)	1003
 src/vr/HandInput.h	(file lines)	2071
 src/vr/HandInput.h	StepLaserPress	106
-src/vr/HandMode.cpp	(file lines)	1351
-src/vr/HandMode.cpp	HandMode::Update	695
+src/vr/HandMode.cpp	(file lines)	1343
+src/vr/HandMode.cpp	HandMode::Update	687
 src/vr/HandMode.cpp	HandMode::SteerSettingsMenu	114
 src/vr/HandMode.cpp	HandMode::PointAtMenu	232
 src/vr/HandMode.h	(file lines)	1351
