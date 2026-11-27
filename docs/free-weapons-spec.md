@@ -2985,3 +2985,27 @@ Without the shield everything worked again."
     that stopped the blow" - in vanilla as now. Wearing the blocking item instead would be new
     behaviour (the +0x2C4 call with that item), not a restoration; not built - a decision for Nadi.
   - Recorded in ../OBNG/knowledge/blocking.md, "The wear after a blow".
+- **The staff by contact (built 2026-11-27).** No refactor was needed: the block reads the staff's
+  line on its own, outside StepWeaponContact (whose "swung weapon drawn" flag still keeps the
+  staff out of wall and body contact, the stoppers and the parry - types 0-3 as before).
+  - **The line [R/D]:** game/StaffLine.cpp, once a frame from BlockCone's SetBlockGuard: with a
+    staff (type 4) equipped and drawn, the first-person "Weapon" node, from the node along its own
+    y axis to its bound's far end (ParryLogic.h TheirBladeFromNode, in the world; refused outside
+    10 to 200 units). The same node and axis the player's blade span is read from [R]; that a
+    staff's model runs along that axis is derived, not seen - the guard-up line logs "Hands: the
+    staff's line - N units long, along x y z" once per raise to show it in the first run.
+  - **The pose before [R]:** a staff is the weapon guard (IsWeaponGuard with the weapon hand's
+    forward axis; KindOfWeaponType(4) is TwoHand, the weapon drawn, not the fists), so the staff's
+    guard held Block. Now `weaponByContact` holds with the staff's line read too
+    (vr/HandBlockFrame.h), and at the cone the weapon's rule judges the staff's line in place of a
+    blade (BlockAngleLogic.h GuardAs) - 30 / 40 / 70 / 25.
+  - **Gates:** the weapon hand's swing flag still gates it (a hand moving at a swing's speed is no
+    guard, whatever it holds) [decided]. The frame a staff fires is not known to the block code (the
+    staff's cast goes through the attack action; not read) - not gated [unverified].
+  - **Share [R/D]:** the hit handler takes the item from the equipped slots, the shield first,
+    else the weapon (process vtable +0xEC) - the staff is the weapon item, so a staff's block is a
+    weapon block, not hand to hand [D from the slot calls].
+  - **Tests:** hand_mode_test (a staff's line read turns the weapon by contact on - before: the
+    pose; off with the switch), block_angle_test (GuardAs: the torch's shaft and the staff's line as
+    the blade, a read blade kept, neither read; a cut across a staff held level blocked).
+    Harness, not run: tools/hand-scripts/staff-block-contact.txt.

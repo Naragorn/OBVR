@@ -6,6 +6,7 @@
 #include "game/FatigueCost.h"
 #include "game/PlayerAim.h"
 #include "game/PlayerTeleport.h"
+#include "game/StaffLine.h"
 #include "test/HandScriptRuntime.h"
 
 namespace obvr::camera::hands {
@@ -65,6 +66,19 @@ void LogBlockChange(LocomotionState& state, const vr::HandModeResult& hand, cons
 		LogWithWalk(guardUp ? "the weapon's guard is up - no block held, the blade blocks what it is in the way of"
 		                    : "the weapon's guard is down - the blade still blocks what it is in the way of",
 		            hand, frame);
+		if (game::StaffLineRead()) {
+			// The staff's line as read (game/StaffLine.h): its node's axis taken
+			// as a blade's - the first log tells whether that holds.
+			NiPoint3 a;
+			NiPoint3 b;
+			game::LastStaffLine(a, b);
+			const NiPoint3 d = b - a;
+			const float length = math::Sqrt(d.LengthSquared());
+			const float k = length > 0.0f ? 1.0f / length : 0.0f;
+			OBVR_LOG("Hands: the staff's line - %.0f units long, along %.2f %.2f %.2f (the world)",
+			         static_cast<double>(length), static_cast<double>(d.x * k), static_cast<double>(d.y * k),
+			         static_cast<double>(d.z * k));
+		}
 	}
 	state.weaponRaisedWas = guardUp;
 	const bool torchUp = hand.torchPose.byContact && hand.torchPose.raised;

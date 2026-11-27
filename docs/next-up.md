@@ -1051,10 +1051,10 @@ two refinements weighed and put off. Kept here so they are not lost.
   blow (a sweep, as the player's own blade has in game/MeleeSweep), then judged against the
   outline - and the blow's result held until the blade arrives. Cost: medium to large; the feel
   is unknown until the headset. Model and effort: Opus 5.5 high.
-- **For later - the staff, the bow and the fists by contact** (Nadi, 2026-11-27, "go same for
-  fackel stab fäuste bogen"; the torch is built). Each needs a line the code does not read yet,
-  in a function at its size limit: the staff's drawn line (StepWeaponContact, gated apart from
-  the blade's contacts), the bow's limb in the world (CameraHook) and its block moved out of
+- **For later - the bow and the fists by contact** (Nadi, 2026-11-27, "go same for
+  fackel stab fäuste bogen"; the torch and the staff are built). Each needs a line the code does not read yet,
+  in a function at its size limit:
+  the bow's limb in the world (CameraHook) and its block moved out of
   HandMode::Update, the forearms' bones (StepHandContacts). Small to medium each; the fists gain
   only against unarmed attackers (a hand-to-hand block stops nothing against a blade or an
   arrow). Details: docs/free-weapons-spec.md, "The torch, the staff, the bow and the fists by

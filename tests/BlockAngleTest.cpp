@@ -411,6 +411,42 @@ void TestTorch() {
 	Check(v.verdict == BlockAngle::Engine, "the shaft not read: the engine's verdict stands");
 }
 
+// The guard as judged (GuardAs): the torch's shaft and the staff's line
+// stand for the blade; a read blade keeps its own.
+void TestGuardAs() {
+	std::printf("The guard as judged\n");
+	BlockGuard g;
+	g.torchValid = true;
+	g.torchA = NiPoint3{1.0f, 0.0f, 0.0f};
+	g.torchB = NiPoint3{2.0f, 0.0f, 0.0f};
+	g.staffValid = true;
+	g.staffA = NiPoint3{0.0f, 0.0f, 90.0f};
+	g.staffB = NiPoint3{0.0f, 0.0f, 210.0f};
+	BlockGuard t = GuardAs(g, BlockWith::Torch);
+	Check(t.with == BlockWith::Torch && t.bladeValid && t.bladeB.x == 2.0f, "the torch: its shaft as the blade");
+	BlockGuard w = GuardAs(g, BlockWith::Weapon);
+	Check(w.bladeValid && w.bladeB.z == 210.0f, "a staff, no blade read: its line as the blade");
+	// A staff's line judged as a blade: a cut across it, met - blocked.
+	BlockAngleSettings s;
+	const BlockGuard staff = GuardAs([&] {
+		BlockGuard h = g;
+		h.staffA = NiPoint3{-40.0f, 0.0f, 100.0f};
+		h.staffB = NiPoint3{40.0f, 0.0f, 100.0f};
+		return h;
+	}(), BlockWith::Weapon);
+	Check(BlockAngleFor(s, staff, Blade(NiPoint3{0.0f, 5.0f, 140.0f}, NiPoint3{0.0f, 0.0f, -1.0f})).verdict ==
+	          BlockAngle::Blocked,
+	      "a staff held across, a cut down onto it: blocked by the weapon's rule");
+	g.bladeValid = true;
+	g.bladeA = NiPoint3{5.0f, 5.0f, 5.0f};
+	w = GuardAs(g, BlockWith::Weapon);
+	Check(w.bladeA.x == 5.0f, "a blade read: its own line, not the staff's");
+	g.staffValid = false;
+	g.bladeValid = false;
+	Check(!GuardAs(g, BlockWith::Weapon).bladeValid, "neither read: nothing to judge (the pose's fallback)");
+	Check(GuardAs(g, BlockWith::Shield).with == BlockWith::Shield, "the shield as it is");
+}
+
 // The weapon by contact (WeaponGuardPose, ParryLogic.h ContactConeFor): the
 // guard is the weapon when no pose holds Block and no shield guards by
 // contact; the blade's verdict with the weapon's own numbers decides.
@@ -486,6 +522,7 @@ void TestShieldByContact() {
 int main() {
 	TestLineAngle();
 	TestShieldByContact();
+	TestGuardAs();
 	TestWeaponByContact();
 	TestGaps();
 	TestWeapon();

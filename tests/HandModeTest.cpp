@@ -3101,7 +3101,11 @@ void TestWeaponBlockByContact() {
 	Check(!HandBlockFrameOf(hf, s).weaponByContact, "WeaponBlockByContact=0: the pose");
 	s.contactBlock.weapon = true;
 	hf.guardReads.weaponBlade = false;
-	Check(!HandBlockFrameOf(hf, s).weaponByContact, "the blade not read (a staff, nothing drawn): the pose");
+	Check(!HandBlockFrameOf(hf, s).weaponByContact, "no blade and no staff line read (nothing drawn): the pose");
+	hf.guardReads.staffLine = true;
+	Check(HandBlockFrameOf(hf, s).weaponByContact, "a staff drawn, its line read: by contact (184a4de: the pose)");
+	s.contactBlock.weapon = false;
+	Check(!HandBlockFrameOf(hf, s).weaponByContact, "a staff, WeaponBlockByContact=0: the pose");
 }
 
 // The block's frame from the hand mode's (vr/HandBlockFrame.h): the shield

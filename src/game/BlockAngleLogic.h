@@ -67,6 +67,7 @@ struct GuardReads {
 	bool shieldDisc = false;
 	bool weaponBlade = false;
 	bool torchShaft = false;  // the held torch's shaft in the world this frame (camera g_torchWorldValid)
+	bool staffLine = false;   // the drawn staff's line (game/StaffLine.h), the last frame's
 };
 
 // The drawn weapon as a guard by contact ([Hands] WeaponBlockByContact; Nadi,
@@ -152,6 +153,11 @@ struct BlockGuard {
 	bool torchValid = false;
 	NiPoint3 torchA{0.0f, 0.0f, 0.0f};
 	NiPoint3 torchB{0.0f, 0.0f, 0.0f};
+	// The drawn staff's line in the world (game/StaffLine.h): the weapon's
+	// blade when no blade is read (GuardAs).
+	bool staffValid = false;
+	NiPoint3 staffA{0.0f, 0.0f, 0.0f};
+	NiPoint3 staffB{0.0f, 0.0f, 0.0f};
 	// The disc's in-plane axes in the world (its axis[0] and axis[1]) and its
 	// outline along them, for the arrows (game/ArrowShieldLogic.h); the melee
 	// rule above takes the circle of shieldRadius.
@@ -164,6 +170,24 @@ struct BlockGuard {
 	NiPoint3 body{0.0f, 0.0f, 0.0f};
 	NiPoint3 bodyLow{0.0f, 0.0f, 0.0f};
 };
+
+// The guard as judged with `with`: the torch's shaft, or the drawn staff's
+// line when no blade is read, stands for the blade (game/BlockCone
+// JudgeBlow); anything else as it is.
+inline BlockGuard GuardAs(const BlockGuard& g, BlockWith with) {
+	BlockGuard out = g;
+	out.with = with;
+	if (with == BlockWith::Torch) {
+		out.bladeValid = g.torchValid;
+		out.bladeA = g.torchA;
+		out.bladeB = g.torchB;
+	} else if (with == BlockWith::Weapon && !g.bladeValid && g.staffValid) {
+		out.bladeValid = true;
+		out.bladeA = g.staffA;
+		out.bladeB = g.staffB;
+	}
+	return out;
+}
 
 // The blow: the attacker's blade in the world when they hold one, and where
 // they are (their skeleton's bound: its centre and radius).

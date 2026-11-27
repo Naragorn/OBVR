@@ -11,6 +11,7 @@
 #include "game/GameAddresses.h"
 #include "game/ArrowShield.h"
 #include "game/Parry.h"
+#include "game/StaffLine.h"
 #include "game/PlayerAim.h"
 
 namespace obvr::game {
@@ -40,14 +41,8 @@ const char* BlockWithName(BlockWith with) {
 // under its forced block (ParryLogic.h, ShieldConeFor) - asked whether or
 // not BlockByAngle is on, since nothing else decides that blow.
 BlockAngleVerdict JudgeBlow(void* attacker, bool byContact, BlockWith with) {
-	BlockGuard guard = g_guard;
-	guard.with = with;
-	// The torch: its shaft in the world this frame stands for the blade.
-	if (with == BlockWith::Torch) {
-		guard.bladeValid = guard.torchValid;
-		guard.bladeA = guard.torchA;
-		guard.bladeB = guard.torchB;
-	}
+	// The torch's shaft or the staff's line stands for the blade (GuardAs).
+	const BlockGuard guard = GuardAs(g_guard, with);
 	BlockAngleSettings settings = g_angle;
 	settings.enabled = settings.enabled || byContact;
 	BlockBlow blow;
@@ -261,6 +256,7 @@ void SetBlockCone(bool enabled, bool haveGaze, float headYaw) {
 
 void SetBlockGuard(const BlockGuard& guard, const BlockAngleSettings& settings) {
 	g_guard = guard;
+	g_guard.staffValid = ReadStaffLine(g_guard.staffA, g_guard.staffB);  // a staff drawn (game/StaffLine.h)
 	g_angle = settings;
 	SetShieldGuard(guard.shieldPose.byContact);
 	SetWeaponGuard(guard.weaponPose.byContact && !guard.weaponPose.swinging);
