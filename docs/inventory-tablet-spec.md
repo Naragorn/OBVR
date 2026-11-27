@@ -1787,3 +1787,141 @@ justieren danach. ansonsten ging da alles."
   section 20 (tablet-open, tablet-touch*, tablet-book, tablet-walk's click)
   miss as before (section 21's open point). The right hand's hold and a
   left-handed player are covered by the unit tests, not run.
+
+## 25. Books and letters in the hand (asked 2026-11-27, not built)
+
+The ask (Nadi, 2026-11-27): "bücher und letters wie das inventar in die
+hand mit swipes für nä seite usw." A book or a letter, read from the world
+or from the inventory, sits in the off hand as the inventory's page does;
+the other hand's finger swipes to the next page and back and taps Take and
+Exit.
+
+### 25.1 What is there today [R]
+
+- The book menu (`kMenuIdBook`, 0x402) is a tablet menu only beside the
+  F1-F4 pages: `vr::TabletCarriesMenu` lists it, but `vr::TabletMenusUp`
+  wants the F1-F4 entry (`kMenuIdBigFour`) in the stack. A book read from
+  the inventory is a box over the page (`vr::TabletBoxMoves`; tablet-book.txt
+  PASS 20261120-110919-slot1). A book or note activated in the world has no
+  F1-F4 entry under it and stands on the menus' panel in the room.
+- Behind a book the tablet pauses the world (`vr::TabletMenuRunsWorld`
+  leaves out the book and the message box). `game::MenuKeepsWorldRunning`
+  already keeps the world running behind a book with `Render.UnpausedMenus`.
+- A book in the world is let through to its activation, to be read
+  (`vr::ActivateWithheld`, src/vr/Stow.h).
+- The touch (`vr/TabletTouch.h`, section 12 and 14): up and down scroll by
+  wheel notches (one per 2 cm, coasting), sideways past 4 cm turns one F1-F4
+  page per touch by the page's key, a tap clicks on the release, a hold of
+  0.5 s presses. The right stick left and right turns the F1-F4 page (11.1).
+
+### 25.2 The game's book menu
+
+Read in `menus/book_menu.xml` (the vanilla copy in
+OBVR-wt-palm/artifacts/work-2026-11-25/menus/):
+
+- One menu with two looks, chosen by its `user0`: a book
+  (`book_background`, 1152 x 856 units: two pages of the text, page numbers,
+  Prev, Next, Take, Exit) or a scroll, which is what a note or a letter is
+  drawn on (`book_background_scroll`, 990 x 740: one page that scrolls, with
+  a scroll bar, Take, Exit).
+- `user8`: "clicksound for turning pages - used by code for scrollwheel
+  movement". So the wheel turns a book's pages with the page sound and
+  scrolls a scroll [R: the file's comment; the rival's docs/design/books.md
+  section 3 says the same]. Not run in OBVR yet.
+- `book_prev` and `book_next` have no id of their own (`&generic;`). The
+  rival's design doc says their clicks feed the page step (`user6`, "force
+  page/scroll adjust") [read there, not checked]. Take is id 32 and Exit
+  id 31; the scroll's own are `book_scroll_take` and `book_scroll_exit`.
+- NorthernUI and DarNified UI bring their own book_menu.xml (both in the
+  Painted World mods folder): names and sizes are read at run time, never
+  constants, as the page's crop already does.
+
+### 25.3 The rival has it [read in its docs, not seen run]
+
+Chasms VR Oblivion (github.com/chasmlol/chasms-vr-oblivion, MIT;
+docs/design/books.md, docs/OBLIVION.md row "Books and notes"):
+
+- A book taken in a hand opens at once over the book's model; one read from
+  the inventory is held in the off hand like a sheet; one activated on a
+  shelf comes to the off hand. Take and Exit are pressed with the free
+  hand's fingertip; let go, Exit or B close it.
+- The page turn took nine headset rounds. A fingertip swipe "still missed";
+  what stayed is the free hand's grip near the pages, dragged across them:
+  one page every 5 cm, with a tick in that hand and the game's page sound.
+- The pages shook with the hand and were hard to read: steadied by a
+  one-euro filter, heavy while the hand is nearly still.
+- The size: a line of the book's text at about 1.4 degrees at 45 cm, which
+  makes the book's art about 38 x 28 cm [their arithmetic].
+- The world plays on: the book menu is kept off the interface's menu stack.
+
+Two lessons for OBVR: watch for the shake, and keep a second way to turn
+the page in case the finger's swipe misses.
+
+### 25.4 Design
+
+1. **Which.** The book menu alone in the stack (beside the HUD's entries) is
+   a tablet stack as well: `vr::TabletMenusUp` is true for the F1-F4 entry
+   or the book menu. That covers a book, a note and a letter from the world,
+   and a book from the inventory as before. A magic scroll is not read (its
+   activation takes it), unchanged.
+2. **Where.** In the off hand, at the page's place (sections 20 and 21),
+   cropped to the book's own pictures (`game::ReadMenuPaper` on the book
+   menu when no pages are up: its largest picture is the paper).
+3. **Size.** Its own width, `[Tablet] BookWidthMetres`, default 0.40 m.
+   [D] The rival's 1.4 degrees a line at 45 cm gives 0.38 m for the book's
+   1152 units; the page's scale (0.34 m for 745 units) would make it
+   0.53 m, [G] too wide for one hand. The letter's scroll takes the same
+   scale (990 units, 0.34 m).
+4. **Swipes.** On a book, sideways past 4 cm (the page's threshold) turns
+   once: the finger moved left goes on, as a page is turned; moved right
+   goes back. Sent as one wheel notch, the menu's own turn and sound; if the
+   probe (25.6, task 1) shows the wheel does not turn it, a click on the
+   middle of `book_next` or `book_prev` instead. Up and down on a book do
+   nothing [D: a wheel notch there would turn pages too]. On a letter, up
+   and down scroll as a list does (notches, coasting); sideways does nothing.
+   A tap presses Take, Exit, Prev and Next.
+5. **The stick.** The right stick left and right turns a book's page, as it
+   turns the F1-F4 pages (11.1); up and down scroll a letter.
+6. **Closing.** The left B, as for the tablet, clicks the menu's own Exit
+   (`book_exit` or `book_scroll_exit`, what its `xbuttonb` does). Take closes
+   it as the game does.
+7. **Steadying.** Not built at first: the tablet's page has no filter and no
+   shake has been reported. If the headset shows the text shaking, a light
+   filter on the held place while the hand is nearly still (the rival's
+   lesson).
+
+### 25.5 Open for Nadi
+
+- **The world while reading:** (a) runs, as behind the inventory: walking
+  and looking round while reading, a fight goes on; (b) pauses, as vanilla
+  and as today. Recommended (a), so the book in the hand behaves like the
+  tablet. `MenuKeepsWorldRunning` already runs the world behind a book with
+  `UnpausedMenus`, so no new engine risk is known.
+- **Later, not in this ask:** a book picked up by hand opens on the book in
+  the hand (the rival's way). Medium: the page placed on the held object's
+  node, and its activation started from the grip.
+
+### 25.6 Tasks and cost
+
+Small to medium in total. Reused: the place in the hand, the crop, the
+touch, the pause gate, the stick. New: the book menu alone in
+`TabletMenusUp`, a book mode in `vr::TabletTouch` (sideways gives a notch,
+up and down off on a book), `BookWidthMetres`, B as Exit.
+
+1. Probe first, in the harness: open a book in the world, send one wheel
+   notch each way, read its `_pagenum`; on a letter, read the scroll bar's
+   value; try B, Tab and Esc for the close. This settles notch or click.
+2. Unit tests first: `TabletMenusUp` with the book menu alone;
+   `TabletMenuRunsWorld` as decided in 25.5; the book mode of the touch
+   (left and right give +1 and -1 notch, up and down nothing on a book, a
+   scroll on a letter); the width.
+3. Build. Harness: book-world-in-hand.txt (a book from a shelf: the tablet's
+   place said, a swipe left reaches pages 3 and 4, right back to 1 and 2,
+   Take puts it in the inventory), letter-in-hand.txt (an up swipe moves the
+   scroll bar), tablet-book.txt again (from the inventory). Films before and
+   after: the book on the panel in the room, then in the hand.
+4. Headset: the text's size at 0.40 m, the swipe's 4 cm on a book, any
+   shake.
+
+Model: Sonnet 5.5 medium. It is mostly reuse of tested modules; the one
+engine unknown, whether a notch turns the page, is settled by task 1.
