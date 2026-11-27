@@ -66,6 +66,7 @@ struct ContactBlockSettings {
 struct GuardReads {
 	bool shieldDisc = false;
 	bool weaponBlade = false;
+	bool torchShaft = false;  // the held torch's shaft in the world this frame (camera g_torchWorldValid)
 };
 
 // The drawn weapon as a guard by contact ([Hands] WeaponBlockByContact; Nadi,
@@ -145,6 +146,12 @@ struct BlockGuard {
 	float shieldHalfThick = 0.0f;  // half the disc's thickness
 	ShieldGuardPose shieldPose;    // the shield by contact (ShieldGuardPose)
 	WeaponGuardPose weaponPose;    // the weapon by contact (WeaponGuardPose)
+	WeaponGuardPose torchPose;     // the torch by contact: the same fields, the left hand's raise and swing
+	// The held torch's shaft in the world, judged as the blade when the torch
+	// is the guard (BlockWith::Torch; game/BlockCone JudgeBlow).
+	bool torchValid = false;
+	NiPoint3 torchA{0.0f, 0.0f, 0.0f};
+	NiPoint3 torchB{0.0f, 0.0f, 0.0f};
 	// The disc's in-plane axes in the world (its axis[0] and axis[1]) and its
 	// outline along them, for the arrows (game/ArrowShieldLogic.h); the melee
 	// rule above takes the circle of shieldRadius.

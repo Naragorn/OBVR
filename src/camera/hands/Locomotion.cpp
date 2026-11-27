@@ -67,6 +67,14 @@ void LogBlockChange(LocomotionState& state, const vr::HandModeResult& hand, cons
 		            hand, frame);
 	}
 	state.weaponRaisedWas = guardUp;
+	const bool torchUp = hand.torchPose.byContact && hand.torchPose.raised;
+	if (torchUp != state.torchRaisedWas && state.torchRaisedLines > 0) {
+		--state.torchRaisedLines;
+		LogWithWalk(torchUp ? "the torch is up - no block held, its shaft blocks what it is in the way of"
+		                    : "the torch is down - its shaft still blocks what it is in the way of",
+		            hand, frame);
+	}
+	state.torchRaisedWas = torchUp;
 }
 
 void StepAnalogWalk(LocomotionState& state, const HandStep& step, const HandShared& shared, bool flying,

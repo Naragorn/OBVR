@@ -2905,3 +2905,83 @@ Without the shield everything worked again."
     (the guard's choice; a cut across the blade blocked with the pose down, a blade along ours and
     one far below landing with the pose up, the blade unread - the game's cone). Harness, written,
     not run: tools/hand-scripts/weapon-block-contact.txt.
+- **The torch, the staff, the bow and the fists by contact (2026-11-27; Nadi: "go same for fackel
+  stab fäuste bogen").** One switch: `WeaponBlockByContact` now covers every guard but the shield.
+  - **The torch - built.** With TorchBlocks on, a torch held and its shaft read in the world
+    (camera `g_torchWorldValid`, game/TorchShaftLogic.h), the raised torch holds no Block
+    (vr/HandBlockLogic.h; its raise kept as `raised`, the left hand's swing as `swinging`). At the
+    blow the check is forced while the torch hand is not swinging (BlockForcesFor's `torchContact`,
+    the weapon's ForceBlockForWeapon shape) and the cone judges its shaft as the angle rule's
+    Torch case already did (BlockWith::Torch, the shaft as the blade: 30 / 40 / 70 / 25). Before
+    (and with the switch off, unchanged): the raised torch held Block when a weapon was readied,
+    and with nothing readied ForceBlockForTorch forced the check and the game's cone and the angle
+    rule decided [R, game/Parry.cpp]. Under contact that old force is not taken (the guard's
+    `with` is never the torch then, so SetTorchGuard says not raised). A blocked blow is marked for
+    the hand-to-hand stub (NoteTorchBlock) as before, so with nothing readied the engine's share
+    by the Block skill is taken; with a weapon readied the engine reckons the weapon (or a worn
+    shield) as the item [R, the slots asked at 0x005FF7F5..]. Unread shaft this frame: the game's
+    cone while raised - but that fallback does not mark the stub, so with nothing readied an armed
+    attacker's blow is then not blocked [D, a known gap]. Torch with a drawn weapon: both asked,
+    either in the way blocks; torch with nothing readied: the torch alone.
+  - **The staff - not built.** Its line is not read: `MeleeInHand` takes types 0-3 only
+    (`WeaponIsSwung`), and the blade span is read in CameraHook's StepWeaponContact under that same
+    `drawn` - which also drives the blade's contact with walls and bodies, the stoppers and the
+    parry. Reading the staff's line means a separate gate for the block alone inside a function
+    at its size limit (532 lines), so a piece of it moved out first; then the drawn node's axis and
+    bound as for a blade [the staff's node axis convention unverified]. Cost: small to medium.
+  - **The bow - not built.** IsBowGuard (vr/HandInput.h): the bow hand no lower than 20 cm under
+    the eyes and 12 ahead, the limb within upright (kBowGuardMinUpright), and no arrow out
+    (`archery.state` None); decided inside HandMode::Update (at its size limit) from the
+    controller's turn and `bowLimbLocal`. No world line of the limb is made anywhere for the block:
+    it needs the bow node's bound and the limb axis in the world into the guard (CameraHook, the
+    file at its limit), the bow block moved out of Update into a helper with its pose kept as
+    `raised`, and a fourth verdict. Cost: small to medium. Its share: the engine reckons the bow as
+    the weapon item [D].
+  - **The fists - not built.** No forearm line is read: the hand's span is wrist to knuckle
+    (HandSpanFromBones, "Bip01 R/L Hand" to "Finger2"), read in StepHandContacts (at its size
+    limit). A forearm line needs "Bip01 R/L Forearm" read per frame there. And against a blade or
+    an arrow a hand-to-hand block stops nothing (0x005FF890 `fldz`, ParryLogic.h) - forcing gains
+    nothing there; only an unarmed attacker could be blocked, by one forearm between (B&S), the
+    weapon rule's no-blade branch. Cost: medium; the gain only against creatures and fists.
+  - **Order at the blow:** the parry's cone first; then the shield; then the weapon, then the
+    torch; any in the way blocks (ContactConeFor). At the block check: the old torch force (switch
+    off, nothing readied), then the shield's, the weapon's and the torch's contact forces, then
+    the parry's alone.
+  - **The arms' run and the menu rule:** kept. With the switch on they still stop the poses that
+    hold Block (fists, bow, staff) and clear `raised`, so a pump while running gives no fallback
+    yes; the guards by contact still judge their blows while running (their `byContact` is set
+    before the arms' run returns).
+  - **Log:** "for the torch by contact 0/1" on the blow line, "at the torch by contact (no block
+    held, the block forced for the torch)" on the cone's, "Hands: the torch is up - no block held,
+    its shaft blocks what it is in the way of" (capped at 12).
+  - **Tests:** hand_mode_test (the raised torch holds no Block - red on e49cdf5, 7 checks;
+    swinging, low, off, with a weapon, the arms' run, a menu; the frame's switch with TorchBlocks
+    and the shaft read), parry_test (the torch's contact force against the old one, with a weapon,
+    the engine blocking, not the player; the cone: in the way, not, unread raised and low,
+    swinging, with the blade each way). Harness, written, not run: torch-block-contact.txt;
+    torch-block.txt, torch-block-sheathed.txt, block-angle.txt and block-creature.txt now pin
+    WeaponBlockByContact=0 (they measure the pose's block).
+- **The wear of a block by contact (looked into 2026-11-27, Nadi: "go") - nothing to restore, no
+  patch.** The earlier note here ("the wear goes as for an unblocked hit") was wrong; read in the
+  assembly (dumpbin 0x005FFB9D..0x005FFC6D):
+  - The damage that lands is the blow's damage less the blocked share (0x005FFBA1..0x005FFBDB);
+    the wear below is by that damage. A forced block applies the share as a held one does, so a
+    blocked blow wears less in the same way [D].
+  - No wear on a creature target (0x005FFBEF, its base form type) or when nothing lands [R].
+  - The item: 0x005E5A00 picks one of the target's armour pieces at random, by game settings' slot
+    chances [R]. Any piece but a shield (slot mask bit 13 [R]; that bit 13 is the shield slot is
+    from xOBSE's list, not re-read) is worn by the landed damage. The shield is worn only when the
+    second Block check, 0x005FFC3F, says blocking and 0x005F23B0(Block) - the mastery - is under
+    Journeyman [R].
+  - That second check asks EDI, the handler's `this` - the attacker, not the target (the first
+    check, 0x005FF7DF, asks ESI, the target; the cone's attacker is EDI when there is no arrow) [R].
+    So for a blow at the player it asks the NPC's block, never the player's: the forced block
+    loses nothing there, and a reroute "yes when this blow was blocked by contact" would never apply
+    to the player's own wear. Vanilla's rule as read wears the defender's shield by the attacker's
+    block state - likely a slip in the original, not confirmed [D]; UESP's "from Journeyman the
+    shield takes no damage when blocking" matches the mastery test, but in vanilla it is the
+    attacker's [D].
+  - **What stays inexact:** the item worn is a random armour piece, never "the shield or blade
+    that stopped the blow" - in vanilla as now. Wearing the blocking item instead would be new
+    behaviour (the +0x2C4 call with that item), not a restoration; not built - a decision for Nadi.
+  - Recorded in ../OBNG/knowledge/blocking.md, "The wear after a blow".

@@ -119,7 +119,7 @@
 		+[](Config& c, float v) { c.hands.halfSword.chokeUp = v != 0.0f; },
 	},
 	{
-		"Combat: features", "Torch blocks", "Raise a torch to block. Off, it only parries what it touches",
+		"Combat: features", "Torch blocks", "Block with a torch. Off, it only parries what it touches",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "TorchBlocks",
 		+[](const Config& c) { return c.hands.torchBlocks ? 1.0f : 0.0f; },
@@ -135,7 +135,7 @@
 	},
 	{
 		"Combat: features", "Weapon blocks what it stops",
-		"Hold your blade across the blow. Off, raise your weapon to block, as before",
+		"Hold your blade or torch across the blow. Off, raise it to block, as before",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Hands", "WeaponBlockByContact",
 		+[](const Config& c) { return c.hands.contactBlock.weapon ? 1.0f : 0.0f; },

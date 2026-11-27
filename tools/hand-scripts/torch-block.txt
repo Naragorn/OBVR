@@ -11,6 +11,8 @@
 # Run with: powershell -File tools\hand-script-run.ps1 -Script tools\hand-scripts\torch-block.txt -Direct
 
 ini Hands Enabled=1
+# The guards' pose rule (WeaponBlockByContact=0): this scenario measures the block the pose holds.
+ini Hands WeaponBlockByContact=0
 ini Hands TorchGraceSeconds=0
 ini Hands Holsters=1
 ini Hands TorchBlocks=1

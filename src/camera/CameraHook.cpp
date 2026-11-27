@@ -4778,7 +4778,7 @@ void UpdateHandMode(const Config& config, bool menuIsUp) {
 	g_gestures.yieldDrive.clickWanted = false;
 	g_grab.weaponTakeReadyClick = false;
 	frame.shieldEquipped = active && game::PlayerWearsShield();
-	frame.guardReads = game::GuardReads{frame.shieldEquipped && g_shieldDiscHave, g_blockBladeValid};  // HandBlockFrame.h
+	frame.guardReads = game::GuardReads{frame.shieldEquipped && g_shieldDiscHave, g_blockBladeValid, g_torchWorldValid};
 	frame.torchHeld = active && game::WornTorchForm() != nullptr;
 	frame.menusOnly = menusOnly;
 	frame.inWorld = game::PlayerInWorld();
@@ -11079,12 +11079,10 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			guard.bladeValid = g_blockBladeValid;
 			guard.bladeA = g_blockBladeA;
 			guard.bladeB = g_blockBladeB;
-			// The torch raised: its shaft, in the world this frame, stands for the blade.
-			if (guard.with == game::BlockWith::Torch) {
-				guard.bladeValid = g_torchWorldValid;
-				guard.bladeA = g_torchWorldA;
-				guard.bladeB = g_torchWorldB;
-			}
+			// The torch's shaft, in the world this frame: the blade when the torch guards (game/BlockCone).
+			guard.torchValid = g_torchWorldValid;
+			guard.torchA = g_torchWorldA;
+			guard.torchB = g_torchWorldB;
 			if (g_shieldDiscHave && g_hand.leftHandValid && g_cyclopeanCameraWorldValid && game::PlayerWearsShield()) {
 				const NiMatrix33 leftRot = g_cyclopeanCameraWorldTransform.rot * g_hand.leftHandRotation;
 				const NiPoint3 leftPos =

@@ -2967,6 +2967,67 @@ void TestShieldBlockByContact() {
 	Check(!b.blocking && !b.shield.byContact, "a menu up: nothing");
 }
 
+// The torch by contact (WeaponBlockByContact covers every guard but the
+// shield; Nadi, 2026-11-27: "go same for fackel"): the raised torch with its
+// shaft read presses no Block; its raise is kept as `raised`, the left
+// hand's swing as `swinging`.
+void TestTorchBlockByContact() {
+	std::printf("The torch by contact: the raised torch holds no Block\n");
+	const GestureThresholds t;
+	HandBlockFrame f;
+	f.leftValid = true;
+	f.rightValid = true;
+	f.rightHandValid = true;
+	f.leftRelative = NiPoint3{-0.2f, 0.3f, -0.1f};  // raised ahead
+	f.rightRelative = NiPoint3{0.2f, 0.1f, -0.6f};  // low
+	f.torchBlocks = true;
+	f.torchByContact = true;
+	HandBlock b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.with == obvr::game::BlockWith::None,
+	      "the torch raised, the rule on: no Block held (e49cdf5: the torch's)");
+	Check(b.torch.byContact && b.torch.raised && !b.torch.swinging, "by contact, raised as the pose had it");
+	f.leftSwinging = true;
+	b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.torch.swinging, "the torch hand swinging: kept as swinging");
+	f.leftSwinging = false;
+	f.leftRelative = NiPoint3{-0.2f, 0.3f, -0.6f};
+	b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.torch.byContact && !b.torch.raised, "the torch low: by contact, not raised");
+	f.leftRelative = NiPoint3{-0.2f, 0.3f, -0.1f};
+	f.torchByContact = false;
+	b = DecideHandBlock(f, t);
+	Check(b.blocking && b.with == obvr::game::BlockWith::Torch && !b.torch.byContact,
+	      "the rule off (or the shaft not read): the raised torch holds Block as before");
+	// A torch with a drawn weapon, both by contact: nothing holds Block.
+	f.torchByContact = true;
+	f.weaponDrawn = true;
+	f.weaponByContact = true;
+	f.rightRelative = NiPoint3{0.1f, 0.4f, -0.1f};
+	f.blade = NiPoint3{1.0f, 0.0f, 0.0f};
+	b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.torch.raised && b.weapon.raised, "torch and weapon by contact: no Block held, both raised");
+	f.armsRun = true;
+	b = DecideHandBlock(f, t);
+	Check(!b.blocking && b.torch.byContact && !b.torch.raised, "the arms running: by contact, not raised");
+	f.armsRun = false;
+	f.menuMode = true;
+	Check(!DecideHandBlock(f, t).torch.byContact, "a menu up: nothing");
+	// The frame from the hand mode's: TorchBlocks, a torch held, its shaft read.
+	HandModeFrame hf;
+	HandSettings s;
+	hf.torchHeld = true;
+	hf.guardReads.torchShaft = true;
+	Check(HandBlockFrameOf(hf, s).torchByContact, "on by default, a torch held, its shaft read");
+	s.contactBlock.weapon = false;
+	Check(!HandBlockFrameOf(hf, s).torchByContact, "WeaponBlockByContact=0: the torch's pose");
+	s.contactBlock.weapon = true;
+	s.torchBlocks = false;
+	Check(!HandBlockFrameOf(hf, s).torchByContact, "TorchBlocks=0: no torch block at all, as before");
+	s.torchBlocks = true;
+	hf.guardReads.torchShaft = false;
+	Check(!HandBlockFrameOf(hf, s).torchByContact, "the shaft not read: the torch's pose");
+}
+
 // The weapon by contact ([Hands] WeaponBlockByContact; Nadi, 2026-11-27):
 // the guard pose of a drawn melee weapon whose blade is read presses no
 // Block; the pose is kept as `raised` for the blows the blade cannot judge,
@@ -5134,6 +5195,7 @@ int main() {
 	TestShieldBlockByContact();
 	TestHandBlockFrameOf();
 	TestWeaponBlockByContact();
+	TestTorchBlockByContact();
 	TestArmSwingPumps();
 	TestLeftButtonsInHandMode();
 	TestQuickSaveChordInHandMode();

@@ -1,0 +1,58 @@
+# The torch by contact ([Hands] WeaponBlockByContact=1, TorchBlocks=1; vr/HandBlockLogic.h,
+# game/ParryLogic.h ContactConeFor; Nadi, 2026-11-27: "go same for fackel"): torch-block.txt's
+# set-up - the longsword drawn, Torch02 in the left hand, a bandit, tgm - with the torch raised
+# before the face, its shaft across. The raise holds no Block ("the torch is up - no block
+# held"); each blow is forced for the torch by contact and its shaft judged: "at the torch by
+# contact (no block held, the block forced for the torch)" - blocked or THROUGH. Not run yet
+# (written 2026-11-27 on Windows).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/torch-block-contact.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands TorchGraceSeconds=0
+ini Hands Holsters=1
+ini Hands TorchBlocks=1
+ini Hands WeaponBlockByContact=1
+ini Hands CombatReach=85
+console-at ready CloseAllMenus
+console-at ready player.additem 0002CF9F 1
+console-at ready player.equipitem 0002CF9F
+console-at ready player.placeatme 00069AD1 1
+console-at ready tgm
+
+expect HandScript: finished
+expect Contact: the torch's shaft -
+expect Hands: the torch is up - no block held
+expect for the torch by contact 1
+expect at the torch by contact (no block held, the block forced for the torch)
+reject Hands: the left hand is up - blocking
+reject HandScript: WARNING
+
+wait 20
+left rot 0 0 0
+left pos -0.20 -0.35 -0.30
+left curl 0.8
+right rot 0 0 0
+right pos 0.25 -0.60 -0.05
+wait 1
+mark ready
+wait 6
+right pos -0.18 -0.62 -0.02
+wait 0.3
+right grip 1
+wait 0.2
+right pos 0.25 -0.60 -0.05
+wait 2
+mark drawn
+# The head turned to the bandit (he came from behind, 08:43: 142 degrees off the view).
+head face 1
+wait 2
+left rot 0 90 0
+left pos -0.05 -0.10 -0.40
+wait 2
+mark raised
+wait 10
+mark held_10
+wait 10
+mark held_20
+wait 10
+mark end

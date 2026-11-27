@@ -30,6 +30,8 @@ struct LocomotionState {
 	UInt32 shieldRaisedLines = 12;
 	bool weaponRaisedWas = false;  // the weapon's guard pose up while it guards by contact
 	UInt32 weaponRaisedLines = 12;
+	bool torchRaisedWas = false;  // the torch raised while it guards by contact
+	UInt32 torchRaisedLines = 12;
 };
 
 // "Arm swing: running / walking again" when the swung arms start or stop

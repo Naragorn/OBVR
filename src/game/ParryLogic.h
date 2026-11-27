@@ -393,16 +393,20 @@ struct BlockForces {
 	bool shield = false;
 	bool weapon = false;
 	bool parry = false;
-	bool Any() const { return torch || shield || weapon || parry; }
+	bool torchContact = false;  // the torch by contact (its shaft judged at the cone)
+	bool Any() const { return torch || shield || weapon || torchContact || parry; }
 };
 
 inline BlockForces BlockForcesFor(bool targetIsPlayer, bool engineSaysBlocking, bool torchRaised, bool weaponReadied,
-                                  bool shieldGuards, bool anyStopped, bool weaponGuards = false) {
+                                  bool shieldGuards, bool anyStopped, bool weaponGuards = false,
+                                  bool torchGuards = false) {
 	BlockForces f;
 	f.torch = ForceBlockForTorch(targetIsPlayer, engineSaysBlocking, torchRaised, weaponReadied);
 	f.shield = !f.torch && ForceBlockForShield(targetIsPlayer, engineSaysBlocking, shieldGuards);
 	f.weapon = !f.torch && ForceBlockForWeapon(targetIsPlayer, engineSaysBlocking, weaponGuards);
-	f.parry = !f.torch && !f.shield && !f.weapon && ForceBlockForParry(targetIsPlayer, engineSaysBlocking, anyStopped);
+	f.torchContact = !f.torch && ForceBlockForWeapon(targetIsPlayer, engineSaysBlocking, torchGuards);
+	f.parry = !f.torch && !f.shield && !f.weapon && !f.torchContact &&
+	          ForceBlockForParry(targetIsPlayer, engineSaysBlocking, anyStopped);
 	return f;
 }
 
@@ -456,6 +460,9 @@ struct ContactVerdicts {
 	bool weaponAsked = false;
 	BlockAngle weapon = BlockAngle::Engine;
 	bool weaponRaised = false;
+	bool torchAsked = false;  // the torch by contact, its hand not swinging
+	BlockAngle torch = BlockAngle::Engine;
+	bool torchRaised = false;
 	KeptArrow arrow = KeptArrow::None;
 };
 
@@ -465,12 +472,14 @@ inline ShieldCone ContactConeFor(bool targetIsPlayer, bool forced, const Contact
 	}
 	const bool shieldBlocks = c.arrow == KeptArrow::Blocked || (c.shieldAsked && c.arrow == KeptArrow::None &&
 	                                                             c.shield == BlockAngle::Blocked);
-	if (shieldBlocks || (c.weaponAsked && c.weapon == BlockAngle::Blocked)) {
+	if (shieldBlocks || (c.weaponAsked && c.weapon == BlockAngle::Blocked) ||
+	    (c.torchAsked && c.torch == BlockAngle::Blocked)) {
 		return ShieldCone::Blocked;
 	}
 	const bool shieldFalls = c.shieldAsked && c.arrow == KeptArrow::None && c.shield == BlockAngle::Engine && c.shieldRaised;
 	const bool weaponFalls = c.weaponAsked && c.weapon == BlockAngle::Engine && c.weaponRaised;
-	return shieldFalls || weaponFalls ? ShieldCone::Original : ShieldCone::NotBlocked;
+	const bool torchFalls = c.torchAsked && c.torch == BlockAngle::Engine && c.torchRaised;
+	return shieldFalls || weaponFalls || torchFalls ? ShieldCone::Original : ShieldCone::NotBlocked;
 }
 
 enum class ParryCone : UInt8 {
