@@ -18,6 +18,7 @@
 #include "game/BodyLeanLogic.h"
 #include "game/BodySheaths.h"
 #include "game/BodyStep.h"
+#include "game/BodyUpright.h"
 #include "game/ArmMemory.h"
 #include "game/ArmRests.h"
 #include "game/ArmTwistLogic.h"
@@ -921,6 +922,7 @@ void StepTrunk(bool standsIdle, float dtSeconds) {
 		}
 		g_trunk.valid = true;
 		g_trunk.root = g_frame.root;
+		StandTrunkUpright(&g_frame.bone[kTrunkFirst], &g_body[kTrunkFirst], kTrunkBones, skeleton, g_frame.bodyYaw);
 		for (UInt32 i = 0; i < kTrunkBones; ++i) {
 			g_trunk.local[i] = g_frame.bone[kTrunkFirst + i]->localTransform;
 		}
@@ -1064,17 +1066,14 @@ float StepBodyLean(const BodyIkSettings& s, float loweredUnits, float dtSeconds)
 	// frame, so only the head's move against the player leans.
 	const NiPoint3 playerAt = root->parent->worldTransform.pos;
 	const NiMatrix33 playerRot = root->parent->worldTransform.rot;
-	if (g_leanPlayerValid && g_leanAnchor.valid) {
-		const NiPoint3 was{g_leanAnchor.x, g_leanAnchor.y, g_leanPlayerAt.z};
-		const NiPoint3 inPlayer = InverseMatrix(g_leanPlayerRot) * (was - g_leanPlayerAt);
-		const NiPoint3 now = playerRot * inPlayer + playerAt;
-		CarryLeanAnchor(g_leanAnchor, now.x - was.x, now.y - was.y);
+	if (g_leanPlayerValid) {
+		CarryLeanAnchorWithPlayer(g_leanAnchor, g_leanPlayerAt, g_leanPlayerRot, playerAt, playerRot);
 	}
 	g_leanPlayerAt = playerAt;
 	g_leanPlayerRot = playerRot;
 	g_leanPlayerValid = true;
 	const float drop = StepLeanDrop(g_leanAnchor, loweredUnits, dtSeconds);
-	const NiPoint3 lean = StepLeanAnchor(g_leanAnchor, hips.x, hips.y, drop, trunk, dtSeconds);
+	const NiPoint3 lean = StepLeanAnchor(g_leanAnchor, hips.x, hips.y, drop, trunk, dtSeconds, g_frame.bodyYaw);
 	const float leanUnits = math::Sqrt(lean.LengthSquared());
 	if (!(leanUnits > 0.05f) || !(trunk > 1.0f)) {
 		return 0.0f;
@@ -1104,10 +1103,8 @@ float StepBodyLean(const BodyIkSettings& s, float loweredUnits, float dtSeconds)
 	WriteLocal(g_body[kSpine], spineLocal);
 	UpdateNodeTransforms(spine);
 
-	const float cosine = (toHead.x * wanted.x + toHead.y * wanted.y + toHead.z * wanted.z) / (trunk * wantedLength);
 	g_leanUnits = leanUnits;
-	const float c = cosine > 1.0f ? 1.0f : (cosine < -1.0f ? -1.0f : cosine);
-	g_leanDegrees = math::Atan2(math::Sqrt(1.0f - c * c), c) * math::kRadiansToDegrees;
+	g_leanDegrees = DegreesBetween(toHead, wanted);
 	if (!g_leanReported && g_leanDegrees > 10.0f) {
 		g_leanReported = true;
 		OBVR_LOG("Body IK: the lean - the hips held %.1f units back of where the head would carry them, the trunk "

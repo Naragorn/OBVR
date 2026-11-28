@@ -1209,6 +1209,69 @@ again after the engine's own update of Bip01, and only that one decides
 (`RefreshForVerdict`, game/BodyPlacement.h). The run's lines, what is
 derived and what is not read: inventory-tablet-spec.md section 14.
 
+### Changed 2026-11-28 (unit tests; no run yet): the body leaned aside, never straight down (Nadi)
+
+Nadi: the body under the headset always leans to one side, left or right, never
+straight down as it should. Read in the code; not measured in the game (the
+session that found it had no game). Two causes, derived:
+
+- **The trunk held at a swayed idle frame (the main one).** `StepTrunk` holds the
+  chain NonAccum to the head at the standing idle's pose, taken once from any
+  frame after 0.5 s of standing. The idle breathes and sways from foot to foot
+  (the feet's stance 7.2 -7.3 against -7.8 0.5, the knees' switches with the
+  breathing, round 5), and `HeadOffsetStands` accepts the head up to 12 units
+  across from the root. Nothing after the take undoes a bend aside: the torso
+  turns about the vertical, the chest's correction takes out a twist, and the
+  placement hangs the root from the head with the held offset as it is. So the
+  body hung aside for the skeleton's whole life, to whichever side the frame
+  taken swayed - a new side after each load.
+- **The lean held the hips aside (it made it worse).** The hips' anchor came back
+  under the head only below the upright line (a drop of 2 units), and there the
+  reach jumped from the slack's 3 units to 15 (a trunk of about 38 units, Bip01
+  Spine to the head, reaches 12 for a drop of 2). A head 2 or 3 units under its
+  standing height - posture, the camera's own rise with a look down (2.5 units,
+  round 2), a standing height taken from one frame's spike, since a head higher
+  than standing was the new standing at once - held the hips where they were,
+  and a weight moved from one foot to the other bent the trunk up to about 20
+  degrees aside until the head came back up.
+
+Built:
+
+- **Stood upright as it is taken** (game/BodyUprightLogic.h `UprightTrunk`, the
+  bones in game/BodyUpright.cpp `StandTrunkUpright`, called from `StepTrunk`):
+  each segment from the pelvis to the head turned about the body's forward until
+  nothing of it lies across the body - turns about one axis add, so joint k
+  takes the side angle of the segment below less its own - and NonAccum moved
+  across so the pelvis stands over Bip01, between the feet. The bow forward and
+  back, the lengths and the pelvis's place are kept. A segment leaning past 30
+  degrees aside, hips more than 12 units across, numbers that are none: left as
+  they are. Once per take, nothing per frame. Logged: "Body IK: the trunk's pose
+  stood upright - it leaned x degrees aside, the hips y units across from the
+  root".
+- **The lean** (game/BodyLeanLogic.h): the reach is the trunk's for the drop past
+  the upright line (`LeanReachFor`), so it grows from the slack and does not jump;
+  aside it is held to half the trunk (a spine bends aside about 30 degrees);
+  past it, an ellipse of the two, the anchor dragged along its own line; while
+  leaning, the part aside is drawn back under the head at 0.5 a second
+  (`kLeanSideReturnPerSecond`) - forward and back stay as Nadi confirmed them on
+  2026-10-29; a head higher than standing becomes the standing over 0.2 s
+  (`kLeanStandingRiseSeconds`), not from one frame. The carry and the turn's
+  angle moved into the same header (`CarryLeanAnchorWithPlayer`,
+  `DegreesBetween`).
+- body_upright_test (a swayed chain facing two ways: no segment aside after, the
+  bow, the lengths and the pelvis kept; a short segment; the refusals; the hips),
+  body_lean_test (the reach from the upright line and aside, the ellipse, the
+  side drawn back while leaning, a one-frame spike, the carry, the angle). The
+  turn's sign and the side draw-back checked by mutation: flipped, 5 and 4 checks
+  fail.
+
+Open: `tools/hand-scripts/body-upright.txt` (the take's log line, the body
+bounds at `stand`, a 10 cm sway each way 3 cm down, the forward lean of
+body-lean-keep1 as before) has not run, and the DLL was not built in that session
+(no clang-cl sysroot) - only the two files compiled with clang. Headset: the body
+straight down after a load, standing and walking; the forward lean as before; a
+lean aside now moves the hips under the head over a couple of seconds.
+
 ## 2026-11-19: the stump's stand-in bones crashed the engine - fixed
 
 The forearm stump and the glove elbows (game/ArmStump.cpp) put static nodes of OBVR's into the

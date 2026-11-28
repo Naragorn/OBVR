@@ -33,6 +33,29 @@ inline constexpr float kLeanSlackUnits = 3.0f;        // sway the anchor ignores
 inline constexpr float kLeanUprightUnits = 2.0f;      // let down less than this: standing upright
 inline constexpr float kLeanReturnPerSecond = 2.0f;   // the anchor's way back under an upright head
 
+// Aside, the trunk bends less and the hips come back (Nadi, 2026-11-28: the
+// body always leaned to the left or the right, never straight down).
+//
+// Until 2026-11-28 the reach was the trunk's for the whole drop, and aside the
+// same as forward. A trunk's reach grows fastest from upright: a trunk of 38
+// units (Bip01 Spine to the head) let down 2 reaches 12 forward, 3 reaches 15.
+// So at the upright line the reach jumped from the slack's 3 to 15 units, and a
+// head 2 or 3 units below its standing height - a player's posture, the
+// camera's own rise with a look down (2.5 units, player-body-spec round 2),
+// a standing height taken from one frame's spike - held the hips wherever they
+// were: a weight moved from one foot to the other bent the trunk up to 20
+// degrees aside, and it stayed until the head came back above the line.
+//
+// Now the reach is the trunk's for the drop past the upright line only, so it
+// grows from the slack and does not jump; aside it is held to a spine's own
+// bend aside (about 30 degrees: a third of the bend forward); and a lean aside
+// is drawn back under the head over a couple of seconds even while leaning -
+// a body held aside moves its hips under it, it does not stay bent. Forward
+// and back are kept as they were (Nadi, 2026-10-29: "das nach vorne beugen
+// geht nun wie erwartet").
+inline constexpr float kLeanSideMostSine = 0.5f;          // aside at most 30 degrees of the trunk
+inline constexpr float kLeanSideReturnPerSecond = 0.5f;   // the hips' way back under a head held aside
+
 namespace lean_detail {
 inline bool Finite(float v) { return v == v && v - v == 0.0f; }
 inline bool Finite(const NiPoint3& p) { return Finite(p.x) && Finite(p.y) && Finite(p.z); }
@@ -93,6 +116,24 @@ inline void CarryLeanAnchor(LeanAnchor& a, float dx, float dy) {
 	a.y += dy;
 }
 
+// The carry from the player node's two poses: the anchor held where it was in
+// the player's own frame, the player's turn (a snap turn) with it. `wasAt` and
+// `wasRot` last frame's, `at` and `rot` this frame's.
+inline void CarryLeanAnchorWithPlayer(LeanAnchor& a, const NiPoint3& wasAt, const NiMatrix33& wasRot,
+                                      const NiPoint3& at, const NiMatrix33& rot) {
+	if (!a.valid) {
+		return;
+	}
+	const NiPoint3 was{a.x, a.y, wasAt.z};
+	const NiPoint3 now = rot * (InverseMatrix(wasRot) * (was - wasAt)) + at;
+	CarryLeanAnchor(a, now.x - was.x, now.y - was.y);
+}
+
+// A head higher than standing is the new standing over this time, not at
+// once: one frame's spike (a tracking glitch) took it for good until
+// 2026-11-28, and every frame after read as let down by the spike.
+inline constexpr float kLeanStandingRiseSeconds = 0.2f;
+
 // How far the head is below standing: the let-down against the standing
 // let-down, which this frame keeps.
 inline float StepLeanDrop(LeanAnchor& a, float loweredUnits, float dtSeconds) {
@@ -100,9 +141,15 @@ inline float StepLeanDrop(LeanAnchor& a, float loweredUnits, float dtSeconds) {
 	if (!Finite(loweredUnits)) {
 		return 0.0f;
 	}
-	if (!a.haveStanding || !Finite(a.standingLowered) || loweredUnits < a.standingLowered) {
+	if (!a.haveStanding || !Finite(a.standingLowered)) {
 		a.haveStanding = true;
 		a.standingLowered = loweredUnits;
+		return 0.0f;
+	}
+	if (loweredUnits < a.standingLowered) {
+		float share = Finite(dtSeconds) && dtSeconds > 0.0f ? dtSeconds / kLeanStandingRiseSeconds : 1.0f;
+		share = share < 1.0f ? share : 1.0f;
+		a.standingLowered += (loweredUnits - a.standingLowered) * share;
 		return 0.0f;
 	}
 	if (Finite(dtSeconds) && dtSeconds > 0.0f) {
@@ -113,14 +160,32 @@ inline float StepLeanDrop(LeanAnchor& a, float loweredUnits, float dtSeconds) {
 	return loweredUnits - a.standingLowered;
 }
 
+// How far the hips may stay from under the head, forward and aside, for a head
+// `dropUnits` below standing: the trunk's reach for the drop past the upright
+// line, aside no more than a spine bends aside; the slack on each.
+struct LeanReach {
+	float forward = kLeanSlackUnits;
+	float aside = kLeanSlackUnits;
+};
+
+inline LeanReach LeanReachFor(float dropUnits, float trunkUnits) {
+	const float reach = LeanAllowedUnits(dropUnits - kLeanUprightUnits, trunkUnits, 0.0f);
+	const float sideMost = lean_detail::Finite(trunkUnits) && trunkUnits > 0.0f ? trunkUnits * kLeanSideMostSine : 0.0f;
+	return LeanReach{reach + kLeanSlackUnits, (reach < sideMost ? reach : sideMost) + kLeanSlackUnits};
+}
+
 // The anchor's step: where the hips stay, level, given where the placement
-// would put them this frame (`hipsX/Y`, under the head) and how far the head
-// is below standing (`dropUnits`, StepLeanDrop). Answers the lean, the level
-// way from the anchor to those hips - what the trunk's turn has to make up.
-// A first frame, or numbers that are not numbers, start the anchor at the
-// hips: no lean.
+// would put them this frame (`hipsX/Y`, under the head), how far the head is
+// below standing (`dropUnits`, StepLeanDrop) and the way the body faces
+// (`bodyYaw`, HeadingOf's sense: the yaw of its right). Answers the lean, the
+// level way from the anchor to those hips - what the trunk's turn has to make
+// up. Upright, the anchor is drawn back under the head; leaning, only its part
+// aside, slower. Past the reach - an ellipse, LeanReachFor's forward and aside
+// - it is a step, and the anchor is dragged to the edge. A first frame, or
+// hips that are not numbers, start the anchor at the hips: no lean. A yaw that
+// is not a number reaches as far aside as forward.
 inline NiPoint3 StepLeanAnchor(LeanAnchor& a, float hipsX, float hipsY, float dropUnits, float trunkUnits,
-                               float dtSeconds) {
+                               float dtSeconds, float bodyYaw) {
 	using lean_detail::Finite;
 	if (!Finite(hipsX) || !Finite(hipsY)) {
 		a.valid = false;
@@ -132,20 +197,29 @@ inline NiPoint3 StepLeanAnchor(LeanAnchor& a, float hipsX, float hipsY, float dr
 		a.y = hipsY;
 		return NiPoint3{0.0f, 0.0f, 0.0f};
 	}
-	// Upright: drawn back under the head.
-	if (!(dropUnits >= kLeanUprightUnits) && Finite(dtSeconds) && dtSeconds > 0.0f) {
-		float share = dtSeconds * kLeanReturnPerSecond;
+	const bool split = Finite(bodyYaw);
+	const float rx = split ? math::Cos(bodyYaw) : 1.0f;  // the body's right, level
+	const float ry = split ? math::Sin(bodyYaw) : 0.0f;
+	const bool upright = !(dropUnits >= kLeanUprightUnits);
+	if (Finite(dtSeconds) && dtSeconds > 0.0f && (upright || split)) {
+		float share = dtSeconds * (upright ? kLeanReturnPerSecond : kLeanSideReturnPerSecond);
 		share = share < 1.0f ? share : 1.0f;
-		a.x += (hipsX - a.x) * share;
-		a.y += (hipsY - a.y) * share;
+		const float dx = hipsX - a.x;
+		const float dy = hipsY - a.y;
+		const float side = dx * rx + dy * ry;
+		a.x += upright ? dx * share : rx * side * share;
+		a.y += upright ? dy * share : ry * side * share;
 	}
-	const float allowed = LeanAllowedUnits(dropUnits, trunkUnits, kLeanSlackUnits);
+	LeanReach reach = LeanReachFor(dropUnits, trunkUnits);
+	reach.aside = split ? reach.aside : reach.forward;
 	float dx = hipsX - a.x;
 	float dy = hipsY - a.y;
-	const float off = math::Sqrt(dx * dx + dy * dy);
-	if (off > allowed) {
+	const float side = (dx * rx + dy * ry) / reach.aside;
+	const float ahead = (dy * rx - dx * ry) / reach.forward;
+	const float past = side * side + ahead * ahead;
+	if (past > 1.0f) {
 		// A step: the anchor dragged to the edge of the reach.
-		const float keep = allowed / off;
+		const float keep = 1.0f / math::Sqrt(past);
 		dx *= keep;
 		dy *= keep;
 		a.x = hipsX - dx;
@@ -181,6 +255,18 @@ inline float LeanPivotRaise(const NiPoint3& toHead, const NiPoint3& lean, float 
 		return 0.0f;
 	}
 	return r < mostUnits ? r : mostUnits;
+}
+
+// The angle between two directions, in degrees; 0 for either being no
+// direction.
+inline float DegreesBetween(const NiPoint3& a, const NiPoint3& b) {
+	const float lengths = lean_detail::Length(a) * lean_detail::Length(b);
+	if (!lean_detail::Finite(lengths) || !(lengths > 1.0e-6f)) {
+		return 0.0f;
+	}
+	float c = lean_detail::Dot(a, b) / lengths;
+	c = c > 1.0f ? 1.0f : (c < -1.0f ? -1.0f : c);
+	return math::Atan2(math::Sqrt(1.0f - c * c), c) * math::kRadiansToDegrees;
 }
 
 // The rotation that turns direction `from` onto direction `to` the short way

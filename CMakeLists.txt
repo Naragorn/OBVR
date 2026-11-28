@@ -255,6 +255,7 @@ add_library(OBVR SHARED
 	src/game/ArmStump.cpp
 	src/game/BodyIk.cpp
 	src/game/BodyStep.cpp
+	src/game/BodyUpright.cpp
 	src/game/BoneMirrorRead.cpp
 	src/game/TakeItem.cpp
 	src/game/WeaponDrawSpeed.cpp

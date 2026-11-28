@@ -1,0 +1,53 @@
+# The body straight down under the head (Nadi, 2026-11-28: the body always
+# leaned to the left or the right, never straight down; game/BodyUprightLogic.h,
+# the lean aside in game/BodyLeanLogic.h).
+# Standing still, the trunk's pose is taken from the idle and stood upright: the
+# log says how far it leaned aside and how far the hips stood across; "Body
+# bounds:" at "stand" should read a lean near 0 and the trunk turned near 0, and
+# the eye dump shows the body straight down. Then the head swayed 10 cm to
+# either side and 3 cm down (a weight moved from foot to foot, 2.1 units below
+# standing - past the upright line): the hips held aside only within the slack
+# and drawn back under the head (before 2026-11-28 the reach was 15 units there
+# and the trunk stayed bent about 11 degrees aside). Last, the forward lean of
+# body-lean-keep1.txt, which should read as it did (21 units, 33 degrees).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/body-upright.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Body Visible=1
+ini Body IK=1
+ini Body KeepInView=1
+
+expect HandScript: finished
+expect Body IK: the trunk's pose taken from the standing idle
+expect Body IK: the trunk's pose stood upright
+expect Body bounds: at "stand" - Bip01
+expect Body bounds: at "swayRight" - Bip01
+expect Body bounds: at "swayLeft" - Bip01
+expect Body bounds: at "lean40" - Bip01
+reject HandScript: WARNING
+
+wait 14
+right pos 0.30 -0.20 -0.45
+right rot 50 0 0
+left pos -0.30 -0.20 -0.45
+left rot 50 0 0
+head pitch -40
+wait 1.5
+mark stand
+dump
+head pos 0.10 1.57 0
+wait 1.5
+mark swayRight
+dump
+head pos -0.10 1.57 0
+wait 1.5
+mark swayLeft
+dump
+head pos 0 1.6 0
+wait 1.5
+mark back
+dump
+head pos 0 1.4 -0.3
+wait 1.5
+mark lean40
+dump

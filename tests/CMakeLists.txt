@@ -2563,6 +2563,16 @@ endif()
 
 add_test(NAME body_lean COMMAND body_lean_test)
 
+add_executable(body_upright_test BodyUprightTest.cpp)
+
+target_include_directories(body_upright_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(body_upright_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME body_upright COMMAND body_upright_test)
+
 # miniz: zlib's packing and unpacking in one C file (MIT, third_party/miniz).
 # Without its archive, file and time parts - the dome needs none of them.
 add_library(obvr_miniz STATIC ../third_party/miniz/miniz.c)
