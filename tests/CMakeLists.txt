@@ -2840,6 +2840,22 @@ if(NOT MSVC)
 endif()
 add_test(NAME tablet_close COMMAND tablet_close_test)
 
+# What of the tablet's menus may show where (vr/TabletOverlayGate.h): pure.
+add_executable(tablet_overlay_gate_test TabletOverlayGateTest.cpp)
+target_include_directories(tablet_overlay_gate_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_overlay_gate_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet_overlay_gate COMMAND tablet_overlay_gate_test)
+
+# The texts beside the tablet's page, shown above it (vr/TabletTexts.h): pure.
+add_executable(tablet_texts_test TabletTextsTest.cpp)
+target_include_directories(tablet_texts_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_texts_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet_texts COMMAND tablet_texts_test)
+
 # The watch on the tablet's figure, for the log (vr/TabletFigureWatch.h): pure.
 add_executable(tablet_figure_watch_test TabletFigureWatchTest.cpp)
 target_include_directories(tablet_figure_watch_test PRIVATE ../src)

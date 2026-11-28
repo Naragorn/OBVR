@@ -126,6 +126,9 @@ public:
 		m_tabletSet = true;
 		m_tabletHidden = true;
 	}
+	// The next submit that has a picture hands it over and keeps the overlay
+	// hidden: its first frame back after the tablet (vr::StepOverlayReturn).
+	void PrimeNextSubmit() { m_prime = true; }
 
 	// The rectangle of the layer texture the overlay shows, in texture
 	// pixels - the 2D's believed size, or the whole texture when belief and
@@ -151,6 +154,9 @@ private:
 	void PlaceOverlay(vr::OpenVRBackend& backend, float distanceMetres, float widthMetres, bool anchorWorld);
 	// The slice of the layer the 2D draws in, for the overlay (EnsureOverlay).
 	void ApplyContentBounds(vr::OpenVRBackend& backend, bool logged);
+	// Shows the overlay after its picture was handed over - unless primed
+	// (PrimeNextSubmit): then hidden this once, and false.
+	bool ShowUnlessPrimed(vr::OpenVRBackend& backend);
 
 	void* m_texture = nullptr;  // IDirect3DTexture9
 	void* m_surface = nullptr;  // IDirect3DSurface9, level 0
@@ -171,6 +177,8 @@ private:
 	HudBoundsState m_boundsState;
 	bool m_tabletHidden = false;
 	vr::openvr::VRTextureBounds m_tabletBounds{};
+	bool m_prime = false;      // PrimeNextSubmit
+	UInt32 m_primeLines = 12;  // said, the first several times
 
 	// What the last Submit hung the quad by, for QuadInTracking.
 	float m_lastDistance = 0.0f;

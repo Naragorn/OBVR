@@ -155,6 +155,7 @@ add_library(OBVR SHARED
 	src/game/NativeMenuPrototype.cpp
 	src/game/MenuPause.cpp
 	src/game/TabletMenu.cpp
+	src/game/TabletTexts.cpp
 	src/game/MenuFigure.cpp
 	src/game/HandControls.cpp
 	src/game/EngineInput.cpp

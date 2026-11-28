@@ -2441,6 +2441,8 @@ code; [D] derived; [G] guessed.
 
 ### 30.2 The rule
 
+**Replaced the same day by section 31.4** (Nadi's second run: the hand that does not let go keeps it). Kept here as it was built.
+
 - **Before** (vr/TabletScroll.h `StepUnrolling`): fully open, the hand that kept its grip
   held it (`holderRight = f.grip[1]`), and the upper of the two when unrolled up and down.
   The spec's stage 3 (section 8) had it so: "letting go with one hand leaves it in the
@@ -2528,3 +2530,139 @@ code; [D] derived; [G] guessed.
   scroll's raw grip land in the same frame, as the gate assumes [G].
 - Not verified: the feel in the headset - the tablet now jumps to the off hand when the
   off hand lets go first.
+
+## 31. The second run of 2026-11-28 (Nadi, headset, OBVR.log of 12:28)
+
+The DLL: main 40b7b34 with the swimming and books branches. His INI: `[Tablet] Enabled=1 InScene=1
+Figure=tab`, `[Hands] GripToggle=1`, the HUD overlay on; the mod Basic Primary Needs installed
+(`Data/Basic Primary Needs.esp`), which puts texts on the HUD. Opening by the B he called "perfekt";
+it is not changed. Marks: [R] read in the log, the code or the EXE; [D] derived; [G] guessed.
+Built on branch `tablet-layer-1128`; unit-tested on Windows, the game not run, the harness not run.
+
+### 31.1 The close: a frame of the whole inventory in front
+
+Nadi: "beim schließen egal ob B oder geste sehe ich für einen frame das komplette inventar + texte
+(von basic needs) vor mir aufploppen, dass muss auch noch weg."
+
+- [R log] Every close, B or gesture, reads the same: "Tablet: put down", the fade's frames, "Tablet:
+  closed - the menus' fade kept out of the room and the eyes (22 frame(s))", "Menu trace: a menu
+  just closed", then in that same frame "Hud: the overlay 1.60 m wide - off the wrist again" and
+  "Render: OpenVR overlays shown (changed, menu none): obvr.hud, ..." (1933/1943/1948/1949;
+  3147/3152/3155/3156; the gesture's 4233/4237/4243/4246). The room's panel is hidden through the
+  fade (no "overlays shown" line between 1768 and 1949) and comes back in the frame menu mode ends.
+- [R log] Every open showed the overlay on the controller for its first frame: "Hud: the overlay
+  0.54 m wide - the tablet" is said only when the overlay is shown as the tablet (1687 with
+  "overlays shown ... obvr.hud" at 1688, then hidden at 1699; 3666; 4151 - all right after the
+  open). So the last picture the compositor was given before each close was one with the menus.
+- [R EXE] The interface's per-frame step 0x00579CF0 runs the menus' fade (0x00583F40, which sets
+  the state back to 1 - out of menu mode - once no menu fades) before the interface pass
+  0x0057F170. [D] The frame menu mode ends, that pass draws no menu any more: the layer of that
+  frame should hold the HUD only.
+- [R code, before] Submit (render/HudLayer.cpp) set the bounds, the width and the place, handed the
+  layer's picture over (SetOverlayTexture) and showed the overlay in the same call.
+- **Cause 1** [D, not measured]: the panel came back at its room place and full width in the same
+  frame it was handed a new picture; what the compositor showed for that frame was a picture with
+  the menus. Which one is not settled: openvr.h does not say when SetOverlayTexture's image is
+  taken (DeepWiki, ValveSoftware/openvr), so either the compositor still had the last picture it
+  was given (an open's first frame, the menus whole) [G, the likelier given the EXE's order], or
+  the layer of that frame still held the menus' last draw (contradicted by the order above).
+  **Fixed for both**: the first frame the panel is back after the tablet (vr::StepOverlayReturn,
+  vr/TabletOverlayGate.h) the picture is handed over and the overlay kept hidden; it shows from
+  the next frame (HudLayer::PrimeNextSubmit, ShowUnlessPrimed). Said: "Hud: back after the tablet
+  - this frame's picture handed over, the overlay shown from the next". One frame (11 ms) less of
+  the HUD after a close.
+- **Cause 2, the gesture's close** [R code]: the frame the scroll rolled up and sent the key, the
+  menus still up, the tablet was drawn fully open again - the share fell back to the B's
+  unrolling clock, which the scroll keeps at open (camera/hands/ControlsOut.cpp) - so the whole
+  page stood between the hands for a frame. Now the scroll says it rolled up
+  (`TabletScrollResult::rolledUp`, kept until menu mode ends or an owed close has gone) and
+  nothing of the tablet is drawn (vr::TabletDrawnShare).
+- Tests: tablet_overlay_gate_test (the share drawn, the panel's return: 4 checks red against the old
+  rule), tablet_scroll_test TestRolledUp (5 red).
+- Harness: `tools/hand-scripts/tablet-close-flash.txt` (B and gesture, the prime line twice, no
+  overlay as the tablet). Written, not run.
+- What settles it: the next headset run - the flash gone or not - and the log's "Hud: back after the
+  tablet" lines at each close. If it stays, the next thing to read is the layer's content in that
+  frame (a layer dump at the frame menu mode ends).
+
+### 31.2 The gesture's start: the whole page between the hands
+
+Nadi: "wenn ich aber beide hände nah habe direkt am anfang der geste dann kann es auch noch passieren
+das das inv + texte vor mir aufploppt und auch länger wenn die geste direkt am anfang lange gehalten
+wird".
+
+- [R log] "Tablet: the scroll sends the menu key (the menus open)", "unrolling between the hands"
+  (4124/4125); the next frame the page is read and the tablet placed (4127/4133); a few lines on
+  "Hud: the overlay 0.54 m wide - the tablet" (4151): the overlay on the controller was shown.
+- [R code] At the start nothing is unrolled: the share is 0, and vr::RectOnTablet gives no piece
+  for a share of 0 (vr/TabletLogic.h:846), so nothing is drawn into the eyes. The overlay stood in
+  for a tablet the eyes did not get last frame (`TakeTabletDrawnBoth`) - shown with the tablet's
+  whole cut of the layer, at the place between the hands, at full width: it knows no share. Held
+  at the start, every frame was such a frame. The first frame of every open was one too (nothing
+  drawn the frame before).
+- **Fixed** (vr::TabletOnOverlay): drawn into the eyes, the overlay stands in only for a tablet
+  fully open, set whole last frame, that still missed both eyes. While the gesture owns the menus
+  and the tablet is not placed (the page not read yet), nothing of the layer shows, the room's
+  panel neither (vr::GestureHoldsMenus). InScene=0 is as before.
+- Tests: tablet_overlay_gate_test TestOnOverlay, TestGestureHolds (7 red against the old rule).
+- Harness: `tools/hand-scripts/tablet-gesture-held-start.txt` (held 3 s at the start; the overlay's
+  "- the tablet" width line rejected). Written, not run.
+
+### 31.3 Texts over the inventory to the hand
+
+Nadi: "texte von mods oder game die über dem inventar kamen können wir nun also auch über das
+inventar an die hand schieben, wenn das an ist."
+
+- [R code] While the tablet holds the menus the room's panel is hidden, so whatever the game draws
+  outside the tablet's face - the notices top left, subtitles - was shown nowhere; Nadi saw those
+  texts only in the closing flash.
+- [R log] At the close the HUD on the hands lifted "Messages 113,94..1750,201" (1946): a notice was
+  up. [G] Basic Primary Needs' status lines are notices (HUDSubtitleMenu's `hudsubtitle_notice`);
+  not read in the log, the mod's scripts not read.
+- **Built** ([Tablet] TextsOnTablet, default 1; the settings row "Messages above the hand menu",
+  tests/settings-rows.txt re-pinned): every 5 frames while the tablet is up and drawn into the eyes
+  (game/TabletTexts.cpp, called from camera/hands/LaserTargets.cpp) the rectangles of the HUD's
+  text elements as the HUD on the hands reads them (vr::HudElementRect: Messages and Subtitles from
+  HUDSubtitleMenu, Region and XpText from HUDMainMenu); the ones not wholly on the tablet's face
+  (vr::TextsBesidePage) are drawn as one more piece (render::kTabletTextsPiece) above the face's top
+  edge, at the page's own scale, narrowed to its width when wider (vr::TextsAbovePage), once the
+  tablet is open. Not on the bars, the compass, the crosshair: they are not read. Out past the face,
+  no tap reaches them. TextsOnTablet=0: as before.
+- The log names them: "Tablet: the HUD's texts while it is up - Messages x,y..x,y (HUDSubtitleMenu,
+  above the page); ..." as the set changes (20 lines), and the first two times the tablet is up
+  "Tablet: HUDSubtitleMenu tiles beside the page (...)" and the same for HUDMainMenu - every sized
+  tile beside the page, so the next run shows whether Basic Primary Needs' lines are there.
+- Not covered: texts a mod draws in a menu of its own (MenuQue) - such a menu in the stack takes
+  the tablet away altogether (vr::TabletMenusUp), so nothing changes there.
+- Cost: two tile walks every 5 frames while the tablet is up (what the HUD on the hands does every
+  world frame), the trees kept in the state, nothing allocated; one quad more. Not measured.
+- Tests: tablet_texts_test (7 red against stubs), config_test (the setting; red as a build failure).
+- Harness: `tools/hand-scripts/tablet-texts.txt` (a notice from the console while the tablet is up;
+  the eye dump at "notice"). Written, not run; whether the console's `message` shows a notice in
+  menu mode is not checked [G].
+
+### 31.4 Which hand: the one that does not let go
+
+Nadi: "das inv soll egal rechtshänder oder link immer auf die hand gehen die am ende der geste
+NICHT loslässt." It replaces section 30.2 (the off hand always).
+
+- **Now** (vr/TabletHolder.h `TabletHolderOnceOpen`, from vr/TabletScroll.h `StepUnrolling`): fully
+  open, the hand that keeps its grip as the other lets go holds it, right- and left-handed, the
+  weapon hand too; the other points and taps. Both let go in the same frame, fully open: held by
+  the off hand (before: closed). Opened by the B: the off hand, as before.
+- The grips are read in the frame's roles, so a switch of the sides during the gesture changes
+  nothing: the hand that physically keeps its grip holds it. `TabletScrollState::rolesAtGrip` and
+  `sidesSwitched` are gone with their test. The grip claim of 30.3 is kept.
+- Checked [R code]: the pointing hand is the one not holding (vr/MenuPlace.h `PlaceMenu`:
+  `pointHand`, `pointRight`), the finger's tip is that hand's (vr::TapFinger), the laser follows it;
+  menu_place_test now checks the left hand points when the right holds.
+- The log names it: "Tablet: kept by the weapon hand - on the right controller" (or left,
+  left-handed); "not in the weapon hand" when it goes. The open's line "in the off hand, drawn into
+  the eyes - on the ... controller" is said as it begins to unroll and names the off hand's
+  controller.
+- Tests: tablet_holder_test rewritten (4 red against the morning's rule), tablet_scroll_test (8 red),
+  menu_place_test (5 red).
+- Harness: `tablet-scroll-offhand.txt` and `tablet-scroll-offhand-left.txt` rewritten for the keeper;
+  `tablet-scroll.txt` and `tablet-scroll-vertical.txt` back to their form before 30 (kept by the
+  right hand, rolled up by the left). Written, not run.
+- Not verified: the feel in the headset; the free end's place in the rolling-up scenarios [G].

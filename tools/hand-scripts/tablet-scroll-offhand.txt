@@ -1,13 +1,13 @@
-# The tablet opened by the gesture lands in the off hand (vr/TabletHolder.h,
-# docs/inventory-tablet-spec.md section 30; Nadi, headset 2026-11-28: with the
-# right as the main hand it was in the right hand after the gesture).
+# The tablet opened by the gesture lands in the hand that does not let go
+# (vr/TabletHolder.h, docs/inventory-tablet-spec.md section 31.4; Nadi,
+# headset 2026-11-28, the second run: "das inv soll egal rechtshänder oder
+# link immer auf die hand gehen die am ende der geste NICHT loslässt" - it
+# replaces the morning's "always the off hand", section 30).
 # Right-handed. Both hands empty, together at the inventory ring, both grips
 # closed, pulled apart past the tablet's width; then the left lets go and the
-# right keeps its grip - the case of the report. Wanted: in the off hand, on
-# the left controller, never "kept by the right hand"; the left B puts it down.
-# Once more with the right letting go: the same. The open line is said as it
-# begins to unroll, so the reject is what tells the old rule from the new: the
-# old one said "kept by the right hand" the moment the left let go.
+# right keeps its grip: in the right hand, on the right controller ("kept by
+# the weapon hand"), the left points. The left B puts it down. Once more with
+# the right letting go: in the left hand - no second "kept by the weapon hand".
 # With the Iron Shield worn (vr/GripClaim.h, spec 30.3): the weapon hand's
 # grip closing at the other hand would hand the shield over and switch the
 # sides. The first try closes the weapon hand first and the other 0.2 s after:
@@ -16,7 +16,6 @@
 # ring: the handover after the 0.5 s wait, the sides switch then.
 # Written 2026-11-28, not run (Linux only). Run with:
 # python3 tools/hand-script-run.py tools/hand-scripts/tablet-scroll-offhand.txt --headless --no-steamvr --parallel
-
 ini Hands Enabled=1
 ini Hands LeftHanded=0
 ini Tablet Enabled=1
@@ -59,8 +58,9 @@ count 2 the tablet's gesture took the grips, no handover
 expect at the inventory ring - waiting for the tablet's other grip
 count 1 the sides switch, the shield to that hand
 expect (after the tablet's wait, no other grip)
+count 1 Tablet: kept by the weapon hand - on the right controller
 reject Tablet: in the off hand, drawn into the eyes - on the right controller
-reject Tablet: kept by the right hand
+reject kept by the weapon hand - on the left controller
 reject HandScript: WARNING
 
 wait 12
@@ -85,7 +85,7 @@ wait 0.4
 mark open
 left grip 0
 wait 0.8
-mark held_left_right_kept_grip
+mark held_right_right_kept_grip
 right grip 0
 wait 0.4
 left b 1

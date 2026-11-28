@@ -226,9 +226,8 @@ inline MenuTarget PlaceMenu(const HandModeFrame& f, const HandSettings& s, bool 
 	                                                          TabletHandReach(f.tablet, false))
 	                                            : TabletPlace{};
 	// The scroll (vr/TabletScroll.h): between the hands while it unrolls or
-	// rolls up, in the frame's right hand when that one keeps it - since
-	// 2026-11-28 only when the sides switched mid-gesture, the off hand of
-	// before being the right role now (vr/TabletHolder.h).
+	// rolls up, in the frame's right hand when that one kept its grip as the
+	// other let go (vr/TabletHolder.h) - the left then points and taps.
 	const bool keptRight = scroll != nullptr && scroll->holderRight &&
 	                       (scroll->phase == TabletScrollPhase::Held || scroll->phase == TabletScrollPhase::RollingUp);
 	const TabletPlace held = tablet.valid && keptRight && f.right.valid ? HeldByRight(f, s, hold) : tablet;
@@ -244,6 +243,7 @@ inline MenuTarget PlaceMenu(const HandModeFrame& f, const HandSettings& s, bool 
 	r.tabletGripsOpen = scroll == nullptr || rolled.gripsOpen;
 	r.tabletUpright = s.tablet.unroll == TabletUnroll::Vertical;
 	r.tabletShare = rolled.betweenHands ? rolled.amount : -1.0f;
+	r.tabletRolledUp = rolled.rolledUp;
 	if (tablet.valid && f.right.valid && rolled.betweenHands) {
 		tablet = PlaceBetweenHands(tablet, f, s);
 	} else if (tablet.valid && f.right.valid && rolled.holderRight &&

@@ -502,9 +502,8 @@ void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool capture
 		return;
 	}
 
-	if (!m_overlayVisible) {
-		backend.ShowOverlay(m_overlay);
-		m_overlayVisible = true;
+	if (!ShowUnlessPrimed(backend)) {
+		return;
 	}
 
 	if (!m_liveReported) {
@@ -512,6 +511,28 @@ void HudLayer::Submit(vr::OpenVRBackend& backend, void* gameDevice, bool capture
 		OBVR_LOG("Hud: live - the 2D layer hangs %.2f m ahead, %.2f m wide",
 		         static_cast<double>(distanceMetres), static_cast<double>(widthMetres));
 	}
+}
+
+bool HudLayer::ShowUnlessPrimed(vr::OpenVRBackend& backend) {
+	// Primed: the picture is the compositor's now, nothing shown this frame
+	// (vr::StepOverlayReturn) - it shows from the next submit.
+	if (m_prime) {
+		m_prime = false;
+		if (m_overlayVisible) {
+			backend.HideOverlay(m_overlay);
+			m_overlayVisible = false;
+		}
+		if (m_primeLines > 0) {
+			--m_primeLines;
+			OBVR_LOG("Hud: back after the tablet - this frame's picture handed over, the overlay shown from the next");
+		}
+		return false;
+	}
+	if (!m_overlayVisible) {
+		backend.ShowOverlay(m_overlay);
+		m_overlayVisible = true;
+	}
+	return true;
 }
 
 void HudLayer::PlaceOverlay(vr::OpenVRBackend& backend, float distanceMetres, float widthMetres,

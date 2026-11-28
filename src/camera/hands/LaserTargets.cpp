@@ -37,6 +37,18 @@ bool WalkUnderTablet(LaserTargetsState& state, const vr::TabletFrame& tablet) {
 	return vr::TabletWalkFrame(tablet.up, closing, game::TabletWalkRefused());
 }
 
+// The tablet's menus and the page they show (game/TabletMenu.h), the HUD's
+// texts beside it - shown above it while drawn into the eyes
+// (game/TabletTexts.h) - and the palms it is held at.
+void ReadTablet(LaserTargetsState& state, const HandStep& step, vr::HandModeFrame& frame) {
+	const vr::TabletSettings& t = step.config.hands.tablet;
+	frame.tablet = game::ReadTabletMenus(state.tabletMenu, step.active && t.enabled && frame.inWorld,
+	                                     frame.layerPixelsWidth, frame.layerPixelsHeight, t.inScene, t.figure, t.mirror,
+	                                     step.scriptMarked);
+	game::ReadTabletTexts(state.tabletTexts, frame.tablet, frame.layerPixelsHeight, t.textsOnTablet && t.inScene);
+	PalmsToTablet(state, frame.tablet);
+}
+
 }  // namespace
 
 void FillLaserTargets(LaserTargetsState& state, const HandStep& step, vr::HandModeFrame& frame,
@@ -95,12 +107,8 @@ void FillLaserTargets(LaserTargetsState& state, const HandStep& step, vr::HandMo
 	}
 	// The tablet's menus and the page they show (game/TabletMenu.h), in Full
 	// VR in the world.
-	frame.tablet = game::ReadTabletMenus(state.tabletMenu,
-	                                     step.active && step.config.hands.tablet.enabled && frame.inWorld,
-	                                     frame.layerPixelsWidth, frame.layerPixelsHeight,
-	                                     step.config.hands.tablet.inScene, step.config.hands.tablet.figure,
-	                                     step.config.hands.tablet.mirror, step.scriptMarked);
-	PalmsToTablet(state, frame.tablet);
+	ReadTablet(state, step, frame);
+
 	frame.walkUnderTablet = WalkUnderTablet(state, frame.tablet);
 	frame.walkUnderMenu = frame.walkUnderMenu || frame.walkUnderTablet;
 	// And the cinema screen when the frame is a flat one - the main menu,
