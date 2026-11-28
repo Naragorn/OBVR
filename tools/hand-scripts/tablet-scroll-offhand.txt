@@ -8,6 +8,12 @@
 # Once more with the right letting go: the same. The open line is said as it
 # begins to unroll, so the reject is what tells the old rule from the new: the
 # old one said "kept by the right hand" the moment the left let go.
+# With the Iron Shield worn (vr/GripClaim.h, spec 30.3): the weapon hand's
+# grip closing at the other hand would hand the shield over and switch the
+# sides. The first try closes the weapon hand first and the other 0.2 s after:
+# the handover waits, the gesture takes the grips, the sides stay. The second
+# closes both at once: the same. Last, the weapon hand closes alone at the
+# ring: the handover after the 0.5 s wait, the sides switch then.
 # Written 2026-11-28, not run (Linux only). Run with:
 # python3 tools/hand-script-run.py tools/hand-scripts/tablet-scroll-offhand.txt --headless --no-steamvr --parallel
 
@@ -37,23 +43,38 @@ ini Hands StowUp=-0.30
 ini Hands StowRadius=0.20
 ini Render MonitorMenusOnly=0
 ini Debug EyeDump=1
+# The shield's handover on, as in handover-shield.txt.
+ini Hands HandoverReachMetres=0.12
+ini Hands HandoverThingMetres=0.15
+ini Hands Holsters=1
+# The harness save's question box closed first; the Iron Shield worn.
+console-at settle CloseAllMenus
+console player.additem 000733ED 1
+console player.equipitem 000733ED
 
 expect HandScript: finished
 count 2 Tablet: unrolling between the hands
 count 2 Tablet: in the off hand, drawn into the eyes - on the left controller
+count 2 the tablet's gesture took the grips, no handover
+expect at the inventory ring - waiting for the tablet's other grip
+count 1 the sides switch, the shield to that hand
+expect (after the tablet's wait, no other grip)
 reject Tablet: in the off hand, drawn into the eyes - on the right controller
 reject Tablet: kept by the right hand
 reject HandScript: WARNING
 
 wait 12
+mark settle
+wait 2
 left pos -0.06 -0.30 -0.45
 right pos 0.06 -0.30 -0.45
 left rot 0 0 0
 right rot 0 0 0
 wait 1
 mark ready
-left grip 1
 right grip 1
+wait 0.2
+left grip 1
 wait 0.6
 left pos -0.16 -0.30 -0.45
 right pos 0.16 -0.30 -0.45
@@ -94,3 +115,13 @@ wait 0.2
 left b 0
 wait 1.5
 mark closed_again
+left pos -0.06 -0.30 -0.45
+right pos 0.06 -0.30 -0.45
+wait 1
+right grip 1
+wait 0.3
+mark waiting
+wait 0.6
+mark handed_over_late
+right grip 0
+wait 1

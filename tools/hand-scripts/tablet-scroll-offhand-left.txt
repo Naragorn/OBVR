@@ -9,6 +9,10 @@
 # B (the controls swapped with the roles) puts it down. Once more with the
 # left letting go: the same. The open line is said as it begins to unroll;
 # the reject is what tells the old rule from the new.
+# With the Iron Shield worn (on the right arm, the off hand's; vr/GripClaim.h,
+# spec 30.3): the first try closes the weapon hand (the left) first and the
+# other 0.2 s after - the shield's handover waits, the gesture takes the grips,
+# the sides stay; the second closes both at once - the same.
 # Written 2026-11-28, not run (Linux only). Run with:
 # python3 tools/hand-script-run.py tools/hand-scripts/tablet-scroll-offhand-left.txt --headless --no-steamvr --parallel
 
@@ -38,23 +42,36 @@ ini Hands StowUp=-0.30
 ini Hands StowRadius=0.20
 ini Render MonitorMenusOnly=0
 ini Debug EyeDump=1
+# The shield's handover on, as in handover-shield.txt.
+ini Hands HandoverReachMetres=0.12
+ini Hands HandoverThingMetres=0.15
+ini Hands Holsters=1
+# The harness save's question box closed first; the Iron Shield worn.
+console-at settle CloseAllMenus
+console player.additem 000733ED 1
+console player.equipitem 000733ED
 
 expect HandScript: finished
 count 2 Tablet: unrolling between the hands
 count 2 Tablet: in the off hand, drawn into the eyes - on the right controller
+count 2 the tablet's gesture took the grips, no handover
+reject the sides switch, the shield to that hand
 reject Tablet: in the off hand, drawn into the eyes - on the left controller
 reject Tablet: kept by the right hand
 reject HandScript: WARNING
 
 wait 12
+mark settle
+wait 2
 right pos 0.06 -0.30 -0.45
 left pos -0.06 -0.30 -0.45
 right rot 0 0 0
 left rot 0 0 0
 wait 1
 mark ready
-right grip 1
 left grip 1
+wait 0.2
+right grip 1
 wait 0.6
 right pos 0.16 -0.30 -0.45
 left pos -0.16 -0.30 -0.45
