@@ -5310,7 +5310,7 @@ void TestOffHandWeightInMode() {
 	Check(Near(r.offHandOffsetUnits.x, 7.0f * share, 0.01f), "the drawn off hand a frame behind, in units");
 	Check(Near(r.offHandGapMetres, 0.1f * (1.0f - share), 0.002f), "the gap in metres");
 	Check(Near(r.offHandVelocity.x, 0.1f * share / frame.dtSeconds, 0.01f) && !Near(r.offHandVelocity.x, r.leftVelocity.x),
-	      "its velocity the drawn hand's (the bash, the torch's blow), not the controller's");
+	      "its velocity the drawn hand's (the bash's watch), not the controller's");
 	Check(!r.weaponLagging && Near(r.weaponHandOffsetUnits.x, 7.0f), "the other hand (the bow's string hand) untouched");
 	frame.left.orientation = FromAxisAngle(0.0f, 1.0f, 0.0f, 20.0f);
 	r = mode.Update(frame, settings);

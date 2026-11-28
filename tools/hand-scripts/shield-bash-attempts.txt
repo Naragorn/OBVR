@@ -1,0 +1,165 @@
+# The shield bash's watch (game/ShieldBashWatch.h, camera/hands/ShieldBashTrace.h):
+# one "Shield bash attempt:" line per jab, landed or not, with the closest
+# frame's speed towards the target across the ground and along the line to
+# its middle, and where the shield's middle stood against its column. Made
+# for Nadi's headset run of 2026-11-28, where a bash on an imp did not land
+# and the log said nothing of why. A frozen rat (CreatureRat, 00025314) 60
+# units ahead, the Arena Iron Shield (000733ED) worn, the default bash speed
+# (StaggerSpeed 3):
+#  1. a jab beside the rat, past its column: "never in their column";
+#  2. a jab at it at about 2 m/s (2 cm a frame step): "in their column, too slow";
+#  3. a jab at it at about 4.5 m/s (5 cm a frame step): "landed".
+# The speeds per step are derived from shield-bash-rat.txt's note (5-12 cm
+# steps read as 4-11 m/s), not measured here. An imp itself (flying, its bound's
+# middle 33 units above the shield's rest in the run) is not placed: its form ID is in
+# no file of this repo.
+# Not run yet (written 2026-11-28 on Windows).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/shield-bash-attempts.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands ShieldBash=1
+ini Hands HandsStopAtBodies=0
+ini Hands ReachOpens=0
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at ready player.placeatme 00025314 1 60 0
+console-at ready player.additem 000733ED 1
+console-at ready player.equipitem 000733ED
+console-at ready tai
+
+expect HandScript: finished
+expect Shield bash attempt: the shield's middle never in their column
+expect Shield bash attempt: in their column, too slow towards them
+expect Shield bash attempt: landed
+expect Shield bash: the shield at
+reject HandScript: WARNING
+
+wait 12
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.25
+left rot 0 0 0
+wait 1
+mark ready
+wait 6
+head pitch -40
+# 1. Beside the rat: half a metre to its left.
+left pos -0.55 -0.95 -0.25
+wait 1.5
+mark beside
+left pos -0.55 -0.95 -0.250
+wait 0.01
+left pos -0.55 -0.95 -0.300
+wait 0.01
+left pos -0.55 -0.95 -0.350
+wait 0.01
+left pos -0.55 -0.95 -0.400
+wait 0.01
+left pos -0.55 -0.95 -0.450
+wait 0.01
+left pos -0.55 -0.95 -0.500
+wait 0.01
+left pos -0.55 -0.95 -0.550
+wait 0.01
+left pos -0.55 -0.95 -0.600
+wait 0.01
+left pos -0.55 -0.95 -0.650
+wait 0.01
+left pos -0.55 -0.95 -0.700
+wait 0.01
+left pos -0.55 -0.95 -0.750
+wait 0.01
+left pos -0.55 -0.95 -0.800
+wait 0.01
+wait 1.5
+# 2. At it, slowly.
+left pos -0.05 -0.95 -0.25
+wait 1.5
+mark slow
+left pos -0.05 -0.95 -0.250
+wait 0.01
+left pos -0.05 -0.95 -0.270
+wait 0.01
+left pos -0.05 -0.95 -0.290
+wait 0.01
+left pos -0.05 -0.95 -0.310
+wait 0.01
+left pos -0.05 -0.95 -0.330
+wait 0.01
+left pos -0.05 -0.95 -0.350
+wait 0.01
+left pos -0.05 -0.95 -0.370
+wait 0.01
+left pos -0.05 -0.95 -0.390
+wait 0.01
+left pos -0.05 -0.95 -0.410
+wait 0.01
+left pos -0.05 -0.95 -0.430
+wait 0.01
+left pos -0.05 -0.95 -0.450
+wait 0.01
+left pos -0.05 -0.95 -0.470
+wait 0.01
+left pos -0.05 -0.95 -0.490
+wait 0.01
+left pos -0.05 -0.95 -0.510
+wait 0.01
+left pos -0.05 -0.95 -0.530
+wait 0.01
+left pos -0.05 -0.95 -0.550
+wait 0.01
+left pos -0.05 -0.95 -0.570
+wait 0.01
+left pos -0.05 -0.95 -0.590
+wait 0.01
+left pos -0.05 -0.95 -0.610
+wait 0.01
+left pos -0.05 -0.95 -0.630
+wait 0.01
+left pos -0.05 -0.95 -0.650
+wait 0.01
+left pos -0.05 -0.95 -0.670
+wait 0.01
+left pos -0.05 -0.95 -0.690
+wait 0.01
+left pos -0.05 -0.95 -0.710
+wait 0.01
+left pos -0.05 -0.95 -0.730
+wait 0.01
+left pos -0.05 -0.95 -0.750
+wait 0.01
+left pos -0.05 -0.95 -0.770
+wait 0.01
+left pos -0.05 -0.95 -0.790
+wait 0.01
+wait 1.5
+# 3. At it, hard (the cooldown of a shove is not in the way: nothing landed yet).
+left pos -0.05 -0.95 -0.25
+wait 1.5
+mark hard
+left pos -0.05 -0.95 -0.250
+wait 0.01
+left pos -0.05 -0.95 -0.300
+wait 0.01
+left pos -0.05 -0.95 -0.350
+wait 0.01
+left pos -0.05 -0.95 -0.400
+wait 0.01
+left pos -0.05 -0.95 -0.450
+wait 0.01
+left pos -0.05 -0.95 -0.500
+wait 0.01
+left pos -0.05 -0.95 -0.550
+wait 0.01
+left pos -0.05 -0.95 -0.600
+wait 0.01
+left pos -0.05 -0.95 -0.650
+wait 0.01
+left pos -0.05 -0.95 -0.700
+wait 0.01
+left pos -0.05 -0.95 -0.750
+wait 0.01
+left pos -0.05 -0.95 -0.800
+wait 0.01
+wait 2
+mark end
+wait 1
