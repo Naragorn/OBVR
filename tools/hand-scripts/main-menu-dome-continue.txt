@@ -1,0 +1,34 @@
+# The main menu's dome handing over to the loading screen's (ui/MainMenuDome.h): Continue clicked on the main
+# menu loads the newest save. The main menu's dome goes out once, saying why ("a game loads"), without the grid
+# being faded out into the load; the loading stage's dome and the first world frame follow as before, and the
+# eyes are submitted again. WRITTEN, NOT RUN (2026-11-28). Continue sits at yaw +24 to +28 on the quad at pitch 41
+# (main-menu-row.txt).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/main-menu-dome-continue.txt --save continue --run-timeout 240 --headless --no-steamvr --parallel
+
+start main-menu
+ini Hands Enabled=1
+ini Onboarding StartGuide=0
+ini Render MainMenuDome=1
+
+expect HandScript: finished
+expect Main menu dome: in - the scene is held off the headset
+expect Main menu dome: out - a game loads - the loading stage takes over
+expect Stage: the eyes submitted again
+expect Hands: click sent to the Main menu
+expect the tile "main_continue"
+count 1 Main menu dome: in
+count 1 Main menu dome: out
+reject the dome faded out
+reject HandScript: WARNING
+
+wait 8
+mark menu
+right pos 0.15 -0.25 -0.35
+right rot 41 26 0
+wait 2
+mark continue-lit
+right trigger 1
+wait 0.3
+right trigger 0
+wait 20
+mark loaded

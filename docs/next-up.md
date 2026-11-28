@@ -986,6 +986,57 @@ ingame nacht ist oder im dungeon ... und ein helles ... wenn tags".
     (616 and 649 ms the next two); guide-stage-default PASS with it (grid alpha 1.00). Open: how
     it looks in the headset.
 
+- **Built 2026-11-28 (branch dome-menu-1128, not run in the game): the dome around the main menu.**
+  Nadi: "das hauptmenue screen soll bleiben wie es war. nur den dome noch dazu."
+  - **What was read of the main menu's delivery.** OBVR.log of the owner's last session (Windows,
+    `C:\Steam\...\OBVR.log`): "Menu trace: cinema+overlay, camera pass=0 ... layer captured=1" from
+    "a menu just opened - ... top of the stack 0x414" (Main) on, and "Menu trace: redirect declined -
+    delivery=cinema" only at the first Loading frames before it. So the main menu is
+    `FrameDelivery::CinemaOverlay` (camera/FrameLogic.h, DeliverFrame; CameraHook.cpp OnFrameEnd:
+    `menu.flatBlack`, `MaybeSubmitOverlays(true)`): the eyes get the flat copy blacked out
+    (HeadsetRenderer.cpp `m_mirror.BlackOut`), and the whole menu - its film (the map loop, drawn into
+    the layer by the interface pass), its buttons - is the captured 2D layer on the overlay quad
+    (docs hand-script row main-menu-layer: "the layer holds the whole main menu"). Nothing of the
+    main menu lives only in the eye textures.
+  - **The route.** Since nothing but black lives in the eyes, the scene is simply held off the headset
+    (`OpenVRBackend::HoldScene`, the guide stage's way), so the compositor shows its stage - OBVR's
+    dome - round the unchanged quad. The overlay quad, its place, size, distance, the laser and the
+    clicks are not touched: no line of that path changed, so "same" is by construction, not by a
+    measurement. Pure decision `ui/MainMenuDome.h` (`StepDomeShare`), carried out in
+    `render/StageHost.cpp` (`ShareDome`), called from CameraHook's OnFrameEnd with the frame's
+    camera pass, the loading state and the delivery's name.
+  - **Wanted when** `[Render] MainMenuDome=1` and `LoadingStage=1`, OBVR holds the compositor, the
+    main menu is in the menu stack (what it opens - options, load, save - stands on it, so the dome
+    stays there), no load runs or loading menu is up, no film owns the screen, the engine drew no
+    world this frame. Setting row "Dome in the main menu" (Screen & menus).
+  - **One dome with the guide.** The scene is held while either the main menu's dome or the guide's
+    stage (`GuideHoldsScene`) wants it; the grid is faded in by the first and out by the last, so the
+    guide handing over to the main menu (or back) takes nothing out and in. The guide keeps hiding the
+    main menu, the title music and its film. Its own log lines stay (with a note when the main menu's
+    dome stood already / stays).
+  - **Into a load.** The dome goes out when the load starts, the hold is released and the grid is NOT
+    faded out: the loading stage's dome (override kept in place all session, `PlanLoadingStage`) is what
+    the compositor shows once the load stops the frames, and the load's own frames (the loading art on
+    the cinema screen) show as before. Not kept held through the load: that would hide the loading art,
+    which nobody asked for. Out of a game to the main menu: the loading menu ends, the main menu enters
+    the stack, the dome comes in again. First world frame: nothing held, as the loading stage did.
+  - **Log.** "Main menu dome: in - the scene is held off the headset ... (delivery cinema+overlay)" and
+    "Main menu dome: out - <why> (delivery ...)", once each edge; "Stage: the eyes held off the
+    headset ..." / "the eyes submitted again" on the hold's edges ("Guide stage:" when the main menu's
+    dome is not involved, as before).
+  - **Tests.** main_menu_dome_test (unit, every flow: the setting, six refusals, in, steady, into a
+    load, out the other ways, the guide's four hand-overs); red 33 of 33 checks against a stub, then
+    green. Scenarios main-menu-dome.txt (Load page keeps the dome) and main-menu-dome-continue.txt
+    (Continue: one "out - a game loads"): written, NOT run. guide-stage.txt and guide-stage-default.txt
+    set `MainMenuDome=0` so they still test the guide's own stage.
+  - **Not verified (headset / compositor).** (1) That the overlay's own transparent pixels, if the
+    layer has any, now show the dome and not black: the layer's alpha on the main menu was not
+    measured (the main-menu-layer capture shows the menu whole, not its alpha). (2) That the dome
+    shows round the menu on SteamVR (the guide's stage proves the mechanism with an overlay on
+    Windows and Linux, 2026-11-15; this uses the same calls). (3) Whether leaving the main menu for a
+    load shows no flash between the dome and the first loading frame. (4) Whether a frame of the
+    hand-over loading -> world shows the dome for an instant. The 2026-11-26 headset run is the test.
+
 ## For later: OpenXR through a 64-bit helper process (noted 2026-11-05, nothing built)
 
 **Wanted (Nadi, 2026-11-05).** OpenXR in place of OpenVR, through a 64-bit helper process, so that

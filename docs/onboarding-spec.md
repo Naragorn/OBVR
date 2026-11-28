@@ -561,6 +561,13 @@ the engine and DirectShow side; `[Onboarding] GuideDome`, `GuideMusicDelay`,
   while the app still submits ("Explicitly fade to the compositor since loading will
   cause us to stop rendering"). Overlays stay over the grid, and the guide's window is
   on the menu overlay. Out again with `FadeGrid(1 s, false)`.
+- **Handing over to the main menu's dome (2026-11-28, `ui/MainMenuDome.h`, not run in the game):**
+  with `[Render] MainMenuDome=1` the main menu has its own dome round its unchanged picture. The
+  scene is held while the main menu's dome or the guide's stage wants it, and the grid is faded in
+  by the first and out by the last, so the guide ending over the main menu keeps the dome up (no
+  fade out, no hold released); the guide's log line then says the main menu's dome stays. The guide
+  hides the main menu, the title music and its film as before. With `MainMenuDome=0` everything above
+  is as it was (guide-stage.txt and guide-stage-default.txt set it so).
 - **The main menu hidden:** its TileMenu (`g_TileMenuArray[0x414 - 0x3E9]`) gets
   visible &false; (1) through `Tile::UpdateFloat` (0x0058CEB0); the guide's windows are
   menus of their own. Visible &true; (2) again at the end (`ui::MainMenuVisibleTrait`).

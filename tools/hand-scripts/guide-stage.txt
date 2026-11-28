@@ -12,6 +12,8 @@
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/guide-stage.txt --save continue --run-timeout 240 --headless
 
 start main-menu
+# The main menu's dome (main-menu-dome.txt) would hold the scene through the guide's end; this is the guide's own stage.
+ini Render MainMenuDome=0
 ini Hands Enabled=1
 ini Onboarding StartGuide=1
 ini Onboarding GuideMusicDelay=3

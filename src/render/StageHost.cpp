@@ -4,11 +4,15 @@
 #include "game/EngineMovie.h"
 #include "game/GuideTrack.h"
 #include "game/OptionsMenuVr.h"
+#include "game/MenuPause.h"
+#include "game/MenuType.h"
 #include "game/NativeMenuPrototype.h"
+#include "camera/MovieScreen.h"
 #include "platform/PluginPath.h"
 #include "platform/Win32Min.h"
 #include "render/GameDomeJob.h"
 #include "ui/GuideStage.h"
+#include "ui/MainMenuDome.h"
 #include "vr/LoadingStage.h"
 
 namespace obvr::render {
@@ -22,6 +26,8 @@ namespace {
 struct StageState {
 	vr::LoadingStageState loading;
 	ui::GuideStageState guide;
+	bool menuDomeInvolved = false;  // the main menu's dome is up or just went (for the log's prefix)
+	ui::DomeShareState dome;  // the guide stage and the main menu share one dome (ui/MainMenuDome.h)
 	bool ownFile = false;  // the player's own file plays, not the fallback
 	long long lastCounter = 0;
 	// The grid's alpha said once, a second after it was asked in or out -
@@ -113,14 +119,20 @@ void StartTrack(const Config& config) {
 	}
 }
 
-void CarryOut(const Config& config, const vr::OpenVRBackend& backend, const ui::GuideStagePlan& p) {
+// The grid's fade itself is asked for once for the guide's stage and the main menu's dome together (ShareDome);
+// the guide's own line stays for its edges.
+void CarryOut(const Config& config, const vr::OpenVRBackend& backend, const ui::GuideStagePlan& p,
+              const ui::DomeSharePlan& share) {
 	if (p.grid != ui::GuideGridAction::None) {
 		const bool in = p.grid == ui::GuideGridAction::In;
-		backend.FadeGrid(1.0f, in);
 		Stage().alphaCheckIn = 1.2f;
 		Stage().alphaCheckFadingIn = in;
+		// The grid is faded when the guide's edge is the dome's own; else the main menu's dome stands through it.
+		const bool shared = share.grid == ui::DomeGrid::None;
 		OBVR_LOG("Guide stage: the dome faded %s (the compositor's grid, OBVR's dome in its place: %s)",
-		         in ? "in - the guide is up in front of the main menu" : "out - the guide is over",
+		         in ? (shared ? "in - the guide is up in front of the main menu (the main menu's dome was up already)"
+		                      : "in - the guide is up in front of the main menu")
+		            : (shared ? "out - the guide is over (the main menu's dome stays)" : "out - the guide is over"),
 		         backend.IsSceneApplication() ? "scene" : "no scene, nothing to fade");
 	}
 	if (p.hideMainMenu || p.showMainMenu) {
@@ -162,7 +174,49 @@ void CarryOut(const Config& config, const vr::OpenVRBackend& backend, const ui::
 	}
 }
 
-void UpdateGuideStage(const Config& config, const vr::OpenVRBackend& backend) {
+// What the main menu's dome is asked this frame (ui/MainMenuDome.h), from the engine's state.
+ui::MainMenuDomeInput MenuDomeInput(const Config& config, const vr::OpenVRBackend& backend, const StageFrame& frame) {
+	UInt32 stack[game::kMenuStackEntries] = {};
+	const UInt32 count = game::MenuStackEntries(stack, game::kMenuStackEntries);
+	bool mainMenu = false;
+	for (UInt32 i = 0; i < count; ++i) {
+		mainMenu = mainMenu || stack[i] == game::kMenuIdMain;
+	}
+	ui::MainMenuDomeInput in;
+	in.enabled = ui::MainMenuDomeEnabled(config.mainMenuDome, config.loadingStage);
+	in.scene = backend.IsSceneApplication();
+	in.mainMenuInStack = mainMenu;
+	in.loading = frame.loading;
+	in.filmOwnsScreen = camera::MovieOwnsScreen(game::EngineMoviePlaying(), mainMenu);
+	in.worldFrame = frame.worldFrame;
+	return in;
+}
+
+// The guide's stage and the main menu's dome in one: the scene held while either wants it, the grid faded in by
+// the first and out by the last (ui::StepDomeShare), so a hand-over takes nothing out and in.
+ui::DomeSharePlan ShareDome(const Config& config, const vr::OpenVRBackend& backend, const StageFrame& frame) {
+	ui::DomeShareInput in;
+	in.menu = MenuDomeInput(config, backend, frame);
+	in.guideOn = Stage().guide.on;
+	in.guideHoldsScene = config.guideHoldsScene;
+	const ui::DomeSharePlan plan = ui::StepDomeShare(Stage().dome, in);
+	if (plan.grid != ui::DomeGrid::None) {
+		backend.FadeGrid(1.0f, plan.grid == ui::DomeGrid::In);
+		Stage().alphaCheckIn = 1.2f;
+		Stage().alphaCheckFadingIn = plan.grid == ui::DomeGrid::In;
+	}
+	Stage().menuDomeInvolved = plan.menuDomeIn || plan.menuDomeOut || Stage().dome.menuDomeOn;
+	if (plan.menuDomeIn) {
+		OBVR_LOG("Main menu dome: in - the scene is held off the headset, the main menu's picture stays on its overlay "
+		         "(delivery %s%s)", frame.delivery, Stage().guide.on ? ", the start guide's stage is up too" : "");
+	}
+	if (plan.menuDomeOut) {
+		OBVR_LOG("Main menu dome: out - %s (delivery %s)", ui::DomeOutReasonText(plan.reason), frame.delivery);
+	}
+	return plan;
+}
+
+void UpdateGuideStage(const Config& config, const vr::OpenVRBackend& backend, const StageFrame& frame) {
 	const float dt = FrameSeconds();
 	ui::GuideStageInput in;
 	in.guideShowing = game::StartGuideShowing();
@@ -176,12 +230,14 @@ void UpdateGuideStage(const Config& config, const vr::OpenVRBackend& backend) {
 		in.atFileEnd = duration > 0.0f && in.positionSeconds >= duration - 0.05f;
 	}
 	const ui::GuideStagePlan plan = ui::StepGuideStage(Stage().guide, GuideSettings(config), in);
-	CarryOut(config, backend, plan);
-	const bool hold = config.guideHoldsScene && ui::GuideHoldsScene(Stage().guide);
+	const ui::DomeSharePlan share = ShareDome(config, backend, frame);
+	CarryOut(config, backend, plan, share);
+	const bool hold = share.holdScene;
 	if (hold != backend.SceneHeld()) {
 		backend.HoldScene(hold);
-		OBVR_LOG("Guide stage: %s", hold ? "the eyes held off the headset, the last frame cleared - the compositor shows the dome"
-		                                  : "the eyes submitted again");
+		OBVR_LOG("%s: %s", Stage().menuDomeInvolved ? "Stage" : "Guide stage",
+		         hold ? "the eyes held off the headset, the last frame cleared - the compositor shows the dome"
+		              : "the eyes submitted again");
 	}
 	// The title music silent from the game's start while a guide is due, so its first bars are not heard before
 	// the stage is up (ui::StepGuideAhead).
@@ -221,9 +277,9 @@ void UpdateGuideStage(const Config& config, const vr::OpenVRBackend& backend) {
 
 }  // namespace
 
-void UpdateStage(const Config& config, const vr::OpenVRBackend& backend) {
+void UpdateStage(const Config& config, const vr::OpenVRBackend& backend, const StageFrame& frame) {
 	UpdateLoadingStage(config, backend);
-	UpdateGuideStage(config, backend);
+	UpdateGuideStage(config, backend, frame);
 	game::StepOptionsVrButtons(config.optionsVrButtons);
 }
 

@@ -6217,7 +6217,7 @@ void OnFrameEnd() {
 	// panel was never placed over it (hand script
 	// reach-open, 2026-10-09).
 	const UInt32 topMenuId = menuIsUp ? game::TopVisibleMenu() : game::kMenuIdNone;
-	render::UpdateStage(GetConfig(), g_headTracker.GetBackend());  // the dome, the start guide's stage
+	render::UpdateStage(GetConfig(), g_headTracker.GetBackend(), {hadCameraPass, loadingFrame, LoadTraceDelivery(static_cast<UInt8>(delivery))});  // the dome, the start guide's stage, the main menu's dome
 	// The engine's fly camera (game/FlyCam.h): said when it toggles and at
 	// every mark, with whether the camera pass ran - the engine skips the
 	// player's camera update, OBVR's hook in it, while it is on.

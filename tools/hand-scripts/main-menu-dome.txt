@@ -1,0 +1,40 @@
+# The main menu's dome (ui/MainMenuDome.h; Nadi, 2026-11-28: "das hauptmenue screen soll bleiben wie es war. nur den
+# dome noch dazu"): at the main menu the scene is held off the headset, so the compositor shows OBVR's dome, and
+# the menu's picture stays on its overlay quad. The Load page it opens keeps the dome (one "in", no "out" while
+# the menu stays), and the main menu's mark pictures show the layer unchanged. WRITTEN, NOT RUN (2026-11-28).
+# The aims are from main-menu-click.txt and main-menu-row.txt: on the quad, pitch 41, Load at yaw +8 to +14.
+# The start guide is off so that the dome is the main menu's own; the guide's hand-over is by unit test
+# (main_menu_dome_test) and guide-stage.txt (which sets MainMenuDome=0).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/main-menu-dome.txt --save continue --run-timeout 150 --headless --no-steamvr --parallel
+# Held and cleared frames show only with the headset's compositor; without SteamVR the log lines are what proves it.
+
+start main-menu
+ini Hands Enabled=1
+ini Onboarding StartGuide=0
+ini Render MainMenuDome=1
+ini Debug HudTileProbe=1
+
+expect HandScript: finished
+expect Main menu dome: in - the scene is held off the headset
+expect (delivery cinema+overlay)
+expect Stage: the eyes held off the headset
+expect Hands: click sent to the Main menu
+expect the tile "main_load"
+expect HudTiles: the capture written
+count 1 Main menu dome: in
+reject Main menu dome: out
+reject HandScript: WARNING
+
+wait 8
+mark menu
+right pos 0.15 -0.25 -0.35
+right rot 41 11 0
+wait 2
+mark load-lit
+right trigger 1
+wait 0.3
+right trigger 0
+wait 3
+mark load-open
+wait 2
+mark load-still-dome
