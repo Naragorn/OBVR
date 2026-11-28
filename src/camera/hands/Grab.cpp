@@ -8,6 +8,7 @@
 #include "game/AimAtSource.h"
 #include "game/AnchoredRef.h"
 #include "game/CrosshairTarget.h"
+#include "game/DrawSound.h"
 #include "game/DropRotationLogic.h"
 #include "game/GameAddresses.h"
 #include "game/GrabPhysics.h"
@@ -174,6 +175,9 @@ void KeepModToggleOffBeforeKey(bool keyMayGoDown) {
 // now, not at the Equip group's Attach key two frames later (game/WeaponHang.h).
 void HangTakenWeapon(const GrabState& state) {
 	const game::WeaponHangReport r = game::HangPlayerWeaponOnHand();
+	if (r.called) {
+		game::NoteWeaponTakenToHand();  // no Equip group plays for it: its sound is OBVR's (game/DrawSound.h)
+	}
 	static UInt32 s_lines = 24;
 	if (s_lines > 0) {
 		--s_lines;

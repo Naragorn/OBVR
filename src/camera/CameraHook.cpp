@@ -80,7 +80,7 @@
 #include "game/CrosshairTarget.h"
 #include "game/DialogZoom.h"
 #include "game/BlockCone.h"
-#include "game/BowDrawSound.h"
+#include "game/DrawSound.h"
 #include "game/CompassHeading.h"
 #include "game/EquipWhileActing.h"
 #include "game/TargetMarker.h"
@@ -12224,7 +12224,7 @@ bool Install() {
 	game::InstallEquipWhileActing();
 	render::InstallFirstPersonEffectHooks(GetConfig());
 	game::InstallGrassCone();
-	game::InstallBowDrawSound();
+	game::InstallWeaponKeySounds();  // the bow's draw sound, the draw's and the sheathe's (game/DrawSound.h)
 	game::InstallCompassHeading();
 	game::InstallHitShader();
 	game::InstallBlockCone();

@@ -1,0 +1,71 @@
+# The draw's sound (game/DrawSound.h; Nadi, headset 2026-11-28: "manchmal keine equip sounds obwohl ich
+# die ziehen konnte"). In that run's log the holster's "equipping the one kept there, then drawing" with
+# the fists up (24275, 28480) put the axe on the hand with no draw animation - the engine plays its
+# WPN...Equip only at the animation's Equip key, so that draw was silent. Now OBVR plays the engine's own
+# sound for it, once, and says each draw and sheathe in a "Draw sound:" line.
+# The claymore in the slot, the fists up (the weapon hand closed), then the grip over the right
+# shoulder: the claymore equipped while out - OBVR's sound. Then the grip there again: sheathed by its
+# animation (the engine's Unequip); and again: drawn by its animation (the engine's Equip, OBVR's none).
+# The harness hears nothing: the lines say the engine's sound function was called (OBVR's own call, or
+# the key's through the reroute), not that it was heard - 0x006B07F0 returns quietly with too many such
+# sounds live or the actor out of range.
+# Not run yet (written 2026-11-28 on Windows).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/draw-sound-fists-up.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands Fists=1
+# The reach opens the hand after a draw: WeaponHold (2026-10-24) would drop it.
+ini Hands WeaponHold=0
+console-at settle CloseAllMenus
+console player.setav strength 100
+console player.additem 0001C6CD 1
+console player.equipitem 0001C6CD
+expect HandScript: finished
+expect Fist: the weapon hand closed - the sheathed weapon taken off for the fists
+expect Holster: reach for the two-handed weapon - equipping the one kept there
+expect Draw sound: 0001C6CD drawn equipped while out (no Equip group) - the engine's sound call 0 time(s) (0 kept quiet as a second), OBVR's own played
+expect Draw sound: 0001C6CD sheathed by its animation - the engine's sound call 1 time(s)
+expect Draw sound: 0001C6CD drawn by its animation - the engine's sound call 1 time(s)
+reject Draw sound: the Equip call at
+reject Draw sound: the Unequip call at
+reject HandScript: WARNING
+reject draw given up
+# The scripted weapon hand is an Index: its fist is its fingers (vr::FistFingersOf).
+right index 1
+wait 20
+mark settle
+wait 1
+mark claymore_in_slot
+# The fist: the sheathed claymore off, the fists up.
+right curl 1
+wait 2
+mark fists_up
+# The fist still closed, over the right shoulder: the claymore equipped while out.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+right curl 0
+wait 3
+mark claymore_on_hand
+# Back over the shoulder: sheathed by its animation.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark sheathed
+# And again: drawn by its animation.
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark drawn
+wait 1

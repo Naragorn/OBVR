@@ -2736,6 +2736,16 @@ endif()
 
 add_test(NAME bash_approach COMMAND bash_approach_test)
 
+add_executable(draw_sound_test DrawSoundTest.cpp)
+
+target_include_directories(draw_sound_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(draw_sound_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME draw_sound COMMAND draw_sound_test)
+
 add_executable(pommel_test PommelTest.cpp)
 
 target_include_directories(pommel_test PRIVATE ../src)

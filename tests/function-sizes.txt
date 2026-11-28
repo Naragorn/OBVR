@@ -20,7 +20,7 @@ src/camera/CameraHook.cpp	Install	240
 src/camera/CameraHook.cpp	(file globals)	370
 src/camera/FrameLogic.h	(file lines)	2316
 src/camera/hands/Archery.cpp	StepArchery	137
-src/camera/hands/ControlsOut.cpp	StepControlsOut	268
+src/camera/hands/ControlsOut.cpp	StepControlsOut	244
 src/camera/hands/Dismember.cpp	StepDismember	184
 src/camera/hands/Gestures.cpp	UpdateYield	104
 src/camera/hands/Grab.cpp	StepGrab	650
