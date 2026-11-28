@@ -2888,6 +2888,7 @@ add_executable(tablet_book_test
 	TabletBookTest.cpp
 	../src/vr/HandMode.cpp
 	../src/vr/HandSides.cpp
+	../src/vr/HandLags.cpp
 	../src/vr/HeadOffset.cpp
 	../src/vr/Quaternion.cpp
 	../src/core/Rotation.cpp
