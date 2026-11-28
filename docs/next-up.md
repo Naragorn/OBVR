@@ -1200,3 +1200,35 @@ mehr arbeit, aber nicht jetzt."
   stroke downward dives was never evaluated.
 - **When it is taken up again:** his words on what felt wrong first; then the strokes'
   lines of a run against what he did; then the harness scenario of the branch on Linux.
+
+## Headset verdicts: Nadi's Windows run of 2026-11-28, 20:17-20:35
+
+DLL built from test3-1128-win 13577ab (main 4806b0b plus the four cloud branches: body
+upright, hand HUD fringes, menus facing the body, the map in the figure's place). His words,
+and what `OBVR.log` of that run says [R = read in the log].
+
+- **Body straight under the headset** (player-body-spec, 2026-11-28): "ja aber teste ich
+  noch" - better, not signed off. [R] "the trunk's pose stood upright - it leaned 3.9 degrees
+  aside, the hips 0.7 units across from the root, moved back over it"; one lean line, 7.0
+  units back, 10.2 degrees.
+- **Fringes of the texts** (hud-on-hands-spec 13): "ja sind weg". The 4-unit margin, a first
+  guess there, held in the headset; the harness measurement is still not run.
+- **Menus in front of the body** (menu-facing-spec): "passt". [R] 35 "Menu facing:" lines,
+  placements and glides that settle.
+- **The map in the figure's place** (inventory-tablet-spec 33): "passt".
+- **The dome round the main menu** (the loading stage, above): "passt". [R] "Main menu dome:
+  in - ... (delivery cinema+overlay)", "out - the main menu is gone".
+- **The holding hand's fingers behind the page** (inventory-tablet-spec 32.2): "passt nun".
+  [R] 62 lines; the index a few times "allowed 0.00 (none behind: the least deep) ... 1.0 cm
+  through" - no curl of it stood behind the page then; he did not see it.
+- **The mirror** (mirror-spec 15): hair and face sit - "haare und gesicht sitzt nun". Water
+  reflections still off, and new: the sky much too near against the landscape. Both in work
+  on mirror-6-1128.
+- **Shield bash** (combat-comfort-spec): "passt jetzt". [R] 11 attempts.
+- **Weight of shield, bow, staff, torch** (physical-combat-spec): "passt jetzt" - shield, bow
+  and staff heavy, the torch light. The torch's weight 12 was a guess; it stands.
+- **Asked new**: the top-centre texts (notices, Basic Primary Needs' lines) cannot be read
+  while looking down - they shall come at the top of where the headset looks and glide as
+  the rows do (in work on hud-view-1128); the tablet's place set again and made the default
+  (inventory-tablet-spec 32.1.1); the guide's option rows without the section in front
+  (onboarding-spec).
