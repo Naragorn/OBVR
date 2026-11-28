@@ -3000,6 +3000,28 @@ if(NOT MSVC)
 endif()
 add_test(NAME mirror_stamp COMMAND mirror_stamp_test)
 
+# The sky in the mirror's render (game/MirrorSkyLogic.h, docs/mirror-spec.md 16): the camera
+# node's local translation that makes the engine's own copy put the Sky root on the mirror's
+# camera, every refusal, and the sky's stereo in the two mirror cameras before and after. Pure.
+add_executable(mirror_sky_test MirrorSkyTest.cpp)
+target_include_directories(mirror_sky_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(mirror_sky_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME mirror_sky COMMAND mirror_sky_test)
+
+# The water's reflection in the mirror's render (render/WaterReprojection.h
+# EngineReflectionFrustumFor, docs/mirror-spec.md 16): a model of the engine's planar reflection
+# (0x0049BEF0's camera, the stock water shader's lookup) played over the owner's measured
+# frustums - the lookup against the map's texel before and after the frustum's top and bottom
+# are mirrored for the engine's reflection camera - and the rule's refusals. Pure.
+add_executable(mirror_water_test MirrorWaterTest.cpp)
+target_include_directories(mirror_water_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(mirror_water_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME mirror_water COMMAND mirror_water_test)
+
 # The player's head in the mirror's render only, stage 3 (game/MirrorHeadLogic.h): what is
 # switched for the pass and put back after it, with every refusal. Pure.
 add_executable(mirror_head_test MirrorHeadTest.cpp)

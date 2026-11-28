@@ -11,6 +11,7 @@
 #include "game/GameTypes.h"
 #include "game/MenuMode.h"
 #include "game/MirrorHead.h"
+#include "game/MirrorSky.h"
 #include "game/MirrorStampLogic.h"
 #include "game/MenuPause.h"
 #include "game/MenuType.h"
@@ -326,7 +327,12 @@ MirrorFrame ReadMirrorFrame(MirrorState& s, const MirrorPageState& page, bool se
 // audit are closed by the frame's own render. (7) The player's head, for this
 // render alone (game/MirrorHead.h): shown right before RunMirrorWorldRender,
 // hidden again right after it - its true transform, the FaceGen bits, the
-// palettes of the skins on its bones, each put back there.
+// palettes of the skins on its bones, each put back there. (8) The sky
+// (game/MirrorSky.h): the camera node's local translation, which RenderScene
+// copies into the Sky and Weather roots, set to the mirror camera's place
+// before the render and put back right after it with the roots - so the sky
+// stands at infinity for the mirror's camera, as it does for each eye
+// (docs/mirror-spec.md 16).
 //
 // Stage 4 calls it once for each eye in a frame, everything above set and put
 // back around each call: the bone lock replaces from the eyes' render's rows
@@ -401,9 +407,12 @@ bool RenderFromMirror(const vr::MirrorCamera& camera, vr::MirrorPictureSize size
 		         "the world render starts",
 		         static_cast<double>(shift.x), static_cast<double>(shift.y), static_cast<double>(shift.z));
 	}
+	game::MirrorSkySwitch sky;
+	game::PlaceSkyForMirror(sky, camera.position);
 	game::ShowPlayerHeadForMirror(head);
 	const bool ran = RunMirrorWorldRender(draws);
 	game::HidePlayerHeadAfterMirror(head);
+	game::PutSkyBackAfterMirror(sky);  // before the camera's transform: the node's world must stand first
 	const bool landed = ran && CaptureTargetIsBackBuffer();
 
 	SetBonePassMode(BonePassMode::Off);

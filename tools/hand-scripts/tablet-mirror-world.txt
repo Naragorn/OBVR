@@ -99,6 +99,15 @@ expect skin stamp moved between the two passes in
 # no water in the glass.
 expect counted up by OBVR for
 expect the skin stamp counted up for this pass
+# Section 16: the sky on each mirror camera for its render - the first passes
+# log where the Sky root stood (about 0 units from the mirror's camera) and
+# where the engine's own copy would have put it (the eye's place). With water in
+# the glass the water line says "handed the frustum with top and bottom
+# mirrored" (not expected here, as above).
+expect Mirror sky: in the mirror's render the Sky root stood
+reject Mirror sky: not placed
+reject the camera node MOVED
+reject handed the frustum as it is (NOT mirrored)
 reject Mirror head: too many skins
 reject Mirror: switched off for this session
 reject HandScript: WARNING

@@ -114,6 +114,35 @@ inline bool CanUseStableWaterCapture(bool enabled, WaterReflectionMode mode,
 	       cameraValid && transformsValid;
 }
 
+// The frustum the engine's own reflection (0x0049BEF0) is handed in the
+// mirror's render (docs/mirror-spec.md 16). The engine builds its reflection
+// camera from the passed camera's view direction and right reflected about the
+// water and its up made again as their cross product - a proper rotation, so
+// its up is the true mirror's turned over - and copies the passed camera's
+// frustum into it unchanged (0x0070C190 at 0x0049C27A, the argument the passed
+// camera's +0xEC; OBVR.log 2026-11-28 20:17: both frustums logged equal). The
+// water shader reads the map at the scene camera's own clip coordinates with v
+// upward, which absorbs the turned-over up exactly when the frustum is
+// symmetric top to bottom (t = -b) - the flat game's, and the eyes' (measured
+// -1.402 1.402 1.091 -1.091). The mirror's camera is off-axis (0.049 over
+// -0.506 in that run): the map was rendered over the rows above the reflected
+// horizon the mirror does not see, and the lookup missed by (t + b) / (t - b)
+// of the map's height. Handed with top and bottom mirrored (t' = -b, b' = -t),
+// the map covers what the mirror sees and the lookup meets it (mirror_water_test).
+// Outside the mirror's render nothing changes: the eyes' picture stays as it
+// is. True when `out` is the mirrored frustum to hand in; otherwise `out` is
+// the camera's own.
+inline bool EngineReflectionFrustumFor(const game::NiFrustum& camera, bool mirrorRender, game::NiFrustum& out) {
+	out = camera;
+	if (!mirrorRender || camera.o || !std::isfinite(camera.t) || !std::isfinite(camera.b) ||
+	    !(camera.t > camera.b)) {
+		return false;
+	}
+	out.t = -camera.b;
+	out.b = -camera.t;
+	return true;
+}
+
 // HMD pose changes must not restart an otherwise unchanged reflection capture.
 // The hook compares the head-independent world transform before calling this.
 inline bool CanReuseWaterCapture(bool cacheValid, bool texturesReady,
