@@ -1011,6 +1011,12 @@ their sync, poses back to Oblivion within the frame, OpenXR input in place of Op
 actions, and testing on Windows and on Linux (Proton). DLSS on top of that is huge again
 (motion vectors from a 2006 engine).
 
+## For later: a mirror tab on the tablet (asked 2026-11-28, spec only)
+
+Nadi: a last tab "Mirror" on the tablet, a real mirror with the room behind and light dust.
+Feasibility, options, stages and open decisions: docs/mirror-spec.md (recommended: a true
+per-eye mirror, large, about 2-4.4 ms a frame while shown - a guess until its stage 2 measures).
+
 ## For later: the shield against its real mesh, and blows by real contact (noted 2026-11-27, nothing built)
 
 Nadi, 2026-11-27, after the shield's block by contact (`[Hands] ShieldBlockByContact`,
