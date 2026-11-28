@@ -93,12 +93,17 @@ int main() {
         for (unsigned enabled = 0; enabled < 2; ++enabled)
         for (unsigned ready = 0; ready < 2; ++ready)
         for (unsigned camera = 0; camera < 2; ++camera)
-        for (unsigned transforms = 0; transforms < 2; ++transforms) {
+        for (unsigned transforms = 0; transforms < 2; ++transforms)
+        for (unsigned mirror = 0; mirror < 2; ++mirror) {
+            // The mirror's render (docs/mirror-spec.md 15): its camera is not
+            // the camera node the stable capture and its lookup are built
+            // from, so it always takes the engine's own reflection.
             const bool expected = enabled && cyclopean && (!reprojected || ready) &&
-                                  camera && transforms;
+                                  camera && transforms && !mirror;
             Check(CanUseStableWaterCapture(enabled != 0, mode, ready != 0,
-                                           camera != 0, transforms != 0) == expected,
-                  "all stable-capture gate combinations");
+                                           camera != 0, transforms != 0, mirror != 0) == expected,
+                  mirror != 0 ? "inside the mirror's render: never the stable capture"
+                              : "all stable-capture gate combinations");
         }
     }
 	for (unsigned deviceChanged = 0; deviceChanged < 2; ++deviceChanged)

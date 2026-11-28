@@ -102,8 +102,14 @@ inline WaterProjectionPlan ChooseWaterProjectionPlan(WaterReflectionMode mode,
 
 inline bool CanUseStableWaterCapture(bool enabled, WaterReflectionMode mode,
                                      bool reprojectionReady, bool cameraValid,
-                                     bool transformsValid) {
-	return enabled && UsesCyclopeanWaterCapture(mode) &&
+                                     bool transformsValid, bool mirrorRender = false) {
+	// The mirror's render (render/MirrorGlassPass.cpp, docs/mirror-spec.md 15)
+	// renders from a camera behind the hand mirror, not from the camera node:
+	// the stable capture would render the map from the head and the lookup
+	// would rebuild the water's world origin from the eye (WaterReprojection.cpp
+	// BuildWaterReprojectionConstantsInner) - both a metre off for that camera.
+	// It takes the engine's own reflection of the camera it renders with.
+	return enabled && !mirrorRender && UsesCyclopeanWaterCapture(mode) &&
 	       (!UsesWaterReprojectionShader(mode) || reprojectionReady) &&
 	       cameraValid && transformsValid;
 }
