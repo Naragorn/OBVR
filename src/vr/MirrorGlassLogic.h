@@ -503,7 +503,23 @@ struct MirrorCostWindow {
 	std::uint32_t width = 0;
 	std::uint32_t height = 0;
 	std::uint32_t skipped[static_cast<int>(MirrorSkip::Count)] = {};
+	// Stage 3: the passes that asked for the head and showed it, and the
+	// switch's time (game/MirrorHead.h).
+	std::uint32_t headAsked = 0;
+	std::uint32_t headShown = 0;
+	double headMs = 0.0;
 };
+
+// One pass's head switch: shown or refused, and what the switch cost.
+inline void NoteMirrorHead(MirrorCostWindow& w, bool shown, double ms) {
+	++w.headAsked;
+	w.headShown += shown ? 1u : 0u;
+	w.headMs += ms;
+}
+
+inline double MeanHeadMs(const MirrorCostWindow& w) {
+	return w.headAsked > 0 ? w.headMs / static_cast<double>(w.headAsked) : 0.0;
+}
 
 // One frame with the page up: a pass (skip None, its milliseconds, draws and
 // size) or a skip. True when the window is full and its line is due.

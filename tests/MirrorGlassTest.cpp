@@ -427,6 +427,18 @@ void TestCostWindow() {
 	Check(MeanMs(w) == 0.0, "no passes: a mean of 0");
 }
 
+void TestCostWindowHead() {
+	std::printf("The cost line's head\n");
+	MirrorCostWindow w;
+	NoteMirrorHead(w, true, 0.02);
+	NoteMirrorHead(w, true, 0.04);
+	NoteMirrorHead(w, false, 0.01);
+	Check(w.headShown == 2 && w.headAsked == 3, "shown in 2 of 3 passes");
+	Check(Near(static_cast<float>(MeanHeadMs(w)), 0.0233f, 0.0005f), "the switch's mean time over the passes asked");
+	ResetMirrorCost(w);
+	Check(w.headShown == 0 && w.headAsked == 0 && MeanHeadMs(w) == 0.0, "reset, and no pass: a mean of 0");
+}
+
 void TestTrace() {
 	std::printf("The stage trace\n");
 	MirrorTrace t;
@@ -457,6 +469,7 @@ int main() {
 	TestDecision();
 	TestFailureBudget();
 	TestCostWindow();
+	TestCostWindowHead();
 	TestTrace();
 	if (g_failures > 0) {
 		std::printf("%d failing check(s)\n", g_failures);

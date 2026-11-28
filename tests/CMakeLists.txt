@@ -2881,6 +2881,15 @@ if(NOT MSVC)
 endif()
 add_test(NAME mirror_glass COMMAND mirror_glass_test)
 
+# The player's head in the mirror's render only, stage 3 (game/MirrorHeadLogic.h): what is
+# switched for the pass and put back after it, with every refusal. Pure.
+add_executable(mirror_head_test MirrorHeadTest.cpp)
+target_include_directories(mirror_head_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(mirror_head_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME mirror_head COMMAND mirror_head_test)
+
 # How far ahead the poses are predicted when the wait comes late (vr/PosePrediction.h): pure.
 add_executable(pose_prediction_test PosePredictionTest.cpp)
 target_include_directories(pose_prediction_test PRIVATE ../src)

@@ -1,7 +1,10 @@
 # The mirror's reflection on the tablet (docs/mirror-spec.md 8, stage 2, and
 # section 12): the inventory opened, the Mirror tab pressed (Figure=tab, the
 # third tab), the tablet held towards the face - the glass shows the room
-# behind the player, one picture for both eyes, the head not in it; then
+# behind the player, one picture for both eyes; raised to the face, the
+# player's head in it (stage 3, section 13) while the eyes' own pictures stay
+# headless (the head-cull line at that mark: "the head culled this render");
+# then
 # turned away (its back to the eyes: the pass stops, the glass dark), held
 # edge-on (the pass stops), towards the face again (the pass runs again), and
 # MirrorWorld=0 set at a mark (the dark glass of stage 1). Eye pictures at
@@ -55,6 +58,9 @@ expect Mirror trace: the camera, its frustum and port set
 expect Mirror trace: the world render returned
 # At least one cost line (every 90 frames with the page up).
 expect frames up -
+# Stage 3: the head switched for the mirror's render (game/MirrorHead.cpp).
+expect Mirror head: shown
+reject Mirror head: too many skins
 reject Mirror: switched off for this session
 reject HandScript: WARNING
 
@@ -86,6 +92,13 @@ mark mirror-towards
 left pos -0.12 -0.22 -0.26
 wait 3
 mark mirror-near
+
+# Raised to the face, straight ahead: the face, hair and helmet in the glass's
+# eye dump; the eyes' own render still without the head (the "Head cull: at
+# the mark" line says culled, the dump shows no face from inside).
+left pos -0.05 -0.04 -0.34
+wait 3
+mark mirror-head
 
 # Its back to the eyes: the pass stops, the glass dark.
 left rot 0 180 0

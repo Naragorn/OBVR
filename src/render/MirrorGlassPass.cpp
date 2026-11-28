@@ -5,6 +5,7 @@
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
 #include "game/MenuMode.h"
+#include "game/MirrorHead.h"
 #include "game/MenuPause.h"
 #include "game/MenuType.h"
 #include "game/SceneFrame.h"
@@ -165,9 +166,12 @@ MirrorFrame ReadMirrorFrame(const MirrorPageState& page, bool settingOn, bool st
 // RunMirrorWorldRender. The water stays on its single pass (the reflection is
 // rendered again for the mirror's camera, a small pass), the actor shadows
 // keep the frame's maps (ShadowShare.h), the culling share and the leaf
-// audit are closed by the frame's own render, the head stays hidden.
+// audit are closed by the frame's own render. (7) The player's head, for this
+// render alone (game/MirrorHead.h): shown right before RunMirrorWorldRender,
+// hidden again right after it - its true transform, the FaceGen bits, the
+// palettes of the skins on its bones, each put back there.
 bool RenderFromMirror(const vr::MirrorCamera& camera, vr::MirrorPictureSize size, const d3d9::SurfaceDesc& back,
-                      UInt32& draws, bool trace) {
+                      UInt32& draws, bool trace, game::MirrorHeadSwitch& head) {
 	draws = 0;
 	NiAVObject* const cam = game::MainCamera();
 	float* const port = game::MainCameraPort();
@@ -230,7 +234,9 @@ bool RenderFromMirror(const vr::MirrorCamera& camera, vr::MirrorPictureSize size
 		         "the world render starts",
 		         static_cast<double>(shift.x), static_cast<double>(shift.y), static_cast<double>(shift.z));
 	}
+	game::ShowPlayerHeadForMirror(head);
 	const bool ran = RunMirrorWorldRender(draws);
+	game::HidePlayerHeadAfterMirror(head);
 	const bool landed = ran && CaptureTargetIsBackBuffer();
 
 	SetBonePassMode(BonePassMode::Off);
@@ -279,6 +285,7 @@ struct MirrorPassResult {
 	double ms = 0.0;
 	UInt32 draws = 0;
 	vr::MirrorPictureSize size;
+	game::MirrorHeadSwitch head;
 };
 
 void TraceFrameStart(const MirrorFrame& f, vr::MirrorPictureSize size, UInt32 side) {
@@ -324,7 +331,7 @@ MirrorPassResult RenderMirror(MirrorState& s, HeadsetRenderer& renderer, const M
 	{
 		perf::Profiler::Instance().GpuBegin(perf::EventType::MirrorPass, context, device);
 		perf::Profiler::ScopedSpan span(perf::Profiler::Instance(), perf::EventType::MirrorPass, context);
-		landed = RenderFromMirror(f.camera, out.size, back, out.draws, trace);
+		landed = RenderFromMirror(f.camera, out.size, back, out.draws, trace, out.head);
 		SInt32 result = 0;
 		const bool copied = landed && CopyToGlass(device, s.target, out.size, result);
 		perf::Profiler::Instance().GpuEnd();
@@ -364,12 +371,13 @@ void LogMirrorCost(const vr::MirrorCostWindow& w, UInt32 side) {
 	const auto skipped = [&w](vr::MirrorSkip k) { return w.skipped[static_cast<int>(k)]; };
 	OBVR_LOG("Mirror: %u frames up - %u passes, %.2f ms mean, %.2f ms worst (CPU), %u draws a pass, picture %ux%u of "
 	         "%u; skipped %u (out of view %u, facing away %u, edge-on %u, eyes not captured %u, loading %u, no glass "
-	         "%u, stopped %u, switched off %u)",
+	         "%u, stopped %u, switched off %u); head shown in %u of %u passes (%.3f ms a pass)",
 	         w.frames, w.passes, MeanMs(w), w.worstMs,
 	         w.passes > 0 ? static_cast<UInt32>(w.draws / w.passes) : 0u, w.width, w.height, side,
 	         vr::SkippedTotal(w), skipped(vr::MirrorSkip::OutOfView), skipped(vr::MirrorSkip::FacingAway),
 	         skipped(vr::MirrorSkip::EdgeOn), skipped(vr::MirrorSkip::NotCaptured), skipped(vr::MirrorSkip::Loading),
-	         skipped(vr::MirrorSkip::NoGlass), skipped(vr::MirrorSkip::Stopped), skipped(vr::MirrorSkip::Off));
+	         skipped(vr::MirrorSkip::NoGlass), skipped(vr::MirrorSkip::Stopped), skipped(vr::MirrorSkip::Off),
+	         w.headShown, w.headAsked, vr::MeanHeadMs(w));
 }
 
 }  // namespace
@@ -393,7 +401,7 @@ void RunMirrorGlassPass(HeadsetRenderer& renderer, bool stereoFrame) {
 		if (!s.onSaid) {
 			s.onSaid = true;
 			OBVR_LOG("Mirror: the reflection is on - one world render a frame while the glass is in view, after both "
-			         "eyes' captures, on the glass a frame later; one picture for both eyes, the head not in it");
+			         "eyes' captures, on the glass a frame later; one picture for both eyes, the head shown for it alone");
 		}
 		result = RenderMirror(s, renderer, f, t.mirrorPixels);
 	} else if (skip == vr::MirrorSkip::Off || skip == vr::MirrorSkip::FacingAway) {
@@ -401,6 +409,9 @@ void RunMirrorGlassPass(HeadsetRenderer& renderer, bool stereoFrame) {
 	}
 	// A pass that could not start (no back buffer read, no texture) counts as stopped.
 	const vr::MirrorSkip counted = result.rendered || skip != vr::MirrorSkip::None ? skip : vr::MirrorSkip::Stopped;
+	if (result.head.asked) {
+		vr::NoteMirrorHead(s.cost, result.head.plan.refusal == game::MirrorHeadRefusal::None, result.head.ms);
+	}
 	if (vr::NoteMirrorFrame(s.cost, counted, result.ms, result.draws, result.size)) {
 		LogMirrorCost(s.cost, s.target.side);
 		vr::ResetMirrorCost(s.cost);

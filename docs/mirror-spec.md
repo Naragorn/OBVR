@@ -1,4 +1,4 @@
-# A mirror on the tablet (feasibility and plan, 2026-11-28; stage 1 built, section 11; stage 2 built, section 12)
+# A mirror on the tablet (feasibility and plan, 2026-11-28; stage 1 built, section 11; stage 2 built, section 12; stage 3 and the steady picture built, section 13)
 
 The wish (Nadi, 2026-11-28): "neues feature: im inv egal wie eingestellt, gibts oben am ende ein
 neuen tab: spiegel, das gibt mir ein echtes spiegel erlebnis und ich kann mich selber ansehen und
@@ -405,7 +405,7 @@ everything below about the running game is [D] or [G] until the owner's next ses
   right parallax as the head moves, but no depth: it reads flatter than a real mirror, like a
   screen showing one. Expected; stage 4 gives each eye its own.
 - No head, face, hair or helmet in it: the head stays hidden for every render of the frame, the
-  mirror's too. Expected; stage 3.
+  mirror's too. Expected; stage 3 (built since, section 13.1).
 - A frame late: the pass runs after the frame's eye pictures are taken (12.2, point 1), so the glass
   shows the previous frame's reflection. The tablet's page lags the same way already.
 - The hands are drawn over everything in the mirror (the engine's first-person pass clears the
@@ -625,3 +625,108 @@ written (the tablet towards the face, nearer, turned away, edge-on, back, then `
   stage.
 - `MirrorPixels` (section 7 called it `MirrorSize`), and only in OBVR.ini.
 - The glass turned away goes dark instead of keeping its last picture.
+
+### 12.9 The first measurement: the owner's headset run (2026-11-28)
+
+Build: main 40b7b34 (stages 1 and 2), the DLL deployed at 10:14. Log `OBVR.log` of the run ending
+12:28 (Windows, Pimax, image space on, 2 samples). The owner: "ja spiegel geht wie erwartet, bis
+auf: Kein Spieler Kopf im Spiegelbild [...] außerdem ist das bild super wackelig weil man es ja in
+der hand hält, muss also stabilisiert werden."
+
+| What | Value | Mark |
+| --- | --- | --- |
+| Cost lines | 40 (3597 passes in 3600 frames with the page up) | M |
+| The pass's CPU time, the mean over all passes | 1.39 ms | M |
+| The lines' means | 0.59 to 4.10 ms, most 1.15 to 1.4 ms | M |
+| The worst single pass | 5.28 ms (the line with 4430 draws a pass) | M |
+| Draws a pass | 182 to 4581, 1152 the mean over all passes | M |
+| The picture | 695x744 to 957x1024 of 1024 | M |
+| Skipped | 3 frames in all, each "eyes not captured" (the first frame after the page opens, 12.1); 0 out of view, facing away, edge-on, loading, stopped; no "switched off" line | M |
+| The first passes' trace (log lines 9629-9649) | the glass 21.4 x 22.9 units, the eye 41.8 units in front of it (facing 0.96), the frustum -0.350 0.163 -0.003 -0.551 (off-axis), 474-477 draws | M |
+| How the cost moves | with the draws (correlation 0.84 over the 40 lines), not with the picture's size (-0.15); a straight fit gives 0.93 ms + 0.40 ms per 1000 draws | D, from the M lines |
+
+Read off it: the picture is the right way round, the off-axis frustum works and the glass's normal
+points at the eyes (0 "facing away"), which settles three points of 12.7. The decision rule of
+section 8 (over about 2.5 ms a pass means E): the mean is 1.39 ms, over 2.5 ms only in the busy
+stretch of seven lines (2.02 to 4.10 ms, 1644 to 4581 draws). So D holds; the busy places are the
+open point. The bone lock in the mirror's render: the trace frames show one hair-class row (c31)
+rebuilt by the engine with a translation exactly the camera's shift away from its logged pair
+(log 9634: delta -34.2 -58.7 47.7 against the shift 34.2 58.7 -47.7) [M]: a palette made inside the
+mirror's render is relative to the mirror's camera, which section 13 builds on.
+
+## 13. Stage 3 and the steady picture as built (2026-11-28, branch mirror-3-1128)
+
+Asked by Nadi after the run of 12.9: the head in the mirror only ("lass uns den also nur auf dem
+spiegelbild oder wenn der spiegel da ist einblenden dann wieder weg"), and the picture steadied
+("muss also stabilisiert werden"). Not run in the game yet.
+
+### 13.1 The head in the mirror's render alone
+
+What the eyes' renders see [R]: Bip01 Head's world transform recomputed at scale 0 after the body is
+placed (game/PlayerBody.cpp `CollapseForThisDraw`: local scale 0, the engine's update, the local
+scale put back), so everything skinned to the head or hanging under it lands on one point; with
+`[Body] CullHiddenHead` the hidden bit on the two FaceGen nodes (the skinned face under the body's
+root, the rigid parts under the head: ears, mouth, teeth, tongue, hair, eyes), taken off after the
+frame's world render (`ReleasePlayerHeadCull`, CameraHook.cpp AfterWorldRender). The mirror's pass
+runs in AfterWorldRender before that release, after both eyes' captures.
+
+The palettes [R/M]: a skinned shape draws through the bone palette 0x007655F0 builds, the head's
+row the head's world transform times its bind, every rotation entry multiplied by the composed
+scale (`knowledge/bone-palettes.md`) - so the collapsed head's rows are zero. The builder skips a
+skin whose stamp (NiSkinInstance +0x18) equals the renderer's (0x00765608 against 0x00422DE0 on
+[renderer+0x8B0], read; what that value counts is not read), so a skin built earlier in the frame
+can come to the mirror's render with the eyes' zero rows. And the bone lock (Replace) pairs rows by
+register and rotation: a zero row pairs with the eyes' zero row and is replaced by it, shifted. A
+row the builder makes in the mirror's render with the true head has a rotation the eyes never
+uploaded, pairs with nothing and passes through as the engine made it - relative to the mirror's
+camera (the engine's SetCameraData 0x00762640 writes the palette's origin 0x00B3F92C from the
+camera it is given [R]; and 12.9's rebuilt hair row [M]).
+
+So the direct way, without a second skinning pass of its own: the engine's own builder, made to run
+for the skins on the head. What is switched (game/MirrorHeadLogic.h decides, game/MirrorHead.cpp
+does; called at render/MirrorGlassPass.cpp:237, right before `RunMirrorWorldRender`, and :239,
+right after it):
+
+| Switched for the mirror's render | Where | Put back | Where |
+| --- | --- | --- | --- |
+| Bip01 Head's world transforms at its own scale (the engine's update of the head's subtree) | MirrorHead.cpp:177 | collapsed again, PlayerBody's three steps | :190 |
+| The FaceGen nodes' hidden bit, only where HeadCull.cpp set it | :178 (HeadCull.cpp:132) | set again, until ReleasePlayerHeadCull right after the pass | :191 (HeadCull.cpp:141) |
+| The stamp of every skin with a bone on the head (the head or under it), top bit turned: built again at its draw in the mirror's render | :179 | turned again: the rows now hold the shown head, so whatever draws the skin next builds it from the collapse | :189 |
+
+The skins are found by a walk of the body's tree (at most 1024 nodes, 24 deep; NiTriShape and
+NiTriStrips, the skin instance at +0xB8, its bones at +0x14, the parents up to 12 steps), into a
+fixed list of 32: the face, the FaceGen parts, a helmet or hood skinned to the head, the upper
+body's neck ring. A helmet or hood shows as worn: it is one of those skins.
+
+Refusals, in order (each logged once when it changes, "Mirror head: <why>"): no body root; the body
+not drawn this frame (`[Body] Visible=0`, the body away for a menu - the mirror shows hands and
+room, decision 10); no head bone; the head not collapsed (`[Body] HideHead=0`: it is in the
+mirror already); its own scale not a positive number; more than 32 skins on it (a half-shown head
+would be worse).
+
+What it costs, by reading [D]: nothing while the mirror does not render (the switch is inside its
+pass). In a pass: the walk (a few hundred class lookups, the class names cached); the head's subtree
+update twice (the same engine call the collapse makes every frame); the builder for the head's
+skins once more (per bone one compose of 13 floats, 0x0053D7A0) - about ten skins, about a hundred
+bones; and the head's own draws in the mirror's render (FaceGenFace 0.06 to 0.37 ms a pass, the
+FaceGen parts together 0.08 to 0.45 ms in OBNG's occlusion probe, an order of magnitude). The
+putting back's second stamp turn costs nothing extra if the stamp changes every frame (the next
+frame builds the skins anyway); if it does not, one more build at the next draw. The cost line
+says it: "head shown in N of M passes (X ms a pass)", the switch's own time both ways; the pass's
+mean shows the draws.
+
+Shadows: the mirror keeps the frame's actor shadow maps (12.2), drawn with the head collapsed: the
+head casts no shadow in the mirror either, as before.
+
+### 13.2 Not verified for the head, and what settles it
+
+- That the head's skins come to the mirror's render through 0x007655F0 with the turned stamp and
+  build from the restored transform. Settled by the scenario's `mirror-head` mark: the face in the
+  glass's eye dump, and "Mirror head: shown".
+- That no row of a rebuilt head skin pairs with a logged row by chance (a bit-identical rotation of
+  another bone with the same register): only same-posed twins do that (BoneRebase.h), and the
+  player's head has none [D]. A face a body-length off in the eye dump would be it.
+- That the eyes still see no head: the switch is put back before the pass returns [R]; the
+  `Head cull: at the mark` line at `mirror-head` ("culled this render") and the eye dumps settle it.
+- The step back under a bowed head (section 4): unchanged; a head bowed over a low glass sits up to
+  11 cm in front of its neck in the mirror. Headset.
