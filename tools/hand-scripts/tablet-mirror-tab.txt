@@ -1,0 +1,124 @@
+# The Mirror tab on the tablet (docs/mirror-spec.md 8, stage 1; Nadi,
+# 2026-11-28): the tab strip has a last tab, Mirror, in every [Tablet] Figure
+# mode - three tabs with Figure=tab (page, figure, mirror), two with beside and
+# off (page, mirror). The inventory opened; the weapon hand's finger brought to
+# the Mirror tab and pressed - the mirror page shows (dark glass, a frame, the
+# light dust over it); then to the page's tab - the page again. Done in the
+# three modes in turn, the setting changed in the running game at a mark
+# (ini-at). Eye pictures at each mark.
+#
+# WRITTEN, NOT RUN (2026-11-28): the positions are worked out from
+# tablet-figure-tab.txt's (the page's tab at x -0.0282, each next tab 0.1122 m
+# further left: 0.33 of the page's 0.34 m width), not measured; the Beside
+# mode's wider face may move the held page, and then the finger misses the tab -
+# the first run says. Linux, --headless --no-steamvr --parallel.
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+# The page in the hand as it was aimed at: a quarter turn alone (the defaults of
+# 2026-11-27 lean, tilt and move it).
+ini Tablet HeldLeanDegrees=0
+ini Tablet HeldRollDegrees=0
+ini Tablet HeldAcrossCm=0
+ini Tablet HeldOutCm=0
+# The finger aimed as the controller's tip 8 cm ahead (PokeTipForward), not the drawn index finger's.
+ini Tablet DrawnFinger=0
+# Opened by the B up-and-down is held from below (the clipboard) - the place the beam and finger are aimed at.
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Tablet Mirror=1
+ini Tablet MirrorDust=1
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+# The mode changes at the marks, in the running game.
+ini-at back-tab Tablet Figure=beside
+ini-at back-beside Tablet Figure=off
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect and the figure behind a tab
+expect Tablet: the game's paper
+# The dust texture is made once, with the paper.
+expect Tablet: the mirror's dust made on the CPU
+# Three presses on the Mirror tab, one in each mode, and three back on the page's.
+count 3 Tablet: the mirror's tab chosen
+count 3 Tablet: the page's tab chosen
+reject Tablet: the figure's tab chosen
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark page-tab
+
+# Figure=tab: the Mirror tab is the third, 0.2244 m left of the page's.
+right pos -0.2526 0.0614 -0.4051
+wait 0.5
+right pos -0.2526 0.0414 -0.4398
+wait 0.5
+right pos -0.2526 0.0614 -0.4051
+wait 0.5
+mark mirror-tab
+right pos -0.0282 0.0614 -0.4051
+wait 0.5
+right pos -0.0282 0.0414 -0.4398
+wait 0.5
+right pos -0.0282 0.0614 -0.4051
+wait 0.5
+mark back-tab
+
+# Figure=beside, set at the mark above: page, mirror - the Mirror tab the second, where the figure's was.
+wait 3
+mark beside-tab
+right pos -0.1404 0.0614 -0.4051
+wait 0.5
+right pos -0.1404 0.0414 -0.4398
+wait 0.5
+right pos -0.1404 0.0614 -0.4051
+wait 0.5
+mark mirror-beside
+right pos -0.0282 0.0614 -0.4051
+wait 0.5
+right pos -0.0282 0.0414 -0.4398
+wait 0.5
+right pos -0.0282 0.0614 -0.4051
+wait 0.5
+mark back-beside
+
+# Figure=off, set at the mark above: the same two tabs.
+wait 3
+mark off-tab
+right pos -0.1404 0.0614 -0.4051
+wait 0.5
+right pos -0.1404 0.0414 -0.4398
+wait 0.5
+right pos -0.1404 0.0614 -0.4051
+wait 0.5
+mark mirror-off
+right pos -0.0282 0.0614 -0.4051
+wait 0.5
+right pos -0.0282 0.0414 -0.4398
+wait 0.5
+right pos -0.0282 0.0614 -0.4051
+wait 0.5
+mark back-off
+right pos 0.15 -0.30 -0.15
+wait 1
+mark away
