@@ -28,6 +28,7 @@
 #include "camera/hands/ReachRing.h"
 #include "camera/hands/Rings.h"
 #include "camera/hands/ScriptPicture.h"
+#include "camera/hands/ShieldBashApproach.h"
 #include "camera/hands/ShieldBashTrace.h"
 #include "camera/hands/SlapTap.h"
 #include "camera/hands/Swings.h"
@@ -2308,17 +2309,15 @@ void StepShieldBash(const Config& config) {
 	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
 	const NiPoint3 hand = camPos + camRot * g_hand.offHandOffsetUnits;  // drawn, behind by the shield's weight
 	// The shield's middle (its disc, else the hand) where it is drawn; the speed the controller's, as a weapon strike's
-	// (decided 2026-11-28: a heavier shield must not make a real bash fail), in 3D towards them (BashSpeedTowards).
+	// (decided 2026-11-28: a heavier shield must not make a real bash fail), its approach towards them in 3D over the
+	// last 0.15 s, not the one frame in their column, in which a jab is already slowing (camera/hands/ShieldBashApproach.h).
 	const NiPoint3 at = g_shieldDiscHave ? hand + (camRot * g_hand.offHandRotation) * g_shieldDisc.centre : hand;
 	NiPoint3 centre{0.0f, 0.0f, 0.0f};
 	void* const actor = game::LivingActorAt(at, 0.5f, 8.0f, &centre, 1.0f);
 	const bool cooling = actor != nullptr && !game::ShoveAllowed(g_shoveCooldown, actor);
 	const NiPoint3 velocity = camRot * g_hand.leftVelocity;
-	game::ShieldBashHand h;
-	h.shieldWorn = true;
-	h.valid = true;
-	h.holdsSomething = g_twoHands.leftGripOnHandle || g_grapple.actor != 0;
-	h.towardsSpeed = actor != nullptr ? game::BashSpeedTowards(velocity, at, centre) : 0.0f;
+	game::ShieldBashHand h{true, true, g_twoHands.leftGripOnHandle || g_grapple.actor != 0, 0.0f};
+	h.towardsSpeed = hands::ShieldBashApproach(velocity, at, actor, centre);
 	const game::ShoveKind kind = actor != nullptr && !cooling ? game::ShieldBashFor(s, h) : game::ShoveKind::None;
 	hands::TraceShieldBash({at, camRot * g_hand.offHandVelocity, velocity, actor, centre, cooling, h.holdsSomething,
 	                        h.towardsSpeed, s.speed, kind != game::ShoveKind::None});  // camera/hands/ShieldBashTrace.h
@@ -2347,8 +2346,8 @@ void StepShieldBash(const Config& config) {
 	static UInt32 s_bashLines = 24;
 	if (s_bashLines > 0) {
 		--s_bashLines;
-		OBVR_LOG("Shield bash: the shield at %.1f m/s towards %08X - %s (the engine's blow %s, the push %s, the "
-		         "sound %s; the shield's middle %s)",
+		OBVR_LOG("Shield bash: the shield at %.1f m/s towards %08X, its approach - %s (the engine's blow %s, the push %s, "
+		         "the sound %s; the shield's middle %s)",
 		         static_cast<double>(h.towardsSpeed), reinterpret_cast<UInt32>(actor),
 		         hard ? "a hard bash, down they go" : "a bash, they stagger", engineHit ? "landed" : "refused",
 		         done ? "done" : "refused", sounded ? "played" : "not played",

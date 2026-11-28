@@ -9,11 +9,18 @@
 #  1. a jab beside the rat, past its column: "never in their column";
 #  2. a jab at it at about 2 m/s (2 cm a frame step): "in their column, too slow";
 #  3. a jab at it at about 4.5 m/s (5 cm a frame step): "landed".
+#  4. (2026-11-28, 13:55 run) a jab at it that comes in at 5 cm a step and
+#     slows to 1.5 cm (about 1.4 m/s) for the last 25 cm, as a punch ends at
+#     the target: "landed" by its approach (the fastest towards the rat over
+#     the last 0.15 s), where the frame in the column alone refused it.
 # The speeds per step are derived from shield-bash-rat.txt's note (5-12 cm
-# steps read as 4-11 m/s), not measured here. An imp itself (flying, its bound's
-# middle 33 units above the shield's rest in the run) is not placed: its form ID is in
-# no file of this repo.
-# Not run yet (written 2026-11-28 on Windows).
+# steps read as 4-11 m/s), not measured here. Where along jab 4 the shield's
+# middle enters the rat's column is not known (a guess: in the slow part); if
+# it enters in the fast part, jab 4 lands under the old rule too and does not
+# tell the two apart - the attempt line's "in that frame alone" says which.
+# An imp itself (flying, its bound's middle 33 units above the shield's rest
+# in the run) is not placed: its form ID is in no file of this repo.
+# Not run yet (written 2026-11-28 on Windows; jab 4 added the same day).
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/shield-bash-attempts.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
 
 ini Hands Enabled=1
@@ -30,8 +37,8 @@ console-at ready tai
 expect HandScript: finished
 expect Shield bash attempt: the shield's middle never in their column
 expect Shield bash attempt: in their column, too slow towards them
-expect Shield bash attempt: landed
-expect Shield bash: the shield at
+count 2 Shield bash attempt: landed
+count 2 Shield bash: the shield at
 reject HandScript: WARNING
 
 wait 12
@@ -159,6 +166,60 @@ wait 0.01
 left pos -0.05 -0.95 -0.750
 wait 0.01
 left pos -0.05 -0.95 -0.800
+wait 0.01
+# 4. At it, coming in fast and slowing at the rat; 2.5 s after jab 3, past the
+#    shove's cooldown of 1 s on the rat.
+wait 1
+left pos -0.05 -0.95 -0.25
+wait 1.5
+mark slowing
+left pos -0.05 -0.95 -0.250
+wait 0.01
+left pos -0.05 -0.95 -0.300
+wait 0.01
+left pos -0.05 -0.95 -0.350
+wait 0.01
+left pos -0.05 -0.95 -0.400
+wait 0.01
+left pos -0.05 -0.95 -0.450
+wait 0.01
+left pos -0.05 -0.95 -0.500
+wait 0.01
+left pos -0.05 -0.95 -0.550
+wait 0.01
+left pos -0.05 -0.95 -0.565
+wait 0.01
+left pos -0.05 -0.95 -0.580
+wait 0.01
+left pos -0.05 -0.95 -0.595
+wait 0.01
+left pos -0.05 -0.95 -0.610
+wait 0.01
+left pos -0.05 -0.95 -0.625
+wait 0.01
+left pos -0.05 -0.95 -0.640
+wait 0.01
+left pos -0.05 -0.95 -0.655
+wait 0.01
+left pos -0.05 -0.95 -0.670
+wait 0.01
+left pos -0.05 -0.95 -0.685
+wait 0.01
+left pos -0.05 -0.95 -0.700
+wait 0.01
+left pos -0.05 -0.95 -0.715
+wait 0.01
+left pos -0.05 -0.95 -0.730
+wait 0.01
+left pos -0.05 -0.95 -0.745
+wait 0.01
+left pos -0.05 -0.95 -0.760
+wait 0.01
+left pos -0.05 -0.95 -0.775
+wait 0.01
+left pos -0.05 -0.95 -0.790
+wait 0.01
+left pos -0.05 -0.95 -0.805
 wait 0.01
 wait 2
 mark end
