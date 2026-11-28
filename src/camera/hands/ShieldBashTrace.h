@@ -6,33 +6,30 @@
 // one's bound, and it logs one line per attempt:
 //
 //   Shield bash attempt: <end> - <frames> frames, the shield up to <m/s> (its
-//   controller <m/s>); closest at <actor>: the approach <judged> m/s towards
-//   their middle over the last <window> s, judged (the bash wants <gate>); in
-//   that frame alone the controller <m/s> towards their middle (<ground> across
-//   the ground alone), <across> units across and <up> up from their middle (the
-//   column <wide> wide, <high> high)
+//   controller <m/s>); closest at <actor>: the approach <judged> m/s into their
+//   body over the last <window> s, judged (the bash wants <gate>); the shield
+//   met them by its disc|by the contact step|not - its disc <gap> units from
+//   their column; in that frame alone the controller <m/s> towards their middle
+//   (<ground> across the ground alone), <degrees> off the line to it, <across>
+//   units across and <up> up from their middle (the column <wide> wide, <high>
+//   high)
 //
-// The approach (camera/hands/ShieldBashApproach.h) since 2026-11-28 13:55: the
-// run's refused jabs were fast before the column and slowing in it.
-//
-// Added 2026-11-28 for Nadi's bash that "did not hit" an imp: the log of that
-// run cannot tell a shield outside the imp's column from one too slow towards
-// it, as StepShieldBash said nothing when it refused.
+// Added 2026-11-28 for Nadi's bash that "did not hit" an imp; the approach
+// since the 13:55 run (jabs fast before the column, slowing in it); the disc
+// and the speed into the body since the 14:56 run (game/BashContactLogic.h).
 
+#include "camera/hands/ShieldBashApproach.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
 
 namespace obvr::camera::hands {
 
 struct ShieldBashLook {
-	NiPoint3 at{0.0f, 0.0f, 0.0f};                  // the shield's middle in the world
+	BashTouch touch;                                // the disc, the one it meets, the approach (ShieldBashTouch)
 	NiPoint3 velocity{0.0f, 0.0f, 0.0f};            // the drawn shield hand's, world axes, m/s
 	NiPoint3 controllerVelocity{0.0f, 0.0f, 0.0f};  // its controller's
-	void* actor = nullptr;                          // the one whose column the shield's middle is in
-	NiPoint3 centre{0.0f, 0.0f, 0.0f};              // that one's bound's centre
-	bool cooling = false;                           // that one cools down from a shove
+	bool cooling = false;                           // the one met cools down from a shove
 	bool handBusy = false;
-	float towards = 0.0f;                           // the gate's: the controller's approach (ShieldBashApproach)
 	float gateSpeed = 0.0f;                         // [Hands] StaggerSpeed, the bash's
 	bool landed = false;
 };

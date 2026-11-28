@@ -806,6 +806,7 @@ extern NiPoint3 g_torchWorldA;
 extern NiPoint3 g_torchWorldB;
 
 void StepShieldBash(const Config& config);
+UInt32 OffHandRestActor();  // the one the contact step holds the off hand's shield on (0: none)
 void StepPommelStrike(const Config& config);
 
 // A hand fast enough at someone and refused: why, for the log (the tester,
@@ -2308,27 +2309,24 @@ void StepShieldBash(const Config& config) {
 	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
 	const NiPoint3 hand = camPos + camRot * g_hand.offHandOffsetUnits;  // drawn, behind by the shield's weight
-	// The shield's middle (its disc, else the hand) where it is drawn; the speed the controller's, as a weapon strike's
-	// (decided 2026-11-28: a heavier shield must not make a real bash fail), its approach towards them in 3D over the
-	// last 0.15 s, not the one frame in their column, in which a jab is already slowing (camera/hands/ShieldBashApproach.h).
-	const NiPoint3 at = g_shieldDiscHave ? hand + (camRot * g_hand.offHandRotation) * g_shieldDisc.centre : hand;
-	NiPoint3 centre{0.0f, 0.0f, 0.0f};
-	void* const actor = game::LivingActorAt(at, 0.5f, 8.0f, &centre, 1.0f);
-	const bool cooling = actor != nullptr && !game::ShoveAllowed(g_shoveCooldown, actor);
+	// The shield's disc (its shape, else the hand) where it is drawn, against their column or on their body by the contact
+	// step; the speed the controller's, as a weapon strike's (decided 2026-11-28: a heavier shield must not make a real
+	// bash fail), its approach into their body over the last 0.15 s (camera/hands/ShieldBashApproach.h).
 	const NiPoint3 velocity = camRot * g_hand.leftVelocity;
-	game::ShieldBashHand h{true, true, g_twoHands.leftGripOnHandle || g_grapple.actor != 0, 0.0f};
-	h.towardsSpeed = hands::ShieldBashApproach(velocity, at, actor, centre);
+	const hands::BashTouch touch = hands::ShieldBashTouch(hand, camRot * g_hand.offHandRotation,
+	                                                      g_shieldDiscHave ? &g_shieldDisc : nullptr, velocity, OffHandRestActor());
+	const NiPoint3& at = touch.disc.centre;
+	void* const actor = touch.actor;
+	const NiPoint3& centre = touch.centre;
+	const bool cooling = actor != nullptr && !game::ShoveAllowed(g_shoveCooldown, actor);
+	game::ShieldBashHand h{true, true, g_twoHands.leftGripOnHandle || g_grapple.actor != 0, touch.approach};
 	const game::ShoveKind kind = actor != nullptr && !cooling ? game::ShieldBashFor(s, h) : game::ShoveKind::None;
-	hands::TraceShieldBash({at, camRot * g_hand.offHandVelocity, velocity, actor, centre, cooling, h.holdsSomething,
-	                        h.towardsSpeed, s.speed, kind != game::ShoveKind::None});  // camera/hands/ShieldBashTrace.h
+	hands::TraceShieldBash({touch, camRot * g_hand.offHandVelocity, velocity, cooling, h.holdsSomething, s.speed,
+	                        kind != game::ShoveKind::None});  // camera/hands/ShieldBashTrace.h
 	if (kind == game::ShoveKind::None) {
 		return;
 	}
-	const float across = math::Sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
-	NiPoint3 from = at;
-	if (across > 0.001f) {
-		from = at - NiPoint3{velocity.x / across, velocity.y / across, 0.0f} * 30.0f;
-	}
+	const NiPoint3 from = hands::ShieldBashPushFrom(at, velocity);
 	const bool hard = kind == game::ShoveKind::Hard;
 	const bool engineHit = game::KickStrike(actor, hard, game::BlowKind::ShieldBash);
 	const bool done = game::ShoveActor(actor, kind, from, centre,
@@ -3330,6 +3328,7 @@ struct HandContactSide {
 	UInt32 announceLines = 24;  // "meets the world now", apart: a hand freed often spent the lines (2026-10-11)
 };
 HandContactSide g_handContact[2];  // the weapon hand, the off hand
+UInt32 OffHandRestActor() { return g_handContact[1].restActor; }
 
 // The item a hand holds (its "Weapon" or "Torch" node's model, or the node
 // itself) where it hangs now: read off the drawn first-person bones, which

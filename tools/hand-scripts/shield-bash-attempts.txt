@@ -6,13 +6,24 @@
 # and the log said nothing of why. A frozen rat (CreatureRat, 00025314) 60
 # units ahead, the Arena Iron Shield (000733ED) worn, the default bash speed
 # (StaggerSpeed 3):
-#  1. a jab beside the rat, past its column: "never in their column";
-#  2. a jab at it at about 2 m/s (2 cm a frame step): "in their column, too slow";
+#  1. a jab beside the rat, 90 cm to its left, past what the shield reaches:
+#     "never met them";
+#  2. a jab at it at about 2 m/s (2 cm a frame step): "met them, too slow";
 #  3. a jab at it at about 4.5 m/s (5 cm a frame step): "landed".
 #  4. (2026-11-28, 13:55 run) a jab at it that comes in at 5 cm a step and
 #     slows to 1.5 cm (about 1.4 m/s) for the last 25 cm, as a punch ends at
 #     the target: "landed" by its approach (the fastest towards the rat over
 #     the last 0.15 s), where the frame in the column alone refused it.
+#  5. (14:56 run) a fast jab straight ahead 10 cm off the rat's middle: "landed"
+#     by its speed into the body (the line to the rat's middle leans off the
+#     travel, so its speed towards the middle alone was less);
+#  6. (14:56 run) a fast jab straight ahead with the shield's middle 35 cm to
+#     the rat's left, beside its column, its disc over it: "met them by its
+#     disc", "landed". The rat's bound (its column's width) and the shield's
+#     facing at "left rot 0 0 0" are not known here: whether 35 cm puts the
+#     middle outside the column and the rim on it is a guess - the attempt
+#     line's "its disc N units from their column" and the middle's "across"
+#     say what it was.
 # The speeds per step are derived from shield-bash-rat.txt's note (5-12 cm
 # steps read as 4-11 m/s), not measured here. Where along jab 4 the shield's
 # middle enters the rat's column is not known (a guess: in the slow part); if
@@ -20,7 +31,7 @@
 # tell the two apart - the attempt line's "in that frame alone" says which.
 # An imp itself (flying, its bound's middle 33 units above the shield's rest
 # in the run) is not placed: its form ID is in no file of this repo.
-# Not run yet (written 2026-11-28 on Windows; jab 4 added the same day).
+# Not run yet (written 2026-11-28 on Windows; jab 4 after the 13:55 run, jab 1 moved out and 5, 6 added after the 14:56 run).
 # Run with: python3 tools/hand-script-run.py tools/hand-scripts/shield-bash-attempts.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
 
 ini Hands Enabled=1
@@ -35,10 +46,11 @@ console-at ready player.equipitem 000733ED
 console-at ready tai
 
 expect HandScript: finished
-expect Shield bash attempt: the shield's middle never in their column
-expect Shield bash attempt: in their column, too slow towards them
-count 2 Shield bash attempt: landed
-count 2 Shield bash: the shield at
+expect Shield bash attempt: the shield never met them
+expect Shield bash attempt: it met them, too slow into them
+expect the shield met them by its disc
+count 4 Shield bash attempt: landed
+count 4 Shield bash: the shield at
 reject HandScript: WARNING
 
 wait 12
@@ -49,33 +61,33 @@ wait 1
 mark ready
 wait 6
 head pitch -40
-# 1. Beside the rat: half a metre to its left.
-left pos -0.55 -0.95 -0.25
+# 1. Beside the rat: 90 cm to its left, out of the shield's reach.
+left pos -0.90 -0.95 -0.25
 wait 1.5
 mark beside
-left pos -0.55 -0.95 -0.250
+left pos -0.90 -0.95 -0.250
 wait 0.01
-left pos -0.55 -0.95 -0.300
+left pos -0.90 -0.95 -0.300
 wait 0.01
-left pos -0.55 -0.95 -0.350
+left pos -0.90 -0.95 -0.350
 wait 0.01
-left pos -0.55 -0.95 -0.400
+left pos -0.90 -0.95 -0.400
 wait 0.01
-left pos -0.55 -0.95 -0.450
+left pos -0.90 -0.95 -0.450
 wait 0.01
-left pos -0.55 -0.95 -0.500
+left pos -0.90 -0.95 -0.500
 wait 0.01
-left pos -0.55 -0.95 -0.550
+left pos -0.90 -0.95 -0.550
 wait 0.01
-left pos -0.55 -0.95 -0.600
+left pos -0.90 -0.95 -0.600
 wait 0.01
-left pos -0.55 -0.95 -0.650
+left pos -0.90 -0.95 -0.650
 wait 0.01
-left pos -0.55 -0.95 -0.700
+left pos -0.90 -0.95 -0.700
 wait 0.01
-left pos -0.55 -0.95 -0.750
+left pos -0.90 -0.95 -0.750
 wait 0.01
-left pos -0.55 -0.95 -0.800
+left pos -0.90 -0.95 -0.800
 wait 0.01
 wait 1.5
 # 2. At it, slowly.
@@ -220,6 +232,64 @@ wait 0.01
 left pos -0.05 -0.95 -0.790
 wait 0.01
 left pos -0.05 -0.95 -0.805
+wait 0.01
+# 5. Off its middle: 10 cm to its left, straight ahead, fast.
+wait 1
+left pos -0.15 -0.95 -0.25
+wait 1.5
+mark offcentre
+left pos -0.15 -0.95 -0.250
+wait 0.01
+left pos -0.15 -0.95 -0.300
+wait 0.01
+left pos -0.15 -0.95 -0.350
+wait 0.01
+left pos -0.15 -0.95 -0.400
+wait 0.01
+left pos -0.15 -0.95 -0.450
+wait 0.01
+left pos -0.15 -0.95 -0.500
+wait 0.01
+left pos -0.15 -0.95 -0.550
+wait 0.01
+left pos -0.15 -0.95 -0.600
+wait 0.01
+left pos -0.15 -0.95 -0.650
+wait 0.01
+left pos -0.15 -0.95 -0.700
+wait 0.01
+left pos -0.15 -0.95 -0.750
+wait 0.01
+left pos -0.15 -0.95 -0.800
+wait 0.01
+# 6. Its rim on it: the middle 35 cm to its left, beside its column, straight ahead, fast.
+wait 1
+left pos -0.35 -0.95 -0.25
+wait 1.5
+mark rim
+left pos -0.35 -0.95 -0.250
+wait 0.01
+left pos -0.35 -0.95 -0.300
+wait 0.01
+left pos -0.35 -0.95 -0.350
+wait 0.01
+left pos -0.35 -0.95 -0.400
+wait 0.01
+left pos -0.35 -0.95 -0.450
+wait 0.01
+left pos -0.35 -0.95 -0.500
+wait 0.01
+left pos -0.35 -0.95 -0.550
+wait 0.01
+left pos -0.35 -0.95 -0.600
+wait 0.01
+left pos -0.35 -0.95 -0.650
+wait 0.01
+left pos -0.35 -0.95 -0.700
+wait 0.01
+left pos -0.35 -0.95 -0.750
+wait 0.01
+left pos -0.35 -0.95 -0.800
 wait 0.01
 wait 2
 mark end
