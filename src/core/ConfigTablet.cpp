@@ -3,6 +3,7 @@
 #include "core/Config.h"
 #include "core/ConfigRead.h"
 #include "core/Log.h"
+#include "vr/MirrorGlassLogic.h"
 
 namespace obvr {
 
@@ -17,6 +18,9 @@ void ReadTabletStep(Config& config, const char* path) {
 	t.drawnFinger = ReadBool("Tablet", "DrawnFinger", t.drawnFinger, path);
 	t.mirror = ReadBool("Tablet", "Mirror", t.mirror, path);
 	t.mirrorDust = ReadBool("Tablet", "MirrorDust", t.mirrorDust, path);
+	t.mirrorWorld = ReadBool("Tablet", "MirrorWorld", t.mirrorWorld, path);
+	t.mirrorPixels =
+		vr::ClampMirrorPixels(ReadFloat("Tablet", "MirrorPixels", static_cast<float>(t.mirrorPixels), path));
 	t.gripUp = ReadFloat("Tablet", "GripUp", t.gripUp, path);
 	t.gripForward = ReadFloat("Tablet", "GripForward", t.gripForward, path);
 	t.tiltDegrees = ReadFloat("Tablet", "TiltDegrees", t.tiltDegrees, path);

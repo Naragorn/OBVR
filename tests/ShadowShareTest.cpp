@@ -124,6 +124,56 @@ int main() {
 		const ActorShadowPlan second = PlanActorShadows(state, true, 1, 0);
 		Check(second == ActorShadowPlan::Draw, "nothing drawn yet, scene call 0: drawn");
 	}
+	// The mirror's pass (docs/mirror-spec.md stage 2) after a single-pass world
+	// render of the same scene call: it keeps that render's maps.
+	{
+		ShadowShareState state;
+		const ActorShadowPlan world = PlanActorShadows(state, true, -1, 70);
+		const ActorShadowPlan mirror = PlanActorShadows(state, true, -1, 70, true);
+		Check(world == ActorShadowPlan::Draw && mirror == ActorShadowPlan::Reuse,
+		      "mirror after a single-pass render: the render's maps reused");
+		Check(state.drawn == 1 && state.reused == 1, "mirror: one draw, one reuse");
+	}
+	// After a dual frame: the mirror keeps the maps the eyes drew.
+	{
+		ShadowShareState state;
+		PlanActorShadows(state, true, 0, 80);
+		PlanActorShadows(state, true, 1, 80);
+		const ActorShadowPlan mirror = PlanActorShadows(state, true, -1, 80, true);
+		Check(mirror == ActorShadowPlan::Reuse, "mirror after a dual frame: reused");
+	}
+	// Sharing off: the mirror draws its own.
+	{
+		ShadowShareState state;
+		PlanActorShadows(state, false, -1, 90);
+		const ActorShadowPlan mirror = PlanActorShadows(state, false, -1, 90, true);
+		Check(mirror == ActorShadowPlan::Draw, "mirror, sharing off: drawn");
+	}
+	// The world render of this frame did not draw them (the engine never asked)
+	// but last frame's did: the mirror draws - last frame's maps are not this frame's.
+	{
+		ShadowShareState state;
+		PlanActorShadows(state, true, -1, 100);
+		const ActorShadowPlan mirror = PlanActorShadows(state, true, -1, 101, true);
+		Check(mirror == ActorShadowPlan::Draw, "mirror at another scene call: drawn");
+	}
+	// A mirror that drew its own maps does not stand for the world's: a second
+	// mirror ask in a scene call whose world drew nothing draws again.
+	{
+		ShadowShareState state;
+		const ActorShadowPlan a = PlanActorShadows(state, true, -1, 110, true);
+		const ActorShadowPlan b = PlanActorShadows(state, true, -1, 110, true);
+		Check(a == ActorShadowPlan::Draw && b == ActorShadowPlan::Draw, "mirror only: drawn each time");
+	}
+	// The world render's note changes nothing for the dual pass: a single-pass
+	// render's maps are never a second eye's (another scene call), and a first
+	// eye still decides alone.
+	{
+		ShadowShareState state;
+		PlanActorShadows(state, true, -1, 120);
+		const ActorShadowPlan second = PlanActorShadows(state, true, 1, 120);
+		Check(second == ActorShadowPlan::Draw, "a second eye after a single-pass render's note: drawn as before");
+	}
 
 	std::printf("shadow share: %u checks, %u failures\n", g_checks, g_failures);
 	return g_failures == 0 ? 0 : 1;

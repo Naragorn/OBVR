@@ -525,6 +525,13 @@ inline constexpr SettingDefinition kHandsRows[] = {
 		+[](Config& c, float v) { c.hands.tablet.mirrorDust = v != 0.0f; },
 	},
 	{
+		"Laser & wrist menus", "Live mirror", "The mirror shows the room behind you. Off, its glass stays dark",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Tablet", "MirrorWorld",
+		+[](const Config& c) { return c.hands.tablet.mirrorWorld ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.tablet.mirrorWorld = v != 0.0f; },
+	},
+	{
 		"Laser & wrist menus", "Hands stay in menus",
 		"Keep your hands in inventory, chests, map, books and talks. Only the pause menu hides them",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,

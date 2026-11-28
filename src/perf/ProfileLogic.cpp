@@ -227,6 +227,7 @@ const char* EventTypeName(EventType type) {
 		case EventType::Relight: return "relight";
 		case EventType::LogWrite: return "log_write";
 		case EventType::LogDebugString: return "log_debug_string";
+		case EventType::MirrorPass: return "mirror_pass";
 	}
 	return "unknown";
 }

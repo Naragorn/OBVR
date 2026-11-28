@@ -1,0 +1,108 @@
+# The mirror's reflection on the tablet (docs/mirror-spec.md 8, stage 2, and
+# section 12): the inventory opened, the Mirror tab pressed (Figure=tab, the
+# third tab), the tablet held towards the face - the glass shows the room
+# behind the player, one picture for both eyes, the head not in it; then
+# turned away (its back to the eyes: the pass stops, the glass dark), held
+# edge-on (the pass stops), towards the face again (the pass runs again), and
+# MirrorWorld=0 set at a mark (the dark glass of stage 1). Eye pictures at
+# each mark; the 2D layer too, to compare the page's picture with the pass on
+# and off (section 12, "Not verified").
+#
+# WRITTEN, NOT RUN (2026-11-28): the tablet's pose for "towards the face" is the
+# one tablet-mirror-tab.txt presses its tabs in (the page standing about 0.4 m
+# in front of the eyes); "turned away" turns the holding hand half a turn about
+# its up, "edge-on" a quarter. Whether those poses put the glass where the
+# words say is what the first run's trace and cost lines show ("Mirror trace:
+# ... the eye N units in front (facing F)", "skipped ... facing away N,
+# edge-on N"). Linux, --headless --no-steamvr --parallel; for the cost,
+# --exclusive (the profiler's mirror_pass span with [Performance] Enabled=1).
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet HeldLeanDegrees=0
+ini Tablet HeldRollDegrees=0
+ini Tablet HeldAcrossCm=0
+ini Tablet HeldOutCm=0
+ini Tablet DrawnFinger=0
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Tablet Mirror=1
+ini Tablet MirrorDust=1
+ini Tablet MirrorWorld=1
+ini Tablet MirrorPixels=1024
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+ini Debug LayerDump=1
+# The dark glass again at the last mark, in the running game.
+ini-at mirror-again Tablet MirrorWorld=0
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect Tablet: the mirror's tab chosen
+expect Mirror: the reflection is on
+expect Mirror: the reflection's texture made
+expect Mirror trace: the camera, its frustum and port set
+expect Mirror trace: the world render returned
+# At least one cost line (every 90 frames with the page up).
+expect frames up -
+reject Mirror: switched off for this session
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark page-tab
+
+# The Mirror tab, the third, 0.2244 m left of the page's (tablet-mirror-tab.txt).
+right pos -0.2526 0.0614 -0.4051
+wait 0.5
+right pos -0.2526 0.0414 -0.4398
+wait 0.5
+right pos -0.2526 0.0614 -0.4051
+wait 0.5
+# The finger away, out of the mirror's picture.
+right pos 0.15 -0.30 -0.15
+wait 3
+mark mirror-towards
+
+# A little higher and nearer: the glass grows on screen, so does the picture.
+left pos -0.12 -0.22 -0.26
+wait 3
+mark mirror-near
+
+# Its back to the eyes: the pass stops, the glass dark.
+left rot 0 180 0
+wait 3
+mark mirror-away
+
+# Edge-on: the pass stops.
+left rot 0 90 0
+wait 3
+mark mirror-edge
+
+# Towards the face again: the reflection comes back a frame after the first pass.
+left rot 0 0 0
+left pos -0.12 -0.32 -0.32
+wait 3
+mark mirror-again
+
+# MirrorWorld=0 (set at the mark above): the dark glass.
+wait 3
+mark mirror-dark

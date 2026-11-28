@@ -17,6 +17,7 @@
 #include "game/NiMath.h"
 #include "render/ControllerModels.h"
 #include "render/D3D9Types.h"
+#include "vr/MirrorGlassLogic.h"
 
 namespace obvr::render {
 
@@ -58,12 +59,21 @@ inline constexpr UInt32 kTabletMirrorTabPieces = 14;
 inline constexpr UInt32 kTabletMirrorPagePieces = 17;
 inline constexpr UInt32 kTabletMirrorGlassPiece = kTabletMirrorPagePieces + 1;
 
-// Where the mirror's glass is, for whoever renders the reflection (stage 2).
+// Where the mirror's glass is, for whoever renders the reflection (stage 2,
+// render/MirrorGlassPass.cpp).
 struct MirrorPageState {
-	bool up = false;  // the mirror's page is shown this frame (and was drawn into the eyes)
+	bool up = false;  // the mirror's page is among this frame's pieces
 	// The glass's four corners in the holding controller's frame (OpenVR's
 	// axes, metres): top left, top right, bottom left, bottom right.
 	NiPoint3 corners[4] = {};
+	// This frame's captures: where the glass was drawn into each eye (index 0
+	// left) and the eye's place, and the holding hand's pose the glass was
+	// drawn on (the world camera's units) - reset before the frame's captures
+	// (TakeDrawnBoth).
+	vr::GlassOnScreen eyes[2];
+	NiPoint3 handPos{0.0f, 0.0f, 0.0f};
+	NiMatrix33 handRot = NiMatrix33::Identity();
+	float unitsPerMetre = 0.0f;
 };
 
 // The part of the mirror's texture the glass shows: left, top, right, bottom,
@@ -93,6 +103,11 @@ public:
 			for (int i = 0; i < 4; ++i) {
 				state.corners[i] = m_frame.pieces[kTabletMirrorGlassPiece].corners[i];
 			}
+			state.eyes[0] = m_glassSeen[0];
+			state.eyes[1] = m_glassSeen[1];
+			state.handPos = m_glassHandPos;
+			state.handRot = m_glassHandRot;
+			state.unitsPerMetre = m_glassUnitsPerMetre;
 		}
 		return state;
 	}
@@ -128,6 +143,8 @@ public:
 	bool TakeDrawnBoth() {
 		const bool both = m_eyes == 3;
 		m_eyes = 0;
+		m_glassSeen[0] = vr::GlassOnScreen{};
+		m_glassSeen[1] = vr::GlassOnScreen{};
 		++m_serial;
 		return both;
 	}
@@ -146,6 +163,11 @@ private:
 	bool m_dustTried = false;
 	void* m_glassTexture[2] = {nullptr, nullptr};
 	MirrorGlassUv m_glassUv;
+	// Where the glass went into each eye this frame, and on which hand pose (MirrorPage).
+	vr::GlassOnScreen m_glassSeen[2];
+	NiPoint3 m_glassHandPos{0.0f, 0.0f, 0.0f};
+	NiMatrix33 m_glassHandRot = NiMatrix33::Identity();
+	float m_glassUnitsPerMetre = 0.0f;
 	UInt32 m_eyes = 0;  // bit 1 left, bit 2 right
 	// The frame's count (TakeDrawnBoth), and the world projection of its
 	// first eye, for the second when the 2D pass between them set another.

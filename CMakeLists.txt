@@ -321,6 +321,7 @@ add_library(OBVR SHARED
 	src/render/LaserLayer.cpp
 	src/render/ControllerModels.cpp
 	src/render/TabletQuad.cpp
+	src/render/MirrorGlassPass.cpp
 	src/render/ReachMarker.cpp
 	src/render/TeleportArcLayer.cpp
 	src/render/CullingHook.cpp

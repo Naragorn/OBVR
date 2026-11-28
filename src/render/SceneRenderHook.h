@@ -136,4 +136,23 @@ bool RunMenuWorldProbe(UInt32& drawsOut, UInt32& vertexSetupOut);
 // RunMenuWorldProbe that returned false; on the successful path it says so.
 const char* MenuWorldProbeRefusal();
 
+// The mirror's world render (render/MirrorGlassPass.cpp, docs/mirror-spec.md
+// 12): the engine's ordinary world render once more, through the trampoline
+// (no callbacks, no scene-call tick), with the frame clock zeroed, on the
+// renderer remembered from the frame's own render. Called from inside that
+// render (afterWorldRender), with the main camera already set to the
+// mirror's by the caller, who also puts it back. drawsOut: the draw calls it
+// made. False when there is nothing to call yet or it is already running.
+bool RunMirrorWorldRender(UInt32& drawsOut);
+
+// Whether the mirror's render is running now (the actor shadow share keeps the
+// frame's maps for it: render/ShadowShare.h).
+bool MirrorRenderRunning();
+
+// Whether the frame's world render, which is running now, recorded its bone
+// rows for a later render to replace from (the bone lock's Capture): a dual
+// frame's first pass always, a single-pass frame when the mirror asked
+// (MirrorWantsBones). False outside a frame's world render.
+bool BonesKeptThisFrame();
+
 }  // namespace obvr::render

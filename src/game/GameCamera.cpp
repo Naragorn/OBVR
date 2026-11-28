@@ -83,6 +83,14 @@ float* MainCameraPort() {
 	return reinterpret_cast<float*>(camera + kNiCameraPortOffset);
 }
 
+NiAVObject* MainCamera() {
+	auto* sceneGraph = *reinterpret_cast<UInt8**>(kWorldSceneGraph);
+	if (sceneGraph == nullptr) {
+		return nullptr;
+	}
+	return *reinterpret_cast<NiAVObject**>(sceneGraph + kSceneGraphCameraOffset);
+}
+
 void SetFrustumFov(NiFrustum& frustum, float fovDegrees) {
 	if (!(fovDegrees > 1.0f) || !(fovDegrees > 0.0f) || fovDegrees >= 179.0f) {
 		return;

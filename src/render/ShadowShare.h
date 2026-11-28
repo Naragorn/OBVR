@@ -20,6 +20,11 @@ namespace obvr::render {
 // The rule: the second eye reuses only maps the first eye drew in the same
 // world render (the same scene call); in every other case - off, a single
 // pass, a first eye that never asked - the engine's call runs as before.
+//
+// The mirror's pass (render/MirrorGlassPass.cpp, docs/mirror-spec.md stage 2)
+// is one more render inside the same scene call, after the eyes': it reuses
+// the maps any of the frame's world renders drew (a single pass, either eye),
+// under the same switch. Its own draw never stands for the world's.
 
 enum class ActorShadowPlan : UInt8 {
 	Draw = 0,   // call the engine's actor shadow render
@@ -29,23 +34,33 @@ enum class ActorShadowPlan : UInt8 {
 struct ShadowShareState {
 	bool firstEyeDrew = false;      // the first eye drew the maps ...
 	UInt32 firstEyeSceneCall = 0;   // ... in this world render
+	bool worldDrew = false;         // a world render (not the mirror's) drew them ...
+	UInt32 worldSceneCall = 0;      // ... in this scene call
 	UInt32 drawn = 0;
 	UInt32 reused = 0;
 };
 
 // One ask of the engine: `pass` is the dual pass's eye (0 first, 1 second,
-// -1 a single-pass render), `sceneCall` the world render it belongs to.
-inline ActorShadowPlan PlanActorShadows(ShadowShareState& state, bool enabled, int pass, UInt32 sceneCall) {
-	const bool reuse = enabled && pass == 1 && state.firstEyeDrew && state.firstEyeSceneCall == sceneCall;
+// -1 a single-pass render), `sceneCall` the world render it belongs to,
+// `mirrorPass` whether the mirror's render asks.
+inline ActorShadowPlan PlanActorShadows(ShadowShareState& state, bool enabled, int pass, UInt32 sceneCall,
+                                        bool mirrorPass = false) {
+	const bool reuse = mirrorPass ? enabled && state.worldDrew && state.worldSceneCall == sceneCall
+	                              : enabled && pass == 1 && state.firstEyeDrew && state.firstEyeSceneCall == sceneCall;
 	if (reuse) {
 		++state.reused;
 		return ActorShadowPlan::Reuse;
 	}
 	++state.drawn;
+	if (mirrorPass) {
+		return ActorShadowPlan::Draw;
+	}
 	if (pass == 0) {
 		state.firstEyeDrew = true;
 		state.firstEyeSceneCall = sceneCall;
 	}
+	state.worldDrew = true;
+	state.worldSceneCall = sceneCall;
 	return ActorShadowPlan::Draw;
 }
 

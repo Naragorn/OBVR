@@ -2872,6 +2872,15 @@ if(NOT MSVC)
 endif()
 add_test(NAME mirror_page COMMAND mirror_page_test)
 
+# The mirror's reflection, stage 2 (vr/MirrorGlassLogic.h): the reflected camera, its
+# off-axis frustum, the picture's size and every refusal of the pass. Pure.
+add_executable(mirror_glass_test MirrorGlassTest.cpp)
+target_include_directories(mirror_glass_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(mirror_glass_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME mirror_glass COMMAND mirror_glass_test)
+
 # How far ahead the poses are predicted when the wait comes late (vr/PosePrediction.h): pure.
 add_executable(pose_prediction_test PosePredictionTest.cpp)
 target_include_directories(pose_prediction_test PRIVATE ../src)

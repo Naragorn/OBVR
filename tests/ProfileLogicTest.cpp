@@ -206,6 +206,8 @@ void TestRelightClock() {
 	      "OBVR.log's lines of a frame are named log_write");
 	Check(std::strcmp(EventTypeName(EventType::LogDebugString), "log_debug_string") == 0,
 	      "their OutputDebugStringA share is named log_debug_string");
+	Check(std::strcmp(EventTypeName(EventType::MirrorPass), "mirror_pass") == 0,
+	      "the mirror's world render (render/MirrorGlassPass.cpp) is named mirror_pass");
 }
 
 void TestRing() {

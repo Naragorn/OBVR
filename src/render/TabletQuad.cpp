@@ -51,9 +51,8 @@ bool ProjectCorners(const TabletQuadPiece& piece, UInt32 colour, const Controlle
 	const ControllerModels::WorldController& hand = view.hands[1];
 	const NiMatrix33 toEye = InverseRotation(view.eyeRot);
 	for (int i = 0; i < 4; ++i) {
-		const NiPoint3& c = piece.corners[i];
-		const NiPoint3 local{c.x, -c.z, c.y};  // ControllerVertexToGame's axes
-		const NiPoint3 world = hand.pos + hand.rot * (local * view.unitsPerMetre);
+		// ControllerVertexToGame's axes, the formula the mirror's camera shares.
+		const NiPoint3 world = vr::GlassCornerInWorld(hand.pos, hand.rot, view.unitsPerMetre, piece.corners[i]);
 		EyePixel pixel;
 		if (!ProjectThroughD3D(toEye * (world - view.eyePos), projection.m, static_cast<float>(viewport.x),
 		                       static_cast<float>(viewport.y), static_cast<float>(viewport.width),
@@ -172,6 +171,32 @@ void* MakeDustTexture(void* device) {
 // What a piece is drawn with.
 enum class PieceKind : UInt8 { Plain, Layer, Paper, Dust, Glass };
 
+// The reflection under the glass: a real mirror gives back about 90 percent
+// (docs/mirror-spec.md 7), opaque.
+constexpr UInt32 kMirrorReflectionTint = 0xFFE6E6E6u;
+
+// Where a piece's projected corners lie in the eye's pixels, and the eye's
+// viewport and place: what the mirror's pass reads of this eye (MirrorPage).
+vr::GlassOnScreen GlassSeenIn(const TabletVertex (&corners)[4], const d3d9::Viewport& viewport,
+                              const NiPoint3& eye) {
+	vr::GlassOnScreen s;
+	s.drawn = true;
+	s.minX = s.maxX = corners[0].x;
+	s.minY = s.maxY = corners[0].y;
+	for (const TabletVertex& c : corners) {
+		s.minX = c.x < s.minX ? c.x : s.minX;
+		s.maxX = c.x > s.maxX ? c.x : s.maxX;
+		s.minY = c.y < s.minY ? c.y : s.minY;
+		s.maxY = c.y > s.maxY ? c.y : s.maxY;
+	}
+	s.viewportX = static_cast<float>(viewport.x);
+	s.viewportY = static_cast<float>(viewport.y);
+	s.viewportWidth = static_cast<float>(viewport.width);
+	s.viewportHeight = static_cast<float>(viewport.height);
+	s.eye = eye;
+	return s;
+}
+
 // The pieces over the eye's picture, the device's states captured before and
 // put back after: a layer's piece takes the layer's colour and alpha, a
 // paper's the paper's times its vertices', a plain one its vertices'; the
@@ -238,11 +263,14 @@ bool DrawPieces(void* device, void* const* textures, const PieceKind* kinds, con
 	setStage(device, 0, d3d9::kTssAlphaArg2, d3d9::kTaDiffuse);
 	for (UInt32 i = 0; i < count; ++i) {
 		const bool onPaper = kinds[i] == PieceKind::Paper;
+		const bool glass = kinds[i] == PieceKind::Glass;
 		const UInt32 argument = kinds[i] == PieceKind::Plain ? d3d9::kTaDiffuse : kTaTexture;
-		const UInt32 op = onPaper ? d3d9::kTopModulate : d3d9::kTopSelectArg1;
+		const UInt32 op = onPaper || glass ? d3d9::kTopModulate : d3d9::kTopSelectArg1;
 		setTexture(device, 0, textures[i]);
 		setStage(device, 0, d3d9::kTssColorOp, op);
-		setStage(device, 0, d3d9::kTssAlphaOp, op);
+		// The reflection: its colour under the glass's tint, opaque whatever
+		// alpha the frame it was copied from held (the vertices' alpha).
+		setStage(device, 0, d3d9::kTssAlphaOp, glass ? d3d9::kTopSelectArg2 : op);
 		setStage(device, 0, d3d9::kTssColorArg1, argument);
 		setStage(device, 0, d3d9::kTssAlphaArg1, argument);
 		drawn = !d3d11::Failed(draw(device, d3d9::kPrimitiveTriangleStrip, 2, vertices[i], sizeof(TabletVertex))) &&
@@ -307,6 +335,7 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 		projection = m_projection;
 	}
 	bool projected = (fresh || m_projectionSerial == m_serial) && EyeViewport(device, view, viewport);
+	vr::GlassOnScreen glassSeen;
 	for (UInt32 i = 0; projected && i < kTabletPieces; ++i) {
 		const TabletQuadPiece& piece = m_frame.pieces[i];
 		if (!piece.valid) {
@@ -323,15 +352,19 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 		               : piece.textured && !piece.paper ? PieceKind::Layer
 		                                                : PieceKind::Plain;
 		textures[count] = piece.dust ? dust : reflects ? glass : onPaper ? paper : m_frame.texture;
-		projected = ProjectCorners(piece, onPaper ? piece.tint : piece.colour, view, projection, viewport, vertices[count]);
+		const UInt32 colour = reflects ? kMirrorReflectionTint : onPaper ? piece.tint : piece.colour;
+		projected = ProjectCorners(piece, colour, view, projection, viewport, vertices[count]);
+		if (projected && piece.glass) {
+			glassSeen = GlassSeenIn(vertices[count], viewport, view.eyePos);
+		}
 		if (reflects) {
 			// Stage 2's picture on the glass, flipped as a mirror shows it (vr::GlassTexCoords).
 			float u[4];
 			float v[4];
 			vr::GlassTexCoords(m_glassUv.rect, u, v);
-			for (int i = 0; i < 4; ++i) {
-				vertices[count][i].u = u[i];
-				vertices[count][i].v = v[i];
+			for (int corner = 0; corner < 4; ++corner) {
+				vertices[count][corner].u = u[corner];
+				vertices[count][corner].v = v[corner];
 			}
 		}
 		++count;
@@ -349,6 +382,12 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 		return false;
 	}
 	m_eyes |= leftEye ? 1u : 2u;
+	if (glassSeen.drawn) {
+		m_glassSeen[leftEye ? 0 : 1] = glassSeen;
+		m_glassHandPos = view.hands[1].pos;
+		m_glassHandRot = view.hands[1].rot;
+		m_glassUnitsPerMetre = view.unitsPerMetre;
+	}
 	if (!m_reported) {
 		m_reported = true;
 		OBVR_LOG("Tablet: drawn into the %s eye with the game's projection - %u piece(s), the first's corners at %.0f,%.0f %.0f,%.0f "
