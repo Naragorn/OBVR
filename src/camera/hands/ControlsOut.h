@@ -77,6 +77,8 @@ struct ControlsOutState {
 	bool tabletWasUp = false;
 	vr::TabletCloseState tabletClose;  // the frames its menus close on (vr/TabletClose.h)
 	vr::OverlayReturnState overlayReturn;  // the room's panel back after the tablet (vr/TabletOverlayGate.h)
+	float tabletDrawnShare = 0.0f;  // how much of it was set into the eyes this frame (vr::TabletDrawnShare)
+	bool tabletQuadFull = false;    // and whether whole: the overlay may stand in next frame (vr::TabletOnOverlay)
 	vr::HeldPlace heldSaid;            // the place in the hand as last said (vr::HeldPlace), and its lines
 	bool heldSaidOnce = false;
 	UInt32 heldLinesLeft = 40;

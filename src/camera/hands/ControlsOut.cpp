@@ -341,7 +341,7 @@ void LogHeldPlace(ControlsOutState& state, const vr::HeldPlace& place, const vr:
 
 void PlaceLayerOverlay(ControlsOutState& state, const Config& config, vr::OpenVRBackend& backend,
                        const vr::HandModeResult& hand, const vr::HandModeFrame& frame, const ControlsOutLinks& links,
-                       bool drawnBoth, bool closing);
+                       bool drawnBoth, bool closing, bool lastFull);
 
 // The game's menus and the HUD on the hands: the tablet in the off hand -
 // drawn into the eyes (render/TabletQuad.h) or, when that is off or did not
@@ -354,6 +354,9 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 	render::TabletQuadFrame quad;
 	const float textureWidth = static_cast<float>(links.hudLayer.CaptureWidth());
 	const float textureHeight = static_cast<float>(links.hudLayer.CaptureHeight());
+	// Last frame's tablet set whole (vr::TabletOnOverlay), and this frame's share.
+	const bool lastFull = state.tabletQuadFull;
+	state.tabletDrawnShare = 0.0f;
 	if (hand.menuOnTablet && config.hands.tablet.inScene) {
 		// Unrolled between the hands by the scroll's amount, or in the hand by
 		// itself over the first moments (vr/TabletScroll.h).
@@ -365,7 +368,9 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 			vr::TabletDrawnShare(hand.tabletRolledUp, hand.tabletShare, vr::TabletUnrollShare(state.tabletSeconds));
 		quad = TabletPieces(hand, frame.tablet, textureWidth, textureHeight, share, config.hands.tablet.mirrorDust);
 		quad.texture = links.hudLayer.CaptureTexture();
+		state.tabletDrawnShare = share;
 	}
+	state.tabletQuadFull = quad.valid && state.tabletDrawnShare >= 1.0f;
 	links.headsetRenderer.SetTablet(quad);
 	if (config.hands.tablet.enabled && config.hands.tablet.inScene && game::TopVisibleMenu() == game::kMenuIdMain) {
 		links.headsetRenderer.PrepareTablet(render::GetGameDevice());  // the game's paper, before the first open
@@ -407,7 +412,7 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 	if (hand.menuOnTablet) {
 		LogHeldPlace(state, config.hands.tablet.held, hand, frame);
 	}
-	PlaceLayerOverlay(state, config, backend, hand, frame, links, drawnBoth, closing);
+	PlaceLayerOverlay(state, config, backend, hand, frame, links, drawnBoth, closing, lastFull);
 }
 
 // The layer's overlay this frame: the tablet's on the holding controller
@@ -416,12 +421,17 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 // tablet (vr::StepOverlayReturn).
 void PlaceLayerOverlay(ControlsOutState& state, const Config& config, vr::OpenVRBackend& backend,
                        const vr::HandModeResult& hand, const vr::HandModeFrame& frame, const ControlsOutLinks& links,
-                       bool drawnBoth, bool closing) {
+                       bool drawnBoth, bool closing, bool lastFull) {
 	const float textureWidth = static_cast<float>(links.hudLayer.CaptureWidth());
 	const float textureHeight = static_cast<float>(links.hudLayer.CaptureHeight());
 	const bool onTablet = hand.menuOnTablet && textureWidth > 0.0f && textureHeight > 0.0f;
-	const bool tabletHidden = config.hands.tablet.inScene && drawnBoth;
-	if (vr::StepOverlayReturn(state.overlayReturn, closing || (onTablet && tabletHidden))) {
+	// On the controller only for a whole tablet the eyes missed; nothing of the
+	// gesture's menus before the tablet has them (vr/TabletOverlayGate.h).
+	const bool tabletHidden =
+		!vr::TabletOnOverlay(config.hands.tablet.inScene, state.tabletDrawnShare, drawnBoth, lastFull);
+	const bool gestureHolds =
+		vr::GestureHoldsMenus(frame.menuMode, hand.menuOnTablet, hand.tabletShare >= 0.0f, hand.tabletRolledUp);
+	if (vr::StepOverlayReturn(state.overlayReturn, closing || gestureHolds || (onTablet && tabletHidden))) {
 		links.hudLayer.PrimeNextSubmit();
 	}
 	if (onTablet) {
@@ -430,7 +440,7 @@ void PlaceLayerOverlay(ControlsOutState& state, const Config& config, vr::OpenVR
 		                                         frame.tablet.crop.bottom / textureHeight};
 		links.hudLayer.SetTabletPlacement(backend.HandDeviceIndex(vr::HandDeviceForRole(false, links.rolesSwapped)),
 		                                  hand.menuTransform, hand.tabletWidth, bounds, tabletHidden);
-	} else if (closing) {
+	} else if (closing || gestureHolds) {
 		links.hudLayer.HideTablet();
 	} else if (hand.menuOnWrist) {
 		links.hudLayer.SetWristPlacement(backend.HandDeviceIndex(vr::HandDeviceForRole(hand.menuWristRight, links.rolesSwapped)),

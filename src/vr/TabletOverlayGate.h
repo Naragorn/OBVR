@@ -30,6 +30,31 @@ inline float TabletDrawnShare(bool rolledUp, float scrollShare, float timedShare
 	return scrollShare >= 0.0f ? scrollShare : timedShare;
 }
 
+// Whether the overlay on the holding controller shows the tablet this frame.
+// Drawn into the eyes (`inScene`), the overlay stands in only for a tablet
+// that is fully open (`share`), was set whole last frame (`lastFull`) and
+// still did not reach both eyes (`drawnBoth` false) - a frame the eyes were
+// not captured. Unrolled part of the way, or nothing of it open (the hands
+// together at the gesture's start), the overlay showed the whole page
+// between the hands, for as long as they were held there: it knows no
+// share. Its first frame up the eyes have not had it yet either - and there
+// is nothing to stand in for. As an overlay alone (InScene=0) it always is
+// the tablet, as before.
+inline bool TabletOnOverlay(bool inScene, float share, bool drawnBoth, bool lastFull) {
+	if (!inScene) {
+		return true;
+	}
+	return !drawnBoth && lastFull && share >= 1.0f;
+}
+
+// The gesture owns the menus (`between`: unrolling between the hands or
+// rolling up; `rolledUp`: its close sent) while menu mode is on and the
+// tablet is not placed (`onTablet` false - the page not read yet, or not at
+// all): nothing of the layer shows, the room's panel neither.
+inline bool GestureHoldsMenus(bool menuMode, bool onTablet, bool between, bool rolledUp) {
+	return menuMode && !onTablet && (between || rolledUp);
+}
+
 // The room's panel coming back after frames it was kept off for the tablet
 // (its place hidden, or its menus' close): that first frame the overlay is
 // handed the layer's new picture and kept hidden; it shows from the next.

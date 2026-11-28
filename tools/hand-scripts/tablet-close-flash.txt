@@ -47,6 +47,7 @@ expect HandScript: finished
 count 2 Tablet: closed - the menus' fade kept out of the room and the eyes
 count 2 Hud: back after the tablet - this frame's picture handed over, the overlay shown from the next
 expect Tablet: the scroll sends the menu key (the menus close)
+reject m wide - the tablet
 reject HandScript: WARNING
 
 wait 12
