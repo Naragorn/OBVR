@@ -439,6 +439,26 @@ void TestCostWindowHead() {
 	Check(w.headShown == 0 && w.headAsked == 0 && MeanHeadMs(w) == 0.0, "reset, and no pass: a mean of 0");
 }
 
+void TestCostWindowSteady() {
+	std::printf("The cost line's steady picture\n");
+	MirrorCostWindow w;
+	NoteMirrorTurn(w, 0.2f);
+	NoteMirrorTurn(w, 0.6f);
+	NoteMirrorTurn(w, NAN);
+	NoteMirrorTurn(w, -1.0f);
+	Check(w.turned == 2, "two passes steadied; a turn of no number or below 0 is not one");
+	Check(Near(static_cast<float>(MeanTurnDegrees(w)), 0.4f) && Near(w.turnMostDegrees, 0.6f),
+	      "the glass's turn against the steadied one: mean and most");
+	NoteGlassDraws(w, 2, 1, 0);
+	NoteGlassDraws(w, 2, 0, 1);
+	NoteGlassDraws(w, 0, 0, 0);
+	Check(w.glassDraws == 4 && w.glassOutside == 1 && w.glassUnmapped == 1,
+	      "the glass drawn into 4 eyes, a corner past the picture in 1, not mapped in 1");
+	ResetMirrorCost(w);
+	Check(w.turned == 0 && w.glassDraws == 0 && MeanTurnDegrees(w) == 0.0 && w.turnMostDegrees == 0.0f,
+	      "reset, and nothing steadied: a mean of 0");
+}
+
 void TestTrace() {
 	std::printf("The stage trace\n");
 	MirrorTrace t;
@@ -470,6 +490,7 @@ int main() {
 	TestFailureBudget();
 	TestCostWindow();
 	TestCostWindowHead();
+	TestCostWindowSteady();
 	TestTrace();
 	if (g_failures > 0) {
 		std::printf("%d failing check(s)\n", g_failures);

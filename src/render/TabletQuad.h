@@ -18,6 +18,7 @@
 #include "render/ControllerModels.h"
 #include "render/D3D9Types.h"
 #include "vr/MirrorGlassLogic.h"
+#include "vr/MirrorGlassMap.h"
 
 namespace obvr::render {
 
@@ -74,12 +75,22 @@ struct MirrorPageState {
 	NiPoint3 handPos{0.0f, 0.0f, 0.0f};
 	NiMatrix33 handRot = NiMatrix33::Identity();
 	float unitsPerMetre = 0.0f;
+	// This frame's draws of the glass with a picture laid through its camera
+	// (vr/MirrorGlassMap.h), an eye each: how many, with a corner past the
+	// picture (dark there), and not mapped (drawn plain dark).
+	UInt32 glassDraws = 0;
+	UInt32 glassOutside = 0;
+	UInt32 glassUnmapped = 0;
 };
 
 // The part of the mirror's texture the glass shows: left, top, right, bottom,
-// in 0..1 of the texture (all of it by default).
+// in 0..1 of the texture (all of it by default). With a valid `view` the
+// picture is laid onto the glass through the camera it was rendered with
+// (the steady picture, vr/MirrorGlassMap.h) instead of stuck to its corners;
+// the texture must then be black outside `rect`.
 struct MirrorGlassUv {
 	float rect[4] = {0.0f, 0.0f, 1.0f, 1.0f};
+	vr::MirrorPictureView view;
 };
 
 struct TabletQuadFrame {
@@ -108,6 +119,9 @@ public:
 			state.handPos = m_glassHandPos;
 			state.handRot = m_glassHandRot;
 			state.unitsPerMetre = m_glassUnitsPerMetre;
+			state.glassDraws = m_glassLaid[0];
+			state.glassOutside = m_glassLaid[1];
+			state.glassUnmapped = m_glassLaid[2];
 		}
 		return state;
 	}
@@ -145,6 +159,7 @@ public:
 		m_eyes = 0;
 		m_glassSeen[0] = vr::GlassOnScreen{};
 		m_glassSeen[1] = vr::GlassOnScreen{};
+		m_glassLaid[0] = m_glassLaid[1] = m_glassLaid[2] = 0;
 		++m_serial;
 		return both;
 	}
@@ -168,6 +183,9 @@ private:
 	NiPoint3 m_glassHandPos{0.0f, 0.0f, 0.0f};
 	NiMatrix33 m_glassHandRot = NiMatrix33::Identity();
 	float m_glassUnitsPerMetre = 0.0f;
+	// This frame's glass draws laid through the picture's camera: all, with a
+	// corner past the picture, not mapped (MirrorPageState).
+	UInt32 m_glassLaid[3] = {0, 0, 0};
 	UInt32 m_eyes = 0;  // bit 1 left, bit 2 right
 	// The frame's count (TakeDrawnBoth), and the world projection of its
 	// first eye, for the second when the 2D pass between them set another.

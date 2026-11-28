@@ -508,7 +508,39 @@ struct MirrorCostWindow {
 	std::uint32_t headAsked = 0;
 	std::uint32_t headShown = 0;
 	double headMs = 0.0;
+	// The steady picture (vr/MirrorSteadyLogic.h): the held glass's turn
+	// against the steadied one a pass, and how the glass's draws read the
+	// picture (vr/MirrorGlassMap.h): a corner past it, or not mapped at all.
+	std::uint32_t turned = 0;
+	double turnSumDegrees = 0.0;
+	float turnMostDegrees = 0.0f;
+	std::uint32_t glassDraws = 0;
+	std::uint32_t glassOutside = 0;
+	std::uint32_t glassUnmapped = 0;
 };
+
+// One steadied pass: how far the held glass stood turned from the steadied
+// one. A turn of no number, or below 0, is none.
+inline void NoteMirrorTurn(MirrorCostWindow& w, float degrees) {
+	if (!(degrees >= 0.0f) || !(degrees < 1.0e6f)) {
+		return;
+	}
+	++w.turned;
+	w.turnSumDegrees += degrees;
+	w.turnMostDegrees = degrees > w.turnMostDegrees ? degrees : w.turnMostDegrees;
+}
+
+// One frame's draws of the glass with the picture (an eye each), and of them
+// the ones with a corner past the picture and the ones not mapped.
+inline void NoteGlassDraws(MirrorCostWindow& w, std::uint32_t draws, std::uint32_t outside, std::uint32_t unmapped) {
+	w.glassDraws += draws;
+	w.glassOutside += outside;
+	w.glassUnmapped += unmapped;
+}
+
+inline double MeanTurnDegrees(const MirrorCostWindow& w) {
+	return w.turned > 0 ? w.turnSumDegrees / static_cast<double>(w.turned) : 0.0;
+}
 
 // One pass's head switch: shown or refused, and what the switch cost.
 inline void NoteMirrorHead(MirrorCostWindow& w, bool shown, double ms) {

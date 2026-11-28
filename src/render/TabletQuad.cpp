@@ -18,17 +18,28 @@
 namespace obvr::render {
 namespace {
 
+// The texture coordinate has three parts: u and v, and q for the mirror's
+// glass laid through its picture's camera (vr/MirrorGlassMap.h); 1 for every
+// other piece, where the device ignores it.
 struct TabletVertex {
 	float x, y, z, rhw;
 	UInt32 colour;
-	float u, v;
+	float u, v, q;
 };
-static_assert(sizeof(TabletVertex) == 28, "XYZRHW|DIFFUSE|TEX1 is a 28-byte vertex");
-// D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1.
-constexpr UInt32 kFvfXyzRhwDiffuseTex1 = 0x004 | 0x040 | 0x100;
+static_assert(sizeof(TabletVertex) == 32, "XYZRHW|DIFFUSE|TEX1|TEXCOORDSIZE3(0) is a 32-byte vertex");
+// D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE3(0).
+constexpr UInt32 kFvfXyzRhwDiffuseTex1 = 0x004 | 0x040 | 0x100 | 0x10000;
 
 // D3DTA_TEXTURE: the stage's texture as its argument (d3d9types.h).
 constexpr UInt32 kTaTexture = 2;
+// The laid glass's states (d3d9types.h): D3DTSS_TEXTURETRANSFORMFLAGS with
+// D3DTTFF_COUNT3 | D3DTTFF_PROJECTED (u and v divided by q per pixel), and
+// D3DTADDRESS_BORDER with D3DSAMP_BORDERCOLOR black past the texture's edge.
+constexpr UInt32 kTssTextureTransformFlags = 24;
+constexpr UInt32 kTtffDisable = 0;
+constexpr UInt32 kTtffCount3Projected = 3 | 256;
+constexpr UInt32 kTextureAddressBorder = 4;
+constexpr UInt32 kSamplerBorderColor = 4;
 
 // The eye's viewport: the device's, or the eye's half on a single-pass frame.
 bool EyeViewport(void* device, const ControllerModels::WorldView& view, d3d9::Viewport& viewport) {
@@ -59,7 +70,7 @@ bool ProjectCorners(const TabletQuadPiece& piece, UInt32 colour, const Controlle
 		                       static_cast<float>(viewport.height), viewport.minZ, viewport.maxZ, pixel)) {
 			return false;
 		}
-		out[i] = TabletVertex{pixel.x, pixel.y, pixel.depth, pixel.rhw, colour, piece.u[i], piece.v[i]};
+		out[i] = TabletVertex{pixel.x, pixel.y, pixel.depth, pixel.rhw, colour, piece.u[i], piece.v[i], 1.0f};
 	}
 	return true;
 }
@@ -168,8 +179,9 @@ void* MakeDustTexture(void* device) {
 	return texture;
 }
 
-// What a piece is drawn with.
-enum class PieceKind : UInt8 { Plain, Layer, Paper, Dust, Glass };
+// What a piece is drawn with. GlassLaid: the reflection laid through its
+// picture's camera, with projective coordinates.
+enum class PieceKind : UInt8 { Plain, Layer, Paper, Dust, Glass, GlassLaid };
 
 // The reflection under the glass: a real mirror gives back about 90 percent
 // (docs/mirror-spec.md 7), opaque.
@@ -195,6 +207,53 @@ vr::GlassOnScreen GlassSeenIn(const TabletVertex (&corners)[4], const d3d9::View
 	s.viewportHeight = static_cast<float>(viewport.height);
 	s.eye = eye;
 	return s;
+}
+
+// The glass piece with the reflection. Without a picture's camera (MirrorSteady
+// 0) the picture is stuck to its corners, flipped as a mirror shows it
+// (vr::GlassTexCoords). With one, each corner as the glass stands now is
+// projected through that camera (vr::MapGlassCorners) and the piece drawn
+// projectively; a glass that cannot be mapped is drawn plain dark instead,
+// never with a picture wrapped round. `laid` counts the draws with a camera:
+// all, with a corner past the picture, not mapped.
+void LayGlass(const TabletQuadPiece& piece, const MirrorGlassUv& uv, const ControllerModels::WorldView& view,
+              TabletVertex (&v)[4], PieceKind& kind, void*& texture, UInt32 (&laid)[3]) {
+	if (!uv.view.valid) {
+		float u[4];
+		float w[4];
+		vr::GlassTexCoords(uv.rect, u, w);
+		for (int corner = 0; corner < 4; ++corner) {
+			v[corner].u = u[corner];
+			v[corner].v = w[corner];
+		}
+		return;
+	}
+	const ControllerModels::WorldController& hand = view.hands[1];
+	NiPoint3 world[4];
+	for (int i = 0; i < 4; ++i) {
+		world[i] = vr::GlassCornerInWorld(hand.pos, hand.rot, view.unitsPerMetre, piece.corners[i]);
+	}
+	float s[4];
+	float t[4];
+	float q[4];
+	const vr::GlassMap map = vr::MapGlassCorners(uv.view, world, s, t, q);
+	++laid[0];
+	if (map != vr::GlassMap::Inside && map != vr::GlassMap::Outside) {
+		++laid[2];
+		kind = PieceKind::Plain;
+		texture = nullptr;
+		for (TabletVertex& corner : v) {
+			corner.colour = piece.colour;
+		}
+		return;
+	}
+	laid[1] += map == vr::GlassMap::Outside ? 1u : 0u;
+	kind = PieceKind::GlassLaid;
+	for (int corner = 0; corner < 4; ++corner) {
+		v[corner].u = s[corner];
+		v[corner].v = t[corner];
+		v[corner].q = q[corner];
+	}
 }
 
 // The pieces over the eye's picture, the device's states captured before and
@@ -238,6 +297,7 @@ bool DrawPieces(void* device, void* const* textures, const PieceKind* kinds, con
 	setStage(device, 1, d3d9::kTssAlphaOp, d3d9::kTopDisable);
 	setSampler(device, 0, d3d9::kSamplerAddressU, d3d9::kTextureAddressClamp);
 	setSampler(device, 0, d3d9::kSamplerAddressV, d3d9::kTextureAddressClamp);
+	setSampler(device, 0, kSamplerBorderColor, 0xFF000000u);
 	setSampler(device, 0, d3d9::kSamplerMagFilter, d3d9::kTexFilterLinear);
 	setSampler(device, 0, d3d9::kSamplerMinFilter, d3d9::kTexFilterLinear);
 	setState(device, d3d9::kRenderStateZEnable, 1);
@@ -263,9 +323,15 @@ bool DrawPieces(void* device, void* const* textures, const PieceKind* kinds, con
 	setStage(device, 0, d3d9::kTssAlphaArg2, d3d9::kTaDiffuse);
 	for (UInt32 i = 0; i < count; ++i) {
 		const bool onPaper = kinds[i] == PieceKind::Paper;
-		const bool glass = kinds[i] == PieceKind::Glass;
+		const bool laid = kinds[i] == PieceKind::GlassLaid;
+		const bool glass = kinds[i] == PieceKind::Glass || laid;
 		const UInt32 argument = kinds[i] == PieceKind::Plain ? d3d9::kTaDiffuse : kTaTexture;
 		const UInt32 op = onPaper || glass ? d3d9::kTopModulate : d3d9::kTopSelectArg1;
+		// The laid glass divides u and v by q per pixel, and reads black past
+		// the texture's edge (the texture is black outside its picture too).
+		setStage(device, 0, kTssTextureTransformFlags, laid ? kTtffCount3Projected : kTtffDisable);
+		setSampler(device, 0, d3d9::kSamplerAddressU, laid ? kTextureAddressBorder : d3d9::kTextureAddressClamp);
+		setSampler(device, 0, d3d9::kSamplerAddressV, laid ? kTextureAddressBorder : d3d9::kTextureAddressClamp);
 		setTexture(device, 0, textures[i]);
 		setStage(device, 0, d3d9::kTssColorOp, op);
 		// The reflection: its colour under the glass's tint, opaque whatever
@@ -357,15 +423,8 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 		if (projected && piece.glass) {
 			glassSeen = GlassSeenIn(vertices[count], viewport, view.eyePos);
 		}
-		if (reflects) {
-			// Stage 2's picture on the glass, flipped as a mirror shows it (vr::GlassTexCoords).
-			float u[4];
-			float v[4];
-			vr::GlassTexCoords(m_glassUv.rect, u, v);
-			for (int corner = 0; corner < 4; ++corner) {
-				vertices[count][corner].u = u[corner];
-				vertices[count][corner].v = v[corner];
-			}
+		if (projected && reflects) {
+			LayGlass(piece, m_glassUv, view, vertices[count], kinds[count], textures[count], m_glassLaid);
 		}
 		++count;
 	}

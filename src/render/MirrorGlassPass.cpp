@@ -1,5 +1,8 @@
 #include "render/MirrorGlassPass.h"
 
+#include <cstdint>
+#include <limits>
+
 #include "core/Config.h"
 #include "core/Log.h"
 #include "game/GameCamera.h"
@@ -19,6 +22,8 @@
 #include "render/SceneRenderHook.h"
 #include "render/WaterReprojection.h"
 #include "vr/MirrorGlassLogic.h"
+#include "vr/MirrorGlassMap.h"
+#include "vr/MirrorSteadyLogic.h"
 
 namespace obvr::render {
 namespace {
@@ -40,6 +45,11 @@ struct MirrorTarget {
 	void* surface = nullptr;
 	UInt32 side = 0;
 	UInt32 format = 0;
+	// The texture black outside this picture's size (the laid glass reads
+	// black past its picture, vr/MirrorGlassMap.h): made black whole, then
+	// blackened outside each new size.
+	UInt32 blackOutsideWidth = 0;
+	UInt32 blackOutsideHeight = 0;
 };
 
 struct MirrorState {
@@ -47,6 +57,10 @@ struct MirrorState {
 	vr::MirrorFailures failures;
 	vr::MirrorCostWindow cost;
 	vr::MirrorTrace trace;
+	// The steadied glass (vr/MirrorSteadyLogic.h) and the clock it steps on:
+	// the real one, the game's stands still in a paused menu.
+	vr::MirrorSteadyState steady;
+	long long steadyTicks = 0;
 	bool handedIn = false;    // the glass shows target.texture
 	bool wantsBones = false;  // for the next single-pass render (MirrorWantsBones)
 	bool onSaid = false;
@@ -119,6 +133,8 @@ bool EnsureTarget(MirrorState& s, HeadsetRenderer& renderer, void* device, UInt3
 	t.device = device;
 	t.side = side;
 	t.format = format;
+	t.blackOutsideWidth = 0;
+	t.blackOutsideHeight = 0;
 	OBVR_LOG("Mirror: the reflection's texture made, %ux%u (format %u)", side, side, format);
 	return true;
 }
@@ -126,19 +142,66 @@ bool EnsureTarget(MirrorState& s, HeadsetRenderer& renderer, void* device, UInt3
 // What one frame with the page up reads: the glass in the world, the camera
 // behind it, and the inputs of the decision.
 struct MirrorFrame {
-	NiPoint3 corners[4] = {};
+	NiPoint3 corners[4] = {};   // the glass rendered through: the steadied one with its margin, or the held one
 	vr::GlassPlane glass;
 	vr::MirrorCamera camera;
 	vr::MirrorPassInputs inputs;
 	float longSidePixels = 0.0f;
+	bool steadied = false;     // MirrorSteady on: the picture is laid through its camera
+	float turnDegrees = 0.0f;  // the held glass's turn from the steadied one
 };
 
-MirrorFrame ReadMirrorFrame(const MirrorPageState& page, bool settingOn, bool stopped, bool eyesCaptured) {
+// Seconds since the last frame with the page up, on the real clock; none
+// (not a number) for the first.
+float SteadySeconds(MirrorState& s) {
+	static const long long ticksPerSecond = ReadPerformanceFrequency();
+	const long long now = ReadPerformanceCounter();
+	const float seconds = s.steadyTicks != 0 && ticksPerSecond > 0
+	                          ? static_cast<float>(static_cast<double>(now - s.steadyTicks) / static_cast<double>(ticksPerSecond))
+	                          : std::numeric_limits<float>::quiet_NaN();
+	s.steadyTicks = now;
+	return seconds;
+}
+
+// The glass as held this frame through the steady filter (vr/MirrorSteadyLogic.h),
+// grown by the margin: what the reflection is rendered through. Off, or no
+// glass to steady, the held glass as it is.
+void SteadyTheGlass(MirrorState& s, MirrorFrame& f, UInt32 setting) {
+	const vr::MirrorSteadyTuning tuning = vr::MirrorSteadyTuningFor(static_cast<std::int32_t>(setting));
+	const float seconds = SteadySeconds(s);
+	if (!f.glass.valid) {
+		return;
+	}
+	const vr::GlassFrame held = vr::GlassFrameOf(f.glass);
+	vr::GlassFrame steady;
+	vr::StepMirrorSteady(s.steady, held, seconds, tuning, steady);
+	if (!tuning.on) {
+		return;
+	}
+	NiPoint3 grown[4];
+	vr::SteadyGlassCorners(f.corners, held, steady, tuning.margin, grown);
+	const vr::GlassPlane plane = vr::GlassPlaneOf(grown);
+	if (!plane.valid) {
+		return;
+	}
+	for (int i = 0; i < 4; ++i) {
+		f.corners[i] = grown[i];
+	}
+	f.glass = plane;
+	f.steadied = true;
+	f.turnDegrees = vr::GlassTurnDegrees(held.rot, steady.rot);
+	f.longSidePixels *= 1.0f + 2.0f * tuning.margin;
+}
+
+MirrorFrame ReadMirrorFrame(MirrorState& s, const MirrorPageState& page, bool settingOn, bool eyesCaptured,
+                            UInt32 steadySetting) {
 	MirrorFrame f;
 	for (int i = 0; i < 4; ++i) {
 		f.corners[i] = vr::GlassCornerInWorld(page.handPos, page.handRot, page.unitsPerMetre, page.corners[i]);
 	}
 	f.glass = vr::GlassPlaneOf(f.corners);
+	f.longSidePixels = vr::GlassLongSidePixels(page.eyes);
+	SteadyTheGlass(s, f, steadySetting);
 	NiPoint3 eye{0.0f, 0.0f, 0.0f};
 	if (vr::CyclopeanEye(page.eyes, eye)) {
 		f.camera = vr::MirrorCameraFor(f.glass, f.corners, eye);
@@ -147,10 +210,9 @@ MirrorFrame ReadMirrorFrame(const MirrorPageState& page, bool settingOn, bool st
 	f.inputs.loading = game::LoadingThreadActive() ||
 	                   (game::IsMenuMode() && game::TopVisibleMenu() == game::kMenuIdLoading);
 	f.inputs.eyesCaptured = eyesCaptured;
-	f.inputs.stopped = stopped;
+	f.inputs.stopped = s.failures.stopped;
 	f.inputs.view = f.camera.view;
 	f.inputs.inView = vr::GlassInView(page.eyes[0]) || vr::GlassInView(page.eyes[1]);
-	f.longSidePixels = vr::GlassLongSidePixels(page.eyes);
 	return f;
 }
 
@@ -270,6 +332,33 @@ bool CopyToGlass(void* device, const MirrorTarget& t, vr::MirrorPictureSize size
 	return !d3d11::Failed(result);
 }
 
+// The texture black outside the picture just copied, so the laid glass reads
+// black wherever it reaches past the picture (vr/MirrorGlassMap.h): two fills,
+// only when the picture shrank in a direction since the texture was last black
+// outside it (the whole texture is black when made).
+void BlackOutsidePicture(void* device, MirrorTarget& t, vr::MirrorPictureSize size) {
+	if (size.width >= t.blackOutsideWidth && size.height >= t.blackOutsideHeight) {
+		t.blackOutsideWidth = size.width;
+		t.blackOutsideHeight = size.height;
+		return;
+	}
+	auto colorFill = d3d9::Method<d3d9::ColorFillFn>(device, d3d9::kDeviceColorFill);
+	if (colorFill == nullptr || t.surface == nullptr) {
+		return;
+	}
+	const SInt32 side = static_cast<SInt32>(t.side);
+	const SInt32 w = static_cast<SInt32>(size.width);
+	const SInt32 h = static_cast<SInt32>(size.height);
+	const d3d9::Rect right{w, 0, side, side};
+	const d3d9::Rect below{0, h, w, side};
+	const bool done = (w >= side || !d3d11::Failed(colorFill(device, t.surface, &right, 0xFF000000u))) &&
+	                  (h >= side || !d3d11::Failed(colorFill(device, t.surface, &below, 0xFF000000u)));
+	if (done) {
+		t.blackOutsideWidth = size.width;
+		t.blackOutsideHeight = size.height;
+	}
+}
+
 // The bone lock's work in the frame's single-pass capture and the mirror's
 // replace, marked as one span, so a capture's bone_lock spans stay per frame.
 void MarkBoneLock(const perf::EventContext& context) {
@@ -352,6 +441,10 @@ MirrorPassResult RenderMirror(MirrorState& s, HeadsetRenderer& renderer, const M
 		if (copied) {
 			MirrorGlassUv uv;
 			vr::MirrorGlassUvFor(out.size, s.target.side, uv.rect);
+			BlackOutsidePicture(device, s.target, out.size);  // after every copy: MirrorSteady may come on
+			if (f.steadied) {
+				uv.view = vr::PictureViewOf(f.camera, uv.rect);
+			}
 			renderer.SetMirrorGlass(s.target.texture, nullptr, uv);
 			s.handedIn = true;
 		}
@@ -367,17 +460,20 @@ MirrorPassResult RenderMirror(MirrorState& s, HeadsetRenderer& renderer, const M
 }
 
 // The cost line (docs/mirror-spec.md 12, "Reading the cost line").
-void LogMirrorCost(const vr::MirrorCostWindow& w, UInt32 side) {
+void LogMirrorCost(const vr::MirrorCostWindow& w, UInt32 side, UInt32 steady) {
 	const auto skipped = [&w](vr::MirrorSkip k) { return w.skipped[static_cast<int>(k)]; };
 	OBVR_LOG("Mirror: %u frames up - %u passes, %.2f ms mean, %.2f ms worst (CPU), %u draws a pass, picture %ux%u of "
 	         "%u; skipped %u (out of view %u, facing away %u, edge-on %u, eyes not captured %u, loading %u, no glass "
-	         "%u, stopped %u, switched off %u); head shown in %u of %u passes (%.3f ms a pass)",
+	         "%u, stopped %u, switched off %u); head shown in %u of %u passes (%.3f ms a pass); steady %u: the glass "
+	         "turned %.2f degrees mean, %.2f most from the steadied in %u passes, laid on %u eye draws, a corner past "
+	         "the picture in %u, not mapped in %u",
 	         w.frames, w.passes, MeanMs(w), w.worstMs,
 	         w.passes > 0 ? static_cast<UInt32>(w.draws / w.passes) : 0u, w.width, w.height, side,
 	         vr::SkippedTotal(w), skipped(vr::MirrorSkip::OutOfView), skipped(vr::MirrorSkip::FacingAway),
 	         skipped(vr::MirrorSkip::EdgeOn), skipped(vr::MirrorSkip::NotCaptured), skipped(vr::MirrorSkip::Loading),
 	         skipped(vr::MirrorSkip::NoGlass), skipped(vr::MirrorSkip::Stopped), skipped(vr::MirrorSkip::Off),
-	         w.headShown, w.headAsked, vr::MeanHeadMs(w));
+	         w.headShown, w.headAsked, vr::MeanHeadMs(w), steady, vr::MeanTurnDegrees(w),
+	         static_cast<double>(w.turnMostDegrees), w.turned, w.glassDraws, w.glassOutside, w.glassUnmapped);
 }
 
 }  // namespace
@@ -387,6 +483,8 @@ void RunMirrorGlassPass(HeadsetRenderer& renderer, bool stereoFrame) {
 	const MirrorPageState page = renderer.MirrorPage();
 	if (!page.up) {
 		s.wantsBones = false;
+		s.steady = vr::MirrorSteadyState{};  // the next time up starts from the glass as it is
+		s.steadyTicks = 0;
 		DarkGlass(s, renderer);
 		return;
 	}
@@ -394,7 +492,8 @@ void RunMirrorGlassPass(HeadsetRenderer& renderer, bool stereoFrame) {
 	const bool settingOn = t.mirror && t.mirrorWorld;
 	s.wantsBones = vr::MirrorWantsBoneCapture(true, settingOn, s.failures.stopped);
 	const bool eyesCaptured = stereoFrame && renderer.BothEyesCaptured() && BonesKeptThisFrame();
-	const MirrorFrame f = ReadMirrorFrame(page, settingOn, s.failures.stopped, eyesCaptured);
+	const MirrorFrame f = ReadMirrorFrame(s, page, settingOn, eyesCaptured, t.mirrorSteady);
+	vr::NoteGlassDraws(s.cost, page.glassDraws, page.glassOutside, page.glassUnmapped);
 	const vr::MirrorSkip skip = vr::DecideMirrorPass(f.inputs);
 	MirrorPassResult result;
 	if (skip == vr::MirrorSkip::None) {
@@ -412,8 +511,11 @@ void RunMirrorGlassPass(HeadsetRenderer& renderer, bool stereoFrame) {
 	if (result.head.asked) {
 		vr::NoteMirrorHead(s.cost, result.head.plan.refusal == game::MirrorHeadRefusal::None, result.head.ms);
 	}
+	if (result.rendered && f.steadied) {
+		vr::NoteMirrorTurn(s.cost, f.turnDegrees);
+	}
 	if (vr::NoteMirrorFrame(s.cost, counted, result.ms, result.draws, result.size)) {
-		LogMirrorCost(s.cost, s.target.side);
+		LogMirrorCost(s.cost, s.target.side, t.mirrorSteady);
 		vr::ResetMirrorCost(s.cost);
 	}
 }

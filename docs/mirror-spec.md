@@ -730,3 +730,132 @@ head casts no shadow in the mirror either, as before.
   `Head cull: at the mark` line at `mirror-head` ("culled this render") and the eye dumps settle it.
 - The step back under a bowed head (section 4): unchanged; a head bowed over a low glass sits up to
   11 cm in front of its neck in the mirror. Headset.
+
+### 13.3 A steady picture
+
+Why it shook [D]: the glass is held in a hand. A hand's tremor turns the glass by a few tenths of a
+degree at 8 to 12 Hz [G: the physiological tremor's known figures; the owner's log carries no glass
+pose over frames, only the three trace lines, which agree to 0.1 unit], and a mirror turns its
+reflection by twice the glass's turn. On top, the picture is rendered for last frame's glass and
+drawn on this frame's (12.1): every move of the hand shifts the picture on the glass by one frame's
+move.
+
+The design as built - the projective variant, not the lesser one:
+
+1. **The glass steadied** (vr/MirrorSteadyLogic.h `StepMirrorSteady`, called from
+   render/MirrorGlassPass.cpp:169 `SteadyTheGlass`). The held glass's centre and turn (its plane's
+   right, up and normal) go through a One Euro filter (Casiez, Roussel, Vogel, CHI 2012): a low-pass
+   whose cut-off rises with the filtered speed, so a still hand's tremor is held back and a
+   deliberate move is followed. Position and turn each have their speed; the turn is filtered as a
+   share of the axis-angle turn from the steadied glass to the held one. It works in the game's
+   world on the glass itself: not relative to the head (the head's own moves are real and the
+   reflection must follow them, that is its parallax), and not on the controller's origin (a turn of
+   the wrist moves the glass's centre). The room would do as well while standing, but its pose is
+   not handed to the renderer; walking and turning by the stick are fast moves the filter follows
+   at its raised cut-off, and a jump - more than 20 units (29 cm) or 30 degrees in a frame, a
+   teleport, a load, a snap turn - is taken at once. A frame time of no number, zero, negative or
+   over a quarter of a second starts the filter over from the glass as it is. The clock is the real
+   one (the game's stands still in a paused menu). The page going down forgets the filter.
+2. **The reflection rendered through the steadied glass with a margin** (`SteadyGlassCorners`):
+   the steadied glass's corners grown away from its centre by 1 + 2 x margin, and the mirror camera
+   (`MirrorCameraFor`, unchanged) reflected in the steadied plane, its frustum through the grown
+   corners. The picture's size grows by the same share, up to MirrorPixels.
+3. **The picture laid onto the glass as it is when drawn** (vr/MirrorGlassMap.h `MapGlassCorners`,
+   render/TabletQuad.cpp:219 `LayGlass`). The pass hands the camera and frustum it rendered with to
+   the glass with the texture (`MirrorGlassUv::view`, MirrorGlassPass.cpp:446). At the next frame's
+   draws, each eye's draw projects the glass's four corners as they stand then through that camera,
+   and those are the corners' texture coordinates. The glass and the picture's image plane are no
+   longer parallel, so the mapping is projective: each corner gets (u q, v q, q), q its depth in the
+   camera over the four's mean; the vertex grew a third texture coordinate (32 bytes, FVF
+   TEXCOORDSIZE3(0)), and the glass's draw sets D3DTSS_TEXTURETRANSFORMFLAGS to COUNT3 | PROJECTED
+   (TabletQuad.cpp:332), which the fixed-function pixel pipeline honours for pre-transformed
+   vertices too (Microsoft's D3DTEXTURETRANSFORMFLAGS page; DXVK's fixed-function shader takes the
+   third coordinate as the divisor, read through DeepWiki). Per pixel the device then reads exactly
+   where that point of the glass projects (mirror_glass_map_test: the diagonal's middle exact,
+   plain coordinates 0.5 percent off for a 3 degree turn). So the reflected world stands where it
+   was rendered while the glass's frame shakes in the hand, like a real, slightly heavy mirror, and
+   the frame of lateness the glass had goes with the same step: the picture no longer rides on last
+   frame's glass.
+4. **Never garbage past the picture**: the glass's sampler reads black past the texture's edge
+   (D3DTADDRESS_BORDER, border colour black, TabletQuad.cpp:300), and the texture is black outside
+   the picture (made black, and blackened outside a picture that shrank, MirrorGlassPass.cpp:339:
+   two ColorFills only when the size shrinks). A corner at or behind the camera, or of no number,
+   would wrap a projective picture round: that glass is drawn plain dark instead.
+
+What stays a frame late: the eye. The picture is made from the eye of the frame before; the glass
+is where it is. A head move of a frame shows as a frame-old parallax in the reflection [D].
+
+**The constants [G]** and the one setting on them, `[Tablet] MirrorSteady` (0 to 100, default 60):
+
+| | 1 | 60 (default) | 100 | Why |
+| --- | --- | --- | --- | --- |
+| Still cut-off | 7.8 Hz | 1.33 Hz | 0.4 Hz | evenly on a log scale from 8 to 0.4 Hz; at 1.33 Hz a 10 Hz tremor comes through about a seventh (first order, fc/f) [D] |
+| Margin, each edge | 4.1 % | 7.6 % | 10 % | over the lags below for a 21-unit glass [D] |
+| Turn's speed coefficient | 0.15 Hz per degree a second | | | a constant turn lags at most 1/(2 pi 0.15) = 1.1 degrees, however fast [D] |
+| Move's speed coefficient | 0.3 Hz per unit a second | | | a constant move lags at most 0.53 units (8 mm) [D] |
+| The speeds' own low-pass | 1 Hz | | | the filter paper's value: a tremor's speed swings both ways and averages out |
+
+Measured in the unit test (mirror_steady_test, 90 Hz frames, the default): a 0.3 degree, 10 Hz
+tremor comes out at 0.045 degrees (a sixth or less) and its 1 mm of shake at 0.14 mm; a 90 degree a
+second turn lags 0.62 degrees after half a second and settles where it was turned to; a half metre
+a second move lags 0.29 units. 0 is off: no filter, no margin, the picture stuck to the glass as in
+stage 2 (the vertex's third coordinate is then 1 and ignored).
+
+On the settings page, "Laser & wrist menus", after "Live mirror": **"Steady mirror"** - "Keeps the
+mirror's picture calm while your hand shakes. 0 lets it shake with your hand" (0 to 100 in steps of
+10). OBVR.ini documents it; `tests/settings-rows.txt` is re-pinned.
+
+What it costs [D]: per frame with the page up a filter step (a few dozen float operations); per
+eye's draw of the glass four corner projections; two ColorFills of the texture's edge strips when
+the picture shrinks; the picture up to (1 + 2 x margin) squared larger - 1.33 times the pixels at
+the default, where 12.9 shows the pixels do not move the cost, the draws do.
+
+### 13.4 Reading the new parts of the cost line
+
+    Mirror: 90 frames up - ... switched off 0); head shown in 88 of 88 passes (0.031 ms a pass); steady 60: the glass turned 0.38 degrees mean, 1.20 most from the steadied in 88 passes, laid on 176 eye draws, a corner past the picture in 0, not mapped in 0
+
+(the numbers made up). "head shown": the passes whose head switch went through, and the switch's
+own time both ways (13.1). "the glass turned": the angle between the held glass and the steadied
+one, a pass each - the tremor the reflection no longer turns with is about twice it; a mean near
+the expected few tenths says the filter holds the tremor, a "most" of several degrees with corners
+past the picture says the margin is too small for the moves made. "laid on": the eyes' draws of
+the glass through the picture's camera (two a frame); "a corner past the picture" are the ones
+with a dark edge; "not mapped" the ones drawn plain dark (a corner behind the camera).
+
+### 13.5 Tests
+
+Written first, run red (stub headers, or the new parts stubbed), then green (Windows, MSVC):
+
+| Test | Red | Green |
+| --- | --- | --- |
+| `mirror_head_test` (new, game/MirrorHeadLogic.h): shown with both bits, someone else's bit, CullHiddenHead=0, no skin; every refusal and its order (no body, body not drawn, no head, not collapsed, a world scale of no number, local scale 0 / no number / endless, too many skins); the skins' list with duplicates and overflow; the stale stamp | 21 of 25 checks failing | 25 |
+| `mirror_steady_test` (new, vr/MirrorSteadyLogic.h): the setting's tuning and clamp; the turn between frames; off, the first frame; a still hand's tremor; a deliberate turn and move; jumps of place, turn and a centre of no number; a frame time of no number, zero, backwards, half a second, endless; the corners with the margin | 29 of 43 failing | 43 |
+| `mirror_glass_map_test` (new, vr/MirrorGlassMap.h): the view; the same glass on the picture's corners, flipped; the margin; a glass turned 3 degrees, projective exact, plain off; past the picture, behind the camera, at it, of no number, no view | 13 of 20 failing | 20 |
+| `mirror_glass_test`: the cost window's head, turn and glass draws | 3, then 4 failing | 122 |
+| `config_test`: MirrorSteady's default, 0, clamps, a value as it is | 3 failing | green |
+| `settings_list_test`: the pinned rows with "Steady mirror" | 1 failing | green, re-pinned |
+
+The whole suite: 336 of 338 pass; the two that fail are the known ones (`water_visual_harness`,
+`grass_flicker_map`: no numpy on this machine). `function_sizes_test` green, no row raised.
+Scenario `tools/hand-scripts/tablet-mirror-world.txt`: the `mirror-head` mark (the glass at the
+face), two shaking stretches (half a degree each way on two axes, ten times a second, three seconds
+each, MirrorSteady 60 then 0) with marks `mirror-shake` and `mirror-shake-off`, and the cost line's
+new parts expected. **Written, not run** (Linux harness).
+
+### 13.6 Not verified, and what settles each
+
+- **The head in the mirror and not in the eyes**: 13.2.
+- **The projective glass on the owner's driver and under DXVK**: read in the documentation and
+  DXVK's source description, not seen. Settled by the eye dump at `mirror-shake` (the room in the
+  glass undistorted along the diagonal) and the headset; a picture bent along the glass's diagonal,
+  or the glass reading only one corner of the picture, would mean the projected flag is not taken
+  for these vertices.
+- **The filter's feel**: the constants are guesses from known tremor figures. The cost line's
+  "turned" mean and most from the owner's next run, with "a corner past the picture", say whether
+  the margin and the cut-off fit; MirrorSteady is the one knob.
+- **Walking and turning with the mirror up**: followed at the raised cut-off by the reading of the
+  filter; a lag that sends corners past the picture while walking would show in "a corner past the
+  picture". A filter in the room (the tracking space) would not see walking at all; it needs the
+  room's pose handed to the renderer (small), if the run asks for it.
+- **The texture's edge strips**: the ColorFill on a default-pool render target is read in the D3D9
+  rules, not seen; a smeared edge where the glass reaches past the picture would mean it failed.

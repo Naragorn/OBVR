@@ -233,6 +233,7 @@ Laser & wrist menus|Hand menu in the world|Your finger shows in front of it. Off
 Laser & wrist menus|Mirror on the hand menu|A mirror tab at the end of your hand menu's tabs|Tablet|Mirror|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Dust on the mirror|A light layer of dust on the mirror's glass|Tablet|MirrorDust|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Live mirror|The mirror shows the room behind you. Off, its glass stays dark|Tablet|MirrorWorld|||0|0|1|1|0|0|1|1|1|0|0|RW
+Laser & wrist menus|Steady mirror|Keeps the mirror's picture calm while your hand shakes. 0 lets it shake with your hand|Tablet|MirrorSteady|||1|0|100|10|0|0|1|60|60|0|0|RW
 Laser & wrist menus|Hands stay in menus|Keep your hands in inventory, chests, map, books and talks. Only the pause menu hides them|Hands|HandsInMenus|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Menu buzz|Feel a tick as the laser crosses a button and a click when you press|Hands|MenuHaptics|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|VR keyboard|Type names for your hero, spells and potions on SteamVR's keyboard|Hands|VrKeyboard|||0|0|1|1|0|0|1|1|1|0|0|RW
