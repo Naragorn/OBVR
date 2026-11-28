@@ -28,8 +28,8 @@ UInt32 g_summaryReused = 0;
 
 void __cdecl Hooked() {
 	const UInt32 call = CurrentSceneCall();
-	const ActorShadowPlan plan =
-		PlanActorShadows(g_state, GetConfig().shareActorShadows, CurrentScenePassIndex(), call);
+	const ActorShadowPlan plan = PlanActorShadows(g_state, GetConfig().shareActorShadows, CurrentScenePassIndex(), call,
+	                                              MirrorRenderRunning());
 	if (plan == ActorShadowPlan::Draw) {
 		g_original();
 	} else if (!g_firstReuseLogged) {

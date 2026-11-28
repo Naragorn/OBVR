@@ -174,6 +174,10 @@ bool ReadGameCameraFrustum(NiFrustum& out);
 // game has a world.
 float* MainCameraPort();
 
+// The main camera itself (the scene graph's NiCamera, +0xDC), the object the
+// world render reads its view from; null before the game has a world.
+NiAVObject* MainCamera();
+
 // Writes one back. False when the camera cannot be reached.
 bool WriteGameCameraFrustum(const NiFrustum& frustum);
 

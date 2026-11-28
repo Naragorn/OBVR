@@ -529,6 +529,7 @@ constexpr UInt32 kTssAlphaOp = 4;
 constexpr UInt32 kTssAlphaArg1 = 5;
 constexpr UInt32 kTopDisable = 1;
 constexpr UInt32 kTopSelectArg1 = 2;
+constexpr UInt32 kTopSelectArg2 = 3;  // D3DTOP_SELECTARG2 (d3d9types.h)
 constexpr UInt32 kTopModulate = 4;
 constexpr UInt32 kTssColorArg2 = 3;
 constexpr UInt32 kTssAlphaArg2 = 6;

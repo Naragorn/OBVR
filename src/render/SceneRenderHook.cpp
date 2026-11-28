@@ -11,6 +11,7 @@
 #include "platform/Win32Min.h"
 #include "render/InterfaceRenderHook.h"
 #include "render/GameDevice.h"
+#include "render/MirrorGlassPass.h"
 #include "render/CullingHook.h"
 #include "render/LeafFacingHook.h"
 #include "game/GameCamera.h"
@@ -246,6 +247,18 @@ bool& SinglePassFrame() {
 	return s_singlePassFrame;
 }
 
+// The scene call whose single-pass render kept its bone rows for the mirror's
+// render (render/MirrorGlassPass.cpp), and whether the mirror's render runs.
+UInt32& SinglePassBonesKept() {
+	static UInt32 s_call = 0;
+	return s_call;
+}
+
+bool& MirrorRendering() {
+	static bool s_mirror = false;
+	return s_mirror;
+}
+
 bool HandOverEyes() {
 	if (!GetConfig().singlePassStereo || g_callbacks.secondEyeOffset == nullptr) {
 		return false;
@@ -295,6 +308,13 @@ void RenderSinglePassFrame(void* self, void* unusedEdx, void* renderedTexture, U
 	g_rendering = true;
 	SinglePassFrame() = true;
 	SetWaterStereoPass(WaterStereoPass::Single);
+	// While the mirror's page is up its render replaces this render's bone rows
+	// rebased onto its own camera, as the dual pass's second eye does: they are
+	// recorded here (the recording changes no upload).
+	const bool keepBones = MirrorWantsBones();
+	if (keepBones) {
+		SetBonePassMode(BonePassMode::Capture);
+	}
 	perf::EventContext context{};
 	context.sceneId = g_sceneCall;
 	context.passIndex = 0;
@@ -306,6 +326,10 @@ void RenderSinglePassFrame(void* self, void* unusedEdx, void* renderedTexture, U
 		NoteRenderThread();
 		RenderThroughPort(self, unusedEdx, renderedTexture);
 		perf::Profiler::Instance().GpuEnd();
+	}
+	if (keepBones) {
+		SetBonePassMode(BonePassMode::Off);
+		SinglePassBonesKept() = g_sceneCall;
 	}
 	ObngClearEyes();
 	MarkCallTicks(context);
@@ -704,6 +728,47 @@ bool RunMenuWorldProbe(UInt32& drawsOut, UInt32& vertexSetupOut) {
 	}
 	g_rendering = false;
 	return true;
+}
+
+bool RunMirrorWorldRender(UInt32& drawsOut) {
+	drawsOut = 0;
+	if (g_original == nullptr || g_lastRendererSelf == nullptr || MirrorRendering()) {
+		return false;
+	}
+	// Inside the frame's own world render (afterWorldRender), so the guard is
+	// already up; kept up either way, so the patched entry would pass through.
+	const bool wasRendering = g_rendering;
+	g_rendering = true;
+	MirrorRendering() = true;
+	// The frame clock zeroed, as for the second eye: the mirror's walk must
+	// not advance anything the eyes' walk already advanced this frame.
+	float* const frameSeconds = reinterpret_cast<float*>(addr::kFrameSecondsAddress);
+	const float savedFrameSeconds = *frameSeconds;
+	const bool clockPlausible = savedFrameSeconds >= 0.0f && savedFrameSeconds < 1.0f;
+	if (clockPlausible) {
+		*frameSeconds = 0.0f;
+	}
+	// Through the trampoline: no OBVR callbacks, no scene-call tick - the
+	// mirror's render belongs to the frame's scene call. The null argument is
+	// the ordinary world render, the route the eyes took.
+	const UInt32 before = TotalDrawCount();
+	g_original(g_lastRendererSelf, nullptr, nullptr);
+	drawsOut = TotalDrawCount() - before;
+	if (clockPlausible) {
+		*frameSeconds = savedFrameSeconds;
+	}
+	MirrorRendering() = false;
+	g_rendering = wasRendering;
+	return true;
+}
+
+bool MirrorRenderRunning() { return MirrorRendering(); }
+
+bool BonesKeptThisFrame() {
+	// Inside a frame's world render: a dual frame's first pass always records
+	// (HookedRenderScene), a single-pass frame when the mirror asked. Outside
+	// one (the plain path's afterWorldRender) nothing was recorded.
+	return g_rendering && (!SinglePassFrame() || SinglePassBonesKept() == g_sceneCall);
 }
 
 }  // namespace obvr::render

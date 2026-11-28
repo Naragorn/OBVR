@@ -238,6 +238,7 @@
 #include "render/GameDevice.h"
 #include "render/GameProjection.h"
 #include "render/HeadsetRenderer.h"
+#include "render/MirrorGlassPass.h"
 #include "render/WaterReprojection.h"
 #include "test/EyeDumpSeries.h"
 #include "test/HandScriptRuntime.h"
@@ -5389,13 +5390,6 @@ constexpr float kAimRayLengthMetres = 80.0f;
 // No nearer than this: a crosshair at the hand cannot be fused.
 constexpr float kAimRayMinMetres = 0.5f;
 
-// A world vector in a rotation's own frame: its transpose times it.
-NiPoint3 TransposeTimes(const NiMatrix33& m, const NiPoint3& v) {
-	return NiPoint3{m.data[0][0] * v.x + m.data[1][0] * v.y + m.data[2][0] * v.z,
-	                m.data[0][1] * v.x + m.data[1][1] * v.y + m.data[2][1] * v.z,
-	                m.data[0][2] * v.x + m.data[1][2] * v.y + m.data[2][2] * v.z};
-}
-
 void StepAimRayDepth(AimRayDepth& depth, bool wanted, const NiPoint3& from, const NiPoint3& direction, UInt32 layer,
                      const char* what) {
 	if (!wanted) {
@@ -7762,6 +7756,9 @@ void SecondEyeOffset(float out[3]) {
 }
 
 void AfterWorldRender() {
+	// The mirror's world render (render/MirrorGlassPass.h): after both eyes' captures, the head still hidden.
+	render::RunMirrorGlassPass(g_headsetRenderer, g_pendingRequest.dualEyes && !g_pendingRequest.flatFrame &&
+	                                                  !g_pendingRequest.heldEyes);
 	game::RestoreDeadPlayerBody();
 	// The collapsed head's hidden bit, for the world render only.
 	game::ReleasePlayerHeadCull();
