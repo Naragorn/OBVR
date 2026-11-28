@@ -1149,6 +1149,63 @@ hand's punch or slap (which a shield hand gave until now):
   §22, e8a343f); a tester asked on 2026-09-29 that a raised hand without a
   shield never block.
 
+- **2026-11-28: a bash that did not land on an imp** (Nadi, headset, main 937e431
+  + swim + books, WeaponWeight=40, WeaponSwingThrough=0: "am ende hatte ich einen
+  fight mit nem imp. mein shield bash hat nicht getroffen obwohl es sollte").
+  - Read in OBVR.log (08:18 run, lines 3915-3990, the imp 2B0C8210, type 36) [R]:
+    no "Shield bash:" line; the shield's contact "rests on 2B0C8210 at 50871
+    78829 437 - 0.11 m/s into it" (3960), then "2B0C8210 walked into the shield
+    where it was - passed" (3962); the left hand "swinging" and "too fast" for
+    the yield (3964, over 0.9 m/s). The imp's bound: centre 50878 78839 470,
+    radius 56 (3953). The evening before, four bashes landed on people, at 3.0
+    to 3.4 m/s - the gate is 3.0 (`[Hands] StaggerSpeed`, `ImpactSettings`,
+    handed to the bash by `vr::ApplyImpact`; the 1.5 and 3.5 above are the
+    first defaults).
+  - Refuted [R]: the shield's weight (physical-combat-spec, "The weight of
+    shields, bows, staffs and torches") - "Off-hand weight: a shield Leather
+    Shield, lags by 3.0 ..., time constant 0 ms" (line 782): 3 is the weight
+    that lags not at all, so the drawn shield was the controller's and its
+    speed the controller's, the bash's code path as before the weight. The
+    imp's body: the bash needs only its bound (`game::LivingActorAt`), read;
+    its capsules were met by the contact. A block refusing the bash: the bash
+    has no such gate (StepShieldBash, StepShoves).
+  - Not decided [D]: at the contact's rest the shield's middle was inside the
+    imp's column (12 units across of 36, 33 below of 64) but at 0.11 m/s; the
+    log has no line of a fast jab's place or speed, because StepShieldBash
+    returned silently on every refusal. So it cannot tell a shield outside the
+    column (the imp hovering) from one too slow towards it - nor whether the
+    speed's measure, across the ground towards the bound's axis
+    (`game::SpeedTowards`), cut a jab aimed up at a hovering imp (a guess, not
+    shown).
+  - Built [R]: the instrument that decides it next run - one "Shield bash
+    attempt:" line per attempt (the shield or its controller over 1.5 m/s near
+    someone), landed or not: why not (never in their column, too slow, cooling
+    down, the hand busy), the closest frame's speed across the ground and along
+    the line to their middle against the gate, where the shield's middle stood
+    against the column, the shield's and the controller's most speed
+    (game/ShieldBashWatch.h pure, shield_bash_watch_test 19 checks, 16 red
+    before; camera/hands/ShieldBashTrace.cpp; no per-frame cost while the
+    shield moves slowly, at most 60 lines a session). Harness
+    shield-bash-attempts.txt written, not run.
+  - A gap closed by reading [D], not the proven cause of this miss (the
+    attempt line decides that): the bash's speed was the shove's measure,
+    across the ground towards the bound's axis (`game::SpeedTowards`), so a jab
+    up at a hovering imp or down at a rat lost its rise or drop and could fail
+    the 3.0 gate with a hand fast enough. The bash alone now takes it in 3D
+    along the line from the shield's middle to their bound's centre
+    (`game::BashSpeedTowards`, game/ShieldBashLogic.h; shield_bash_test 23
+    checks, 6 of the 10 new red before): level, the same number; above or
+    below, the whole approach; away, negative. The shove and the slap keep the
+    ground measure; the push's direction stays across the ground. The attempt
+    line shows the judged speed and the ground one.
+  - Decided 2026-11-28 (on Nadi's rule "weight as weapons have it"): the bash
+    and the torch's blow take the place from the drawn shield or torch and the
+    speed from the controller, as a weapon strike is judged by the
+    controller's swing - a heavier shield must not make a real bash fail.
+    From 38c1f68 to this they took the drawn hand's speed.
+  - Open: the cause, from the next run's attempt lines; an imp in the harness
+    (its form ID is in no file of this repo).
+
 ## Built 2026-11-01: the raised torch blocks
 
 Nadi, 2026-10-31: "bau das das Blocken durch Hochheben der Fackel" (the open

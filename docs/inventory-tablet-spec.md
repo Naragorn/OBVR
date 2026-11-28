@@ -2285,7 +2285,8 @@ back one step. closing moves forward." On 2026-11-28: "fix jetzt".
 
 **State: a fix built on 2026-11-28, unit-tested, not run in the game.** The engine-side
 mechanism is derived from reading, not measured; the fix does not depend on it, and it
-carries the measurement that will say what the engine did.
+carries the measurement that will say what the engine did. **2026-11-28: that measurement
+refuted the mechanism, and the cause was elsewhere - see 28.4.**
 
 ### 28.1 What was read
 
@@ -2365,6 +2366,61 @@ carries the measurement that will say what the engine did.
   too (the engine's own picks and sounds from the eye). Putting the root back after the
   draw on those frames would end it at the source; not built on a mechanism not measured.
 - The Linux harness run of the scenario above.
+
+### 28.4 Correction, 2026-11-28: 28.1's [D] refuted, the cause found by reading
+
+Nadi's next run (OBVR.log 2026-11-28 08:27, main 937e431 with 28.2 in it, plus swimming and
+books): "inv öffnen b/geste, der körper bleibt stabil aber die vr view switcht auf die
+position vom linken auge. beim schließen wieder zurück. dass ist auch so bei
+schriftrollen/bücher und auch beim Esc menü."
+
+- [M] 28.2's measurement refutes 28.1's [D]: "the engine's eye stood up to 0.3 units from it
+  (0.0 right, 0.1 forward, 0.3 up ...; never 2 units off), the feet went 9.3 units" over
+  31 frames (log line 1914), and 0.0 units over 1 frame (line 3620). The engine's eye does
+  not move under a menu. Only two such notes in the whole run: the camera pass rarely runs
+  under a menu at all. 28.1's "camera pass=1 ... every frame" was a misreading: the Menu
+  trace's `camera pass` is `g_frameOpen`, which the menu stand-in sets too.
+- [R code] A menu frame without the camera pass is built by the stand-in
+  (`HookedRenderScene` -> `ScenePassWanted` -> `PrepareMenuFrameIfNeeded` ->
+  `PlaceMenuCamera`). It started from the engine's eye as the hook kept it
+  (`g_menuBasePos`, taken before OBVR adds anything) and added the head's offset, the look's
+  height and the real-height lift. The hook adds more before the head's offset: the aim arc
+  (`AimArcCorrection`), the aim tilt (third person), the engine-animation view's move of the
+  eye and its zeroed height, and the sneak's lift. The menu path left all four out.
+- [R code] The aim arc is not only the aim's: `[Hands] WalkDirection` turns the body through
+  the same hand-over (`g_aimBodyOffset`) and leaves it turned after the walk; it is given
+  back only after an attack. The engine's eye stands 4.6 units in front of the body's axis,
+  so with the body carrying a turn the arc is 2 x 4.6 x sin(turn / 2): 2.4 units at 30
+  degrees (about half the eyes' distance, 2.2), 6.5 at 90, 8.6 at 137. [R log] This run has
+  "Walk: the body turns to the walk direction (blend) - first step -89.1 degrees, head -84.5"
+  (line 1333) seconds before the book opened (line 1362); the evening run of 2026-11-27 has
+  "Aim: the body gives the turn back after the shot - -137.3 degrees" at a tablet close.
+- [D] So the view stepped by the arc at every stand-in frame - a book, the tablet, Esc alike,
+  whenever the body carried a turn - and back at the first world frame: sideways for a
+  moderate turn (yesterday's "a step back" for a large one). The body hangs from the camera,
+  so it moved with the view and looked steady. **Not measured** - no log has the arc at a
+  menu's opening; the measurement below has it.
+- **The fix** (`camera/MenuViewTerms.h`, `menu_view_terms_test`, 7 flows, red before): the
+  hook records what it laid on the engine's eye besides the head's offset and the
+  real-height lift (`NoteWorldView`, camera/ViewHandoverTrace.h), and `PlaceMenuCamera`
+  builds on the engine's eye plus exactly those (`MenuViewBaseFor`). While the death view
+  is held its place stands in as before. `g_menuBasePos` is unchanged for the water camera;
+  `g_menuBaseVerticalOffset` is gone (the recorded height replaces it, now with the
+  engine-animation view's zero).
+- **The measurement** (`camera/ViewHandover.h`, `view_handover_test`): at every change
+  between a camera-hook frame and a stand-in frame and two frames after it (24 changes a
+  session), two lines:
+  `View handover: <kind> frame <n> after the change from the <other> - the first eye drawn
+  at ... (built ...), the second at ..., the cyclopean ...; the pose predicted|waited for,
+  the headset at ... m; built on the base ... + arc ... + tilt ... + anim ... + head ... +
+  eye step ..., height ... + real lift ..., shift ...` and
+  `View handover: against the last <other> frame, in the head's right, forward, up - the
+  first eye drawn ... (N half-IPDs), the cyclopean ...; by term: base, arc, tilt, anim,
+  head, eye step, shift, height, real lift; drawn minus built ... (then ...)`.
+  To read: the term whose difference matches the first eye's moved; "drawn minus built" not
+  near 0 means something other than OBVR's terms placed the drawn eye; the cyclopean is
+  the one the hands and the body used, taken before the stand-in placed the camera.
+- Harness: `tools/hand-scripts/menu-view-handover.txt` (written, not run - Linux).
 
 ## 29. The evening run of 2026-11-27 (log of 23:34): read, nothing built
 

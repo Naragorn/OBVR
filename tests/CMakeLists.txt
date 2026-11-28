@@ -2293,6 +2293,20 @@ endif()
 
 add_test(NAME standing_eye_hold COMMAND standing_eye_hold_test)
 
+add_executable(menu_view_terms_test MenuViewTermsTest.cpp)
+target_include_directories(menu_view_terms_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(menu_view_terms_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME menu_view_terms COMMAND menu_view_terms_test)
+
+add_executable(view_handover_test ViewHandoverTest.cpp)
+target_include_directories(view_handover_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(view_handover_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME view_handover COMMAND view_handover_test)
+
 add_executable(bone_mirror_test BoneMirrorTest.cpp ../src/core/Rotation.cpp)
 target_include_directories(bone_mirror_test PRIVATE ../src)
 if(NOT MSVC)
@@ -2701,6 +2715,16 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME shield_bash COMMAND shield_bash_test)
+
+add_executable(shield_bash_watch_test ShieldBashWatchTest.cpp)
+
+target_include_directories(shield_bash_watch_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(shield_bash_watch_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME shield_bash_watch COMMAND shield_bash_watch_test)
 
 add_executable(pommel_test PommelTest.cpp)
 

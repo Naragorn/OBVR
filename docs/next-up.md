@@ -1011,6 +1011,12 @@ their sync, poses back to Oblivion within the frame, OpenXR input in place of Op
 actions, and testing on Windows and on Linux (Proton). DLSS on top of that is huge again
 (motion vectors from a 2006 engine).
 
+## For later: a mirror tab on the tablet (asked 2026-11-28, spec only)
+
+Nadi: a last tab "Mirror" on the tablet, a real mirror with the room behind and light dust.
+Feasibility, options, stages and open decisions: docs/mirror-spec.md (recommended: a true
+per-eye mirror, large, about 2-4.4 ms a frame while shown - a guess until its stage 2 measures).
+
 ## For later: the shield against its real mesh, and blows by real contact (noted 2026-11-27, nothing built)
 
 Nadi, 2026-11-27, after the shield's block by contact (`[Hands] ShieldBlockByContact`,
@@ -1059,3 +1065,72 @@ two refinements weighed and put off. Kept here so they are not lost.
   Sonnet 5.5 medium; not built here because the parry frame is filled in CameraHook's
   StepWeaponContact, which sits at its size limit and would need a piece moved out first.
   `BlockReachUnits` in the INI. Only if real contact is wanted is the sweep worth building.
+
+## Picture quality: three things seen in the headset (noted 2026-11-28, nothing built)
+
+Nadi, after the Windows run of 2026-11-28 (08:18-08:27, the DLL main 937e431 plus the
+swimming and books branches; `[Render] SinglePassStereo=1`, 90 Hz). Noted as asked,
+nothing looked into: no picture and no measurement of any of the three exists yet, and
+the run's log says nothing about them. Each needs its picture first (a hand-script
+scenario with eye dumps or a film, docs/hand-script-harness.md) before a fix is chosen.
+
+### 1. Water: the corners and edges of the reflections are jagged
+
+- **Seen:** the reflections on the water have hard, stepped corners and edges; they
+  should be smoothed - "durch ein Drittplugin oder WaterAA".
+- **What there is** [R]: WaterAA (github.com/Naragorn/WaterAA, a plugin of its own; spec
+  docs/water-shimmer-plugin-spec.md) calms the far water's sparkle through the water
+  pixel shaders' normal sampling. It does not touch the reflection map's own edges. The
+  reflection is the engine's planar capture into a small map
+  (../OBNG/knowledge/water-reflections.md).
+- **Not known** [G]: whether the steps are the reflection map's size (few texels a
+  degree in the headset), its unfiltered sampling, no anti-aliasing in the capture pass,
+  or the alpha-tested things (leaves, grass) drawn into it.
+- **Ways, to be costed once the picture exists:** a larger or supersampled reflection
+  map; a filtered lookup in the water shader (WaterAA's place); anti-aliasing the capture
+  pass; a third-party plugin that already does one of these (none checked).
+
+### 2. Far grass and trees flicker in and out over the ground, without end
+
+- **Seen:** distant grass and trees fade their textures in over the ground and out
+  again - visible, hidden, visible - endlessly, with the player standing still.
+- **What there is** [R]: grass that flickers near the player with a still head was
+  measured on 2026-11-02 as wind on alpha-tested grass with no edge anti-aliasing (17
+  grey values a frame in tall grass, 0.6 on a lawn); FoliageAA
+  (github.com/Naragorn/FoliageAA) supersamples the leaves' alpha test, the grass shaders
+  are not in it; OBVR builds the grass all around the eyes (`[Render] GrassAllAround`,
+  game/GrassCone.h). The trees' far fade is the engine's own (the tree LOD and its
+  billboards).
+- **Not known** [G]: whether this is the grass's fade distance being crossed back and
+  forth by something that moves (the head's offset, the room follow, the two eyes'
+  places under single-pass stereo), the tree LOD's switch doing the same, or the alpha
+  fade itself dithering. That it never settles with the player still points at a
+  distance or an eye that alternates, not at wind.
+- **Ways, to be costed once the picture exists:** a hysteresis on the fade distances;
+  one fade place for both eyes; the grass shaders into FoliageAA; a third-party plugin
+  (none checked).
+
+### 3. A constant shimmer on all textures
+
+- **Seen:** "specular maps / bloom / HDR / something" shimmers all the time on every
+  texture; to be looked into and fixed.
+- **What there is** [R]: the earlier note "Texture flicker (test more later)" under
+  "Also open" in this file; the parallax assessment's warning that shimmer is worse in a
+  headset; `[Render]` settings that change the picture's sampling (the eye's render
+  size and dynamic resolution, docs/dynamic-resolution.md; anisotropy and mip bias are
+  the game's and the driver's).
+- **Not known** [G]: which of these it is - specular aliasing (bright highlights on
+  normal-mapped surfaces with no specular anti-aliasing), the HDR/bloom pass working on a
+  frame that is rendered at another size than it expects, texture minification without
+  enough anisotropy or with a negative mip bias, the eye's render size against the
+  panel's, or dynamic resolution changing the size from frame to frame. Whether it is
+  there with HDR and bloom off and with dynamic resolution off are the two cheapest
+  splits.
+- **First step:** one scenario, the head still, a wall and a floor in view, eye dumps
+  in a row, run with HDR on/off, bloom on/off, dynamic resolution on/off, anisotropy
+  16/off: the second difference between frames says which switch carries it.
+
+**Cost of the first step for all three:** small each (a scenario and a measuring script in
+the mould of `tools/water-far-flicker.py`), Linux harness. The fixes cannot be costed
+before that. **Model and effort:** Sonnet 5.5 medium for the scenarios and the measuring;
+the fix by what the measurement shows (a shader twin like WaterAA's: Opus 5.5 high).

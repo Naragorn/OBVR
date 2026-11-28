@@ -31,6 +31,23 @@ struct ShieldBashHand {
 	float towardsSpeed = 0.0f; // m/s along the line to them
 };
 
+// The bash's speed towards them, m/s: the hand's velocity along the line in
+// 3D from the shield's middle to their bound's centre. Not the shove's
+// SpeedTowards, which takes the line across the ground only: a jab up at a
+// hovering imp or down at a rat lost its rise or drop there and could fail the
+// gate with a hand fast enough (a gap read in the code, 2026-11-28). Level, the
+// two are the same number; moving away it is negative; no line, or a figure
+// not a number, is no speed.
+inline float BashSpeedTowards(const NiPoint3& velocity, const NiPoint3& shield, const NiPoint3& target) {
+	const NiPoint3 d = target - shield;
+	const float length = math::Sqrt(d.LengthSquared());
+	if (!(length > 0.0001f)) {
+		return 0.0f;
+	}
+	const float speed = (velocity.x * d.x + velocity.y * d.y + velocity.z * d.z) / length;
+	return speed == speed ? speed : 0.0f;
+}
+
 inline ShoveKind ShieldBashFor(const ShieldBashSettings& s, const ShieldBashHand& h) {
 	if (!s.enabled || !h.shieldWorn || !h.valid || h.holdsSomething || !(h.towardsSpeed >= s.speed)) {
 		return ShoveKind::None;

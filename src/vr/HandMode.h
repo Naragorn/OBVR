@@ -971,7 +971,7 @@ struct HandModeResult : MenuPlaceResult {  // the wrists and the tablet: TabletL
 	// controller's pose above, and equal to it while nothing lags. The pin, the
 	// strike, the item's body and guard take these; the reach, the ring, the
 	// laser and the grab stay on the controller's. The off hand's velocity is
-	// the drawn hand's too (the shield bash, the torch's blow). The gaps: how
+	// the drawn hand's too, for the log (the bash judges the controller's). Gaps: how
 	// far each drawn hand is behind its controller, for the log.
 	bool weaponLagging = false, offHandLagging = false;
 	NiMatrix33 weaponHandRotation{}, offHandRotation{};

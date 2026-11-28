@@ -28,6 +28,7 @@
 #include "camera/hands/ReachRing.h"
 #include "camera/hands/Rings.h"
 #include "camera/hands/ScriptPicture.h"
+#include "camera/hands/ShieldBashTrace.h"
 #include "camera/hands/SlapTap.h"
 #include "camera/hands/Swings.h"
 #include "camera/hands/ThrowHits.h"
@@ -63,6 +64,7 @@
 #include "camera/RidingView.h"
 #include "camera/RoomFollowFrame.h"
 #include "camera/StandingEyeFrame.h"
+#include "camera/ViewHandoverTrace.h"
 #include "camera/EngineAnimView.h"
 #include "camera/EyeHeight.h"
 #include "camera/MarkEyes.h"
@@ -344,7 +346,6 @@ NiPoint3 g_menuBasePos{0.0f, 0.0f, 0.0f};
 // The death view held still (StepDeathView), read by the menu camera too.
 DeathViewState g_deathView;
 NiMatrix33 g_menuBaseRot;
-float g_menuBaseVerticalOffset = 0.0f;
 bool g_menuBaseThirdPerson = false;
 
 // The live menu background's frame: the step between the eyes for the bone
@@ -895,7 +896,7 @@ void StepShoves(const Config& config, float dt) {
 	hands::StepTorchTouch(g_torchBlow, config, torchLinks, g_handBodies, torchByTouch,
 	                      game::TorchPose{g_torchWorldValid, g_torchWorldA, g_torchWorldB,
 	                                      game::TorchGripShare(g_torchShaft.a, g_torchShaft.b)},
-	                      game::TorchHand{camRot * g_hand.offHandVelocity, camRot * g_hand.leftAngularVelocity,
+	                      game::TorchHand{camRot * g_hand.leftVelocity, camRot * g_hand.leftAngularVelocity,
 	                                      config.tracker.unitsPerMetre},
 	                      g_hand.leftHandValid && config.hands.grapple.strikes && !g_twoHands.leftGripOnHandle &&
 	                          g_grapple.actor == 0 && !game::PlayerWearsShield(),
@@ -2295,12 +2296,8 @@ game::BladeDiscs g_bladeDiscs;
 game::ShieldDisc g_shieldDisc;
 bool g_shieldDiscHave = false;
 
-// The shield bash (game/ShieldBashLogic.h; Nadi, 2026-10-31: "Schildstoß ...
-// bauen wir den"): the off hand with a shield on its arm driven into someone -
-// the shield's middle at their body - bashes: the engine's fist blow for the
-// damage (game::KickStrike), the stagger or the knockdown through the shove's
-// push, the shield's sound, a pulse, its fatigue. Instead of the off hand's
-// punch or slap (StepShoves leaves the shield hand to this).
+// The shield bash (game/ShieldBashLogic.h): the shield driven into someone bashes - the engine's fist blow, the shove's
+// stagger or knockdown, sound, pulse, fatigue - instead of the off hand's punch or slap; each attempt logged once.
 void StepShieldBash(const Config& config) {
 	const game::ShieldBashSettings& s = config.hands.shieldBash;
 	if (!s.enabled || !g_hand.leftHandValid || !g_cyclopeanCameraWorldValid) {
@@ -2309,20 +2306,21 @@ void StepShieldBash(const Config& config) {
 	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
 	const NiPoint3 hand = camPos + camRot * g_hand.offHandOffsetUnits;  // drawn, behind by the shield's weight
-	// The shield's middle in the world (the disc read in the hand's frame), else the hand.
+	// The shield's middle (its disc, else the hand) where it is drawn; the speed the controller's, as a weapon strike's
+	// (decided 2026-11-28: a heavier shield must not make a real bash fail), in 3D towards them (BashSpeedTowards).
 	const NiPoint3 at = g_shieldDiscHave ? hand + (camRot * g_hand.offHandRotation) * g_shieldDisc.centre : hand;
 	NiPoint3 centre{0.0f, 0.0f, 0.0f};
 	void* const actor = game::LivingActorAt(at, 0.5f, 8.0f, &centre, 1.0f);
-	if (actor == nullptr || !game::ShoveAllowed(g_shoveCooldown, actor)) {
-		return;
-	}
-	const NiPoint3 velocity = camRot * g_hand.offHandVelocity;
+	const bool cooling = actor != nullptr && !game::ShoveAllowed(g_shoveCooldown, actor);
+	const NiPoint3 velocity = camRot * g_hand.leftVelocity;
 	game::ShieldBashHand h;
 	h.shieldWorn = true;
 	h.valid = true;
 	h.holdsSomething = g_twoHands.leftGripOnHandle || g_grapple.actor != 0;
-	h.towardsSpeed = game::SpeedTowards(velocity, at, centre);
-	const game::ShoveKind kind = game::ShieldBashFor(s, h);
+	h.towardsSpeed = actor != nullptr ? game::BashSpeedTowards(velocity, at, centre) : 0.0f;
+	const game::ShoveKind kind = actor != nullptr && !cooling ? game::ShieldBashFor(s, h) : game::ShoveKind::None;
+	hands::TraceShieldBash({at, camRot * g_hand.offHandVelocity, velocity, actor, centre, cooling, h.holdsSomething,
+	                        h.towardsSpeed, s.speed, kind != game::ShoveKind::None});  // camera/hands/ShieldBashTrace.h
 	if (kind == game::ShoveKind::None) {
 		return;
 	}
@@ -6865,24 +6863,12 @@ UInt32 DualProbeRung() {
 // The node still holds the camera hook's last output - head offset and eye
 // step included - and on a menu frame nothing overwrites it, so building on
 // it would add a head pose to a head pose every frame and walk the camera out
-// of the room within a second. g_menuBasePos and g_menuBaseRot are the game's
-// own values, taken at the one moment they can be: after the engine wrote
-// them and before OBVR did.
-//
-// The picture used to sit offset from where the world was the instant before
-// the menu opened - reported from the headset on 2026-08-30. The cause was
-// here, and it was the base rotation: this function started from the raw
-// rotation the engine wrote, while a world frame is built on the levelled one
-// the look control hands back, with the vertical tilt lifted out into a
-// height. Since that rotation carries the head offset and the eye step as well
-// as the facing, the whole viewpoint moved.
-//
-// Fixed at the source instead of here: g_menuBaseRot and
-// g_menuBaseVerticalOffset are now the values the last world frame was
-// actually built on, so this function starts from exactly what the world last
-// looked like. Found by laying the two paths side by side - they agreed on
-// everything else, which is what makes it the cause rather than a candidate -
-// and not yet confirmed in the headset.
+// of the room within a second. g_menuBasePos is the game's own eye, taken
+// after the engine wrote it and before OBVR did; g_menuBaseRot the levelled
+// rotation the last world frame was built on (the fault of 2026-08-30), and
+// LastWorldViewTerms what that frame laid on the eye besides the head - the
+// aim arc, the tilt, the engine-animation view, the look's height and the
+// sneak's lift (camera/MenuViewTerms.h: the step at every menu's opening).
 // The headset turning the view only (camera/FreeAimLogic.h): seated, with the
 // headset steering the view, and a headset there.
 bool FreeAimNow() {
@@ -6933,8 +6919,11 @@ void PlaceMenuCamera(bool leftEye) {
 	// passing here - the world is paused, and driving it from a menu would let
 	// the camera drift on its own while the player reads.
 	NiMatrix33 baseRotation = g_menuBaseRot;
-	NiPoint3 basePos = MenuCameraBase(g_menuBasePos, g_deathView, config.look.deathBodyView);
-	float verticalOffset = g_menuBaseVerticalOffset + RealHeightLiftNow(g_headTracker, config, g_menuBaseThirdPerson, g_deathView.held);
+	const MenuViewBase base = MenuViewBaseFor(MenuCameraBase(g_menuBasePos, g_deathView, config.look.deathBodyView),
+	                                          LastWorldViewTerms(), g_deathView.held);
+	NiPoint3 basePos = base.pos;
+	const float realLift = RealHeightLiftNow(g_headTracker, config, g_menuBaseThirdPerson, g_deathView.held);
+	float verticalOffset = base.vertical + realLift;
 	// The race and sex menu: the eyes in front of the character's face,
 	// facing it, laid before the head as it stands at the opening
 	// (camera/ChargenMenuView.h).
@@ -6974,7 +6963,7 @@ void PlaceMenuCamera(bool leftEye) {
 		         static_cast<double>(g_menuBaseNode->localTransform.pos.y),
 		         static_cast<double>(g_menuBaseNode->localTransform.pos.z), static_cast<double>(g_menuBasePos.x),
 		         static_cast<double>(g_menuBasePos.y), static_cast<double>(g_menuBasePos.z),
-		         static_cast<double>(g_headTracker.GetCameraOffset().z), static_cast<double>(g_menuBaseVerticalOffset),
+		         static_cast<double>(g_headTracker.GetCameraOffset().z), static_cast<double>(base.vertical),
 		         static_cast<double>(g_cyclopeanCameraWorldTransform.pos.x),
 		         static_cast<double>(g_cyclopeanCameraWorldTransform.pos.y),
 		         static_cast<double>(g_cyclopeanCameraWorldTransform.pos.z), haveEyes ? "" : "(none) ",
@@ -6987,6 +6976,8 @@ void PlaceMenuCamera(bool leftEye) {
 	// second pass moves the camera by, and what the bone lock rebases the
 	// replayed palettes by.
 	g_menuEyeShift = finalRotation * NiPoint3{step.toSecondEye, 0.0f, 0.0f};
+	NoteMenuView(basePos, !g_deathView.held, verticalOffset, realLift, baseRotation * headOffset,
+	             finalRotation * NiPoint3{step.toFirstEye, 0.0f, 0.0f}, g_menuEyeShift, finalRotation);
 }
 
 // Stands in for the camera pass on a menu frame the engine renders itself.
@@ -7805,6 +7796,8 @@ bool ScenePassWanted() {
 	// LatePoseWait: the frame's wait, the engine's update and the hands' work done.
 	g_headsetRenderer.WaitLate(g_headTracker.GetBackendForFrame());
 	PrepareMenuFrameIfNeeded(menuIsUp);
+	const NiAVObject* const eye = g_dualNode != nullptr ? g_dualNode : g_bodyCameraNode;  // the eyes as drawn (camera/ViewHandover.h)
+	TraceViewAsDrawn(mem::LooksLikeObjectAddress(reinterpret_cast<UInt32>(eye)) ? eye->worldTransform.pos : NiPoint3{0.0f, 0.0f, 0.0f}, g_cyclopeanCameraWorldTransform.pos);
 	return WantsSecondScenePass(
 		g_frameOpen, g_dualArmed, menuIsUp,
 		MenusCanReachTheWorld(config.tracker.menusInWorld, config.tracker.hudOverlay),
@@ -10658,7 +10651,6 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// holding the identity rotation, and the menu path would then place the
 	// camera facing world north for reasons nothing in that path explains.
 	g_menuBaseRot = baseRotation;
-	g_menuBaseVerticalOffset = verticalOffset;
 
 	// The other half of taking the body's turn back out - and the half that was
 	// missing for as long as the aim has jumped.
@@ -10723,7 +10715,6 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 		// towards the body still turns the view (StepDeathTurn).
 		StepDeathTurn(g_deathView, baseRotation, verticalOffset);
 		g_menuBaseRot = baseRotation;
-		g_menuBaseVerticalOffset = verticalOffset;
 		if (g_deathView.held != wasHeld) {
 			OBVR_LOG("Camera: the death view is %s", g_deathView.held ? "held still" : "released");
 		}
@@ -10736,16 +10727,20 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	// (camera/EngineAnimView.h), the headset's offset on top as below; the
 	// chase camera's height for a pitched look is not theirs (75 units down
 	// at a 35-degree bow, chair-sit-view.txt 2026-11-08).
+	const NiPoint3 beforeAnimView = cameraNode->localTransform.pos;
 	if (StepEngineAnimViewFrame(cameraNode, isThirdPerson, g_headTracker.IsHeadsetConnected(), deltaSeconds)) {
 		verticalOffset = 0.0f;
 	}
 	// The head offset is measured in the camera's own space, so it is carried
 	// over by the base rotation. The vertical look is not: it is a height, and
 	// heights are along the world up axis whichever way the camera faces.
-	cameraNode->localTransform.pos =
-		cameraNode->localTransform.pos + baseRotation * g_headTracker.GetCameraOffset();
-	cameraNode->localTransform.pos.z +=
-		verticalOffset + g_sneakEyeLift + RealHeightLiftNow(g_headTracker, config, isThirdPerson, g_deathView.held);
+	// What is laid on the engine's eye is kept for the menu frames (camera/MenuViewTerms.h).
+	const NiPoint3 headWorld = baseRotation * g_headTracker.GetCameraOffset();
+	const float realLift = RealHeightLiftNow(g_headTracker, config, isThirdPerson, g_deathView.held);
+	NoteWorldView(WorldViewTerms{g_aimArcApplied, g_aimTiltApplied, cameraNode->localTransform.pos - beforeAnimView,
+	                             verticalOffset, g_sneakEyeLift}, g_menuBasePos, headWorld, realLift);
+	cameraNode->localTransform.pos = cameraNode->localTransform.pos + headWorld;
+	cameraNode->localTransform.pos.z += verticalOffset + g_sneakEyeLift + realLift;
 	NoteViewEyeAtMark(g_playerWorldValid, cameraNode->localTransform.pos.z - g_playerWorldPos.z);
 
 	const NiMatrix33 finalRotation = HeadOnBase(baseRotation);
@@ -12048,6 +12043,7 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 	}
 
 	cameraNode->localTransform.rot = finalRotation;
+	NoteViewSteps(finalRotation, g_bodyFirstEyeStep, g_dualShift);
 
 	// Last, and on purpose. This blocks until the compositor wants the next
 	// frame, so from here Oblivion runs on the compositor's clock rather than
