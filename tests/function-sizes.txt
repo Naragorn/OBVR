@@ -3,7 +3,7 @@
 # function_sizes_test allows it.
 # Smaller passes; larger fails. Rewrite with: function_sizes_test --print > tests/function-sizes.txt
 # file<TAB>function or (file globals) or (file lines)<TAB>lines or count
-src/camera/CameraHook.cpp	(file lines)	12409
+src/camera/CameraHook.cpp	(file lines)	12407
 src/camera/CameraHook.cpp	StepShoves	112
 src/camera/CameraHook.cpp	StepGrapple	296
 src/camera/CameraHook.cpp	StepEnemyHealthBars	168
