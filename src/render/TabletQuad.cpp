@@ -390,8 +390,8 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 	void* textures[kTabletPieces] = {};
 	void* const paper = Paper(device);
 	void* const dust = Dust(device);
-	void* glass = m_glassTexture[leftEye ? 0 : 1];
-	glass = glass != nullptr ? glass : m_glassTexture[0];
+	const int picture = vr::GlassPictureFor(leftEye, m_glassTexture[1] != nullptr);
+	void* const glass = m_glassTexture[picture];
 	UInt32 count = 0;
 	const bool fresh = LastPerspectiveProjection(projection.m) && PerspectiveMatchesCamera(projection.m, view.tanHalfWidth);
 	if (fresh) {
@@ -424,7 +424,7 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 			glassSeen = GlassSeenIn(vertices[count], viewport, view.eyePos);
 		}
 		if (projected && reflects) {
-			LayGlass(piece, m_glassUv, view, vertices[count], kinds[count], textures[count], m_glassLaid);
+			LayGlass(piece, m_glassUv[picture], view, vertices[count], kinds[count], textures[count], m_glassLaid);
 		}
 		++count;
 	}

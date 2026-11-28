@@ -3,8 +3,10 @@
 #include <cstdint>
 #include <limits>
 
+#include "core/AddressSpace.h"
 #include "core/Config.h"
 #include "core/Log.h"
+#include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
 #include "game/MenuMode.h"
@@ -20,7 +22,9 @@
 #include "render/HeadsetRenderer.h"
 #include "render/InterfaceRenderHook.h"
 #include "render/SceneRenderHook.h"
+#include "render/ShadowShareHook.h"
 #include "render/WaterReprojection.h"
+#include "vr/MirrorDepthLogic.h"
 #include "vr/MirrorGlassLogic.h"
 #include "vr/MirrorGlassMap.h"
 #include "vr/MirrorSteadyLogic.h"
@@ -53,7 +57,11 @@ struct MirrorTarget {
 };
 
 struct MirrorState {
-	MirrorTarget target;
+	// The textures: [0] the one picture for both eyes (MirrorDepth=0, stage 3)
+	// or the left eye's; [1] the right eye's (stage 4 only). What each holds,
+	// and the camera it was rendered with, in `pictures`.
+	MirrorTarget targets[2];
+	vr::MirrorEyePictures pictures;
 	vr::MirrorFailures failures;
 	vr::MirrorCostWindow cost;
 	vr::MirrorTrace trace;
@@ -61,7 +69,13 @@ struct MirrorState {
 	// the real one, the game's stands still in a paused menu.
 	vr::MirrorSteadyState steady;
 	long long steadyTicks = 0;
-	bool handedIn = false;    // the glass shows target.texture
+	// Stage 4: the budget that makes the eyes take turns, the depth setting as
+	// last seen, and the shadow share's mirror count at the last frame.
+	vr::MirrorBudget budget;
+	bool depth = false;
+	bool depthKnown = false;
+	unsigned shadowsKeptMark = 0;
+	bool handedIn = false;    // the glass shows one of the targets' textures
 	bool wantsBones = false;  // for the next single-pass render (MirrorWantsBones)
 	bool onSaid = false;
 };
@@ -71,25 +85,101 @@ MirrorState& State() {
 	return s;
 }
 
-// The glass dark again (stage 1's), before anything it showed is let go.
+// The glass dark again (stage 1's), before anything it showed is let go; the
+// pictures forgotten, so nothing old comes back on it.
 void DarkGlass(MirrorState& s, HeadsetRenderer& renderer) {
+	vr::ForgetMirrorEyes(s.pictures);
 	if (s.handedIn) {
 		renderer.SetMirrorGlass(nullptr, nullptr, MirrorGlassUv{});
 		s.handedIn = false;
 	}
 }
 
-void ReleaseTarget(MirrorState& s, HeadsetRenderer& renderer) {
-	DarkGlass(s, renderer);
-	d3d11::Release(s.target.surface);
-	d3d11::Release(s.target.texture);
-	s.target = MirrorTarget{};
+// One texture let go; the glass first goes dark if it could show it.
+void ReleaseTarget(MirrorState& s, HeadsetRenderer& renderer, int eye) {
+	MirrorTarget& t = s.targets[eye];
+	if (t.texture != nullptr) {
+		DarkGlass(s, renderer);
+	}
+	d3d11::Release(t.surface);
+	d3d11::Release(t.texture);
+	t = MirrorTarget{};
 }
 
 // Off for the session: what was made let go, the glass dark, one line.
 void SwitchOff(MirrorState& s, HeadsetRenderer& renderer, const char* why) {
-	ReleaseTarget(s, renderer);
+	ReleaseTarget(s, renderer, 0);
+	ReleaseTarget(s, renderer, 1);
 	OBVR_LOG("Mirror: switched off for this session - %s; the glass stays dark", why);
+}
+
+MirrorGlassUv UvOf(const MirrorState& s, int eye) {
+	MirrorGlassUv uv;
+	for (int i = 0; i < 4; ++i) {
+		uv.rect[i] = s.pictures.rect[eye][i];
+	}
+	uv.view = s.pictures.view[eye];
+	return uv;
+}
+
+// The pictures there handed to the glass (vr::MirrorGlassSources): MirrorDepth=0
+// the one picture for both eyes, as stage 3 handed it; with depth each eye its
+// own, laid through the camera it was rendered with - a stale one too - or the
+// other eye's while its own is not made yet; none, the dark glass.
+void HandInGlass(MirrorState& s, HeadsetRenderer& renderer, bool depth) {
+	const bool have[2] = {s.pictures.have[0] && s.targets[0].texture != nullptr,
+	                      s.pictures.have[1] && s.targets[1].texture != nullptr};
+	int source[2] = {-1, -1};
+	vr::MirrorGlassSources(depth, have, source);
+	if (source[0] < 0 || source[1] < 0) {
+		DarkGlass(s, renderer);
+		return;
+	}
+	if (!depth) {
+		renderer.SetMirrorGlass(s.targets[0].texture, nullptr, UvOf(s, 0));
+	} else {
+		renderer.SetMirrorGlass(s.targets[source[0]].texture, s.targets[source[1]].texture, UvOf(s, source[0]),
+		                        UvOf(s, source[1]));
+	}
+	s.handedIn = true;
+}
+
+// MirrorDepth turned off: the right eye's texture let go without a dark frame
+// - the left's picture handed to both eyes first, until this frame's one pass.
+void DropRightEye(MirrorState& s, HeadsetRenderer& renderer) {
+	s.pictures.have[1] = false;
+	if (s.handedIn) {
+		HandInGlass(s, renderer, false);
+	}
+	MirrorTarget& t = s.targets[1];
+	d3d11::Release(t.surface);
+	d3d11::Release(t.texture);
+	t = MirrorTarget{};
+}
+
+// The depth setting as this frame has it, against the last frame's: on a
+// change the budget starts over, the trace logs the next passes, both eyes'
+// pictures count as old, and turned off the right eye's texture goes. Read
+// every frame (two compares), so a change while the page is down is taken too.
+void NoteDepthSetting(MirrorState& s, HeadsetRenderer& renderer, bool depth) {
+	if (s.depthKnown && s.depth == depth) {
+		return;
+	}
+	const bool changed = s.depthKnown;
+	s.depthKnown = true;
+	s.depth = depth;
+	s.budget = vr::MirrorBudget{};
+	if (!changed) {
+		return;
+	}
+	s.trace = vr::MirrorTrace{};
+	s.pictures.age[0] = s.pictures.age[1] = vr::kMirrorNoPicture;
+	if (!depth) {
+		DropRightEye(s, renderer);
+	}
+	OBVR_LOG("Mirror: depth turned %s - %s", depth ? "on" : "off",
+	         depth ? "each eye its own picture from the next pass, the right eye's texture made at its first"
+	               : "one picture for both eyes again (stage 3), the right eye's texture let go");
 }
 
 bool ReadBackBuffer(void* device, d3d9::SurfaceDesc& out) {
@@ -107,12 +197,12 @@ bool ReadBackBuffer(void* device, d3d9::SurfaceDesc& out) {
 
 // The texture made when it is not there, or is of another size, format or
 // device; black until the first picture lands. False when it cannot be made.
-bool EnsureTarget(MirrorState& s, HeadsetRenderer& renderer, void* device, UInt32 side, UInt32 format) {
-	MirrorTarget& t = s.target;
+bool EnsureTarget(MirrorState& s, HeadsetRenderer& renderer, int eye, void* device, UInt32 side, UInt32 format) {
+	MirrorTarget& t = s.targets[eye];
 	if (t.texture != nullptr && t.device == device && t.side == side && t.format == format) {
 		return true;
 	}
-	ReleaseTarget(s, renderer);
+	ReleaseTarget(s, renderer, eye);
 	auto create = d3d9::Method<d3d9::CreateTextureFn>(device, d3d9::kDeviceCreateTexture);
 	if (create == nullptr || d3d11::Failed(create(device, side, side, 1, d3d9::kUsageRenderTarget, format,
 	                                              d3d9::kPoolDefault, &t.texture, nullptr)) ||
@@ -135,7 +225,8 @@ bool EnsureTarget(MirrorState& s, HeadsetRenderer& renderer, void* device, UInt3
 	t.format = format;
 	t.blackOutsideWidth = 0;
 	t.blackOutsideHeight = 0;
-	OBVR_LOG("Mirror: the reflection's texture made, %ux%u (format %u)", side, side, format);
+	OBVR_LOG("Mirror: the reflection's texture made%s, %ux%u (format %u)", eye == 1 ? " for the right eye" : "", side,
+	         side, format);
 	return true;
 }
 
@@ -149,6 +240,7 @@ struct MirrorFrame {
 	float longSidePixels = 0.0f;
 	bool steadied = false;     // MirrorSteady on: the picture is laid through its camera
 	float turnDegrees = 0.0f;  // the held glass's turn from the steadied one
+	float seconds = 0.0f;      // since the last frame with the page up (none: not a number), for the budget
 };
 
 // Seconds since the last frame with the page up, on the real clock; none
@@ -169,6 +261,7 @@ float SteadySeconds(MirrorState& s) {
 void SteadyTheGlass(MirrorState& s, MirrorFrame& f, UInt32 setting) {
 	const vr::MirrorSteadyTuning tuning = vr::MirrorSteadyTuningFor(static_cast<std::int32_t>(setting));
 	const float seconds = SteadySeconds(s);
+	f.seconds = seconds;
 	if (!f.glass.valid) {
 		return;
 	}
@@ -369,28 +462,77 @@ void MarkBoneLock(const perf::EventContext& context) {
 	}
 }
 
+// The palette builder's stamp source (docs/mirror-spec.md 14.2): the word at
+// [[renderer+0x8B0]+0x3C], which 0x007655F0 compares with each skin's stamp.
+// Read in the EXE: its only writer is the add at 0x0076262B inside 0x00762600,
+// the renderer's vtable +0x134 - the end of a scene frame (device EndScene,
+// then the add). For the trace and the cost line: whether a frame's two
+// passes see different stamps (each skin built again in the second) or the
+// same. 0 when not readable.
+UInt32 SkinBuildStamp() {
+	const UInt32 renderer = *reinterpret_cast<const UInt32*>(addr::kRendererPointer);
+	if (!mem::LooksLikeObjectAddress(renderer)) {
+		return 0;
+	}
+	const UInt32 manager = *reinterpret_cast<const UInt32*>(renderer + 0x8B0);
+	return mem::LooksLikeObjectAddress(manager) ? *reinterpret_cast<const UInt32*>(manager + 0x3C) : 0;
+}
+
+// The renderer's two scene-frame flags (+0x200 the default group's, +0x204 an
+// offscreen one's; 0x007D71C0, 0x007D7280, 0x007D72D0): a world render ends
+// the frame it finds open at its close, which counts the stamp up. Trace only.
+void RendererFrameFlags(UInt32& defaultOpen, UInt32& offscreenOpen) {
+	defaultOpen = offscreenOpen = 0xFFFFFFFFu;
+	const UInt32 renderer = *reinterpret_cast<const UInt32*>(addr::kRendererPointer);
+	if (mem::LooksLikeObjectAddress(renderer)) {
+		defaultOpen = *reinterpret_cast<const UInt32*>(renderer + 0x200);
+		offscreenOpen = *reinterpret_cast<const UInt32*>(renderer + 0x204);
+	}
+}
+
 struct MirrorPassResult {
-	bool rendered = false;
+	bool rendered = false;  // the pass started: a back buffer read, a texture there
+	bool copied = false;    // its picture reached the texture
 	double ms = 0.0;
 	UInt32 draws = 0;
+	UInt32 stamp = 0;  // SkinBuildStamp before the render
 	vr::MirrorPictureSize size;
 	game::MirrorHeadSwitch head;
 };
 
-void TraceFrameStart(const MirrorFrame& f, vr::MirrorPictureSize size, UInt32 side) {
-	const vr::MirrorCamera& c = f.camera;
-	OBVR_LOG("Mirror trace: scene call %u - the glass at %.1f %.1f %.1f (%.1f x %.1f units), the eye %.1f units in "
-	         "front (facing %.2f), the mirror's camera at %.1f %.1f %.1f, frustum %.3f %.3f %.3f %.3f near %.1f, "
-	         "picture %ux%u of %u",
-	         CurrentSceneCall(), static_cast<double>(f.glass.centre.x), static_cast<double>(f.glass.centre.y),
+void TraceFrameStart(const MirrorFrame& f, const vr::MirrorCamera& c, const char* which, vr::MirrorPictureSize size,
+                     UInt32 side) {
+	UInt32 defaultOpen = 0;
+	UInt32 offscreenOpen = 0;
+	RendererFrameFlags(defaultOpen, offscreenOpen);
+	OBVR_LOG("Mirror trace: scene call %u, %s - the glass at %.1f %.1f %.1f (%.1f x %.1f units), the eye %.1f units "
+	         "in front (facing %.2f), the mirror's camera at %.1f %.1f %.1f, frustum %.3f %.3f %.3f %.3f near %.1f, "
+	         "picture %ux%u of %u; skin stamp %u, renderer frames open %u %u",
+	         CurrentSceneCall(), which, static_cast<double>(f.glass.centre.x), static_cast<double>(f.glass.centre.y),
 	         static_cast<double>(f.glass.centre.z), static_cast<double>(f.glass.width),
 	         static_cast<double>(f.glass.height), static_cast<double>(c.eyeDistance), static_cast<double>(c.facing),
 	         static_cast<double>(c.position.x), static_cast<double>(c.position.y), static_cast<double>(c.position.z),
 	         static_cast<double>(c.left), static_cast<double>(c.right), static_cast<double>(c.top),
-	         static_cast<double>(c.bottom), static_cast<double>(c.nearUnits), size.width, size.height, side);
+	         static_cast<double>(c.bottom), static_cast<double>(c.nearUnits), size.width, size.height, side,
+	         SkinBuildStamp(), defaultOpen, offscreenOpen);
 }
 
-MirrorPassResult RenderMirror(MirrorState& s, HeadsetRenderer& renderer, const MirrorFrame& f, UInt32 pixels) {
+// The picture copied: the texture black outside it, and noted as this eye's
+// with the part it fills and, steadied, the camera it was rendered with.
+void NotePicture(MirrorState& s, void* device, const MirrorFrame& f, const vr::MirrorCamera& camera, int eye,
+                 vr::MirrorPictureSize size) {
+	float rect[4];
+	vr::MirrorGlassUvFor(size, s.targets[eye].side, rect);
+	BlackOutsidePicture(device, s.targets[eye], size);  // after every copy: MirrorSteady may come on
+	vr::NoteMirrorEyeRendered(s.pictures, eye, f.steadied ? vr::PictureViewOf(camera, rect) : vr::MirrorPictureView{},
+	                          rect);
+}
+
+// One world render from `camera` into texture `eye` (0: the one picture or
+// the left eye's, 1: the right eye's). Not handed to the glass here: the
+// caller hands in once a frame, after its passes (HandInGlass).
+MirrorPassResult RenderMirror(MirrorState& s, HeadsetRenderer& renderer, const MirrorFrame& f,
+                              const vr::MirrorCamera& camera, int eye, const char* which, UInt32 pixels) {
 	MirrorPassResult out;
 	void* const device = GetGameDevice();
 	d3d9::SurfaceDesc back{};
@@ -400,53 +542,46 @@ MirrorPassResult RenderMirror(MirrorState& s, HeadsetRenderer& renderer, const M
 		}
 		return out;
 	}
-	if (!EnsureTarget(s, renderer, device, pixels, back.format)) {
+	if (!EnsureTarget(s, renderer, eye, device, pixels, back.format)) {
 		if (vr::StopMirror(s.failures)) {
 			SwitchOff(s, renderer, "the reflection's texture could not be made");
 		}
 		return out;
 	}
-	out.size = vr::MirrorPictureSizeFor(f.longSidePixels, f.glass.width / f.glass.height, s.target.side, back.width,
-	                                    back.height);
+	out.size = vr::MirrorPictureSizeFor(f.longSidePixels, f.glass.width / f.glass.height, s.targets[eye].side,
+	                                    back.width, back.height);
 	const bool trace = s.trace.On();
 	if (trace) {
-		TraceFrameStart(f, out.size, s.target.side);
+		TraceFrameStart(f, camera, which, out.size, s.targets[eye].side);
 	}
 	perf::EventContext context{};
 	context.sceneId = CurrentSceneCall();
-	context.passIndex = 2;
+	context.passIndex = 2 + eye;
 	const long long start = ReadPerformanceCounter();
-	bool landed = false;
+	out.stamp = SkinBuildStamp();
 	{
 		perf::Profiler::Instance().GpuBegin(perf::EventType::MirrorPass, context, device);
 		perf::Profiler::ScopedSpan span(perf::Profiler::Instance(), perf::EventType::MirrorPass, context);
-		landed = RenderFromMirror(f.camera, out.size, back, out.draws, trace, out.head);
+		const bool landed = RenderFromMirror(camera, out.size, back, out.draws, trace, out.head);
 		SInt32 result = 0;
-		const bool copied = landed && CopyToGlass(device, s.target, out.size, result);
+		out.copied = landed && CopyToGlass(device, s.targets[eye], out.size, result);
 		perf::Profiler::Instance().GpuEnd();
 		if (trace) {
 			OBVR_LOG("Mirror trace: the world render returned (%u draws), put back; the picture %s, %s", out.draws,
-			         landed ? "in the frame" : "NOT in the frame", copied ? "copied to the glass" : "not copied");
+			         landed ? "in the frame" : "NOT in the frame", out.copied ? "copied to the glass" : "not copied");
 		}
-		if (!copied && DeviceGone(result)) {
+		if (!out.copied && DeviceGone(result)) {
 			if (vr::StopMirror(s.failures)) {
 				SwitchOff(s, renderer, "the device was lost at the copy");
 			}
 			return out;
 		}
-		if (vr::NoteMirrorOutcome(s.failures, copied)) {
+		if (vr::NoteMirrorOutcome(s.failures, out.copied)) {
 			SwitchOff(s, renderer, landed ? "the copy to the glass was refused three frames in a row"
 			                              : "the mirror's picture did not reach the frame three frames in a row");
 		}
-		if (copied) {
-			MirrorGlassUv uv;
-			vr::MirrorGlassUvFor(out.size, s.target.side, uv.rect);
-			BlackOutsidePicture(device, s.target, out.size);  // after every copy: MirrorSteady may come on
-			if (f.steadied) {
-				uv.view = vr::PictureViewOf(f.camera, uv.rect);
-			}
-			renderer.SetMirrorGlass(s.target.texture, nullptr, uv);
-			s.handedIn = true;
+		if (out.copied && !s.failures.stopped) {
+			NotePicture(s, device, f, camera, eye, out.size);
 		}
 	}
 	MarkBoneLock(context);
@@ -455,67 +590,194 @@ MirrorPassResult RenderMirror(MirrorState& s, HeadsetRenderer& renderer, const M
 	                                  static_cast<double>(ticksPerSecond)
 	                            : 0.0;
 	out.rendered = true;
-	s.trace.FrameDone();
 	return out;
 }
 
-// The cost line (docs/mirror-spec.md 12, "Reading the cost line").
-void LogMirrorCost(const vr::MirrorCostWindow& w, UInt32 side, UInt32 steady) {
+// What a frame rendered: its mode and each texture's pass (index 0 the one
+// picture or the left eye's).
+struct MirrorFrameResult {
+	vr::MirrorDepthMode mode = vr::MirrorDepthMode::OneForBoth;
+	MirrorPassResult pass[2];
+	UInt32 planned = 0;
+	bool Rendered() const { return pass[0].rendered || pass[1].rendered; }
+	double Ms() const { return pass[0].ms + pass[1].ms; }
+	UInt32 Passes() const { return (pass[0].rendered ? 1u : 0u) + (pass[1].rendered ? 1u : 0u); }
+};
+
+// MirrorDepth=0: stage 3's pass - the cyclopean camera, texture 0, one picture
+// handed to both eyes.
+MirrorFrameResult RenderOneForBoth(MirrorState& s, HeadsetRenderer& renderer, const MirrorFrame& f, UInt32 pixels) {
+	MirrorFrameResult r;
+	r.planned = 1;
+	r.pass[0] = RenderMirror(s, renderer, f, f.camera, 0, "one picture for both eyes", pixels);
+	if (r.pass[0].copied && !s.failures.stopped) {
+		HandInGlass(s, renderer, false);
+	}
+	return r;
+}
+
+// Stage 4: each eye's camera (its own place reflected in the same steadied
+// glass), the eyes this frame renders (both, or the older one while taking
+// turns - vr::PlanMirrorEyes), one pass each as a plain repeat of stage 3's
+// steps with that camera (docs/mirror-spec.md 14.2), then both pictures handed
+// in, each with the camera it was rendered with. An eye not rendered this
+// frame keeps its picture, laid through its own older camera.
+MirrorFrameResult RenderEachEye(MirrorState& s, HeadsetRenderer& renderer, const MirrorFrame& f,
+                                const MirrorPageState& page, UInt32 pixels) {
+	MirrorFrameResult r;
+	const vr::MirrorEyeCameras cameras = vr::MirrorEyeCamerasFor(f.glass, f.corners, page.eyes, true);
+	const bool can[2] = {cameras.eye[0].view == vr::MirrorView::Ok && vr::GlassInView(page.eyes[0]),
+	                     cameras.eye[1].view == vr::MirrorView::Ok && vr::GlassInView(page.eyes[1])};
+	r.mode = vr::MirrorDepthModeFor(true, s.budget);
+	vr::AgeMirrorEyes(s.pictures);
+	const vr::MirrorEyePlan plan = vr::PlanMirrorEyes(r.mode, can, s.pictures.age);
+	r.planned = plan.passes;
+	bool copied = false;
+	for (int eye = 0; eye < 2; ++eye) {
+		if (plan.render[eye] && !s.failures.stopped) {
+			r.pass[eye] =
+				RenderMirror(s, renderer, f, cameras.eye[eye], eye, eye == 0 ? "the left eye" : "the right eye", pixels);
+			copied = copied || r.pass[eye].copied;
+		}
+	}
+	if (copied && !s.failures.stopped) {
+		HandInGlass(s, renderer, true);
+	}
+	return r;
+}
+
+// The cost line (docs/mirror-spec.md 12.5, 13.4, 14.5).
+void LogMirrorCost(const MirrorState& s, UInt32 steady, float budgetMs) {
+	const vr::MirrorCostWindow& w = s.cost;
 	const auto skipped = [&w](vr::MirrorSkip k) { return w.skipped[static_cast<int>(k)]; };
+	const auto frames = [&w](vr::MirrorDepthMode m) { return w.modeFrames[static_cast<int>(m)]; };
 	OBVR_LOG("Mirror: %u frames up - %u passes, %.2f ms mean, %.2f ms worst (CPU), %u draws a pass, picture %ux%u of "
 	         "%u; skipped %u (out of view %u, facing away %u, edge-on %u, eyes not captured %u, loading %u, no glass "
 	         "%u, stopped %u, switched off %u); head shown in %u of %u passes (%.3f ms a pass); steady %u: the glass "
-	         "turned %.2f degrees mean, %.2f most from the steadied in %u passes, laid on %u eye draws, a corner past "
-	         "the picture in %u, not mapped in %u",
-	         w.frames, w.passes, MeanMs(w), w.worstMs,
-	         w.passes > 0 ? static_cast<UInt32>(w.draws / w.passes) : 0u, w.width, w.height, side,
-	         vr::SkippedTotal(w), skipped(vr::MirrorSkip::OutOfView), skipped(vr::MirrorSkip::FacingAway),
-	         skipped(vr::MirrorSkip::EdgeOn), skipped(vr::MirrorSkip::NotCaptured), skipped(vr::MirrorSkip::Loading),
-	         skipped(vr::MirrorSkip::NoGlass), skipped(vr::MirrorSkip::Stopped), skipped(vr::MirrorSkip::Off),
-	         w.headShown, w.headAsked, vr::MeanHeadMs(w), steady, vr::MeanTurnDegrees(w),
-	         static_cast<double>(w.turnMostDegrees), w.turned, w.glassDraws, w.glassOutside, w.glassUnmapped);
+	         "turned %.2f degrees mean, %.2f most from the steadied in %u frames, laid on %u eye draws, a corner past "
+	         "the picture in %u, not mapped in %u; depth %s: both eyes %u, taking turns %u, one for both %u frames, "
+	         "passes left %u right %u, together %.2f ms a frame mean, %.2f worst; budget %.2f ms a pass (last second "
+	         "%.2f); kept: actor shadow maps %u times; skin stamp moved between the two passes in %u of %u frames",
+	         w.frames, w.passes, MeanMs(w), w.worstMs, w.passes > 0 ? static_cast<UInt32>(w.draws / w.passes) : 0u,
+	         w.width, w.height, s.targets[0].side, vr::SkippedTotal(w), skipped(vr::MirrorSkip::OutOfView),
+	         skipped(vr::MirrorSkip::FacingAway), skipped(vr::MirrorSkip::EdgeOn), skipped(vr::MirrorSkip::NotCaptured),
+	         skipped(vr::MirrorSkip::Loading), skipped(vr::MirrorSkip::NoGlass), skipped(vr::MirrorSkip::Stopped),
+	         skipped(vr::MirrorSkip::Off), w.headShown, w.headAsked, vr::MeanHeadMs(w), steady, vr::MeanTurnDegrees(w),
+	         static_cast<double>(w.turnMostDegrees), w.turned, w.glassDraws, w.glassOutside, w.glassUnmapped,
+	         s.depth ? "on" : "off", frames(vr::MirrorDepthMode::Both), frames(vr::MirrorDepthMode::Turns),
+	         frames(vr::MirrorDepthMode::OneForBoth), w.eyePasses[0], w.eyePasses[1], vr::MeanFrameMs(w),
+	         w.frameWorstMs, static_cast<double>(budgetMs), s.budget.lastMeanMs, w.shadowsKept, w.stampChanged,
+	         w.stampAsked);
+}
+
+// The frame into the cost window: each pass's head switch, the glass's turn,
+// the frame (its first pass with it), its second pass, the mode and the
+// passes together, the shadow maps the mirror kept since the last frame. True
+// when the window's line is due.
+bool NoteFrameCost(MirrorState& s, const MirrorFrame& f, vr::MirrorSkip counted, const MirrorFrameResult& r) {
+	for (const MirrorPassResult& p : r.pass) {
+		if (p.head.asked) {
+			vr::NoteMirrorHead(s.cost, p.head.plan.refusal == game::MirrorHeadRefusal::None, p.head.ms);
+		}
+	}
+	if (r.Rendered() && f.steadied) {
+		vr::NoteMirrorTurn(s.cost, f.turnDegrees);
+	}
+	const MirrorPassResult& first = r.pass[0].rendered || !r.pass[1].rendered ? r.pass[0] : r.pass[1];
+	const bool due = vr::NoteMirrorFrame(s.cost, counted, first.ms, first.draws, first.size);
+	if (r.pass[0].rendered && r.pass[1].rendered) {
+		vr::NoteMirrorExtraPass(s.cost, r.pass[1].ms, r.pass[1].draws);
+	}
+	if (r.Rendered()) {
+		vr::NoteMirrorDepthFrame(s.cost, r.mode, r.Ms(), r.pass[0].rendered, r.pass[1].rendered,
+		                         r.pass[0].stamp != r.pass[1].stamp);
+	}
+	const unsigned kept = MirrorShadowMapsKept();
+	vr::NoteMirrorShadowsKept(s.cost, kept - s.shadowsKeptMark);
+	s.shadowsKeptMark = kept;
+	return due;
+}
+
+// With depth: the frame's passes into the budget (vr::StepMirrorBudget); a
+// change of mode is one line, and the trace logs the passes after it.
+void StepBudget(MirrorState& s, const MirrorFrame& f, const MirrorFrameResult& r, float budgetMs) {
+	const vr::MirrorBudgetChange change = vr::StepMirrorBudget(s.budget, budgetMs, f.seconds, r.Ms(), r.Passes());
+	if (change == vr::MirrorBudgetChange::None) {
+		return;
+	}
+	s.trace = vr::MirrorTrace{};
+	if (change == vr::MirrorBudgetChange::ToTurns) {
+		OBVR_LOG("Mirror: the eyes take turns now - a pass cost %.2f ms on average over the last second, over the "
+		         "budget of %.2f ms (MirrorBudgetMs); one pass a frame, each eye's picture renewed every second frame",
+		         s.budget.lastMeanMs, static_cast<double>(budgetMs));
+	} else {
+		OBVR_LOG("Mirror: both eyes every frame again - %.2f ms a pass over the last second, under %.2f ms "
+		         "(MirrorBudgetMs %.2f, or 0)",
+		         s.budget.lastMeanMs, static_cast<double>(budgetMs * vr::kMirrorBudgetBackShare),
+		         static_cast<double>(budgetMs));
+	}
+}
+
+void SayMirrorOn(MirrorState& s, bool depth, float budgetMs) {
+	if (s.onSaid) {
+		return;
+	}
+	s.onSaid = true;
+	if (!depth) {
+		OBVR_LOG("Mirror: the reflection is on - one world render a frame while the glass is in view, after both "
+		         "eyes' captures, on the glass a frame later; one picture for both eyes, the head shown for it alone");
+		return;
+	}
+	OBVR_LOG("Mirror: the reflection is on - each eye its own picture: two world renders a frame while the glass is "
+	         "in view, one a frame with the eyes taking turns while a pass costs over %.2f ms; after both eyes' "
+	         "captures, on the glass a frame later; the head shown for them alone",
+	         static_cast<double>(budgetMs));
 }
 
 }  // namespace
 
 void RunMirrorGlassPass(HeadsetRenderer& renderer, bool stereoFrame) {
 	MirrorState& s = State();
+	const vr::TabletSettings& t = GetConfig().hands.tablet;
+	NoteDepthSetting(s, renderer, t.mirrorDepth);
 	const MirrorPageState page = renderer.MirrorPage();
 	if (!page.up) {
 		s.wantsBones = false;
 		s.steady = vr::MirrorSteadyState{};  // the next time up starts from the glass as it is
 		s.steadyTicks = 0;
+		s.budget = vr::MirrorBudget{};      // and with both eyes
 		DarkGlass(s, renderer);
 		return;
 	}
-	const vr::TabletSettings& t = GetConfig().hands.tablet;
 	const bool settingOn = t.mirror && t.mirrorWorld;
 	s.wantsBones = vr::MirrorWantsBoneCapture(true, settingOn, s.failures.stopped);
 	const bool eyesCaptured = stereoFrame && renderer.BothEyesCaptured() && BonesKeptThisFrame();
 	const MirrorFrame f = ReadMirrorFrame(s, page, settingOn, eyesCaptured, t.mirrorSteady);
 	vr::NoteGlassDraws(s.cost, page.glassDraws, page.glassOutside, page.glassUnmapped);
 	const vr::MirrorSkip skip = vr::DecideMirrorPass(f.inputs);
-	MirrorPassResult result;
+	MirrorFrameResult result;
 	if (skip == vr::MirrorSkip::None) {
-		if (!s.onSaid) {
-			s.onSaid = true;
-			OBVR_LOG("Mirror: the reflection is on - one world render a frame while the glass is in view, after both "
-			         "eyes' captures, on the glass a frame later; one picture for both eyes, the head shown for it alone");
+		SayMirrorOn(s, t.mirrorDepth, t.mirrorBudgetMs);
+		result = t.mirrorDepth ? RenderEachEye(s, renderer, f, page, t.mirrorPixels)
+		                       : RenderOneForBoth(s, renderer, f, t.mirrorPixels);
+		if (result.Rendered()) {
+			s.trace.FrameDone();
 		}
-		result = RenderMirror(s, renderer, f, t.mirrorPixels);
 	} else if (skip == vr::MirrorSkip::Off || skip == vr::MirrorSkip::FacingAway) {
 		DarkGlass(s, renderer);  // the glass's back, or no reflection wanted: no old picture on it
 	}
-	// A pass that could not start (no back buffer read, no texture) counts as stopped.
-	const vr::MirrorSkip counted = result.rendered || skip != vr::MirrorSkip::None ? skip : vr::MirrorSkip::Stopped;
-	if (result.head.asked) {
-		vr::NoteMirrorHead(s.cost, result.head.plan.refusal == game::MirrorHeadRefusal::None, result.head.ms);
+	// A pass that could not start (no back buffer read, no texture) counts as
+	// stopped; with depth, a frame neither eye could render (its own camera
+	// refused, or the glass out of its view) as out of view.
+	vr::MirrorSkip counted = skip;
+	if (skip == vr::MirrorSkip::None && !result.Rendered()) {
+		counted = result.planned == 0 ? vr::MirrorSkip::OutOfView : vr::MirrorSkip::Stopped;
 	}
-	if (result.rendered && f.steadied) {
-		vr::NoteMirrorTurn(s.cost, f.turnDegrees);
+	if (t.mirrorDepth) {
+		StepBudget(s, f, result, t.mirrorBudgetMs);
 	}
-	if (vr::NoteMirrorFrame(s.cost, counted, result.ms, result.draws, result.size)) {
-		LogMirrorCost(s.cost, s.target.side, t.mirrorSteady);
+	if (NoteFrameCost(s, f, counted, result)) {
+		LogMirrorCost(s, t.mirrorSteady, t.mirrorBudgetMs);
 		vr::ResetMirrorCost(s.cost);
 	}
 }

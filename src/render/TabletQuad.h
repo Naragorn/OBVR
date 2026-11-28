@@ -133,9 +133,15 @@ public:
 	// or opaque) and the part of it the glass shows. With no texture the glass
 	// stays its plain dark colour. One texture alone is shown to both eyes.
 	void SetMirrorGlass(void* leftEye, void* rightEye, const MirrorGlassUv& uv) {
+		SetMirrorGlass(leftEye, rightEye, uv, uv);
+	}
+	// Stage 4: each eye's picture with its own part and camera
+	// (vr::GlassPictureFor picks the eye's; the left's alone is both eyes').
+	void SetMirrorGlass(void* leftEye, void* rightEye, const MirrorGlassUv& leftUv, const MirrorGlassUv& rightUv) {
 		m_glassTexture[0] = leftEye;
 		m_glassTexture[1] = rightEye;
-		m_glassUv = uv;
+		m_glassUv[0] = leftUv;
+		m_glassUv[1] = rightUv;
 	}
 
 	// Into the back buffer for one eye, on the hand of the left role
@@ -179,7 +185,7 @@ private:
 	void* m_dust = nullptr;
 	bool m_dustTried = false;
 	void* m_glassTexture[2] = {nullptr, nullptr};
-	MirrorGlassUv m_glassUv;
+	MirrorGlassUv m_glassUv[2];
 	// Where the glass went into each eye this frame, and on which hand pose (MirrorPage).
 	vr::GlassOnScreen m_glassSeen[2];
 	NiPoint3 m_glassHandPos{0.0f, 0.0f, 0.0f};

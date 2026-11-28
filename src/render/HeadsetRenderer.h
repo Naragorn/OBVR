@@ -210,6 +210,9 @@ public:
 	// for the glass (render/TabletQuad.h).
 	MirrorPageState MirrorPage() const { return m_tablet.MirrorPage(); }
 	void SetMirrorGlass(void* leftEye, void* rightEye, const MirrorGlassUv& uv) { m_tablet.SetMirrorGlass(leftEye, rightEye, uv); }
+	void SetMirrorGlass(void* leftEye, void* rightEye, const MirrorGlassUv& leftUv, const MirrorGlassUv& rightUv) {
+		m_tablet.SetMirrorGlass(leftEye, rightEye, leftUv, rightUv);
+	}
 	// Both eye pictures of this frame are copied out of the back buffer
 	// (CaptureEye; cleared when the frame opens): from here on the back buffer
 	// may be drawn over without the headset seeing it (render/MirrorGlassPass.cpp).
