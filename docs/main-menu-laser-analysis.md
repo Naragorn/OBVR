@@ -161,3 +161,57 @@ depth for every menu); 4 and 5 for the main menu; 6-8 as the harness.
   from +0x20.. in the same frame (GameAddresses.h: 0x57E7C0 "writes the
   cursor position as floats at +0x20/+0x24/+0x28 and a derived triple at
   +0x2C/+0x30/+0x34") - the detour's position answers it in one run.
+
+## State-change audit (2026-11-28)
+
+Checked against the rule set "State changes without glitches or side effects"
+(`D:\Modding\claude-md-state-changes.md`; principles and labels as in
+native-menus.md's audit section). Code read at origin/main 5214464 (the cited files are the same as at 88dae75
+unless a line says otherwise); nothing built or run.
+
+Findings:
+
+- **A trigger held across a menu change clicks in the new menu (principle 7).** On the main menu (a button menu) the pull
+  clicks; the menu it opens (Options, Load) is a touch-press menu, and its press
+  machine arms in `Idle` on any frame the trigger is down over a tile, without a
+  fresh pull - so the release clicks into the new menu. Seen in every
+  main-menu click run: "click sent to the none menu ... the tile under it """
+  (controls-spec.md, main menu measured 2026-10-21, "Seen, not changed"), and
+  on the pause menu's Load (docs/hand-script-harness.md, load-menu-click row).
+  Evidence: `src/vr/HandInput.h:1519-1525` (Idle arms on `triggerDown && hit`),
+  `:1604-1620` (the button press keeps its own `triggerWas`). Read (code and
+  logs); derived (harmful when the release lands on a button). Fix: the touch
+  press arms only on a rising edge seen while this menu is on top; reset both
+  press states when the top menu changes.
+- **The main menu's quad is taken along in one frame (principle 5 and the VR note: no snap).** After a
+  second turned 30 degrees or 0.5 m away, `StepFlatFollow` returns true once
+  and the picture and its quad jump to the new anchor ("the flat picture taken
+  along, and the menu's quad with it - 1.04 m", controls-spec.md 2026-10-21).
+  The hand HUD's rows glide for the same reason since 2026-10-28
+  (`vr::StepViewAnchor`). Evidence: `src/vr/FlatFollow.h:47-53`. Read. Fix:
+  glide the anchor as `StepViewAnchor` does.
+- **The game's cursor sprite pops in when the beam leaves the menu (principle 6).** It is
+  hidden only while a laser is on a menu (or the hand mode runs) and never
+  while OBVR's settings are open: `src/camera/hands/ControlsOut.cpp:686-687`.
+  With only the menus on the controllers, the sprite reappears at the last
+  cursor place each time the beam leaves. Read (the condition); derived (the
+  pop). Low. Fix: keep it hidden for as long as the menu is up once a laser
+  was on it.
+
+Complies (read): the hover pixel is written before the engine's tile search,
+not steered (4.36), so the main menu's first frame no longer starts at 0,0;
+an engine re-show of the sprite is hidden again before the interface draws
+(`src/game/MenuType.cpp:206-224`, `src/render/InterfaceRenderHook.cpp:3176-3177`);
+the double main menu (a deferred ColorFill under DXVK) was fixed by a blit
+(`src/render/EyeMirror.cpp:788`); the flat picture is never re-anchored under
+a beam (`FlatFollow.h:37`).
+
+Not verified (harness with a per-frame log, or the headset):
+
+- The stray release click as a per-frame trace: trigger, press phase, top menu
+  and tile for the ten frames around `main-menu-click.txt`'s pull.
+- The quad's jump as seen: the "Menu trace" is rationed (CameraHook.cpp's
+  comment), so no run holds every frame of a follow.
+- Whether the compositor shows both eyes the same on the quad's first frame
+  after the main menu appears (the black-out runs after the copy) - only the
+  headset or a SteamVR mirror capture shows it.

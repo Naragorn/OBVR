@@ -193,3 +193,44 @@ pass's two passes added), app GPU before submit, by `tools/perf-phases.py` per s
 - Not covered: the Windows headset (iMultiSample=0 in the Windows Oblivion.ini), bloom or blur on the texture
   route (bUseBlurShader=0 on both machines; a blur would smear a few pixels across the seam between the
   eyes), and a texture of another size than the frame (the engine would scale the port; no guard, see A3).
+
+## State-change audit (2026-11-28)
+
+Checked against `D:/Modding/claude-md-state-changes.md` ("State changes without glitches or side
+effects", P1-P8 and its verification section). Code read on origin/main 5214464 (all file:line below are origin/main's), nothing run.
+R = read, D = derived, G = guessed.
+
+The path is decided every frame (`StereoPathFor`, render/ObngStereoLogic.h; `HandOverEyes`,
+render/SceneRenderHook.cpp:262-301). A frame switches between the single and the dual pass at a
+menu, when OBNG refuses the eyes, or when the plan is not 2.
+
+Findings:
+
+1. **Dynamic resolution on a dual-pass fallback frame** (P4, "both render paths"). The scaled
+   port also applies to dual and plain frames, but the crop is cut only on single-pass frames.
+   Each fallback frame shows the world shrunk into a corner. This is the most serious finding
+   at a path switch; details in dynamic-resolution.md, "State-change audit". [R code, D picture]
+2. **What can still differ when the path switches** (P4, P6). The world pictures were measured
+   equal (step 5: RMSE 0.07 / 0.26 %), which covers the core case. Three differences remain
+   open: A6 (near objects at the right eye's right edge may be culled on the single pass only,
+   so they would appear and vanish as the path switches), A3 (blur or bloom smearing across the
+   seam on the texture route) and A3's texture of another size, which has no guard (stale right
+   eye). [R, this spec; D that they show at a switch]
+3. **Complies: the single pass's side effects are set and reset in one bracket** (P8). SetEyes
+   comes before the render and ClearEyes after it, also on a refusal (SceneRenderHook.cpp:280,
+   296-298, 334). The port is saved and given back by a scope (`WorldPortScope`, :220-227).
+   `SinglePassFrame()` is reset (:341), and afterWorldRender runs on every path (:339,
+   443, 583). [R]
+4. **Complies: the dual pass's side effects are reset.** The frame clock is zeroed for the
+   second render and put back (:542, 576). Bone pass mode, culling capture/replay and
+   the water stereo pass are each set and reset (:465-585). The mirror's own render (:731-771, `RunMirrorWorldRender`) zeroes and restores the clock the same way. [R]
+5. **The log of path switches** (verification). A switch is logged when OBNG's answer changes,
+   plus one line every 3000 frames (:286-287). There is no per-frame path record a harness
+   scenario could check frame by frame. [R] Fix: when a debug flag is on, write a per-frame
+   path line at a hand-script mark.
+
+Not verified:
+- No scenario forces an OBNG refusal (or opens and closes a menu) mid-run and compares the eye
+  pictures of the switch frame and the frame after.
+- A6's missing objects at a switch were not seen and not tested.
+- Windows headset with the bundled OBNG, as already open under A3 and A7.

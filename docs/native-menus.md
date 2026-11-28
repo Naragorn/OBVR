@@ -245,3 +245,81 @@ its label in the menu XML, and the tests of the sections; a section without
 numbers shows no "More...". Cost: large - new menu state, XML, the headset to
 judge it. Worth it only if the sections still feel too long after the
 regrouping.
+
+## State-change audit (2026-11-28)
+
+Checked against the rule set "State changes without glitches or side effects"
+(every visible open/close/refresh happens exactly as specified, nothing visible,
+empty, misplaced or in the wrong state for even a frame; an explicit state
+machine; prepare, then show; the old state stays until the new one is ready;
+clean animation ends; robust input; side effects set and fully reset; VR: no
+pop-in or head-locked snap, both eyes; proof by a per-frame state log or a
+frame-wise test) - `D:\Modding\claude-md-state-changes.md`, eight principles
+(1 hidden first, 2 prepare then show, 3 explicit state machine, 4 old state
+stays, 5 clean animations, 6 no pop-in, 7 robust input, 8 side effects reset)
+and its mandatory verification. Code read at origin/main 5214464 (the cited files are the same as at 88dae75
+unless a line says otherwise); nothing was built or run. Labels: **read** = seen in the
+code or a spec, **derived** = follows from what was read, **guessed** = not
+backed.
+
+Findings:
+
+- **Settings row -> controls card / weapon places / stow spot / adjust hands
+  (principles 4 and 8).** The row sets
+  `g_closeForAdjust`, the settings window closes, and the next window opens
+  only on a later tick once no menu is up at all (`top==0 && PlayerInWorld()`).
+  In the world that is at least one frame of no menu: menu mode ends, the world
+  unpauses, the HUD and crosshair come back, the controls are live - then the
+  next window opens and all of it flips back. Evidence:
+  `src/game/NativeMenuPrototype.cpp:171-184` (the requests), `:489`
+  (`if (!w.pending || root || top!=0 || !PlayerInWorld()) return false;`),
+  `:875`, `:941`. Read (the conditions); derived (the frame of world in between).
+  Fix: hand over inside one generic window (refill it, as the card's page turn
+  does) or keep menu mode and the HUD hold across the hand-over.
+- **Every OBVR window: shown, then filled by many separate console lines
+  (principles 1 and 2).** `ShowGenericMenu` runs first, then 5 to 20
+  `SetMenuStringValue`/`SetMenuFloatValue` lines (`Text`/`Number`). This is
+  only atomic if the whole xOBSE task tick runs before the frame's interface
+  pass, which is not shown anywhere. A failed line leaves the window up and
+  partly filled; only the log says so. Evidence:
+  `src/game/NativeMenuPrototype.cpp:126-133`, `:496-509`, `:885-896`, `:370`,
+  `:406` ("(a UI update command failed)" and the window stays). Read (the
+  order and the missing rollback); guessed (whether the XML defaults are ever
+  drawn for a frame). Fix: on a failed fill close the window and log, and
+  measure the order of task tick and interface pass once.
+- **Escape over a generic menu (principle 7).** On Linux, Escape over an OBVR
+  window opened the pause menu on top instead of closing the window
+  (onboarding-spec.md, 3.2 "Built 2026-10-15": "Escape over a generic menu
+  opens the pause menu on top instead of closing it"). Read (spec). The chain
+  then ends as "closed from outside" (see onboarding-spec's audit). Fix:
+  consume Escape for an owned generic window and close it through its own
+  close tile.
+- **Ownership by root pointer alone (principle 3).**
+  `foreign=root && root!=g_ourRoot` (`src/game/NativeMenuPrototype.cpp:597`)
+  is the only identity. native-menu-lifecycle.md says a root pointer cannot
+  prove a close and reopen in between. Derived; low risk, since `g_ourRoot` is
+  cleared on every own close. Fix: carry the generation from the lifecycle
+  bridge once it is installed.
+- **The stick navigation described above (0x580BA0) is not in `src/` (principle 7: no fallback input).** Grep
+  finds no reference; main-menu-laser-analysis.md says the same. Read. The
+  doc's "Controller follow-up" text is stale: there is no non-laser fallback
+  through engine menus today. Fix: mark the paragraph as superseded.
+
+Complies (read): Insert and the stick chord are taken as one request a tick
+and dropped when the menu cannot open (`:591-592`, `ui::SettingsStep`
+`src/ui/NativeSettings.h:17-25` - no latched open later); close goes through
+OBVR's own close tile, never CloseAllMenus (`:430-434`); closing waits for the
+root to go before `FinishSettings` (Release step); the lifecycle's 512 input
+combinations are unit-tested (NativeSettingsTest); a page change rewrites only
+changed text in one tick (`CachedText`).
+
+Not verified (needs a harness run with a per-frame log, or the headset):
+
+- Whether the xOBSE task tick (`Tick`) runs before or after the interface
+  pass in the same frame: decides whether a freshly opened window is ever
+  drawn with its XML defaults. A one-line-per-frame log of "task tick /
+  interface pass / Present" order for ten frames around an open settles it.
+- The world frame between settings and the card or a placing window: a
+  per-frame log of menu mode, HUD shown and pause across
+  `controls-card.txt` from the settings row.
+- MenuQue's own open and close fades of a generic menu, frame by frame.

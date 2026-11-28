@@ -1332,3 +1332,47 @@ dismember-hand PASS. Open: the hand's own cap is not read for its facing
 0x007E4960 reads a random skin bone's parent's world position unchecked, and crashed on the
 stump's (docs/controls-spec.md, "Beta 9 reports", C). Both now come from game/FakeBone.h: a
 stand-in parent beside each, at the bone's place (synced after `Place`). fake_bone_test.
+
+## State-change audit (2026-11-28)
+
+Checked against `D:/Modding/claude-md-state-changes.md` ("State changes without glitches or side
+effects", P1-P8 and its verification section). Code read on origin/main 5214464; game/Dismember.cpp,
+game/DismemberLogic.h and this spec are the same there as in the working copy, so the file:line
+below hold for both. Nothing run. R = read, D = derived, G = guessed.
+
+Findings:
+
+1. **After a load the cut part shows on the body for a second, then pops off** (P1, P6). A
+   remembered cut is made again only once the actor's 3D has stood for `kRedoAfterSeconds` =
+   1.0 s (DismemberLogic.h:499, 815, 854-862; Dismember.cpp:782-840). Until then the corpse is
+   drawn whole. Then the head or limb vanishes in one frame, with no push and no blood
+   (`redo`). After a load or on walking back into the cell, a corpse in view shows its head and
+   loses it a second later. [R the wait; D what is seen] Fix: from the first frame the 3D
+   stands, hide the part's shapes (or collapse its bones) until the redo runs, or redo at the
+   earliest frame the ragdoll is known to be built (measure that frame first).
+2. **Shapes added after the cut wait up to half a second** (P4, P6). New shapes on a cut body
+   (clothes changed, gear put on a corpse) are only re-pointed by the rescan every
+   `kCutRescanSeconds` = 0.5 s (DismemberLogic.h:473-484; Dismember.cpp:929-941). Until then
+   they are drawn on the uncut skeleton: the part's piece on the body, or stretched to where
+   the part lies. [R the cadence; D the look] Fix: catch the new shape the frame it appears
+   (a hash of the tree, as the first-person hide walk does, or the engine's equip on the actor)
+   and re-point it in that frame.
+3. **Complies: the cut itself happens in one frame** (P2). In `CutPartOff`
+   (Dismember.cpp:665-757), the stand-in nodes are placed before the skins are re-pointed, the
+   part is thrown, and the caps are attached and turned in the same call. The body loses the
+   part and shows the stump in the same frame. [R; D that no frame lies between] Whether
+   `AttachCap` loads a model from disk inside that frame was not read (stutter risk, G).
+4. **Complies: when the 3D changes, a cut is forgotten cleanly** (P8). Its caps are culled in
+   the same frame the cut is cleared (Dismember.cpp:914-926, `CullCaps`). If clothes are taken
+   off, the cut is kept and its skins are read again that same frame (`CutFate::Reswap`). That
+   fixes the recorded "stretch to the horizon" (line 719). [R]
+5. **Complies: both eyes see the same cut** (VR note). `Place` runs once a frame before the
+   render (Dismember.cpp:488-512, from `StepCuts`), and the dual pass's second render runs with
+   the clock zeroed. [R; D]
+6. **Complies: no slot is freed under a standing body.** Slots are never handed to another
+   body while the first still uses them (lines 540-560 above, 128 slots). [R]
+
+Not verified:
+- Nothing run. No film-flicker or per-frame log over a cut, over a load with cut corpses in
+  view, or over gear put on a cut corpse, so findings 1 and 2 are not measured.
+- Not stressed: many cuts in one frame (several limbs off in one swing), and a load during a cut's first frames.

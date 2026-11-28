@@ -710,3 +710,73 @@ die sollen nun auch an die hand links". `EffectsPlace` was `left` on both machin
   (`icon_timer`, `Health_Bar01.NIF`, no width or height) in the panel: measured in the panel
   picture about 5 units left, 8 right and 13 above the icon. The Effects rectangle now keeps a
   margin of 8, 12 and 16 units (hand_hud_test).
+
+## State-change audit (2026-11-28)
+
+Checked against `D:\Modding\claude-md-state-changes.md` ("State changes without
+glitches or side effects": 1 hidden first, 2 prepare then show, 3 explicit
+state machine, 4 old state stays, 5 clean animations, 6 no pop-in, 7 robust
+input, 8 side effects reset; VR: no pop-in or head-locked snap, both eyes;
+proof by a per-frame log or a frame-wise test). Scope: the HUD layer, the hand
+HUD, the game's screen faders, the HUD around loads and death. Code read at
+origin/main 5214464 (this working copy is 88dae75; the cited files are the
+same in both unless said); nothing built or run. **read** / **derived** /
+**guessed** as usual.
+
+Findings:
+
+- **The HUD layer's per-frame clear is a ColorFill, which DXVK defers
+  (principle 4 inverted: an old picture where there should be none).** The
+  layer is cleared to transparent with one ColorFill a frame
+  (`src/render/HudLayer.cpp:141-157`). The double main menu of 2026-10-27 was
+  this same class in the eyes (controls-spec.md, main menu measured
+  2026-10-21: "Same class, not changed: HudLayer's per-frame transparent
+  ColorFill is deferred too - a frame whose 2D pass draws nothing into the layer
+  would hand the overlay last frame's HUD"). Read (code and spec); derived (the
+  stale frame). origin/main's new hold-back after the tablet
+  (`HudLayer::ShowUnlessPrimed`, `HudLayer.cpp:516-536`) covers one case of
+  it, not the clear. Fix: clear with the blit the eyes use
+  (`EyeMirror::BlackOut`, `src/render/EyeMirror.cpp:788`).
+- **A menu opened during the game's fade cuts the fade at once (principle
+  5).** The view's fade is sent only on world frames; on the first menu frame
+  `StepScreenFade` sends alpha 0, and when the menu goes with the fader still
+  up it sends the fader's alpha again: a fade from black is cut to full light
+  and back. Evidence: `src/vr/ScreenFade.h:103-117`,
+  `src/camera/CameraHook.cpp` (origin/main, the fade block before `:8524`).
+  Read; derived (seen only when a menu opens mid-fade, e.g. a message box at the
+  end of a load). Fix: keep the compositor's fade over a menu that opens during
+  a fade, and release it with the fader.
+- **The HUD pops at the fade's halfway point (principles 5 and 6).** The HUD,
+  the hand HUD and the crosshair go and come in one frame when the view's fade
+  crosses 0.5 (`vr::HudHiddenByFade`, `src/vr/ScreenFade.h:87-90`;
+  `CameraHook.cpp:8524` on origin/main). Read; derived (the pop). Fix: scale
+  the overlays' alpha with the fade instead.
+- **A hand HUD frame that cannot submit leaves the last one up (principle
+  4).** When Vulkan, the image info or the bracket fails, `Submit` returns
+  before the loop that places and shows the quads; quads already shown keep
+  last frame's texture and place (`src/render/HandHudLayer.cpp:166-183`). Read;
+  derived; low (device-relative quads still follow the hand). Fix: hide the
+  shown quads on such a frame, or log it once.
+
+Complies (read): each hand HUD quad gets its bounds, place, width, alpha and
+texture before `ShowOverlay` (`HandHudLayer.cpp:200-232`), and every overlay is
+handed the atlas once while hidden so the first look does not wait for
+SteamVR's shared texture (`:188-198`) - principles 1, 2 and 6; the HUD and the
+hand HUD stay hidden on any frame while the game loads
+(`camera::HudOverlayShown`, `src/camera/FrameLogic.h:929-931`; the black frame
+of 2026-10-11 fixed); the faders are culled from the 2D pass and the letterbox
+is not a view fade (2026-11-15 fix, screen_fade_test); the text rows glide after
+the head instead of jumping (`vr::StepViewAnchor`, hand_hud_test); "Show when
+looked at" fades over 0.15 s.
+
+Not verified (needs a per-frame log or the headset):
+
+- The stale-layer frame: a per-frame log of "2D pass drew into the layer this
+  frame / layer cleared / overlay shown" across a menu close and a load; any
+  read-back flushes DXVK's clear, so only the compositor's picture (headset, or
+  a SteamVR mirror capture) shows it.
+- A menu opening during the fade after a load: no scenario does it.
+- The quads on the hands at all: they need the controllers' device indices,
+  which the harness does not have (section 3 above).
+- Both eyes: the HUD is an overlay the compositor draws for both; the faders'
+  compositor fade darkens both. Not checked per eye.

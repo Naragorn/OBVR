@@ -1232,3 +1232,94 @@ headset (curl axis and sign, palm offset), then 3(a) for large objects, then
    2 cm steps.
 5. **Let go and throw.** It flies with the hand's speed. Watch for a jolt
    at the release.
+
+## State-change audit (2026-11-28)
+
+Checked against `D:/Modding/claude-md-state-changes.md` ("State changes without glitches or side
+effects", P1-P8 and its verification section). Code read on origin/main 5214464 (all file:line below are origin/main's; the working copy at
+88dae75 is 108 commits behind it), nothing run. R = read, D = derived, G = guessed.
+Findings 1-6 and 9 are about weapon places and holsters. They belong to free-weapons-spec.md,
+which another session is editing, so they are recorded here.
+
+Findings:
+
+1. **The hip sheath is hidden by two separate decisions** (P3; free-weapons-spec). The hide for
+   a one-hander kept at a shoulder is computed twice per frame with differently built inputs.
+   In camera/CameraHook.cpp:7343-7350 it uses `c.fullVrMode && leftHanded`, with keptAt None
+   outside Full VR. In camera/hands/KeptOnBodyStep.cpp:88-91 it uses `hands.leftHanded`, gated
+   by `in.enabled`. Today they agree inside Full VR (D). Fix: build the `SheathMirror` once a
+   frame and pass that one value to both.
+2. **The hip sheath hide depends on the body IK running** (P1; free-weapons-spec).
+   `StepBodySheaths` returns early when `!g_frame.valid` (game/BodyIk.cpp:1441-1443), and it is
+   only called while the body is wanted (CameraHook.cpp:7307-7356). On a frame where the body
+   is drawn but the IK frame is invalid, the game's sheathed one-hander shows at the left hip
+   although it is kept at a shoulder. [R the gates; D the frame; whether such frames occur: not
+   verified] Fix: write the hide even without a valid IK frame, or hide the body on that frame too.
+3. **A kept copy can be hung at a hidden or mirrored scale** (P2, P4; free-weapons-spec).
+   `Hang` takes the copy's pose, including the scale, from the live `SideWeapon` local
+   (game/KeptOnBody.cpp:252-259; KeptOnBodyLogic.h `KeptHipLocalFor` keeps `left.scale`) and
+   never poses it again. The kept step runs before the body step (CameraHook.cpp:7298 before
+   7356), so it relies on the previous frame's give-back. That give-back runs only in
+   AfterWorldRender (render/SceneRenderHook.cpp:339, 443, 583). After a frame with no world
+   render, the node still holds the hidden write (scale x0.001, game/SheathHideLogic.h:15-19),
+   and a copy hung then stays nearly invisible as long as it hangs. [R; D] Fix: pose the copy
+   from the `BoneWrite`'s base (the game's own local), not from the node.
+4. **A dropped or sold kept item stays at the hip for up to 90 frames** (P4; free-weapons-spec).
+   Pack counts are re-read when the places, potions or equipped weapon change, otherwise every
+   `kRecountFrames` = 90 (KeptOnBodyStep.cpp:15-17, 45-48). An item dropped or sold from the
+   tablet with the world running can therefore show at the hip and on the ground at once for
+   about a second. [R cadence; D what is seen] Fix: recount when the inventory changes or a
+   menu closes.
+5. **Taking from a hip place: there may be a frame with the item nowhere** (P4;
+   free-weapons-spec). The copy goes the frame the equipped id matches (`KeptShown::Equipped`,
+   KeptOnBodyLogic.h). The engine's model appears at SideWeapon one frame after the equip, and
+   on the hand only through the take's hang (free-weapons-spec "The take's last three frames":
+   +1 at the hip, +3 on the hand before the hang). Whether a frame has neither the copy nor the
+   model was not measured. [G] Fix: keep the copy until the engine's model reads on the hand or
+   the sheath. Add a per-frame "hip shows / hand shows" line to holster-pull.txt and read it frame by frame.
+6. **Taking a torch or shield from a hip: the same risk** (P4). `worn` is read every frame
+   (KeptOnBodyStep.cpp:82-86) and drops the copy the frame the game counts the item worn, while
+   the torch's model in the hand comes with the equip's 3D update. [G] Same fix and test as 5.
+7. **Spell orb** (P5, P2, P8; game/SpellOrb.cpp).
+   - It is shown and hidden by flipping the cull bit, and lingers for `kLapseFrames` = 2
+     (:17, :117). After the release it stays up to two frames and then vanishes with no fade.
+     Whether the bolt appears in the frame the orb goes was not checked. [R; G the look]
+   - On the first charge the model is loaded inside the frame (`Ensure` -> `LoadModelCopy`,
+     :75-100). Visually prepare-then-show holds, but a disk load in a frame risks a stutter. [G]
+   - Between charges the hidden copy stays as a child of the hand bone. That caused the finger
+     bug above (2026-11-26). origin/main now also names the orb outright (`IsSpellOrbNode`,
+     SpellOrb.cpp:104, used at game/HandGrip.cpp:312). Any other reader of the hand's children
+     has to make the same exception. [R]
+   - Fix: preload the model at the charge's start, and keep the idle copy off the hand bone.
+8. **Place circles** (P1, P5; vr/PlaceNear.h, camera/hands/HolsterNear.cpp).
+   - Complies: one target per place from both hands, a 0.2 s fade in and out
+     (PlaceNear.h:19, `StepPlaceNearAlpha`), the log says each change.
+   - Pops: hidden at once when the head is invalid (HolsterNear.cpp:79-81), then shown again at
+     the old alpha. [R]
+   - `EndHolsterNear` leaves each layer's alpha at 1.0 (:94) and relies on the next step's Hide.
+     `Show` is called before `SetAlpha` (:84-87), so a newly shown layer could be composed once
+     at a stale alpha. [G]
+   - The held potion is last frame's reading (:22-23), one frame late at a take or a let go. [R]
+   - Fix: call SetAlpha(0) before Show, and reset a layer's alpha to 0, not 1.
+9. **Holstering, already recorded in free-weapons-spec** (P4, P5). The hilt swing at the hip is
+   fixed (its "Fixed 2026-11-26"). The weapon stays in the hand two or three frames past the
+   let go ("Changed 2026-11-22", D). One wrong frame at a switch of hands is open ("Step 1, the
+   body filmed"). The scenarios against the moved sheath code are not run ("Not run yet",
+   paused 2026-11-26). [R]
+10. **Input across a switch of hands** (P7). Each grip's click and hold edges are being moved to
+    stay with the hand across the switch. That is uncommitted in the working copy by another session
+    (vr/GripHold.h `StepClickClosed`, vr/HandMode.h `rightGripClosed`), not in origin/main, the right direction
+    against a double trigger. Not audited further. [R]
+
+Complies (R): the sheath nodes are held through the draw and the sheathe and eased back over
+0.15 s (game/SheathHoldLogic.h). The hip is hidden by scale, not by taking the node away, so it
+comes back in place (SheathHideLogic.h). Every body or sheath write stays through both eyes'
+renders and is given back once after them (SceneRenderHook.cpp:581-584; the mirror's render, which runs inside AfterWorldRender at CameraHook.cpp:7750-7753 before the give-back, sees the same writes).
+
+Not verified:
+- Nothing run. No frame-by-frame record of a take from a hip or shoulder place, or of a let go
+  at one, shows the item in exactly one place on every frame. film-flicker exists only for the
+  hilt swing.
+- Not stressed: a low frame rate, quick repeated takes and let-gos, a let go cut short by a menu.
+- The look of the spell orb's end, and whether IK-invalid frames with the body drawn occur.
+- The torch and shield hold code (game/Torch*, ShieldShape) was not read for transitions beyond the kept copies.

@@ -120,3 +120,42 @@ Any text with a token gets these words, so a wrong phrase is wrong everywhere:
 
 Recommended: A now (it is where the words already live), B when the loading tips matter,
 C not at all.
+
+## State-change audit (2026-11-28)
+
+Checked against `D:\Modding\claude-md-state-changes.md` ("State changes without
+glitches or side effects": 1 hidden first, 2 prepare then show, 3 explicit
+state machine, 4 old state stays, 5 clean animations, 6 no pop-in, 7 robust
+input, 8 side effects reset; proof by a per-frame log or a frame-wise test).
+Scope: the Tutorial quest's cards and the control words in the game's texts.
+Code read at origin/main 5214464 (the cited files are the same as at 88dae75
+unless a line says otherwise); nothing built or run. **read** / **derived** /
+**guessed** as usual.
+
+Findings:
+
+- **The swap depends on a flag set later in the frame (principle 2).** Both
+  hooks answer OBVR's words only while `g_wanted` is set, and that is written
+  each frame from the hand mode's `active` in `UpdateHandMode`
+  (`src/camera/CameraHook.cpp:4705-4706`; `src/game/TutorialCards.cpp:26-30`,
+  `src/game/ControlWords.cpp:107-108`). A card read on a frame where the hand
+  mode is not (yet) active - the first frames after a load, a menus-only frame
+  - is shown with the vanilla words; the journal read later may show OBVR's.
+  Derived (the order); guessed (that such a frame meets a stage update). Fix:
+  decide the wanted words from the mode setting (`fullVrMode`), not from this
+  frame's `active`.
+- **Words that change with a setting while a card is up (principle 4).** The
+  phrase follows `LeftHanded`, the bow mode and the run mode at text layout;
+  a setting changed while the card is open would give the next layout other
+  words. Derived; low. Fix: none needed unless seen - note only.
+
+Complies (read): the words are swapped where the text is read or laid out
+(`0x0052AF40`, `0x00575B40`), before anything is drawn, so no frame shows the
+vanilla sentence and then OBVR's (principles 1 and 2); a text that matches no
+card is left alone; pure tables are unit-tested (tutorial_cards_test,
+control_phrase_test).
+
+Not verified: the cards done on 2026-11-13 (22, 26, 70, 72-74, 78) were not run
+in the game (this file's header); `tutorial-cards.txt` checks the log line, not
+the shown card per frame. A run that sets stages 22 and 72 right after a load
+(the first frames) with a layer dump per frame would show principle 2's case.

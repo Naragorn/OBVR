@@ -1709,3 +1709,37 @@ now also must get weight as weapons have it. torches as well but give them a lig
   swing-through (it is moved into place, not swung), whether the bow's lag spoils the aim;
   the item weights read in the game (the log lines above, against the items' rows);
   fatigue and Strength in the weight (section 7's idea, not built for weapons either).
+
+## State-change audit (2026-11-28)
+
+Checked against `D:/Modding/claude-md-state-changes.md` ("State changes without glitches or side
+effects", P1-P8 and its verification section). Code and this spec read on origin/main 5214464
+(all file:line below are origin/main's), nothing run. R = read, D = derived, G = guessed. The
+transitions here: the weapon's weight lag at the draw and the sheathe, the two-hander between
+one and two hands, the bodies giving way, the mirrored stagger.
+
+Findings:
+
+1. **The weight lag ends in one frame** (P5). When `weaponInHand` turns false or the time
+   constant reaches 0, `StepWeaponLag` drops its state and returns the controller's pose that
+   same frame (vr/WeaponWeight.h:302-316; this spec, line 398: "let go at the sheathe"). If the
+   weapon is still drawn on the hand in that frame - a let go keeps it there two or three frames
+   (free-weapons-spec, "Changed 2026-11-22") - it jumps by up to the cap (0.25 m / 35 degrees at
+   100 %, more with exhaustion). Which signal feeds `weaponInHand` during a let go was not
+   traced. [R the step; G that the frames overlap] Fix: let the lag go only once the weapon has
+   left the hand, or ease the drawn pose to the controller over its time constant.
+2. **Complies: the lag starts without a jump.** It is taken up where the hand is, with no
+   momentum (WeaponWeight.h:317-325). Switching between one and two hands on a two-hander
+   changes only the time constant (x1.4 / x0.4, line 446), and switching into the swing-through
+   mid-draw causes no push (tested, line 421). [R]
+3. **Complies: bodies giving way are set and given back every frame** (P8). BodiesGive writes
+   are returned after the world render (game/BodyGive.cpp:434-443, called from AfterWorldRender
+   at camera/CameraHook.cpp:7759), after both eyes and the mirror. [R]
+4. **Already recorded: the mirrored stagger distorts the body** (P5). Open and deferred (line
+   1475; "Deferred", line 1510). [R]
+
+Not verified:
+- Nothing run. No frame-by-frame record of the weapon's drawn pose across a let go at a holster
+  with the weight above 1 %, which would settle finding 1.
+- Not stressed: a sheathe interrupted by a new draw, or a grip spammed on a two-hander's handle.
+- Kick, shove, grab and ragdoll transitions (sections 8 and 11) were not audited.

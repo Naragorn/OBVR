@@ -69,3 +69,44 @@ Gold Road's 7 ms of GPU cannot meet, so the scale had to move:
   `UseEyeRect` may refuse and the fallback draws them on top of the picture
   (unverified; the hands are the game's own and unaffected).
 - The dual pass gets nothing (the scale applies to single-pass frames only).
+
+## State-change audit (2026-11-28)
+
+Checked against `D:/Modding/claude-md-state-changes.md` ("State changes without glitches or side
+effects": principles P1-P8 and its verification section). Code read on origin/main 5214464 (all file:line below are origin/main's), nothing run.
+R = read in the code or a spec, D = derived from what was read, G = guessed.
+
+Findings:
+
+1. **The scaled port on frames that are not single-pass frames** (P4, P8, "the same checks for
+   both render paths"). The world port is cut to the scale on every world render of a
+   side-by-side frame: `WorldPortScope` (render/SceneRenderHook.cpp:187-218, the port at :214) takes
+   `DynamicResolutionWorldPort()` (render/DynamicResolution.cpp:103-111), which checks only
+   `DynamicResolutionActive()`. The eye crop is cut only on single-pass frames
+   (`DynamicResolutionCrop`, DynamicResolution.cpp:113-119, `IsSinglePassFrame()`). So on a
+   dual-pass fallback (OBNG refuses the eyes, plan not 2) or a plain render (menu frames,
+   SceneRenderHook.cpp:398-445) with the scale under 1, the world is drawn into the smaller
+   corner while the copy reads the whole left half: the picture shrinks into the top left, with
+   stale pixels around it, for every such frame. On top of that the scale only moves inside
+   `HandOverEyes` (DynamicResolution.cpp:96-101), so it stays frozen under 1 while frames run dual.
+   This contradicts "The dual pass gets nothing" above. [R the code paths; D the picture; not
+   run, since DynamicResolution defaults to 0. The mirror's render (render/MirrorGlassPass.cpp on origin/main) sets its own port and is not affected.] Fix: decide the scale once per frame (1 unless
+   the single pass took the eyes) and have port, eyes and crop read that one value. Add a unit
+   test that they agree on both paths.
+2. **The scale jumps between frames** (P5). Down by up to an eighth in one frame, up by 1/32,
+   with no blend (DynamicResolutionLogic.h, described in "What it does"). The sharpness changes
+   in steps. [R; D whether the step is visible in the headset.] Fix: if the headset shows it,
+   take smaller steps down unless the frame is far over budget.
+3. **Complies: both eyes use one layout** (VR note). The eyes, port and crop all read
+   `DynamicResolutionLayout` within the same frame, and `HandOverEyes` updates the scale before
+   `RenderThroughPort` computes the port (SceneRenderHook.cpp:280 before 327; EyeMirror.cpp, the crop's `DynamicResolutionCrop` call). [R]
+4. **Controllers drawn into the world under a scaled viewport**: already open above
+   ("`UseEyeRect` may refuse"). [R, spec]
+
+Not verified:
+- No test checks that port, eyes and crop agree per path (no test references
+  `DynamicResolutionCrop` or `DynamicResolutionWorldPort`). DynamicResolutionLogicTest covers
+  the controller only.
+- No harness run with the scale under 1 and a dual-pass or menu frame in between. Nothing was
+  run under stress either (fluctuating frame rate, toggling a menu quickly).
+- The look of a scale step in the headset.

@@ -6435,3 +6435,66 @@ OBVR.ini changes. Sorted against what is built since beta 9 (read 2026-11-27, no
 - **F. The controller pictures show Index controllers on a Quest 2** - open, as A above: the
   logs say oculus_touch and the card's Index drawings need "knuckles". Which screen is meant is
   still to be asked.
+
+## State-change audit (2026-11-28)
+
+Checked against `D:\Modding\claude-md-state-changes.md` ("State changes without
+glitches or side effects": 1 hidden first, 2 prepare then show, 3 explicit
+state machine, 4 old state stays, 5 clean animations, 6 no pop-in, 7 robust
+input, 8 side effects reset; VR: both eyes; proof by a per-frame log or a
+frame-wise test). Scope here: SteamVR's keyboard, the race menu, the menus'
+shade, the HUD around loads and death. The main menu's laser and click are in
+docs/main-menu-laser-analysis.md's audit, OBVR's own windows in
+docs/native-menus.md's, the HUD in docs/hud-on-hands-spec.md's. Code read at
+origin/main 5214464 (this working copy is 88dae75; the cited files are the same
+unless a line says otherwise); nothing built or run. **read** / **derived** /
+**guessed** as usual.
+
+Findings:
+
+- **SteamVR's keyboard closed in the text edit menu opens again the next frame
+  (principles 3 and 7).** When the runtime closes the keyboard (Done or its own
+  close), the session goes to closed; on the next frame the text edit menu is
+  still on top (Done's Enter is still in the tap queue, or the player only
+  wanted the keyboard away), and `TextMenuTakesKeyboard` opens it again. With
+  Done that is a keyboard that flashes back for a frame or two before the menu
+  closes; with the keyboard's own close it cannot be dismissed while the menu is
+  up. Evidence: `src/vr/VrKeyboard.h:223-241`; `src/camera/CameraHook.cpp:1768-1772`
+  (origin/main). Read (the step); derived (the reopen); vr_keyboard_test has no
+  case "runtime closed, text menu still up" (`tests/VrKeyboardTest.cpp:110-135`).
+  Fix: after a runtime close, open again for the same menu only on a new click
+  or a new menu.
+- **The keyboard and the game's name editing disagree (principle 3).** Done in
+  the naming menus types no Enter, so the game is still editing; the next click
+  ends the game's editing while OBVR opens the keyboard again, and what is typed
+  then goes nowhere (4.38, "Not changed, for later"). Read (spec). Fix: send
+  Enter on Done in the naming menus too, or open the keyboard only when the
+  game starts an edit.
+- **A covering menu closes the keyboard and drops the queued keys (principle
+  4).** Any other menu on top closes it and clears the tap queue
+  (`KeyboardMenuStillUp`, `VrKeyboard.h:76`; `CameraHook.cpp:1778-1780` on
+  origin/main); in a naming menu it does not come back by itself. Read;
+  derived (lost letters if a message box comes mid-typing). Low.
+- **After a death the reload never starts; one eye the held world, the other
+  DeathGrey (both eyes; principle 3).** origin/main, "The same tester's evening
+  report, 2026-11-25", item B: the Loading menu up for 30 s and more, no load
+  in obse.log, "one eye the held world, the other DeathGrey and the laser", the
+  menu key refused with "menu up already". Read (spec); cause not read. Fix:
+  first the OBVR.log of such a death; the two eyes must come from one decision
+  per frame.
+
+Complies (read): the menus' sepia shade now follows the game's own snapshot
+rule, so the race menu, the main menu, generic menus and message boxes over the
+walking world are no longer tinted (`game/MenuSnapshotRule.h`,
+menu_snapshot_rule_test; the grey race menu of 2026-11-26); the HUD's black
+frame during a load is gone (4.42); the keyboard's queued keys go to its menu
+or nowhere, never the world; the race menu's emptied name is the game's own
+(4.38).
+
+Not verified (needs a per-frame log or the headset):
+
+- The keyboard's reopen: a hand script on the text edit menu (the class name)
+  that sends Done and logs the session per frame for half a second.
+- The death reload and the eyes: the tester's log; then a harness death with a
+  per-frame trace of the delivery mode per eye.
+- Every item above in the headset; none was run for this audit.

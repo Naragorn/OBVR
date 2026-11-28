@@ -371,3 +371,107 @@ ahead in the Linux hall (reach-walk: bound at 256 -1363 for the hands at
 was fixed for on 2026-11-09 (e4a0c78: the hand down 0.7 m ahead, then
 forward). Runs: scratchpad artifacts-doorbase/hand-script/reach-open-body/20261111-124236,
 reach-walk/20261111-124353.
+
+## State-change audit (2026-11-28)
+
+An audit of opening containers by reaching against the rule set "State changes without glitches or
+side effects" (each open, close or switch happens exactly as specified; nothing visible, invisible,
+empty, misplaced or in a wrong state for even a frame; an explicit state machine; prepare, then
+show; the old state stays until the new one is ready; animations end cleanly; robust input - no open
+and close in one frame, spam, interruption; side effects - pause, input mapping, camera, audio -
+set and fully reset; in VR no pop-in or snap of world-space UI, both eyes the same; verified by a
+per-frame state log or a frame-wise test). The rules are
+`D:\Modding\claude-md-state-changes.md` (8 principles and a mandatory verification section);
+"P1".."P8" name its principles. By principle: P1 finding 4; P3 finding 3; P4 findings 2, 5; P5
+finding 6; P7 finding 1; P8 findings 3, 7; the world-space UI rule (Games/VR) finding 4;
+verification finding 8. Its stress cases not covered: a low frame rate (the 30-frame wait for a
+menu, ReachOpen.h:149, counts frames, not time: the engine's fade of about 0.24 s is 17 frames at 72 Hz and 22 at 90,
+but 29 at 120 Hz and 35 at 144, so [D] at those rates the Switching wait runs out inside the fade -
+the fade's length in seconds is itself derived from the 72 and 90 Hz counts), a hand moved fast in and out (finding 1), and an open interrupted by
+walking away.
+
+Audited: the code of origin/main 5214464 (this working copy's HEAD 88dae75 is 108 commits behind);
+file:line below are origin/main's. Read only - nothing built, run or changed. Marks: **read** seen in
+the code, **derived** follows from it, **guessed** not checked.
+
+### What complies (read)
+
+- The reach is an explicit state machine with named phases (Idle, Opening, Open, Lockpicking, Rearm,
+  Switching; vr/ReachOpen.h:140-147, `StepReachOpen` :209-378), pure and covered by reach_open_test;
+  every phase change is logged with its reason (CameraHook.cpp:4203-4212).
+- Spam and repeats: one Activate per reach; Rearm needs a measured leave or the target gone, so a
+  frame without a camera does not open the chest again (ReachOpen.h:367-375); a menu that never comes
+  ends the wait after 30 frames (:258-261).
+- It never closes what it did not open, nor under a quantity box, nor under another menu
+  (:264-277); `CloseAllMenus` is byte-checked before use and a failure leaves the menu to the player
+  (ReachTargets.cpp:424-438, CameraHook.cpp:4197-4201).
+- Distance hysteresis: opens at 10 cm, closes past 45 cm (`ReachCloseMetresFor` keeps close beyond
+  open, :37-42); after a walk only the feet's 1.5 m close it (:278-291).
+- The panel is placed once as the menu opens, at the activated thing (`DialogPanelPlacement`,
+  CameraHook.cpp:9286-9330), and its tilted anchor is dropped as the container's episode ends, so the
+  next menu is not placed with it (:9293-9297). The episode lasts the whole menu-mode episode
+  (CameraHook.cpp:6245-6246), so the close's fade stays at the chest with no shade (:6276).
+- The world keeps running through the close's fade: the pause sites use the remembered top
+  (`StablePauseMenuId`, MenuPausePolicy.h:217-222; MenuPause.cpp:84-90).
+- A barter pauses as vanilla throughout, so the pause no longer flips between list and boxes (8.4).
+
+### Findings
+
+1. **A hand passing by opens and closes** - rule: no open and close within a frame or two. Idle opens
+   on the first frame a free hand is within 10 cm (ReachOpen.h:224-238); in Open, the hand past 45 cm
+   closes at once (:292-298) - no dwell either way. Section 2 A asked a 0.25 s dwell for exactly this
+   ("reaching past a barrel in a fight must not open anything"); the tester then asked for none.
+   Derived: a swing past a chest costs the engine's open hitch (17-24 ms, inventory spec 13) and a
+   panel shown for a few frames. Only the stick's `moving` stops it (:225). Fix: open only once the
+   hand has slowed (a speed gate) or after 2-3 frames in range; close after a short time past 45 cm.
+2. **Switching leaves a gap** - rule: the old state stays until the new one is ready. Switching closes
+   the first menu, waits until menu mode is off - its whole fade - and only then activates the second
+   (ReachOpen.h:299-306, 309-332). Derived: the first panel fades at its chest, then nothing, then the
+   second opens with its hitch. The engine has one container menu, so a seamless swap is not possible
+   on route A; listed for the decision. Fix if wanted: keep the first panel's last picture at its place
+   until the second one's first frame.
+3. **The walk stops through the close's fade** - rule: side effects consistent through a transition.
+   The player-controls site asks the raw `TopVisibleMenuId` (MenuPause.cpp:133-137), not the remembered
+   one the world sites use; `PlayerControlsRunUnderMenu` lets the sticks walk only with the container on
+   top (MenuPausePolicy.h:101-107). Derived: after "walked away - closed" the world runs on through the
+   fade but the player stands still for its frames (about 22 at 90 Hz, inventory spec 26.3), and a frame
+   with the raw top read "none" (MenuPausePolicy.h:214) stops the walk under an open panel too. Guessed:
+   that the raw top reads none during the fade (the stack holds only the HUD's menus then, inventory
+   spec 24.2). Fix: the stable top at the controls site, and keep the walk through the fade after a
+   reached container, as the tablet does (`TabletWalkFrame`).
+4. **The panel's first frame may stand where menus open** - rule: no pop-in or snap of world-space UI.
+   The anchor is set only when the camera's world transform and the head are known that frame
+   (CameraHook.cpp:9308-9309); until then the panel keeps whatever placement the layer has. Read;
+   guessed whether a container's first menu frame (often a stand-in frame) has them: if not, the
+   panel shows ahead of the head, at the container scale, then jumps onto the chest. Fix: keep the
+   panel hidden while its placement is pending with a chest known (as the tablet's gate does), show it
+   the frame it is anchored.
+5. **Lockpicking to the chest: two transitions with a gap** - rule: old state stays until new is
+   ready. A lock picked with the hand there closes the minigame and only after menu mode is off activates
+   again (ReachOpen.h:340-348): the minigame fades, then the chest's menu opens. Read; derived. By the
+   engine's one-menu design, as finding 2.
+6. **The hand vanishes under the panel** - rule: no element invisible for a frame. Recorded open in
+   section 6 (the tester: the hand that reached is gone while the panel is up). Not re-checked whether a
+   later change (main 86c4ae8, "Body stays with the hands in the game's menus") ended it - guessed.
+7. **Pickpocket with the world running** - rule: side effects reset; robust against interruption. An
+   alarm or arrest while the picked NPC's menu is up stacks a menu over it; the reach then leaves it to
+   the game (ReachOpen.h:273-276). Section 2 D called the test decisive; still not run. Read for the
+   code path; the outcome guessed.
+8. **Verification is per event, not per frame** - rule: per-frame state log or frame-wise test. The
+   reach logs each phase change (CameraHook.cpp:4203-4212) and the panel its placement; no per-frame
+   trace ties phase, menu on top, panel shown and its place together. reach_open_test covers the phases
+   as pure flows (tests/ReachOpenTest.cpp); there is no frame-wise test of what is shown. Fix: a
+   `[Debug]` per-frame trace for the frames around each open, close and switch, checked by the reach
+   scenarios.
+
+### Not verified
+
+- The reach scenarios are red: reach-open.txt failed before any menu opened (8.4, 2026-11-09);
+  reach-open-body.txt and reach-walk.txt fail on origin/main as of 2026-11-11 (the chest's placement).
+  So nothing of the open, close, switch or walk has a current green run.
+- Section 3's open and close cost, measured once for the inventory (17-24 ms on open, about 26 ms
+  on close, inventory spec 13), not for a reached container.
+- Audio on open and close with the world running; not read.
+- The order, within a frame, of the episode flag (CameraHook.cpp:6245), the panel's scale and the
+  anchor (:9286-9330) against the layer's submit - finding 4 depends on it.
+- The merchant barter's flow after 8.4 in the headset; the bought item of 8.3.

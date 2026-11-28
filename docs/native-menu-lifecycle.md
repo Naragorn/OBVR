@@ -40,3 +40,39 @@ The source ABI excerpts and guards are in `src/game/GameAddresses.h` and
 default plugin load path yet: the feature has no user setting or verified
 native opener, so leaving the detour uninstalled preserves legacy/default-Off
 runtime behavior until the next adapter decision.
+
+## State-change audit (2026-11-28)
+
+Checked against the rule set "State changes without glitches or side effects"
+(`D:\Modding\claude-md-state-changes.md`; principles and labels as in
+native-menus.md's audit section). Code read at origin/main 5214464 (the cited files are the same as at 88dae75
+unless a line says otherwise); nothing built
+or run.
+
+Findings:
+
+- **The explicit lifecycle machine is not on the live path (principle 3).** The bridge with generations and owned/foreign/replaced events is
+  installed only with `[Debug] NativeMenuLifecycleProbe=1` (default 0):
+  `src/Plugin.cpp:105-108`, `src/core/Config.h:124`,
+  `src/game/VRMenuBridge.cpp:458-476`. OBVR's own windows and the game's menus
+  are tracked elsewhere without it - by the generic root pointer
+  (`src/game/NativeMenuPrototype.cpp:597`) and by reading the top menu each
+  frame. Read. Fix: either wire the bridge's generation into the native windows'
+  ownership or record here that it stays a diagnostic.
+- **This document is stale (verification: what is claimed must match).** It says `InstallVRMenuBridge()` is not called
+  from the load path and there is no adapter. Since then a probe path exists
+  (`InstallNativeMenuLifecycleProbe`, the log names "diagnostic F9=open
+  F10=close"). Read. Fix: one paragraph on the probe and its switch.
+
+Complies (read, from this document and the code it names): each wrapper calls
+the original first and reads the stack only after the engine's change; a
+reused root after an anchor's disappearance is a new generation; a late or
+foreign observation is never closed as owned; a queued TapKey is not claimed
+revocable. Flows are unit-tested in `tests/VRMenuBridgeTest.cpp`;
+`tests/NativeMenuLifecycleHarnessTest.ps1` exists.
+
+Not verified: the probe's F9/F10 run in the game - no harness log of it was
+read; whether any live menu path still needs the generation (a foreign generic
+menu reusing OBVR's root address after an outside close) - a per-frame log of
+root address and owner across an Escape-close and a mod's ShowGenericMenu
+would show it.

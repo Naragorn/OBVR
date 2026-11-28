@@ -1219,3 +1219,64 @@ image, the "Arms" shape in `edi`; docs/controls-spec.md, "Beta 9 reports", C). E
 now has a stand-in parent at its place (game/FakeBone.h, `PlaceFakeBone`); fake_bone_test. Not
 run in the game: the effect that makes the engine read a random bone is not known, so there is
 no scenario that provokes it yet.
+
+## State-change audit (2026-11-28)
+
+Checked against `D:/Modding/claude-md-state-changes.md` ("State changes without glitches or side
+effects", P1-P8 and its verification section). Code read on origin/main 5214464 (all file:line
+below are origin/main's), nothing run. R = read, D = derived, G = guessed. The kept-on-body
+copies, the hip sheath hidden for a shoulder-kept one-hander and the place circles are in
+holding-objects-spec.md, "State-change audit".
+
+Findings:
+
+1. **Head cull: complies, with one gap** (P8, both eyes). The hidden bit is set where the head
+   is collapsed (game/PlayerBody.cpp:162-165). It is taken off in AfterWorldRender, after both
+   eyes' passes and after the mirror's render (camera/CameraHook.cpp:7750-7756;
+   render/SceneRenderHook.cpp:339, 443, 583). Only bits this code set are touched
+   (HeadCullLogic.h). The gap: AfterWorldRender runs only for a world render (renderedTexture
+   null). On a frame where the body step ran but no world render followed, the bit stays on
+   until the next world render, so a texture render in between (the inventory figure, a save's
+   picture) could draw the player without a face. [R the calls; D the gap; whether such a frame
+   exists was not checked] Fix: also release the bit at the next frame's start, and before any
+   texture render.
+2. **The body is shown or hidden from a per-frame boolean** (P3). `wanted` combines the menu,
+   a pending dialogue camera, awayForDialog, `body.visible` and the camera node, fresh each
+   frame (CameraHook.cpp:7307-7356). There is no explicit state and no hysteresis, so one frame
+   of `DialogCameraCallPending` hides the whole body for that frame. [R; D; a flicker was not
+   seen] Fix: an explicit Shown / Away state with entry and exit conditions and a log line on
+   each change.
+3. **The arms' rest takes over after half a second** (P5). Until the rest is taken, the roll
+   is measured from the animation's frame; afterwards from the rest ("Before the rest is taken
+   (the first half second, IKTorso off) the animation's frame as before", line 1189). At the
+   hand-over the forearm twist can jump once. [R spec; D the jump] Fix: blend over a few frames
+   at the hand-over, and read `tools/drawn-arm-flicker.py` on the first traced frames after a load.
+4. **Already recorded, still open** (P4, P5):
+   - "the arms shake as a weapon is drawn" (line 1105; parts fixed 2026-11-18, line 1151,
+     headset open). [R]
+   - "the body gone under a menu with the world running" (line 1201: unit tests only, no run).
+     [R]
+5. **Complies: body and sheath writes stay for the whole frame's draw** (VR both eyes). Every
+   bone and sheath write is held through both eyes and the mirror's render, then given back
+   once (game/BodyIk.cpp:1410-1427, called from AfterWorldRender). [R]
+6. **Mirror head (belongs to mirror-spec.md)** (P8). The head is shown for the mirror's render
+   alone and hidden again in reverse order: the true transform, the FaceGen bits lifted, stale
+   skin stamps; after the render, stamps, collapse, bits (render/MirrorGlassPass.cpp:404-406;
+   game/MirrorHead.cpp:150-195). The bracket is unconditional around `RunMirrorWorldRender`, so
+   the set/reset holds. [R]
+7. **Mirror with depth on, taking turns over budget (belongs to mirror-spec.md)** (VR, P4).
+   While the pass is over `MirrorBudgetMs`, each eye's reflection is renewed every second frame
+   and the other eye keeps its older picture (mirror-spec.md 14.4). Moving things in the mirror
+   are then a frame apart between the eyes. [R; G whether it shows] Fix: if it shows in the
+   headset, fall back to one picture for both eyes (MirrorDepth 0's path) instead of taking
+   turns. Complies: turning depth on keeps the left picture in both eyes until the right one
+   exists (14.5). [R]
+
+Not verified:
+- Nothing run. No frame-by-frame record across a menu or dialogue opening (body shown / away
+  per frame), and nothing across the arms' rest hand-over.
+- The head cull gap (finding 1) and the mirror's eyes taking turns (finding 7) were not seen in
+  a picture.
+- Not stressed: low frame rate, quick menu open/close, a load during a draw.
+- game/FirstPersonHide.cpp (which arm shapes are hidden in first person and when the walk runs
+  again after an equip) was not audited per frame.

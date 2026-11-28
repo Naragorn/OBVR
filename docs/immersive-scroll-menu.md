@@ -387,3 +387,41 @@ pure session implementation above. The unfinished `HandSession.h` was preserved;
 it is not integrated or validated as a gameplay safety feature. Native bridge,
 scroll presentation/settings, live capture/replay and the runtime test matrix
 remain outstanding. No feature-completion or runtime-correctness claim is made.
+
+## State-change audit (2026-11-28)
+
+Checked against `D:\Modding\claude-md-state-changes.md` ("State changes without
+glitches or side effects": 1 hidden first, 2 prepare then show, 3 explicit
+state machine, 4 old state stays, 5 clean animations, 6 no pop-in, 7 robust
+input, 8 side effects reset; proof by a per-frame log or a frame-wise test).
+Code read at origin/main 5214464; nothing built or run. **read** / **derived**
+/ **guessed** as usual.
+
+The scroll is not in the game: `src/vr/ScrollSession.h` is referenced only by
+its test (grep over `src/`), and this design was continued in
+docs/inventory-tablet-spec.md (2026-11-15), whose live tablet is audited there.
+So only the design is checked.
+
+Findings:
+
+- **What the surface shows between the open request and the engine's
+  acknowledgement is not specified (principles 2 and 4).** `HeldOpen` waits for
+  the native menu, and the surface would show the HUD layer's capture - which
+  is the last frame's HUD, or stale (see docs/hud-on-hands-spec.md's audit on
+  the deferred clear) - until the menu draws. Derived (from "State and
+  ownership contract" and "Surface math and rendering"). Fix for the tablet:
+  draw the surface empty-but-framed or hold it hidden until the first frame of
+  the acknowledged menu has been captured.
+- **The transient HUD placement override has no stated reset on every exit
+  (principle 8).** "HudLayer needs a transient override" is required, and
+  Closing releases input, but the override's removal on tracking loss, focus
+  loss or a foreign menu is not in the table. Read (the doc); derived (the
+  gap). Fix: name the override in the Closing row.
+
+Complies (read, the design): an explicit transition table with Closing and
+AwaitRelease; held triggers on entry are no click; interaction only after the
+engine's acknowledgement; only an owned menu is closed; buttons must be let go
+before gameplay resumes (principles 3, 7, 8). `tests/ScrollSessionTest.cpp`
+covers the pure session (677 checks, 2026-09-21).
+
+Not verified: nothing of it runs in the game; no per-frame log exists for it.

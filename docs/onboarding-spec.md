@@ -1368,3 +1368,109 @@ in the zip's name.
   decision is a pure function, the rest is two INI writes and a log line).
 - **On Nadi's own games:** their OBVR.ini names no revision yet, so the guide comes back once at
   the next start after this deploy.
+
+## State-change audit (2026-11-28)
+
+Checked against `D:\Modding\claude-md-state-changes.md` ("State changes without
+glitches or side effects": 1 hidden first, 2 prepare then show, 3 explicit
+state machine, 4 old state stays until the new is ready, 5 clean animations,
+6 no pop-in, 7 robust input, 8 side effects set and fully reset; VR: no pop-in
+or head-locked snap, both eyes; proof by a per-frame log or a frame-wise test).
+Scope: the start guide's chain and stage, the comfort/combat pages, VR Options
+and VR Guide, the self-check and update notices. Code read at origin/main 5214464 (the cited files are the same as at 88dae75
+unless a line says otherwise); nothing built or run. **read** = seen in code or this spec,
+**derived** = follows from it, **guessed** = not backed.
+
+Findings:
+
+- **Page to page in the guide: close, gap, open (principle 4).** "Done" on a
+  page clicks the window's close tile, and the next page's window opens only on
+  a later tick once the old root is gone ("the page before is still closing").
+  In the dome that is at least one frame with no window at all, plus the
+  generic menu's close and open. Evidence:
+  `src/game/NativeMenuPrototype.cpp:785-791`, `:682`, `:697-707`. Read;
+  derived (the empty frames). Seated and Back already refill the open window
+  in place (`:753-757`). Fix: refill the window when the next page uses the
+  same XML (all but the controls card); reopen only for a change of XML.
+- **The comfort page's end is decided inside a getter (principle 3).**
+  `StartGuideShowing()` clears `g_chain.comfortUp` as a side effect, and is
+  called from the frame hook (`render/StageHost.cpp:168`) and from the Options
+  menu's step (`src/game/OptionsMenuVr.cpp:184`); whichever asks first ends
+  the stage. Evidence: `src/game/NativeMenuPrototype.cpp:994-997`. Read. Fix:
+  clear the flag where the page closes (`FinishSettings`, the Skip step) and
+  make the getter pure.
+- **Guide up / down vs. the main menu, frame order (principles 1 and 4).** The
+  window opens in the xOBSE task tick; the stage hides the main menu, holds its
+  film and fades the grid later, in `OnFrameEnd`
+  (`src/camera/CameraHook.cpp:6220`, `src/render/StageHost.cpp:116-130`).
+  Whether a frame shows the guide's window over the visible main menu and map
+  film is not known. At the end the main menu is shown at once while the last
+  window closes and the grid fades out over 1 s (`src/ui/GuideStage.h:186-191`).
+  Guessed (the frame order); read (the order inside the stage). Fix: hide the
+  main menu in the same tick that opens the first window, and show it after
+  the last window's root is gone.
+- **The dome is not reliably reached (principle 2, VR note).** With the scene
+  hold off by default since its crash (`[Onboarding] GuideHoldsScene`,
+  `src/render/StageHost.cpp:180`; this spec, "The scene hold off"),
+  `FadeGrid` alone gave grid alpha 0.00 on Linux and 0.49 on Windows a second
+  after the fade: the guide stands on black eyes or a faint dome instead of the
+  dome. Read (spec measurements). Fix: find the HoldScene crash's cause, then
+  turn the hold on again.
+- **The title music after the six-second timeout (principle 8, audio).** When
+  no guide comes within 6 s, the title track gets its volume back where it
+  had got to, mid-phrase and at full level; only the guide's end restarts it.
+  Evidence: `src/render/StageHost.cpp:196-198` (GiveBack without
+  `RestartTitleMusic`), against `:135-139`. Read; derived (heard mid-track).
+  Fix: restart (or fade in) the title track on GiveBack too.
+- **Another menu over the guide ends the guide (principle 7, interrupt).** Any
+  outside close or a foreign menu on top ends the whole chain ("the page was
+  closed from outside, the guide ends"); Escape over a generic menu opens the
+  pause menu on top (3.2, "Built 2026-10-15"). Evidence:
+  `src/game/NativeMenuPrototype.cpp:711-716`. Read. The T-pose report's guess
+  (the stick chord ended the guide) is partly answered: OBVR's settings cannot
+  open over the guide (`ui::SettingsStep` needs no generic root,
+  `src/ui/NativeSettings.h:25`); what else the chord opens there is unread.
+  Fix: pause the chain under a covering menu and reopen its page when it goes.
+- **VR Options and VR Guide arrive after the Options menu is shown
+  (principles 1, 2, 6).** At the first frame the Options menu is seen, OBVR
+  writes the frame's taller height at once and only queues MenuQue's
+  InsertXML console lines; the rows are placed on later frames, re-placed
+  each frame ("the rows put in place (n. time in this menu)", up to six lines
+  logged), and the layout is read "a second after the ask" because it settles
+  late. So the menu shows at least one frame in vanilla layout, then a taller
+  frame with a gap, then the rows appear and move. Evidence:
+  `src/game/OptionsMenuVr.cpp:196-206`, `:88-93` ("MenuQue's insert is still
+  to come"), `:110`, `:208-214`. Read; derived (the frames). The harness's
+  2D layer was taken at the mark `options_open`, after it settled. Fix: insert
+  the rows when the menu is built (before its first drawn frame) or hold the
+  frame's alpha at 0 until the rows stand.
+- **A B press carried across the new game's load skipped the intro film
+  (principle 7).** "The new game on Windows (2026-11-10)": the right B is
+  Escape in a menu and ended the film during Loading/RaceSex; whether the press
+  was meant is open. Read (spec). Fix: drop B/Escape edges that began before
+  the film owns the screen.
+
+Complies (read): the stage is one pure step with an explicit plan
+(`ui::StepGuideStage`, guide_stage_test); the main menu's visibility uses the
+right XML booleans since the 2026-11-10 fix (`ui::MainMenuVisibleTrait`); the
+film is held and given back by one flag (`StageHost.cpp:208-212`); the title
+music is held from the game's start ahead of the guide and restarted at its end
+(2026-11-15 fix); the comfort page to the combat page and to the last page keeps
+the stage up (`FinishSettings` sets the next step in the same call,
+`NativeMenuPrototype.cpp:418-428`); notices wait while anything of the guide is
+busy (`StepMainMenuNotices`). Past glitches now covered by
+`newgame-after-guide.txt`: the main menu hidden after the guide, the main menu
+dead after the welcome page's layout change, the map film behind the window,
+the title track's first bars.
+
+Not verified (needs a per-frame log in the harness, or the headset):
+
+- Every page change in `newgame-after-guide.txt` as a per-frame trace: generic
+  root, our root, stage on, main menu visible trait, film state, grid alpha.
+  Only log lines at events exist today.
+- The Options menu's first five frames with VR Options: a layer dump per frame
+  from the menu's first frame (`[Debug] LayerDump` takes marks only).
+- Whether a first frame of the title track is heard before the hold (this
+  spec, 2026-11-15) and how the six-second give-back sounds.
+- The dome, the window on it and both eyes: headset only.
+- The guide's return at a new revision (`GuideRevision`) never ran in a harness.

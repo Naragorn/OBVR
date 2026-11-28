@@ -2996,3 +2996,152 @@ mache (wie macht alyx das?)."
   Written, not run.
 - Not verified: the feel in the headset - whether 5 cm is near enough for a hand that comes in fast,
   the mark's size and brightness, whether the hidden beam is missed while the finger hovers.
+
+## State-change audit (2026-11-28)
+
+An audit of the tablet's visible state changes against the rule set "State changes without glitches
+or side effects" (each open, close, load or refresh of a screen, page, dialog or inventory happens
+exactly as specified; nothing visible, invisible, empty, misplaced or in a wrong state for even a
+frame; an explicit state machine; prepare, then show; the old state stays until the new one is
+ready; animations start and end cleanly, removal only after them; fixed sizes, no pop-in; robust
+input - no open and close in one frame, spam, interruption mid-transition; side effects - pause,
+input mapping, camera, audio, time scale - set and fully reset; in VR no pop-in or head-locked snap
+of world-space UI, both eyes the same; verified by a per-frame state log or a frame-wise test). The
+rules are `D:\Modding\claude-md-state-changes.md` (8 principles and a mandatory verification
+section); "P1".."P8" below name its principles. By principle: P1 findings 7, 14; P2 6, 7; P3 3, 4;
+P4 1, 2, 13; P5 2, 10, 12; P6 12; P7 8, 9; P8 4 (pause, input); the eyes' rule (Games/VR) 5;
+verification 15. Its stress cases no test or scenario covers: a low or fluctuating frame rate (the
+page key's 3 frames and the fade's counts are frames, not time), spam on the left B during the open
+and the fade, and a close sent mid-unroll.
+
+Audited: the code of origin/main 5214464 (this working copy's HEAD 88dae75 is 108 commits behind and
+lacks sections 25-32 and their code); file:line below are origin/main's. Read only - nothing built,
+run or changed. Marks: **read** seen in the code, **derived** follows from what was read, **guessed**
+not checked. Sections 24.2, 26.3, 31.1, 31.2 and 32.3 are the bugs already found in this class; their
+fixes are counted as compliant where the code does what they say, and listed under "Not verified"
+where they have not run.
+
+### What complies (read)
+
+- The close's fade frames are an explicit state (`vr::StepTabletClose`, vr/TabletClose.h:46-51):
+  nothing in the room, no shade, the world and the walk running through them
+  (`StepTabletRunsWorld`, `TabletWalkFrame`, :64-76), with the count logged at the end
+  (ControlsOut.cpp:434-439).
+- The room's panel never shows a stale picture as it comes back: the first frame it is handed the
+  new picture hidden (`StepOverlayReturn`, vr/TabletOverlayGate.h:148-152; ControlsOut.cpp:463-465).
+- The overlay on the controller stands in only for a whole tablet set last frame
+  (`TabletOnOverlay`, TabletOverlayGate.h:121-126); the gesture's menus show nowhere until the page
+  is placed (`GestureHoldsMenus`, :132-134); a rolled-up tablet is drawn at share 0
+  (`TabletDrawnShare`, :104-109).
+- Page turns are spam-proof: the flick re-arms only under half the dead zone (TabletPages.h:198-211),
+  the page key is held 3 frames and no second turn is taken meanwhile (ControlsOut.cpp:488, 588).
+- An info box joining the face does not move the page: the hand holds the outline (section 23,
+  `HoldFace`). A box moved onto the page is put back when it leaves it, unless the game set its own
+  place (`PutBackBoxes`, TabletMenu.cpp:115-145).
+- The left B closes a book once per press, by the book's own Exit (`vr::TabletKeys`,
+  TabletBook.h:103-106; tablet_book_test TestBCloses).
+- The gesture is an explicit state machine (Idle, Unrolling, Held, RollingUp, AwaitRelease;
+  TabletScroll.h:349-369), a close owed to menus not yet up is sent when they come (:318-327).
+- The figure's breathing no longer moves its page or tab (`StepFigureSteady`, 26.1; 29.2 measured the
+  reads moving 1-2 layer pixels under it).
+
+### Findings
+
+1. **Page turn, a frame with no page read** - rule: nothing invisible for a frame; old state stays
+   until new is ready. When none of the four pages gives a page in a frame (`ReadShownPage` skips a
+   hidden root), the tablet frame is not up (TabletMenu.cpp:366-375), so `PlaceMenu` falls to the wrist
+   or the room's quad (MenuPlace.h:256-281) and the tablet is gone from both eyes that frame; a second
+   such frame shows the inventory on the room's panel ahead of the head (the prime covers only the
+   first, ControlsOut.cpp:463). Read for the code path; **guessed** whether the F1-F4 switch has such a
+   frame (MenuPausePolicy.h:214-216 records that the top visible menu does read "none" for a frame while
+   the F1-F4 stack stays). Fix: hold the last frame's page for a few frames while the F1-F4 entry is
+   still in the stack, instead of dropping the tablet.
+2. **Any gap re-runs the unroll** - rule: animations start cleanly, once. `state.tabletSeconds` is
+   reset to 0 on every frame without the tablet (ControlsOut.cpp:377), so after finding 1's gap, an Esc
+   menu over the pages, or a lost off-hand controller, the page unrolls again from nothing over
+   0.35 s. Read; the visible effect derived. Fix: reset the clock only on a real close (TabletClose's
+   end, or menu mode off).
+3. **Two machines for one close** - rule: one explicit state machine. `StepTabletClose` is stepped
+   twice a frame on two states with different inputs: the walk's with `tablet.up` (page read,
+   LaserTargets.cpp:36), the room/shade's with `hand.menuOnTablet` (page read *and* placed with a
+   tracked off hand, ControlsOut.cpp:436). Derived: a close in a frame the off hand is untracked is no
+   close for the second machine, so the fading menus get the room panel and shade of 24.2 again,
+   while the first keeps the walk. Fix: step it once and hand the result to both.
+4. **Pause and walk sites disagree within a frame** - rule: side effects set consistently.
+   `TabletRunsWorld` mutates one shared `tabletRan` (MenuPause.cpp:62-67) and is called by the world
+   sites with the stabilised top (`StablePauseMenuId`, :84-90 and :447) but by the player-controls site with the
+   raw `TopVisibleMenuId` (:134-135). Derived: in a frame the raw top reads "none" with the pages up
+   (MenuPausePolicy.h:214), the controls site answers paused, stops the walk for that frame and clears
+   `tabletRan`, so a fade beginning next frame pauses the world after all (26.3's freeze back for that
+   close). Fix: give the controls site the same stable top, or compute the tablet answer once per frame.
+5. **One eye drawn, the other not** - rule: both eyes the same. `TabletQuad::DrawIntoWorld` refuses
+   per eye (no fresh projection, a corner behind the eye; TabletQuad.cpp:395-441) and the other eye keeps
+   its tablet; the stand-in comes a frame later (`TakeDrawnBoth`, TabletQuad.h:167-169) and then shows the
+   overlay on top of the in-scene tablet, which both eyes draw again (TabletOverlayGate.h:121-126). Read;
+   derived: one frame monocular, the next doubled (the overlay has no depth and another pose). Fix:
+   draw neither eye when one refuses, and let the overlay stand in for that frame, not the next.
+6. **A box shown at the game's place for a frame** - rule: nothing misplaced for a frame. A message,
+   quantity box, Generic box or book is moved onto the page after this frame's read
+   (JoinFaceMenus, TabletMenu.cpp:227-236, its comment: "this frame's read was of its place before").
+   Guessed: whether this frame's 2D pass ran before or after the move; if before, the box stands for a
+   frame at the screen's middle, partly over the page's right half (section 23: message box
+   460..1248 units, page 0..745). Fix: settle the order with a per-frame layer dump of the box's first
+   two frames; if late, hide the box's popup on its first frame.
+7. **A book read alone, its first frame** - rule: prepare, then show. Until the book menu's pictures
+   are readable, `ReadBookAlone` returns no tablet and the book stays "on the menus' panel"
+   (TabletMenu.cpp:319-325) - the room's panel ahead of the head, with no prime (the frame before was a
+   world frame). Read; guessed whether the first frame is ever unreadable (book-probe.txt not run). Fix:
+   with the book menu in the stack and no page read, hide the room's panel (as `GestureHoldsMenus` does)
+   for a few frames.
+8. **The B's book close mid-frame** - rule: no state change between read and draw. `CloseBookByB`
+   runs `ClickMenuButton` at once, after this frame's tablet was read (ControlsOut.cpp:571-580,
+   583): the frame is drawn with the book's face and crop while the menu is closing. Guessed whether
+   the layer of that frame still holds the book (a fade) or the pages alone (a frame of empty face
+   where the book stood, from the inventory). Fix: send the click at the start of the next frame's hand
+   step, or take the frame's crop after it.
+9. **The gesture closes on a tracking drop** - rule: robust against interruption. Unrolling with
+   either controller or the head untracked for one frame closes the menus (`StepUnrolling`,
+   TabletScroll.h:275-277; `tracked`, MenuPlace.h:166). Read. Fix: hold the share through a few
+   untracked frames, as Held does (:261-264).
+10. **No roll-back, no roll-up animation** - rule: removal only after the animation. Let go short of
+    open (TabletScroll.h:295) or rolled up, the share goes to 0 at once (TabletOverlayGate.h:104-107);
+    the B's close removes the tablet with the menu key (24.2). Section 4.5 says "letting go rolls it
+    back". Read. Fix: animate the share down over the unroll's time with the menus' fade, or say in
+    4.5 that it vanishes.
+11. **Spec drift on the unroll's time** - section 4.5 says about 0.2 s; the code is 0.35 s
+    (`kTabletUnrollSeconds`, TabletScroll.h:389). Read. Fix: update 4.5.
+12. **The figure's page pops with every info** - rule: no pop-in. With `[Tablet] Figure` beside, the
+    figure's page is laid out only with no popup up (TabletMenu.cpp:395), so it vanishes and comes back
+    each time the beam rests on a row with an item info, and the face changes width. By design (26.1);
+    read. Fix if wanted: keep its place reserved while the info shows.
+13. **Esc over the pages** - rule: old state stays until new is ready. The tablet goes from the hand
+    at once and the room's panel shows the layer - the pages under the Esc menu - ahead of the head
+    (TabletLogic.h:167-179, as 24.2 specifies); on the way back the page unrolls anew (finding 2). Read;
+    specified behaviour, listed for the decision. Fix if wanted: keep the tablet in the hand, the Esc
+    menu on it or beside it.
+14. **Off hand lost while open** - rule: no head-locked snap of world-space UI. `PlaceTablet` needs the
+    left controller (MenuPlace.h:224), so tracking loss moves the menus to the room's quad ahead of the
+    head (after one primed frame) and back with a new unroll. Read; derived. Fix: hold the last place
+    for a short loss.
+15. **Verification is per change, not per frame** - rule: per-frame state log or frame-wise test. The
+    log says each transition once (put down, closed (N frames), the pages back, Hud: back after the
+    tablet); no per-frame line ties the tablet's state, the overlay's and the room panel's shown state
+    and the share together, and the harness checks at marks (eye dumps) or by films. Read. Fix: a
+    `[Debug]` per-frame trace for the N frames around each open, close, page turn and book close, and a
+    harness check over it (any frame with the menus on the room panel or the overlay while the tablet
+    owns them fails).
+
+### Not verified
+
+- The fixes of 26.3 (tablet-close-runs.txt), 31.1 (tablet-close-flash.txt), 31.2
+  (tablet-gesture-held-start.txt), 32.3 (tablet-book-b-close.txt) and the book scenarios of 25.7
+  (book-probe, letter-probe, book-sweep, book-world-in-hand, letter-in-hand) are written and have not
+  run, by this spec's own words. Whether Nadi's run of 2026-11-28 14:56 confirmed the flash fixes is
+  not written in this spec; not checked by me.
+- The frame order of the hand step's read and move against the game's interface pass (findings 6, 8).
+- Whether a page switch or a book's first frame ever reads no page (findings 1, 7): needs a per-frame
+  log of `ReadShownPage` / `ReadBookAlone` around them.
+- Audio on open and close (the menus' own sounds while the world runs) and time scale: no code of the
+  tablet touches them; nothing read beyond that.
+- The camera's step at open and close: section 28.4's fix, not measured in the headset.
+- The overlay route (`InScene=0`) was not audited beyond `TabletOnOverlay`.
