@@ -2366,3 +2366,20 @@ derived, G guessed.
   (6 to 29 now, 0 to 2 on 11-14); `[Performance] Sampler=1` for one fight to
   split the scene pass's 8-10 ms between OBVR, OBNG, the engine and the
   driver.
+
+## Nadi's Windows runs of 2026-11-28: "flawless" at 90 Hz (noted the same day)
+
+Nadi after the day's headset runs (the last OBVR.log 13:29-13:55, the DLL main 9be24a6
+plus the swimming and books branches; Pimax Dream Air at 90 Hz, `[Render]
+SinglePassStereo=1`, `Stereo=dual`, `LatePoseWait=1`, the profiler on): "die performance
+in 90hz usw war übrigens nun flawless". The evening before, with the DLL of main 4f1124f:
+"performance war super 1A auf 90 hz merkte keine stutter".
+
+- [M log, 13:55] SteamVR fell to its half rate (interleaved reprojection) in 20 episodes,
+  740 frames in all over the session - the count the log keeps itself ("Compositor: back
+  to full rate after N frames at half rate (740 frames at half rate so far in 20
+  episodes)"). Not compared against the session's whole frame count here.
+- [M log] The mirror's extra world render that day: 1.39 ms a pass on the mean while the
+  Mirror tab was up (docs/mirror-spec.md 12.9 and 13), nothing while it was not.
+- Not read: the capture `OBVR-performance-2-8` (frame times, the worst frames). It is the
+  baseline to compare the next build against if a later run feels worse.
