@@ -217,7 +217,9 @@ struct HeldFingersInput {
 	bool holderRight = false;  // the right role's hand holds it (its R bones)
 	SheetInWorld sheet;
 	HeldHandBones bones;
-	float skin = kFingerSkinMetres;  // in the world's units
+	// Each finger's skin round its bones, in the world's units: measured from
+	// the drawn hand where it was (vr/FingerSkin.h), else the guess.
+	float skin[4] = {kFingerSkinMetres, kFingerSkinMetres, kFingerSkinMetres, kFingerSkinMetres};
 	// Each hand's curls as the controller says, thumb to little finger.
 	float rightCurl[5] = {};
 	float leftCurl[5] = {};
@@ -252,7 +254,7 @@ inline HeldFingersOutput HoldFingersBehind(const HeldFingersInput& in) {
 		const auto depthAt = [&](float curl) {
 			NiPoint3 points[4];
 			FingerPointsAt(in.bones.hand, chain, in.holderRight, f + 1, curl, points);
-			return DepthBeforeSheet(in.sheet, points, 4, in.skin);
+			return DepthBeforeSheet(in.sheet, points, 4, in.skin[f]);
 		};
 		out.limit[f] = CurlBehindSheet(curls[f + 1], in.prefer[f], depthAt);
 		curls[f + 1] = out.limit[f].curl;

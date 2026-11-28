@@ -95,7 +95,8 @@ void SayAtMark(HandReachState& state, bool holderRight) {
 }  // namespace
 
 void StepHandReachRead(HandReachState& state, bool tabletUp, const vr::HandModeResult& hand, float unitsPerMetre,
-                       const vr::HeldPlace& place, bool fingersHeld) {
+                       const vr::HeldPlace& place, HeldFingersState& heldFingers) {
+	const bool fingersHeld = heldFingers.active;
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long before = tabletUp ? ReadPerformanceCounter() : 0;
 	const bool holderRight = hand.tabletHolderRight;
@@ -127,6 +128,7 @@ void StepHandReachRead(HandReachState& state, bool tabletUp, const vr::HandModeR
 			state.kept[role] = keep ? state.read[role] : vr::HandReach{};
 			SayReading(state, role, vertices, now, unitsPerMetre, role == 1 ? hand.rightCurl[1] : hand.leftCurl[1], place);
 		}
+		MeasureFingerSkin(heldFingers, state.vertices[holderRight ? 0 : 1], unitsPerMetre);
 		++state.readsSinceMark;
 	}
 	if (!tabletUp) {

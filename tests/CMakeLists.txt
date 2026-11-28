@@ -2852,6 +2852,14 @@ if(NOT MSVC)
 endif()
 add_test(NAME held_fingers COMMAND held_fingers_test)
 
+# The holding hand's finger skin measured from its drawn vertices (vr/FingerSkin.h): pure.
+add_executable(finger_skin_test FingerSkinTest.cpp)
+target_include_directories(finger_skin_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(finger_skin_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME finger_skin COMMAND finger_skin_test)
+
 # The laser yielding to the finger at the tablet (vr/TouchHandover.h): pure.
 add_executable(touch_handover_test TouchHandoverTest.cpp)
 target_include_directories(touch_handover_test PRIVATE ../src)

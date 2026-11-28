@@ -8,7 +8,9 @@
 # is not held back. tablet-fingers-behind-left-handed.txt: the same mirrored. Films and eye
 # dumps at each mark: the four fingers behind the page, the thumb before it.
 # The log says each finger's curl as the controller gave it and as it was
-# held ("Tablet: the left hand's fingers by the page - index 1.00 to 0.xx ...").
+# held, its skin as measured from the drawn hand and its deepest vertex against
+# the page ("Tablet: the left hand's fingers against the page - index asked
+# 1.00 allowed 0.xx, skin 1.x cm, its deepest 0.x cm behind; ...").
 # The DLL from before: no such line, the fingertips through the face at "fist".
 # Written 2026-11-28, not run.
 # Run with: python3 tools/hand-script-run.py --headless --no-steamvr --parallel --headset beyond --record 9 --record-width 1280 tools/hand-scripts/tablet-fingers-behind.txt
@@ -35,9 +37,11 @@ expect HandScript: finished
 expect Tablet: in the off hand, drawn into the eyes
 expect Tablet: the left hand's finger links for the page's hold - 4 of 4 fingers
 expect Tablet: the left hand as drawn reaches
-expect Tablet: the left hand's fingers by the page (at the mark)
+expect Tablet: the left hand's fingers against the page - index asked
+# The skin measured from the drawn hand (vr/FingerSkin.h, 2026-11-28 14:56 run): no finger's skin through the page.
+reject cm through
 expect Tablet: the fingers follow the controller again
-reject Tablet: the right hand's fingers by the page
+reject Tablet: the right hand's fingers against the page
 reject HandScript: WARNING
 
 wait 12

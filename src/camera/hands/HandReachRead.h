@@ -10,6 +10,7 @@
 
 #include <vector>
 
+#include "camera/hands/HeldFingers.h"
 #include "vr/HandMode.h"
 #include "vr/HandReach.h"
 
@@ -37,9 +38,10 @@ struct HandReachState {
 
 // Once a frame. `tabletUp`: the tablet's menus are up; `hand`: the fingers'
 // curls and which hand holds the tablet; `unitsPerMetre`: the world's;
-// `fingersHeld`: the holding hand's fingers were held behind the page this
-// frame (camera/hands/HeldFingers.h).
+// `fingers`: whether the holding hand's fingers were held behind the page
+// this frame (camera/hands/HeldFingers.h), and where their skin, measured at
+// each read, is kept.
 void StepHandReachRead(HandReachState& state, bool tabletUp, const vr::HandModeResult& hand, float unitsPerMetre,
-                       const vr::HeldPlace& place, bool fingersHeld);
+                       const vr::HeldPlace& place, HeldFingersState& fingers);
 
 }  // namespace obvr::camera::hands

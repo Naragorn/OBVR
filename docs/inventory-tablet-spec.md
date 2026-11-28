@@ -2837,6 +2837,63 @@ nun nicht mehr durch das tablet clippen können."
 - Not verified: how it looks in the headset; whether the fingers held open by the page look natural
   (they stop at the page rather than wrap round its edge); the curl the Index controllers give.
 
+#### 32.2.1 Still slightly through, the index most (Nadi, headset, OBVR.log of 14:56, main 35abb6a)
+
+Nadi: "clippen finger noch leicht durch va zeigefinger". Built on branch `tablet-5-1128`.
+
+- [R log] The limit did act. "Tablet: the left hand's finger links for the page's hold - 4 of 4"
+  (1539) and 28 lines "Tablet: the left hand's fingers by the page" (1541-6823; the budget of 30 ran
+  out). From 3391 on, every one has the index asked 0.44-0.82 and allowed 0.47, the middle allowed
+  0.51, the little 0.69-0.70; the ring mostly free. Once (1541, the first frame of the first hold) the
+  index was "0.77 to 0.00 (none behind: the least deep)". The reach lines (1529, 16708, 18615, 18946)
+  give the hand 6.0-7.0 cm before the palm's middle, the index curled 0.74-0.80.
+- **The four suspects, read in order:**
+  1. **The skin (the cause, [D])**. The limit held the index's joints and tip, plus a guessed 1 cm of
+     skin, behind the face: the log says "allowed 0.47", behind by that test, every time. He still
+     saw the index through, so the drawn finger's mesh reaches more than 1 cm from its bones - the
+     flesh of the link, the nail, the pad past the tip - and the index, the longest over the face,
+     most. Not proven by a number: the run logged no vertex against the page (the instrument below
+     is what was missing). The fix measures the skin instead of guessing it.
+  2. **Outside the face** - refuted by reading: the hand is held at the page's middle height (the
+     foremost point 0.9 cm up the page or less, 1529), the tab strip and the texts piece stand above
+     the top edge, some 10 cm and more from any finger; the face's outline is grown by the skin, now
+     the measured one.
+  3. **A frame late / another writer / a coarse search** - refuted by reading: the limit takes this
+     frame's page (`hand.menuTransform`, the one `TabletPieces` draws) and the bones pinned this frame
+     (camera/CameraHook.cpp, before `game::StepHandFingers`); no other code writes a finger link's
+     rotation (only game/HandGrip.cpp does); the search ends at 0.1 / 2^6 = 0.0016 of curl, under a
+     millimetre. Not ruled out [G]: the page drawn on a later controller pose than the hand was
+     pinned with (a few millimetres in a fast move).
+  4. **No curl hides it** - once, at the first frame of a hold (1541, the index's "none behind"). The
+     instrument now says by how much and which finger, if it comes back.
+- **Fixed** (vr/FingerSkin.h, pure; camera/hands/HeldFingers.cpp `MeasureFingerSkin`, called from
+  camera/hands/HandReachRead.cpp at each reading of the hand's vertices): each of the holding hand's
+  vertices (880 in his log) is given to its nearest bone - a finger's three links and its tip, the
+  palm's (wrist to each knuckle) or the thumb's - and each finger's skin is how far its vertices
+  reach from its bones, the widest reading of the model kept, bounded to 0.5-2.5 cm [G: the bounds
+  against a misread]. The limit holds each finger by its own skin plus the page's 0.3 cm clearance
+  (`kPageClearMetres`); 1 cm only until the first reading. The margin so comes from the mesh, not a
+  guess.
+- **The instrument**: "Tablet: the left hand's fingers against the page - index asked 0.62 allowed
+  0.47, skin 1.4 cm, its deepest 0.3 cm behind; middle asked 0.93 allowed 0.51, skin 1.2 cm, its
+  deepest 0.5 cm behind; ring asked 0.11 allowed 0.11 (free), ...; little ... not over the page"
+  [the figures here are an example, not measured]: at the first reading of each hold, as the set of
+  fingers limited or through changes, and at a mark, 6 a hold at most. "Its deepest" is the finger's
+  vertex furthest before the page's plane over its face: "through" there is what the eye sees. The
+  older "by the page" line, which spent its 30 lines on a finger flipping at the line, is gone into it.
+- Cost [R, finger_skin_test, Release, this machine]: 71 us a reading of 880 vertices, made only when
+  the hand's vertices are read anyway (every 3 frames at most while the fingers move, every 60
+  otherwise, on top of their 0.1-0.3 ms read); nothing allocated.
+- Tests: finger_skin_test, new (18 red against stubs of the 28 written first; 29 green with the cost):
+  vertices given to a finger, the palm, the thumb (and with the thumb unread); the pad past the tip;
+  each finger's deepest against the page, over it or beside it; the game's units; the widest kept and
+  its bounds; the limit by a finger's own skin; when the line is said. held_fingers_test (the skin per
+  finger) green.
+- Harness: `tablet-fingers-behind.txt`, `tablet-fingers-behind-left-handed.txt` expect the new line
+  and reject "cm through". Written, not run.
+- Not verified: that the measured skin is wide enough for what he sees (the next log's "its deepest"
+  settles it); whether a finger held by a wider skin now stops visibly short of the page.
+
 ### 32.3 The left B closes a book
 
 Nadi: "bücher sind gut, aber lass nun so machen dass links B auch die schließt (ich glaube dort war

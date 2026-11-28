@@ -22,6 +22,8 @@ const char* const kLinkBones[2][4][3] = {
 	 {"Bip01 R Finger3", "Bip01 R Finger31", "Bip01 R Finger32"},
 	 {"Bip01 R Finger4", "Bip01 R Finger41", "Bip01 R Finger42"}},
 };
+const char* const kThumbBones[2][3] = {{"Bip01 L Finger0", "Bip01 L Finger01", "Bip01 L Finger02"},
+                                       {"Bip01 R Finger0", "Bip01 R Finger01", "Bip01 R Finger02"}};
 const char* const kFingerWords[4] = {"index", "middle", "ring", "little"};
 
 // The bones, once per tree: a finger whose links do not hang one under the
@@ -50,6 +52,9 @@ void FindBones(HeldFingersState& state) {
 			}
 			found += chained ? 1u : 0u;
 		}
+		for (int i = 0; i < 3; ++i) {
+			state.thumb[side][i] = game::FindFirstPersonNode(kThumbBones[side][i]);
+		}
 		OBVR_LOG("Tablet: the %s hand's finger links for the page's hold - %u of 4 fingers hung from \"%s\"%s",
 		         side == 1 ? "right" : "left", found, kHandBones[side],
 		         found == 4 ? "" : " (a finger not found is not held behind the page)");
@@ -76,30 +81,50 @@ vr::HeldHandBones ReadBones(const HeldFingersState& state, bool rightBones) {
 	return b;
 }
 
-// Said as the set of fingers held changes, and at a hand script's mark.
-void SayHeld(HeldFingersState& state, const vr::HeldFingersInput& in, const vr::HeldFingersOutput& out) {
-	UInt8 mask = 0;
+// The holding hand's bones as drawn now (after the pose): the wrist, each
+// finger's joints and its tip, the thumb's.
+vr::HandBonesNow BonesNow(const HeldFingersState& state, bool rightBones) {
+	vr::HandBonesNow b;
+	const int side = rightBones ? 1 : 0;
+	if (state.hand[side] == nullptr) {
+		return b;
+	}
+	b.valid = true;
+	b.wrist = state.hand[side]->worldTransform.pos;
 	for (int f = 0; f < 4; ++f) {
-		mask = static_cast<UInt8>(mask | (out.limit[f].limited ? 1u << f : 0u));
+		b.fingerValid[f] = state.links[side][f][2] != nullptr;
+		b.finger[f][0] = b.wrist;
+		for (int i = 0; b.fingerValid[f] && i < 3; ++i) {
+			b.finger[f][i] = state.links[side][f][i]->worldTransform.pos;
+		}
+		b.finger[f][3] = vr::IndexTipBeyond(b.finger[f][1], b.finger[f][2]);
 	}
-	const bool mark = test::HandScriptMarkedThisFrame();
-	if (!mark && (mask == state.heldMask || state.linesLeft == 0)) {
-		return;
+	b.thumbValid = state.thumb[side][0] != nullptr && state.thumb[side][1] != nullptr && state.thumb[side][2] != nullptr;
+	for (int i = 0; b.thumbValid && i < 3; ++i) {
+		b.thumb[i] = state.thumb[side][i]->worldTransform.pos;
 	}
-	if (mask != state.heldMask && state.linesLeft > 0) {
-		--state.linesLeft;
-	}
-	state.heldMask = mask;
-	const float* const wanted = in.holderRight ? in.rightCurl : in.leftCurl;
-	char text[320];
+	b.thumb[3] = vr::IndexTipBeyond(b.thumb[1], b.thumb[2]);
+	return b;
+}
+
+// The line: per finger the curl asked and allowed, its skin as kept, and its
+// deepest vertex against the page (through it, or behind it).
+void SaySkin(const HeldFingersState& state, const vr::FingerSkinRead& r, bool mark) {
+	char text[480];
 	int at = 0;
 	for (int f = 0; f < 4 && at >= 0 && at < static_cast<int>(sizeof(text)); ++f) {
-		const vr::CurlLimit& l = out.limit[f];
-		at += std::snprintf(text + at, sizeof(text) - static_cast<size_t>(at), "%s%s %.2f%s%.2f%s", f > 0 ? ", " : "",
-		                    kFingerWords[f], static_cast<double>(wanted[f + 1]), l.limited ? " to " : " (free)",
-		                    static_cast<double>(l.curl), !l.limited ? "" : (l.behind ? "" : " (none behind: the least deep)"));
+		const vr::CurlLimit& l = state.out.limit[f];
+		const double deepest = static_cast<double>(r.deepest[f] * 100.0f);
+		at += std::snprintf(text + at, sizeof(text) - static_cast<size_t>(at),
+		                    "%s%s asked %.2f allowed %.2f%s, skin %.1f cm%s, %s %.1f cm %s", f > 0 ? "; " : "",
+		                    kFingerWords[f], static_cast<double>(state.asked[f]), static_cast<double>(l.curl),
+		                    !l.limited ? " (free)" : (l.behind ? "" : " (none behind: the least deep)"),
+		                    static_cast<double>(vr::SkinOf(state.skin, f) * 100.0f),
+		                    state.skin.measured[f] ? "" : " (not measured)", r.over[f] ? "its deepest" : "not over the page,",
+		                    r.over[f] ? (deepest > 0.0 ? deepest : -deepest) : 0.0,
+		                    !r.over[f] ? "" : (deepest > 0.0 ? "through" : "behind"));
 	}
-	OBVR_LOG("Tablet: the %s hand's fingers by the page%s - %s", in.holderRight ? "right" : "left",
+	OBVR_LOG("Tablet: the %s hand's fingers against the page%s - %s", state.holderRight ? "right" : "left",
 	         mark ? " (at the mark)" : "", text);
 }
 
@@ -129,30 +154,52 @@ void CurlsForFingers(HeldFingersState& state, const vr::HandModeResult& hand, bo
 		in.bones = ReadBones(state, in.holderRight);
 		in.sheet = vr::SheetOfPlace(hand.menuTransform, hand.tabletWidth, hand.tabletHeight, cameraRot,
 		                            hand.leftHandRotation, cameraPos, hand.leftHandOffsetUnits, unitsPerMetre);
-		in.skin = vr::kFingerSkinMetres * unitsPerMetre;
 		for (int f = 0; f < 4; ++f) {
+			in.skin[f] = vr::SkinOf(state.skin, f) * unitsPerMetre;
 			in.prefer[f] = state.prefer[f];
+			state.asked[f] = (in.holderRight ? in.rightCurl : in.leftCurl)[f + 1];
 		}
 		out = vr::HoldFingersBehind(in);
 		for (int f = 0; f < 4; ++f) {
 			state.prefer[f] = out.limit[f].limited && out.limit[f].behind ? out.limit[f].side : vr::CurlSide::None;
 		}
-		SayHeld(state, in, out);
+		state.sheet = in.sheet;
+		state.out = out;
 	} else {
 		out = vr::HoldFingersBehind(in);
 		for (int f = 0; f < 4; ++f) {
 			state.prefer[f] = vr::CurlSide::None;
 		}
+		vr::SkinLineDue(state.skinLine, false, 0, false);  // the next hold says its first reading again
 		if (state.active && state.linesLeft > 0) {
 			--state.linesLeft;
 			OBVR_LOG("Tablet: the fingers follow the controller again - the page no longer held in one hand");
 		}
-		state.heldMask = 0;
 	}
 	state.active = in.holding;
+	state.holderRight = in.holderRight;
 	for (int f = 0; f < 5; ++f) {
 		right.curl[f] = out.rightCurl[f];
 		left.curl[f] = out.leftCurl[f];
+	}
+}
+
+void MeasureFingerSkin(HeldFingersState& state, const std::vector<NiPoint3>& vertices, float unitsPerMetre) {
+	if (!state.active) {
+		vr::SkinLineDue(state.skinLine, false, 0, false);
+		return;
+	}
+	const vr::FingerSkinRead r = vr::ReadFingerSkin(vertices.data(), static_cast<UInt32>(vertices.size()),
+	                                                BonesNow(state, state.holderRight), state.sheet, unitsPerMetre);
+	vr::KeepFingerSkin(state.skin, r);
+	UInt8 mask = 0;
+	for (int f = 0; f < 4; ++f) {
+		const bool through = r.over[f] && r.deepest[f] > 0.0f;
+		mask = static_cast<UInt8>(mask | (state.out.limit[f].limited ? 1u << f : 0u) | (through ? 0x10u << f : 0u));
+	}
+	const bool mark = test::HandScriptMarkedThisFrame();
+	if (r.valid && vr::SkinLineDue(state.skinLine, true, mask, mark)) {
+		SaySkin(state, r, mark);
 	}
 }
 

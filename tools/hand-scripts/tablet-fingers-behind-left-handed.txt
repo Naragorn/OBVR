@@ -29,9 +29,11 @@ expect HandScript: finished
 expect Tablet: in the off hand, drawn into the eyes
 expect Tablet: the left hand's finger links for the page's hold - 4 of 4 fingers
 expect Tablet: the left hand as drawn reaches
-expect Tablet: the left hand's fingers by the page (at the mark)
+expect Tablet: the left hand's fingers against the page - index asked
+# The skin measured from the drawn hand (vr/FingerSkin.h, 2026-11-28 14:56 run): no finger's skin through the page.
+reject cm through
 expect Tablet: the fingers follow the controller again
-reject Tablet: the right hand's fingers by the page
+reject Tablet: the right hand's fingers against the page
 reject HandScript: WARNING
 
 wait 12
