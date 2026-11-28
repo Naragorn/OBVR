@@ -455,6 +455,9 @@ struct TabletFrame {
 	// The figure behind a tab (SetFigureTab): the figure fitted into the page's
 	// own rectangle, shown there instead of the page while its tab is chosen.
 	bool figureTab = false;
+	// The page's own pictures over the figure's place (vr::PageOverFigure, the
+	// map's extension): no figure shown, and a choice of its tab waits.
+	bool figureUnderPage = false;
 	// The HUD's texts beside the face (vr/TabletTexts.h), and where they stand above it.
 	UiRect texts;
 	UiRect textsAt;

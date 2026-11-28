@@ -207,6 +207,57 @@ void TestChoosing() {
 	Check(StepTabletTab(wrong, noFigure, -1, false, false) == TabletTab::Mirror, "the popup gone: the mirror");
 }
 
+// The figure's tab left out where the page lies over the figure's place - the
+// map (vr/TabletFigureCover.h; Nadi, 2026-11-28: the map showed in the
+// figure's place): the page shown, and the choice waits for a page that
+// leaves the figure free.
+void TestFigureAway() {
+	std::printf("The figure's tab over the map\n");
+	const TabSet all = TabsFor(Wanted(true, true));
+	const TabSet onMap = TabsFor(Wanted(false, true));
+	const TabSet onMapNoMirror = TabsFor(Wanted(false, false));
+	const int mirror = static_cast<int>(TabletTab::Mirror);
+	const int figure = static_cast<int>(TabletTab::Figure);
+	const int page = static_cast<int>(TabletTab::Page);
+
+	TabletTabState s;
+	StepTabletTab(s, all, figure, true, false);
+	Check(StepTabletTab(s, onMap, -1, false, false, true) == TabletTab::Page, "turned to the map: the map shown");
+	Check(s.chosen == TabletTab::Figure, "the figure's tab still chosen");
+	Check(StepTabletTab(s, onMap, -1, false, true, true) == TabletTab::Page, "a popup over the map: the map");
+	Check(StepTabletTab(s, all, -1, false, false) == TabletTab::Figure, "back on the inventory: the figure again");
+
+	TabletTabState lone;
+	StepTabletTab(lone, all, figure, true, false);
+	Check(onMapNoMirror.count == 0, "no mirror, the map: no strip at all");
+	Check(StepTabletTab(lone, onMapNoMirror, -1, false, false, true) == TabletTab::Page, "no strip on the map: the map");
+	Check(StepTabletTab(lone, all, -1, false, false) == TabletTab::Figure, "and the figure again past it");
+
+	TabletTabState toPage;
+	StepTabletTab(toPage, all, figure, true, false);
+	StepTabletTab(toPage, onMap, -1, false, false, true);
+	Check(StepTabletTab(toPage, onMap, page, true, false, true) == TabletTab::Page, "the page's tab pressed on the map");
+	Check(StepTabletTab(toPage, all, -1, false, false) == TabletTab::Page, "back on the inventory: the page, as pressed");
+
+	TabletTabState toMirror;
+	StepTabletTab(toMirror, all, figure, true, false);
+	StepTabletTab(toMirror, onMap, -1, false, false, true);
+	Check(StepTabletTab(toMirror, onMap, mirror, true, false, true) == TabletTab::Mirror, "the mirror's tab pressed on the map");
+	Check(StepTabletTab(toMirror, all, -1, false, false) == TabletTab::Mirror, "back on the inventory: still the mirror");
+
+	TabletTabState closed;
+	StepTabletTab(closed, all, figure, true, false);
+	StepTabletTab(closed, onMap, -1, false, false, true);
+	Check(StepTabletTab(closed, TabSet{}, -1, false, false) == TabletTab::Page, "the tablet closed on the map");
+	Check(StepTabletTab(closed, all, -1, false, false) == TabletTab::Page, "opened again: the page, the figure forgotten");
+
+	TabletTabState mirrorAway;
+	StepTabletTab(mirrorAway, all, mirror, true, false);
+	Check(StepTabletTab(mirrorAway, onMapNoMirror, -1, false, false, true) == TabletTab::Page,
+	      "the mirror chosen, then switched off on the map: the map");
+	Check(StepTabletTab(mirrorAway, all, -1, false, false) == TabletTab::Page, "the mirror forgotten - only the figure waits");
+}
+
 void TestNames() {
 	std::printf("The tabs' names in the log\n");
 	Check(std::strcmp(TabletTabName(TabletTab::Page), "page's") == 0, "the page's");
@@ -239,6 +290,7 @@ int main() {
 	TestStrip();
 	TestMirrorPagePress();
 	TestChoosing();
+	TestFigureAway();
 	TestPageTurn();
 	TestNames();
 	std::printf("%d failure(s)\n", g_failures);
