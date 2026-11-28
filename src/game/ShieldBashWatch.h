@@ -30,7 +30,10 @@ struct BashAttemptFrame {
 	float approach = 0.0f;       // the gate's measure since 2026-11-28 13:55: the approach (game/BashApproachLogic.h)
 	float towards = 0.0f;        // this frame's alone: the controller's speed in 3D towards their middle (BashSpeedTowards)
 	float towardsGround = 0.0f;  // the same across the ground only, the measure before 2026-11-28 (SpeedTowards)
-	bool inColumn = false;      // the gate's place: the shield's middle in their column
+	bool inColumn = false;      // the gate's place: the shield met them (game/BashContactLogic.h; before 14:56 its middle in their column)
+	bool byContact = false;     // met by the contact step's word, its disc short of their column
+	float gap = 0.0f;           // the disc's nearest point from their column, units (0 touching)
+	float degrees = 0.0f;       // the travel off the line to their middle
 	bool cooling = false;       // they cool down from a shove
 	bool handBusy = false;      // the hand on a handle or holding someone
 	float across = 0.0f;        // the shield's middle from their axis across the ground, units
@@ -62,7 +65,7 @@ struct BashAttemptSummary {
 
 // The frame that came closest: one in the column at the most of the gate's
 // measure, the approach (then the frame's own speed towards them); before any
-// is, the one nearest the column across the ground.
+// is, the one whose disc came nearest the column (then its middle across the ground).
 inline bool CloserToABash(const BashAttemptFrame& f, const BashAttemptFrame& best, bool haveBest) {
 	if (!haveBest) {
 		return true;
@@ -71,7 +74,7 @@ inline bool CloserToABash(const BashAttemptFrame& f, const BashAttemptFrame& bes
 		return f.inColumn;
 	}
 	if (!f.inColumn) {
-		return f.across < best.across;
+		return f.gap != best.gap ? f.gap < best.gap : f.across < best.across;
 	}
 	return f.approach != best.approach ? f.approach > best.approach : f.towards > best.towards;
 }
@@ -135,9 +138,9 @@ inline const char* BashAttemptEndWords(BashAttemptEnd end) {
 	case BashAttemptEnd::Landed:
 		return "landed";
 	case BashAttemptEnd::OutsideColumn:
-		return "the shield's middle never in their column";
+		return "the shield never met them";
 	case BashAttemptEnd::TooSlow:
-		return "in their column, too slow towards them";
+		return "it met them, too slow into them";
 	case BashAttemptEnd::CoolingDown:
 		return "they were cooling down from a shove";
 	case BashAttemptEnd::HandBusy:

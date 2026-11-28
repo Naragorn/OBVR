@@ -29,12 +29,18 @@ using namespace obvr;
 using namespace obvr::game;
 
 constexpr double kFrame = 1.0 / 90.0;  // the run's headset, 90 Hz (OBVR.log line 174)
-const NiPoint3 kTarget{0.0f, 0.0f, 0.0f};
+const BashColumn kTarget{};  // a point: no width, no height
+
+BashDisc Disc(const NiPoint3& at) {
+	BashDisc d;
+	d.centre = at;
+	return d;
+}
 
 // The shield at x units in front of the target (x < 0), moving at v m/s
 // along +x (towards it; negative: away).
 void Add(BashApproachTrail& t, float x, float v, double time) {
-	AddBashSample(t, NiPoint3{v, 0.0f, 0.0f}, NiPoint3{x, 0.0f, 0.0f}, time);
+	AddBashSample(t, NiPoint3{v, 0.0f, 0.0f}, Disc(NiPoint3{x, 0.0f, 0.0f}), time);
 }
 
 void TestEmptyAndWindow() {
@@ -91,19 +97,19 @@ void TestTowardsOnly() {
 	{
 		BashApproachTrail t;
 		for (int i = 0; i < 6; ++i) {
-			AddBashSample(t, NiPoint3{0.0f, 5.0f, 0.0f}, NiPoint3{-40.0f, -10.0f + 5.0f * i, 0.0f}, i * kFrame);
+			AddBashSample(t, NiPoint3{0.0f, 5.0f, 0.0f}, Disc(NiPoint3{-40.0f, -10.0f + 5.0f * i, 0.0f}), i * kFrame);
 		}
-		Check(BashApproachSpeed(t, NiPoint3{0.0f, 0.0f, 0.0f}, 5 * kFrame, kBashApproachSeconds) < 3.0f,
+		Check(BashApproachSpeed(t, BashColumn{NiPoint3{0.0f, 0.0f, 0.0f}}, 5 * kFrame, kBashApproachSeconds) < 3.0f,
 		      "a fast sweep across in front of them: under the gate");
 		BashApproachTrail across;
-		AddBashSample(across, NiPoint3{0.0f, 5.0f, 0.0f}, NiPoint3{-20.0f, 0.0f, 0.0f}, 0.0);
+		AddBashSample(across, NiPoint3{0.0f, 5.0f, 0.0f}, Disc(NiPoint3{-20.0f, 0.0f, 0.0f}), 0.0);
 		Check(Near(BashApproachSpeed(across, kTarget, 0.0, kBashApproachSeconds), 0.0f),
 		      "straight across the line to them: nothing towards them");
 	}
 	{
 		BashApproachTrail t;
 		Add(t, -60.0f, 4.0f, 0.0);
-		AddBashSample(t, NiPoint3{0.0f, 0.0f, 0.0f}, NiPoint3{0.0f, 0.0f, 0.0f}, kFrame);
+		AddBashSample(t, NiPoint3{0.0f, 0.0f, 0.0f}, Disc(NiPoint3{0.0f, 0.0f, 0.0f}), kFrame);
 		Check(Near(BashApproachSpeed(t, kTarget, kFrame, kBashApproachSeconds), 4.0f),
 		      "the shield's middle at their centre (no line): no speed of its own, not a retreat");
 	}
@@ -114,7 +120,7 @@ void TestNotANumber() {
 	const float nan = std::numeric_limits<float>::quiet_NaN();
 	BashApproachTrail t;
 	Add(t, -60.0f, 4.0f, 0.0);
-	AddBashSample(t, NiPoint3{nan, 0.0f, 0.0f}, NiPoint3{-50.0f, 0.0f, 0.0f}, kFrame);
+	AddBashSample(t, NiPoint3{nan, 0.0f, 0.0f}, Disc(NiPoint3{-50.0f, 0.0f, 0.0f}), kFrame);
 	const float s = BashApproachSpeed(t, kTarget, kFrame, kBashApproachSeconds);
 	Check(s == s && Near(s, 4.0f), "a velocity not a number: that frame no speed, the rest still counts");
 	Check(BashApproachSpeed(t, kTarget, std::numeric_limits<double>::quiet_NaN(), kBashApproachSeconds) == 0.0f,
@@ -122,7 +128,7 @@ void TestNotANumber() {
 	BashApproachTrail badTime;
 	Add(badTime, -60.0f, 4.0f, std::numeric_limits<double>::quiet_NaN());
 	Check(BashApproachSpeed(badTime, kTarget, 0.0, kBashApproachSeconds) == 0.0f, "a frame's time not a number: none");
-	Check(BashApproachSpeed(t, NiPoint3{nan, 0.0f, 0.0f}, kFrame, kBashApproachSeconds) == 0.0f,
+	Check(BashApproachSpeed(t, BashColumn{NiPoint3{nan, 0.0f, 0.0f}}, kFrame, kBashApproachSeconds) == 0.0f,
 	      "their centre not a number: no speed");
 }
 

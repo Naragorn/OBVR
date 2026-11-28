@@ -11,19 +11,19 @@
 //
 // So a bash is judged by its approach: the fastest speed towards the target
 // over the frames of the last kBashApproachSeconds, this one included, taken
-// against the target the shield is in now - each frame's velocity along the
-// line from that frame's shield middle to the target's centre
-// (BashSpeedTowards). Towards only: a frame moving away ends the approach
-// (an older fast frame before a pull back does not count), a sweep across
-// the line counts nothing. The caller asks it only while the shield's middle
-// is in their column, so where the bash lands is unchanged.
+// against the target the shield meets now - each frame's velocity into their
+// body from that frame's shield disc (BashClosingSpeed, game/BashContactLogic.h:
+// into their column's surface or at their middle, the more; until the 14:56
+// run towards their middle alone). Towards only: a frame moving away ends the
+// approach (an older fast frame before a pull back does not count), a sweep
+// across counts nothing. The caller asks it only while the shield meets them.
 //
 // The trail is a fixed ring: nothing allocated, one sample a frame, a walk
 // over at most the window's frames when asked. Pure, covered by
 // bash_approach_test; the caller is camera/hands/ShieldBashApproach.cpp.
 
 #include "core/Types.h"
-#include "game/ShieldBashLogic.h"
+#include "game/BashContactLogic.h"
 
 namespace obvr::game {
 
@@ -38,7 +38,7 @@ constexpr UInt32 kBashApproachSamples = 32;
 
 struct BashApproachSample {
 	NiPoint3 velocity{0.0f, 0.0f, 0.0f};  // the controller's, world axes, m/s
-	NiPoint3 at{0.0f, 0.0f, 0.0f};        // the shield's middle, world units
+	BashDisc disc;                        // the shield's disc, world units (its middle alone without a shape)
 	double time = 0.0;                    // seconds, the caller's clock
 };
 
@@ -48,10 +48,10 @@ struct BashApproachTrail {
 	UInt32 next = 0;  // where the next sample goes
 };
 
-inline void AddBashSample(BashApproachTrail& t, const NiPoint3& velocity, const NiPoint3& at, double now) {
+inline void AddBashSample(BashApproachTrail& t, const NiPoint3& velocity, const BashDisc& disc, double now) {
 	BashApproachSample& s = t.samples[t.next];
 	s.velocity = velocity;
-	s.at = at;
+	s.disc = disc;
 	s.time = now;
 	t.next = (t.next + 1) % kBashApproachSamples;
 	t.count = t.count < kBashApproachSamples ? t.count + 1 : kBashApproachSamples;
@@ -62,11 +62,11 @@ inline void ClearBashTrail(BashApproachTrail& t) {
 	t.next = 0;
 }
 
-// The fastest speed towards target, m/s, over the samples no older than
+// The fastest speed into the target (BashClosingSpeed), m/s, over the samples no older than
 // windowSeconds before now (a window of zero, or not a number: the newest
 // alone, if taken now), walking back from the newest and stopping at the first
 // that moved away. Nothing kept, or a time not a number: 0.
-inline float BashApproachSpeed(const BashApproachTrail& t, const NiPoint3& target, double now, float windowSeconds) {
+inline float BashApproachSpeed(const BashApproachTrail& t, const BashColumn& target, double now, float windowSeconds) {
 	const double window = windowSeconds > 0.0f ? static_cast<double>(windowSeconds) : 0.0;
 	float most = 0.0f;
 	for (UInt32 i = 0; i < t.count; ++i) {
@@ -75,7 +75,7 @@ inline float BashApproachSpeed(const BashApproachTrail& t, const NiPoint3& targe
 		if (!(age >= 0.0 && age <= window + 1e-6)) {
 			break;
 		}
-		const float towards = BashSpeedTowards(s.velocity, s.at, target);
+		const float towards = BashClosingSpeed(s.velocity, s.disc, target);
 		if (towards < 0.0f) {
 			break;  // it moved away: what came before is no approach
 		}

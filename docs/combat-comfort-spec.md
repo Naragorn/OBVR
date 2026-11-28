@@ -1257,6 +1257,83 @@ hand's punch or slap (which a shield hand gave until now):
     not run. Open: the headset's word; whether 0.15 s lets a jab that stopped
     short and then drifted in land (bounded by the window and the retreat rule).
 
+- **2026-11-28 14:56: "ging anfangs nicht dann wieder schon"** (Nadi, headset,
+  the approach build of 13:55 above; the imp 2A0C8210 again).
+  - Read in OBVR.log (14:56, 22 "Shield bash attempt:" lines from 22427) [R]:
+    3 landed (23067, 23113, 23132; approach 3.0-3.2); 3 cooling down (23085,
+    23125, 23143 - real bashes inside the 1 s cooldown); refused with a fast
+    hand: 22427 (approach 2.7, the hand up to 4.3; in that frame 0.8 towards
+    the middle, 1.6 across the ground, the middle 4 across and 14 below),
+    22436 (2.5, 4.3), 23064 (2.4, 4.1; in that frame 2.4 towards the middle,
+    3.7 across the ground, the middle 25 across and 43 above), 23094 (0.9,
+    3.8), 23107 (0.4, 4.2), 23155 (1.9, 4.4; the contact said "a fast shield
+    is held by 2A0C8210 at 3.8 m/s", 23153), and "never in their column" 23148
+    (the middle 57 out of a column 46 wide, approach 4.4, the hand up to 4.7).
+    The rest were slow hands (at most 2.2 m/s).
+  - Reading 1 held [R/D]: the speed was taken towards their middle, the
+    bound's centre (`BashSpeedTowards`, game/ShieldBashLogic.h:41, used by
+    game/BashApproachLogic.h). In the column the middle stands near their
+    axis, so the line to their middle is nearly upright and a level jab has
+    little of its speed along it: 22427's frame, 4 across and 14 below, a
+    level jab has cos 74 degrees = 0.27 of its speed towards the middle; 23064's
+    is 60 degrees off (3.7 into the side, 2.4 at the middle) [D from the
+    line's numbers].
+  - Reading 2 held in part [R]: only the shield's middle was tested
+    (`LivingActorAt(at, 0.5, 8, ...)`, StepShieldBash before this change). Its
+    disc (half spokes up to about 28 units, game/ShieldShape) can be on them
+    with the middle beside the column. For 23148 itself [D, not shown]: a
+    shield face on to the imp reaches no nearer with its disc (57 - 46 = 11
+    units short); the contact step held it on the imp's body there (the imp's
+    capsules wider than the column, half the bound's radius plus 8) - the
+    line does not tell which.
+  - Built (game/BashContactLogic.h, camera/hands/ShieldBashApproach.cpp):
+    - the contact: the shield's disc (its two half spokes in its plane, an
+      ellipse - not the outline's polygon) against their column, by
+      alternating projections onto the two convex shapes (12 steps, touching
+      within 1 unit); or the contact step holds the off hand's shield on that
+      one's body (its outline against their capsules, `g_handContact[1]
+      .restActor`) - the real body where it is wider than the column;
+    - the speed into the body: the controller's velocity along the line from
+      the disc's nearest point to the column's while apart (the rate the gap
+      closes), along the inward normal of the column's nearest face once
+      touching - or towards their middle, whichever is more, so nothing that
+      landed before is refused (23113 landed with 2.7 into the side, 3.1 at
+      the middle). Over the 0.15 s window, a frame moving away ending it, as
+      before; the 3.0 and 6.0 gates, the hard bash and the cooldown unchanged.
+    - What must not count, and does not (bash_contact_test): a sweep along
+      their side closes nothing; a pull back is negative; a shield held still
+      while they come into it is the hand's nothing (the hand's velocity, not
+      the two's). Someone big beside (an NPC's column 38 wide): a shield at
+      arm's length beside them, its middle 75 out, does not reach them; at 60
+      out its rim brushes their side, and a fast jab straight ahead past them
+      closes nothing into them and nothing at their middle - no bash. The
+      disc only adds its half spoke of reach where it is turned towards them.
+  - The attempt line gives the approach into the body, whether the shield met
+    them by its disc or by the contact step, its disc's distance from their
+    column, and that frame's travel off the line to their middle in degrees.
+    The ends read "the shield never met them" and "it met them, too slow into
+    them".
+  - Replay (bash_contact_test, both runs' 51 attempt lines, as far as the
+    lines carry them): the frame a line reports is rebuilt from its two
+    speeds and its place, and judged anew. Lands by that frame alone [D]:
+    13:55 23644, 47918, 47974 (refused then), 51549, 51567, 51580; 14:56
+    23064 (refused then), 23067, 23113, 23132. Refused by the hand's most
+    speed under 3 (no measure reaches 3): 22 lines. Cooling: 7. The rest -
+    13:55 45763, 45777, 47936, 47950, 47961, 51547; 14:56 22427, 22436, 23094,
+    23107, 23148, 23155 - have that frame under 3 and the hand up to 3.0-5.1:
+    they land if their fastest frame within the window went into the body
+    [G, the model the test checks]; the lines do not carry that frame. The
+    next run's lines say it.
+  - Tests: bash_contact_test 77 checks (36 red before), bash_approach_test 41
+    (22 red against the stub's speed), shield_bash_watch_test 21 (3 red). The
+    scenario shield-bash-attempts.txt: jab 1 moved to 90 cm out (the disc
+    reaches further), jab 5 a fast jab 10 cm off the rat's middle, jab 6 one
+    with the middle 35 cm out and the disc over the rat - written, not run.
+  - Open: the headset; the shield's real outline instead of its ellipse
+    (the contact step's word covers the body side); whether a jab that
+    misses the column but is held by the contact step on a limb or a wing
+    should bash (it does now, by the speed into the column from there).
+
 ## Built 2026-11-01: the raised torch blocks
 
 Nadi, 2026-10-31: "bau das das Blocken durch Hochheben der Fackel" (the open

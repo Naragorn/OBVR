@@ -73,6 +73,20 @@ void TestEnds() {
 	}
 	{
 		BashAttemptState s;
+		BashAttemptFrame nearer = Fast();
+		nearer.across = 57.0f;
+		nearer.gap = 3.0f;
+		StepBashAttempt(s, nearer);
+		BashAttemptFrame middleCloser = Fast();
+		middleCloser.across = 50.0f;
+		middleCloser.gap = 12.0f;
+		StepBashAttempt(s, middleCloser);
+		const BashAttemptSummary r = StepBashAttempt(s, Still());
+		Check(Near(r.best.gap, 3.0f) && Near(r.best.across, 57.0f),
+		      "never met: the closest frame by the disc's gap to their column, not by its middle");
+	}
+	{
+		BashAttemptState s;
 		BashAttemptFrame in = Fast();
 		in.inColumn = true;
 		in.across = 12.0f;
@@ -171,9 +185,9 @@ void TestEnds() {
 void TestWords() {
 	std::printf("The words\n");
 	Check(std::strcmp(BashAttemptEndWords(BashAttemptEnd::Landed), "landed") == 0, "landed");
-	Check(std::strcmp(BashAttemptEndWords(BashAttemptEnd::OutsideColumn), "the shield's middle never in their column") == 0,
+	Check(std::strcmp(BashAttemptEndWords(BashAttemptEnd::OutsideColumn), "the shield never met them") == 0,
 	      "outside");
-	Check(std::strcmp(BashAttemptEndWords(BashAttemptEnd::TooSlow), "in their column, too slow towards them") == 0,
+	Check(std::strcmp(BashAttemptEndWords(BashAttemptEnd::TooSlow), "it met them, too slow into them") == 0,
 	      "too slow");
 	Check(std::strcmp(BashAttemptEndWords(BashAttemptEnd::CoolingDown), "they were cooling down from a shove") == 0,
 	      "cooling");
