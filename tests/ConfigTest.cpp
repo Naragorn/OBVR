@@ -463,6 +463,17 @@ void TestMirrorMenusToMonitor() {
 	      "MirrorMenusToMonitor=0 leaves the monitor showing the world alone");
 }
 
+void TestTabletTexts() {
+	std::printf("The HUD's texts above the tablet\n");
+	obvr::Config untouched;
+	Check(untouched.hands.tablet.textsOnTablet, "TextsOnTablet defaults on");
+	obvr::Config off;
+	LoadFrom("ConfigTestTabletTexts.ini", "[Tablet]\nTextsOnTablet=0\n", off);
+	Check(!off.hands.tablet.textsOnTablet, "TextsOnTablet=0: as before, none shown");
+	obvr::Config on;
+	LoadFrom("ConfigTestTabletTexts.ini", "[Tablet]\nTextsOnTablet=1\n", on);
+	Check(on.hands.tablet.textsOnTablet, "TextsOnTablet=1: shown");
+}
 void TestTabletMirror() {
 	std::printf("The tablet's Mirror tab and its dust\n");
 
@@ -497,6 +508,21 @@ void TestTabletMirror() {
 	obvr::Config softer;
 	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorPixels=768\n", softer);
 	Check(softer.hands.tablet.mirrorPixels == 768u, "MirrorPixels=768 as it is");
+
+	// The steady picture (docs/mirror-spec.md 13): 0 off, 1 to 100 stronger.
+	Check(untouched.hands.tablet.mirrorSteady == 60u, "the steady mirror defaults to 60");
+	obvr::Config shaky;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorSteady=0\n", shaky);
+	Check(shaky.hands.tablet.mirrorSteady == 0u, "MirrorSteady=0: off, stage 2's picture");
+	obvr::Config strong;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorSteady=250\n", strong);
+	Check(strong.hands.tablet.mirrorSteady == 100u, "MirrorSteady above 100: 100");
+	obvr::Config below;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorSteady=-3\n", below);
+	Check(below.hands.tablet.mirrorSteady == 0u, "MirrorSteady below 0: off");
+	obvr::Config some;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorSteady=35\n", some);
+	Check(some.hands.tablet.mirrorSteady == 35u, "MirrorSteady=35 as it is");
 }
 
 void TestMonitorMenusOnly() {
@@ -1345,6 +1371,7 @@ int main() {
 	TestCrosshairCutoutDefault();
 	TestCrosshairTooltips();
 	TestMirrorMenusToMonitor();
+	TestTabletTexts();
 	TestTabletMirror();
 	TestMonitorMenusOnly();
 	TestUnpausedMenus();

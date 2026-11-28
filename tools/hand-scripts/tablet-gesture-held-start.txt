@@ -1,0 +1,81 @@
+# The gesture held at its start shows nothing in front (Nadi, headset
+# 2026-11-28: "wenn ich aber beide hände nah habe direkt am anfang der geste
+# dann kann es auch noch passieren das das inv + texte vor mir aufploppt und
+# auch länger wenn die geste direkt am anfang lange gehalten wird";
+# docs/inventory-tablet-spec.md section 31.2).
+# Cause: at the start nothing of the tablet is open, so nothing was drawn
+# into the eyes, and the overlay on the controller stood in - the whole page,
+# between the hands, for as long as they stayed together. Now the overlay
+# stands in only for a whole tablet the eyes missed.
+# Both hands together at the ring, both grips closed, held 3 s there with the
+# menus up; then pulled apart open, the left lets go, the B closes it.
+# The overlay's width line "... m wide - the tablet" is said only when the
+# overlay is shown as the tablet: the reject tells the old rule from the new
+# (the old said it at the gesture's first frame, OBVR.log 4151 of 2026-11-28).
+# Eye dumps at "held_start" (the room and the hands, no page) and "open".
+# Written 2026-11-28, not run (Linux only). Run with:
+# python3 tools/hand-script-run.py tools/hand-scripts/tablet-gesture-held-start.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Tablet Enabled=1
+ini Tablet InScene=1
+ini Tablet HeldLeanDegrees=0
+ini Tablet HeldRollDegrees=0
+ini Tablet HeldAcrossCm=0
+ini Tablet HeldOutCm=0
+ini Tablet Figure=off
+ini Tablet Unroll=sideways
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands RightHandGripX=0
+ini Hands RightHandGripY=0
+ini Hands RightHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands StowRight=0
+ini Hands StowForward=0.45
+ini Hands StowUp=-0.30
+ini Hands StowRadius=0.20
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at settle CloseAllMenus
+
+expect HandScript: finished
+expect Tablet: the scroll sends the menu key (the menus open)
+expect Tablet: unrolling between the hands
+expect Tablet: in the off hand, drawn into the eyes
+expect Tablet: closed - the menus' fade kept out of the room and the eyes
+reject m wide - the tablet
+reject HandScript: WARNING
+
+wait 12
+mark settle
+wait 2
+left pos -0.04 -0.30 -0.45
+right pos 0.04 -0.30 -0.45
+left rot 0 0 0
+right rot 0 0 0
+wait 1
+left grip 1
+right grip 1
+wait 3
+mark held_start
+left pos -0.16 -0.30 -0.45
+right pos 0.16 -0.30 -0.45
+wait 0.4
+left pos -0.24 -0.30 -0.45
+right pos 0.24 -0.30 -0.45
+wait 0.4
+mark open
+left grip 0
+wait 0.8
+right grip 0
+wait 0.4
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark closed
+wait 1

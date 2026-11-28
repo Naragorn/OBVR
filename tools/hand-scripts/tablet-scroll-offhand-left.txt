@@ -1,21 +1,19 @@
-# The tablet opened by the gesture lands in the off hand, left-handed
-# (Hands LeftHanded=1: the roles swapped, the off hand is the right
-# controller; vr/TabletHolder.h, docs/inventory-tablet-spec.md section 30).
-# tablet-scroll-offhand.txt mirrored: both hands empty, together at the
+# The tablet opened by the gesture lands in the hand that does not let go,
+# left-handed (Hands LeftHanded=1: the roles swapped, the off hand is the
+# right controller; vr/TabletHolder.h, docs/inventory-tablet-spec.md section
+# 31.4). tablet-scroll-offhand.txt mirrored: both hands empty, together at the
 # inventory ring, both grips closed, pulled apart past the tablet's width;
 # the right (the off hand) lets go and the left (the weapon hand) keeps its
-# grip. Wanted: in the off hand, on the right controller, never "kept by the
-# right hand" (the old rule's line for the weapon role keeping it); the right
-# B (the controls swapped with the roles) puts it down. Once more with the
-# left letting go: the same. The open line is said as it begins to unroll;
-# the reject is what tells the old rule from the new.
+# grip: in the left hand ("kept by the weapon hand - on the left
+# controller"), the right points. The right B (the controls swapped with the
+# roles) puts it down. Once more with the left letting go: in the right hand,
+# the off hand - no second line.
 # With the Iron Shield worn (on the right arm, the off hand's; vr/GripClaim.h,
 # spec 30.3): the first try closes the weapon hand (the left) first and the
 # other 0.2 s after - the shield's handover waits, the gesture takes the grips,
 # the sides stay; the second closes both at once - the same.
 # Written 2026-11-28, not run (Linux only). Run with:
 # python3 tools/hand-script-run.py tools/hand-scripts/tablet-scroll-offhand-left.txt --headless --no-steamvr --parallel
-
 ini Hands Enabled=1
 ini Hands LeftHanded=1
 ini Tablet Enabled=1
@@ -56,8 +54,9 @@ count 2 Tablet: unrolling between the hands
 count 2 Tablet: in the off hand, drawn into the eyes - on the right controller
 count 2 the tablet's gesture took the grips, no handover
 reject the sides switch, the shield to that hand
+count 1 Tablet: kept by the weapon hand - on the left controller
 reject Tablet: in the off hand, drawn into the eyes - on the left controller
-reject Tablet: kept by the right hand
+reject kept by the weapon hand - on the right controller
 reject HandScript: WARNING
 
 wait 12
@@ -82,7 +81,7 @@ wait 0.4
 mark open
 right grip 0
 wait 0.8
-mark held_right_left_kept_grip
+mark held_left_left_kept_grip
 left grip 0
 wait 0.4
 right b 1

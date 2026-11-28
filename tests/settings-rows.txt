@@ -61,7 +61,7 @@ Combat: features|Strikes train skills|Your swings level Blade, Blunt and Hand to
 Combat: features|Hit only what you touch|Blows land only where your blade or fist really hits. Off, the usual reach|Hands|MotionHitsByTouch|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Weapon parries|Catch their blade with yours mid-swing to stop the blow, for a little fatigue|Hands|WeaponParries|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Block by angle|Your blade or shield has to face the blow to block it|Hands|BlockByAngle|||0|0|1|1|0|0|1|1|1|0|0|RW
-Combat: features|Toggle grip|Grip once to keep your weapon in hand, grip again to let go. Off, hold the grip|Hands|GripToggle|||0|0|1|1|0|0|1|0|0|0|0|RW
+Combat: features|Toggle grip|Off: hold the grip to keep your weapon in hand. On: grip once to keep it, grip again to let go|Hands|GripToggle|||0|0|1|1|0|0|1|0|0|0|0|RW
 Combat: features|Two hands on two-handers|Grab a two-hander's handle with your other hand too|Hands|TwoHandGrip|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Two hands on one-handers|Grab one-handed weapons with both hands too|Hands|TwoHandOneHanders|||0|0|1|1|0|0|1|1|1|0|0|RW
 Combat: features|Slide your grip|With both hands on, hold the other trigger to slide that hand along the handle|Hands|TwoHandSlide|||0|0|1|1|0|0|1|1|1|0|0|RW
@@ -232,9 +232,11 @@ Laser & wrist menus|Hand menu sideways|Move the menu in your hand towards your m
 Laser & wrist menus|Hand menu height|Move the menu in your hand up or down|Tablet|HeldUpCm|||1|-20|20|1|0|0|1|0|0|0|0|RW
 Laser & wrist menus|Hand menu distance|Move the menu in your hand closer to your eyes, or back to your palm|Tablet|HeldOutCm|||1|-30|20|1|0|0|1|-15|-15|0|0|RW
 Laser & wrist menus|Hand menu in the world|Your finger shows in front of it. Off, it floats over your hand|Tablet|InScene|||0|0|1|1|0|0|1|1|1|0|0|RW
+Laser & wrist menus|Messages above the hand menu|Messages from the game and your mods show above the menu in your hand|Tablet|TextsOnTablet|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Mirror on the hand menu|A mirror tab at the end of your hand menu's tabs|Tablet|Mirror|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Dust on the mirror|A light layer of dust on the mirror's glass|Tablet|MirrorDust|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Live mirror|The mirror shows the room behind you. Off, its glass stays dark|Tablet|MirrorWorld|||0|0|1|1|0|0|1|1|1|0|0|RW
+Laser & wrist menus|Steady mirror|Keeps the mirror's picture calm while your hand shakes. 0 lets it shake with your hand|Tablet|MirrorSteady|||1|0|100|10|0|0|1|60|60|0|0|RW
 Laser & wrist menus|Hands stay in menus|Keep your hands in inventory, chests, map, books and talks. Only the pause menu hides them|Hands|HandsInMenus|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Menu buzz|Feel a tick as the laser crosses a button and a click when you press|Hands|MenuHaptics|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|VR keyboard|Type names for your hero, spells and potions on SteamVR's keyboard|Hands|VrKeyboard|||0|0|1|1|0|0|1|1|1|0|0|RW

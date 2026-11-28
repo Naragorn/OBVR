@@ -4,6 +4,7 @@
 #include "core/ConfigRead.h"
 #include "core/Log.h"
 #include "vr/MirrorGlassLogic.h"
+#include "vr/MirrorSteadyLogic.h"
 
 namespace obvr {
 
@@ -16,11 +17,18 @@ void ReadTabletStep(Config& config, const char* path) {
 	t.bookWidthMetres = ReadFloat("Tablet", "BookWidthMetres", t.bookWidthMetres, path);
 	t.inScene = ReadBool("Tablet", "InScene", t.inScene, path);
 	t.drawnFinger = ReadBool("Tablet", "DrawnFinger", t.drawnFinger, path);
+	t.textsOnTablet = ReadBool("Tablet", "TextsOnTablet", t.textsOnTablet, path);
 	t.mirror = ReadBool("Tablet", "Mirror", t.mirror, path);
 	t.mirrorDust = ReadBool("Tablet", "MirrorDust", t.mirrorDust, path);
 	t.mirrorWorld = ReadBool("Tablet", "MirrorWorld", t.mirrorWorld, path);
 	t.mirrorPixels =
 		vr::ClampMirrorPixels(ReadFloat("Tablet", "MirrorPixels", static_cast<float>(t.mirrorPixels), path));
+	{
+		const float steady = ReadFloat("Tablet", "MirrorSteady", static_cast<float>(t.mirrorSteady), path);
+		const float rounded = steady == steady ? (steady < 0.0f ? steady - 0.5f : steady + 0.5f) : 0.0f;
+		const float limited = rounded < -1.0f ? -1.0f : (rounded > 1000.0f ? 1000.0f : rounded);
+		t.mirrorSteady = static_cast<UInt32>(vr::ClampMirrorSteady(static_cast<std::int32_t>(limited)));
+	}
 	t.gripUp = ReadFloat("Tablet", "GripUp", t.gripUp, path);
 	t.gripForward = ReadFloat("Tablet", "GripForward", t.gripForward, path);
 	t.tiltDegrees = ReadFloat("Tablet", "TiltDegrees", t.tiltDegrees, path);

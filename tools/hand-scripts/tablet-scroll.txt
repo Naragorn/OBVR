@@ -1,9 +1,8 @@
 # The tablet as a scroll (vr/TabletScroll.h, stage 3): both hands empty,
 # together at the inventory ring, both grips closed in one go (since
 # 2026-11-27 no wait with open grips first) - the menus open, the tablet unrolls between the hands as they move
-# apart; fully open, the left lets go - kept by the off hand (the left) all
-# the same; the right hand's grip at its free end rolls it up as the hands
-# come together - closed. Then
+# apart; fully open, the left lets go - kept by the right hand, which kept its grip (again since 2026-11-28, spec 31.4); the left
+# hand's grip near it rolls it up as the hands come together - closed. Then
 # once more, let go half open: rolled back, closed. Last, the same hands 40 cm
 # further out, past the ring and its 10 cm margin (the scroll begins there
 # only): nothing opens, and the log says why. Eye pictures at each mark.
@@ -38,8 +37,7 @@ expect HandScript: finished
 count 4 Tablet: the scroll sends the menu key
 expect past the inventory ring (its reach and
 expect Tablet: unrolling between the hands
-expect Tablet: in the off hand, drawn into the eyes - on the left controller
-reject Tablet: kept by the right hand
+expect Tablet: kept by the weapon hand - on the right controller
 expect Tablet: the Inventory page read
 reject HandScript: WARNING
 
@@ -67,23 +65,19 @@ wait 0.4
 mark open
 left grip 0
 wait 0.6
-mark held_left
-# The off hand holds it since 2026-11-28 (vr/TabletHolder.h), though the right
-# kept its grip. The free end: held by its left edge, the right edge 0.34 m to
-# the right [mirrored from the right-held case before; not run].
-right grip 0
-wait 0.2
-right pos 0.10 -0.30 -0.45
+mark held_right
+# The free end: held by its right edge, the left edge 0.34 m to the left.
+left pos -0.10 -0.30 -0.45
 wait 0.4
-right grip 1
+left grip 1
 wait 0.2
-right pos 0.00 -0.30 -0.45
+left pos 0.00 -0.30 -0.45
 wait 0.2
-left pos -0.15 -0.30 -0.45
+right pos 0.15 -0.30 -0.45
 wait 0.2
 mark rolling
-right pos -0.03 -0.30 -0.45
-left pos -0.08 -0.30 -0.45
+left pos 0.03 -0.30 -0.45
+right pos 0.08 -0.30 -0.45
 wait 0.5
 mark closed
 left grip 0

@@ -2840,6 +2840,22 @@ if(NOT MSVC)
 endif()
 add_test(NAME tablet_close COMMAND tablet_close_test)
 
+# What of the tablet's menus may show where (vr/TabletOverlayGate.h): pure.
+add_executable(tablet_overlay_gate_test TabletOverlayGateTest.cpp)
+target_include_directories(tablet_overlay_gate_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_overlay_gate_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet_overlay_gate COMMAND tablet_overlay_gate_test)
+
+# The texts beside the tablet's page, shown above it (vr/TabletTexts.h): pure.
+add_executable(tablet_texts_test TabletTextsTest.cpp)
+target_include_directories(tablet_texts_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_texts_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet_texts COMMAND tablet_texts_test)
+
 # The watch on the tablet's figure, for the log (vr/TabletFigureWatch.h): pure.
 add_executable(tablet_figure_watch_test TabletFigureWatchTest.cpp)
 target_include_directories(tablet_figure_watch_test PRIVATE ../src)
@@ -2880,6 +2896,32 @@ if(NOT MSVC)
 	target_compile_options(mirror_glass_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME mirror_glass COMMAND mirror_glass_test)
+
+# The player's head in the mirror's render only, stage 3 (game/MirrorHeadLogic.h): what is
+# switched for the pass and put back after it, with every refusal. Pure.
+add_executable(mirror_head_test MirrorHeadTest.cpp)
+target_include_directories(mirror_head_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(mirror_head_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME mirror_head COMMAND mirror_head_test)
+
+# The mirror's steady picture (vr/MirrorSteadyLogic.h, vr/MirrorGlassMap.h): the glass's pose
+# through a One Euro filter with its margin, and the picture laid onto the glass as it is through
+# the camera it was rendered with, projectively, with every refusal. Pure.
+add_executable(mirror_steady_test MirrorSteadyTest.cpp)
+target_include_directories(mirror_steady_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(mirror_steady_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME mirror_steady COMMAND mirror_steady_test)
+
+add_executable(mirror_glass_map_test MirrorGlassMapTest.cpp)
+target_include_directories(mirror_glass_map_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(mirror_glass_map_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME mirror_glass_map COMMAND mirror_glass_map_test)
 
 # How far ahead the poses are predicted when the wait comes late (vr/PosePrediction.h): pure.
 add_executable(pose_prediction_test PosePredictionTest.cpp)

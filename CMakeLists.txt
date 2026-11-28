@@ -148,6 +148,7 @@ add_library(OBVR SHARED
 	src/game/BodyGive.cpp
 	src/game/WalkerGrip.cpp
 	src/game/HeadCull.cpp
+	src/game/MirrorHead.cpp
 	src/game/ThrowNoise.cpp
 	src/game/CampKill.cpp
 	src/game/MenuMode.cpp
@@ -157,6 +158,7 @@ add_library(OBVR SHARED
 	src/game/MenuPause.cpp
 	src/game/TabletMenu.cpp
 	src/game/BookMenuRead.cpp
+	src/game/TabletTexts.cpp
 	src/game/MenuFigure.cpp
 	src/game/HandControls.cpp
 	src/game/EngineInput.cpp

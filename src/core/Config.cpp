@@ -831,7 +831,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Hands", "DisguiseBodyReachUnits", hands.disguise.corpseReachUnits),
 	OBVR_KEY(Bool, "Hands", "WalkerGrip", hands.walkerGrip),
 	OBVR_KEY(Bool, "Hands", "BodiesGive", bodiesGive),
-	OBVR_STEP(ReadTablet, "Tablet", "Enabled WidthMetres BookWidthMetres InScene DrawnFinger Mirror MirrorDust MirrorWorld MirrorPixels Figure Unroll GripUp GripForward TiltDegrees GripShare HeldTurnDegrees HeldLeanDegrees HeldRollDegrees HeldAcrossCm HeldUpCm HeldOutCm"),
+	OBVR_STEP(ReadTablet, "Tablet", "Enabled WidthMetres BookWidthMetres InScene DrawnFinger TextsOnTablet Mirror MirrorDust MirrorWorld MirrorPixels MirrorSteady Figure Unroll GripUp GripForward TiltDegrees GripShare HeldTurnDegrees HeldLeanDegrees HeldRollDegrees HeldAcrossCm HeldUpCm HeldOutCm"),
 	OBVR_KEY(Bool, "Hands", "ThrowNoise", hands.throwNoise),
 	OBVR_KEY(Float, "Hands", "ShakeStrokeMetres", hands.shake.strokeMetres),
 	OBVR_KEY(Float, "Hands", "ShakeStrokeSpeed", hands.shake.strokeSpeed),

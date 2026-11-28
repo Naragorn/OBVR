@@ -96,6 +96,8 @@ struct TabletSettings {
 	bool inScene = true;
 	// The tap's tip from the drawn index finger (vr/FingerTip.h); off, the controller's tip ahead.
 	bool drawnFinger = true;
+	// The HUD's texts beside the menus shown above the tablet's page (vr/TabletTexts.h).
+	bool textsOnTablet = true;
 	// The Mirror tab at the end of the tablet's tabs (docs/mirror-spec.md), and
 	// the light dust over its glass.
 	bool mirror = true;
@@ -105,6 +107,9 @@ struct TabletSettings {
 	// pixels, 256 to 2048 (vr/MirrorGlassLogic.h ClampMirrorPixels).
 	bool mirrorWorld = true;
 	UInt32 mirrorPixels = 1024;
+	// The steady picture (vr/MirrorSteadyLogic.h kMirrorSteadyDefault): 0 off,
+	// 1 to 100 stronger.
+	UInt32 mirrorSteady = 60;
 	TabletFigure figure = TabletFigure::Tab;  // Nadi, 2026-11-18: the tab by default
 	TabletUnroll unroll = TabletUnroll::Sideways;
 	// Where the page's lower edge meets the hand: above and ahead of the
@@ -445,6 +450,9 @@ struct TabletFrame {
 	// The figure behind a tab (SetFigureTab): the figure fitted into the page's
 	// own rectangle, shown there instead of the page while its tab is chosen.
 	bool figureTab = false;
+	// The HUD's texts beside the face (vr/TabletTexts.h), and where they stand above it.
+	UiRect texts;
+	UiRect textsAt;
 	bool popupUp = false;  // a popup over the page: the page is shown whatever tab is chosen
 	UInt32 page = 0;       // the page shown: the inventory's, stats', magic's or map's menu id, or the book's
 	bool bookScroll = false;  // the book menu in its scroll look: a note or a letter (vr/TabletBook.h)
@@ -953,6 +961,7 @@ struct MenuPlaceResult {
 	bool tabletMenuKey = false;      // the scroll opens or closes the menus this frame
 	bool tabletGrips = false;        // the scroll holds the grips (unrolling or rolling up): no grab from them
 	float tabletShare = -1.0f;       // unrolled between the hands by this much; < 0 by the time it has been up
+	bool tabletRolledUp = false;     // the scroll rolled it up or back, its close sent: nothing to show
 	UInt8 tabletRefusal = 0;         // both grips closed and the scroll not begun: why (vr::TabletScrollRefusal)
 	float tabletRefusedBy = 0.0f;    // and the measure that refused it
 	// For the handover's gate (vr/GripClaim.h): the hands where the scroll can
