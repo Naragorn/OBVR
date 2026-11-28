@@ -268,6 +268,7 @@ add_library(OBVR SHARED
 	src/game/SelfCheck.cpp
 	src/game/TeleportNoise.cpp
 	src/game/ArmDrawTrace.cpp
+	src/game/ShieldHold.cpp
 	src/game/HandBones.cpp
 	src/game/HandAdjust.cpp
 	src/game/MeleeHits.cpp

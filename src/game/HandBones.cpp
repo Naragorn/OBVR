@@ -10,6 +10,7 @@
 #include "game/GameAddresses.h"
 #include "game/GameCamera.h"
 #include "game/GameTypes.h"
+#include "game/ShieldHold.h"
 #include "test/HandScriptRuntime.h"
 
 namespace obvr::game {
@@ -191,6 +192,35 @@ void LogHandAtMark(bool rightHand, const NiAVObject* bone, const NiPoint3& wante
 	         static_cast<double>(math::Sqrt(off.LengthSquared())),
 	         static_cast<double>(math::Sqrt(fromCamera.LengthSquared())));
 }
+
+// The bare wrist (BonePin.h): the forearm shrunk into the cuff and the hand
+// grown back, or both as they were. Answers the forearm's world scale the
+// pin places it with.
+float TaperWrist(HandBone& hand, NiAVObject* bone, NiAVObject* parent, const NiAVObject* grandparent,
+                 bool rightHand) {
+	const float scale = ForearmScaleFor(g_taperWanted, g_handsBare, SomethingOnForearm(parent));
+	const float grandScale = grandparent->worldTransform.scale > 0.0f ? grandparent->worldTransform.scale : 1.0f;
+	if (scale < 1.0f) {
+		if (!hand.tapered) {
+			hand.tapered = true;
+			hand.savedForearmScale = parent->localTransform.scale;
+			hand.savedHandScale = bone->localTransform.scale;
+		}
+		parent->localTransform.scale = scale / grandScale;
+		bone->localTransform.scale = 1.0f / scale;
+		if (!hand.taperReported) {
+			hand.taperReported = true;
+			OBVR_LOG("Hand bones: the %s forearm drawn to %.2f of its size, the hand grown back - "
+			         "the bare wrist closed", rightHand ? "right" : "left",
+			         static_cast<double>(scale));
+		}
+	} else if (hand.tapered) {
+		hand.tapered = false;
+		parent->localTransform.scale = hand.savedForearmScale;
+		bone->localTransform.scale = hand.savedHandScale;
+	}
+	return hand.tapered ? scale : grandScale * parent->localTransform.scale;
+}
 }  // namespace
 
 bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativeRot,
@@ -236,33 +266,10 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
 		return false;
 	}
 
-	// The bare wrist (BonePin.h): the forearm shrunk into the cuff and the
-	// hand grown back, or both as they were.
-	const float scale =
-		ForearmScaleFor(g_taperWanted, g_handsBare, SomethingOnForearm(parent));
-	const float grandScale =
-		grandparent->worldTransform.scale > 0.0f ? grandparent->worldTransform.scale : 1.0f;
-	if (scale < 1.0f) {
-		if (!hand.tapered) {
-			hand.tapered = true;
-			hand.savedForearmScale = parent->localTransform.scale;
-			hand.savedHandScale = bone->localTransform.scale;
-		}
-		parent->localTransform.scale = scale / grandScale;
-		bone->localTransform.scale = 1.0f / scale;
-		if (!hand.taperReported) {
-			hand.taperReported = true;
-			OBVR_LOG("Hand bones: the %s forearm drawn to %.2f of its size, the hand grown back - "
-			         "the bare wrist closed", rightHand ? "right" : "left",
-			         static_cast<double>(scale));
-		}
-	} else if (hand.tapered) {
-		hand.tapered = false;
-		parent->localTransform.scale = hand.savedForearmScale;
-		bone->localTransform.scale = hand.savedHandScale;
-	}
-	const float forearmWorldScale =
-		hand.tapered ? scale : grandScale * parent->localTransform.scale;
+	const float forearmWorldScale = TaperWrist(hand, bone, parent, grandparent, rightHand);
+	// The worn shield held to the hand (game/ShieldHold.h): its hand's and
+	// twist's locals set to their rest before the forearm is placed from them.
+	const ShieldHoldNote shield = rightHand ? ShieldHoldNote{} : HoldShieldOnPinnedHand(root, bone);
 
 	const BonePose wanted = HandBoneWorld(cameraRot, cameraPos, relativeRot, offsetUnits,
 	                                      calibration, gripUnits);
@@ -277,7 +284,7 @@ bool PinHandBone(bool rightHand, const char* boneName, const NiMatrix33& relativ
 	g_pinnedIn[rightHand ? 0 : 1] = g_pinFrame;
 	LogHandAtMark(rightHand, bone, wanted.pos, cameraPos);
 	if (!rightHand) {
-		TraceLeftArmInDraw(bone, cameraRot, wanted.rot, wanted.pos, g_pinFrame);  // the shield through a draw
+		TraceLeftArmInDraw(bone, shield, cameraRot, wanted.rot, wanted.pos, g_pinFrame);  // the shield through an action
 	}
 
 	if (!hand.reported) {
