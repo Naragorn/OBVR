@@ -1057,6 +1057,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "HandHud", "ViewFollowDegrees", hands.handHud.viewFollowDegrees),
 	OBVR_KEY(Float, "HandHud", "ViewFollowSeconds", hands.handHud.viewFollowSeconds),
 	OBVR_KEY(Bool, "HandHud", "ViewLockedToHead", hands.handHud.viewLockedToHead),
+	OBVR_KEY(Bool, "HandHud", "ViewFollowsPitch", hands.handHud.viewFollowsPitch),
 	OBVR_KEY(Bool, "HandHud", "ShowOnLook", hands.handHud.showOnLook),
 	OBVR_KEY(Float, "HandHud", "LookGazeDegrees", hands.handHud.lookGazeDegrees),
 	OBVR_KEY(Float, "HandHud", "LookPalmDegrees", hands.handHud.lookPalmDegrees),
@@ -1303,7 +1304,6 @@ void ReadTestOverlay(Config& config) {
 }  // namespace
 
 namespace config {
-
 const IniKey* ConfigKeys(UInt32& count) {
 	count = static_cast<UInt32>(sizeof(kConfigKeys) / sizeof(kConfigKeys[0]));
 	return kConfigKeys;

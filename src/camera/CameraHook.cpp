@@ -10,6 +10,7 @@
 #include "camera/hands/Archery.h"
 #include "camera/MenuStandIn.h"
 #include "camera/MenuFacingStep.h"
+#include "camera/ViewAnchorStep.h"
 #include "camera/hands/ControllerLog.h"
 #include "camera/hands/ControlsOut.h"
 #include "camera/hands/DragLog.h"
@@ -9156,11 +9157,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {
 				shown = shown || (handHud.element[e].place == place && handHudFrame.rect[e].valid);
 			}
-			vr::StepViewAnchor(s_viewAnchor[row], shown && handHudActive, handHudFrame.haveHead,
-			                   handHudFrame.head, handHud.viewFollowDegrees, handHud.viewLockedToHead,
-			                   handHud.viewFollowSeconds, g_deltaSeconds);
-			handHudFrame.viewAnchorValid[row] = s_viewAnchor[row].valid;
-			handHudFrame.viewAnchor[row] = s_viewAnchor[row].head;
+			camera::StepViewRow(s_viewAnchor[row], row, shown && handHudActive, handHud, handHudFrame,
+			                    g_deltaSeconds);
 		}
 		// Looking at a hand, palm to the face: its HUD fades in - with
 		// ShowOnLook only; shown always (the default), no look counts.
