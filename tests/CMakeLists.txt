@@ -1871,6 +1871,16 @@ endif()
 
 add_test(NAME flat_follow COMMAND flat_follow_test)
 
+add_executable(menu_facing_test MenuFacingTest.cpp ../src/vr/Quaternion.cpp)
+
+target_include_directories(menu_facing_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(menu_facing_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME menu_facing COMMAND menu_facing_test)
+
 add_executable(sound_slice_test SoundSliceTest.cpp)
 
 target_include_directories(sound_slice_test PRIVATE ../src)

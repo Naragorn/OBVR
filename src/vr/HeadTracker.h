@@ -402,6 +402,16 @@ struct TrackerSettings {
 	// metre, for a second (vr/FlatFollow.h). 0 keeps it where it appeared
 	// until the recenter.
 	float flatFollowDegrees = 30.0f;
+
+	// The game's menus on the big quad in the room placed in front of the
+	// body as they open, not the head, and gliding after the body when it
+	// has turned more than menuFollowDegrees from them (0: they stand where
+	// they opened), menuFollowSeconds the glide's time constant (0: at once).
+	// Off, a menu opens where the head looks and stands, as before
+	// (vr/MenuFacing.h).
+	bool menusFaceBody = true;
+	float menuFollowDegrees = 30.0f;
+	float menuFollowSeconds = 0.4f;
 	// The depth the flat picture is shown at, metres (render/EyeMirror: each
 	// eye's copy moved by the parallax), and where the laser's plane for it
 	// goes. 0 shows it at infinity, as before.

@@ -3,7 +3,7 @@
 # function_sizes_test allows it.
 # Smaller passes; larger fails. Rewrite with: function_sizes_test --print > tests/function-sizes.txt
 # file<TAB>function or (file globals) or (file lines)<TAB>lines or count
-src/camera/CameraHook.cpp	(file lines)	12396
+src/camera/CameraHook.cpp	(file lines)	12390
 src/camera/CameraHook.cpp	StepShoves	112
 src/camera/CameraHook.cpp	StepGrapple	296
 src/camera/CameraHook.cpp	StepEnemyHealthBars	168
@@ -14,7 +14,7 @@ src/camera/CameraHook.cpp	StepOneHandTwoHander	109
 src/camera/CameraHook.cpp	UpdateHandMode	544
 src/camera/CameraHook.cpp	OnFrameEnd	592
 src/camera/CameraHook.cpp	BeforeFirstScenePass	505
-src/camera/CameraHook.cpp	MaybeSubmitOverlays	930
+src/camera/CameraHook.cpp	MaybeSubmitOverlays	923
 src/camera/CameraHook.cpp	UpdateCrosshairDepth	127
 src/camera/CameraHook.cpp	Install	240
 src/camera/CameraHook.cpp	(file globals)	370
@@ -37,7 +37,7 @@ src/camera/hands/WalkersShake.cpp	StepWalkersShake	105
 src/camera/hands/WeaponFrame.cpp	StepWeaponFrame	112
 src/camera/hands/WeaponRelease.cpp	StepRelease	533
 src/camera/hands/WorldPush.cpp	StepWorldPush	201
-src/core/Config.cpp	(file lines)	1581
+src/core/Config.cpp	(file lines)	1566
 src/core/Config.cpp	Config::Load	178
 src/core/Config.cpp	(file globals)	2
 src/core/CrashHandler.cpp	(file globals)	3

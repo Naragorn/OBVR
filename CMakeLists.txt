@@ -37,6 +37,7 @@ add_library(OBVR SHARED
 	src/camera/BodyYawTurn.cpp
 	src/camera/ChargenMenuView.cpp
 	src/camera/RidingView.cpp
+	src/camera/MenuFacingStep.cpp
 	src/camera/RoomFollowFrame.cpp
 	src/camera/StandingEyeFrame.cpp
 	src/camera/ViewHandoverTrace.cpp

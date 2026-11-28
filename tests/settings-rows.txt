@@ -390,6 +390,7 @@ Screen & menus|HUD distance|How far away the HUD floats|Render|HudDistanceMetres
 Screen & menus|HUD width|How wide the HUD is|Render|HudWidthMetres|||1|0.4|8|0.1|1|0|1|1.6|1.6|0|0|RW
 Screen & menus|Menu scale|How big menus are|Render|MenuScale|||1|0.3|2|0.05|2|0|1|0.7|0.7|0|0|RW
 Screen & menus|Menus in the world|Menus float in front of you instead of on a big screen|Render|Menus|cinema|world|0|0|1|1|0|0|1|0|0|0|0|RW
+Screen & menus|Menus in front of you|Pop-ups and menus open in front of your body and come along when you turn|Render|MenusFaceBody|||0|0|1|1|0|0|1|1|1|0|0|RW
 Screen & menus|Live world behind menus|Behind the pause menu and journal, the world stays 3D as you look around|Render|LiveMenuBackground|||0|0|1|1|0|0|1|1|1|0|0|RW
 Screen & menus|Don't pause in menus|The world keeps going while your inventory, map or spells are open|Render|UnpausedMenus|||0|0|1|1|0|0|1|0|0|0|0|RW
 Screen & menus|Loot window on the chest|A container's window opens right over it, and the world keeps going|Look|ContainerInWorld|||0|0|1|1|0|0|1|1|1|0|0|RW
