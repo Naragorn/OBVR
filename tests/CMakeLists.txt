@@ -1789,6 +1789,17 @@ endif()
 
 add_test(NAME hand_hud COMMAND hand_hud_test)
 
+# The top and bottom rows following the view's pitch (vr/ViewAnchor.h): pure.
+add_executable(view_anchor_pitch_test ViewAnchorPitchTest.cpp)
+
+target_include_directories(view_anchor_pitch_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(view_anchor_pitch_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME view_anchor_pitch COMMAND view_anchor_pitch_test)
+
 # The fringes left round the hand HUD's cuts (vr/HudFringe.h): pure.
 add_executable(hud_fringe_test HudFringeTest.cpp)
 

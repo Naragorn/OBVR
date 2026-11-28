@@ -3,7 +3,7 @@
 # function_sizes_test allows it.
 # Smaller passes; larger fails. Rewrite with: function_sizes_test --print > tests/function-sizes.txt
 # file<TAB>function or (file globals) or (file lines)<TAB>lines or count
-src/camera/CameraHook.cpp	(file lines)	12386
+src/camera/CameraHook.cpp	(file lines)	12384
 src/camera/CameraHook.cpp	StepShoves	112
 src/camera/CameraHook.cpp	StepGrapple	296
 src/camera/CameraHook.cpp	StepEnemyHealthBars	168
@@ -14,7 +14,7 @@ src/camera/CameraHook.cpp	StepOneHandTwoHander	109
 src/camera/CameraHook.cpp	UpdateHandMode	544
 src/camera/CameraHook.cpp	OnFrameEnd	592
 src/camera/CameraHook.cpp	BeforeFirstScenePass	505
-src/camera/CameraHook.cpp	MaybeSubmitOverlays	918
+src/camera/CameraHook.cpp	MaybeSubmitOverlays	915
 src/camera/CameraHook.cpp	UpdateCrosshairDepth	127
 src/camera/CameraHook.cpp	Install	240
 src/camera/CameraHook.cpp	(file globals)	370
