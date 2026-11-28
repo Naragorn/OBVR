@@ -267,7 +267,8 @@ void LogHeldPlace(ControlsOutState& state, const vr::HeldPlace& place, const vr:
 	         static_cast<double>(place.turnDegrees), static_cast<double>(place.leanDegrees),
 	         static_cast<double>(place.rollDegrees), static_cast<double>(place.acrossCm), static_cast<double>(place.upCm),
 	         static_cast<double>(place.outCm), static_cast<double>(m.m[0][2]), static_cast<double>(m.m[1][2]),
-	         static_cast<double>(m.m[2][2]), hand.tabletHolderRight ? "right" : "left",
+	         static_cast<double>(m.m[2][2]),
+	         vr::PhysicalLeftOf(!hand.tabletHolderRight, frame.rolesSwapped) ? "left" : "right",
 	         static_cast<double>(vr::FaceOffEyesDegrees(m, holder, frame.headPosition)), mark ? " (at the mark)" : "");
 }
 
@@ -316,9 +317,12 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 	state.tabletWasRight = hand.tabletHolderRight;
 	if (hand.menuOnTablet != state.tabletWasUp) {
 		state.tabletWasUp = hand.menuOnTablet;
-		OBVR_LOG("Tablet: %s", hand.menuOnTablet ? (config.hands.tablet.inScene ? "in the off hand, drawn into the eyes"
-		                                                                       : "in the off hand, as an overlay")
-		                                         : "put down - the menus as before");
+		// Which controller holds it, said with the open (vr/TabletHolder.h).
+		const bool onLeft = vr::PhysicalLeftOf(!hand.tabletHolderRight, links.rolesSwapped);
+		OBVR_LOG("Tablet: %s%s", hand.menuOnTablet ? (config.hands.tablet.inScene ? "in the off hand, drawn into the eyes"
+		                                                                         : "in the off hand, as an overlay")
+		                                           : "put down - the menus as before",
+		         !hand.menuOnTablet ? "" : (onLeft ? " - on the left controller" : " - on the right controller"));
 	}
 	// The frames its menus close on are the tablet's still (vr/TabletClose.h).
 	const UInt32 fadeFrames = state.tabletClose.frames;
