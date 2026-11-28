@@ -72,6 +72,7 @@ add_library(OBVR SHARED
 	src/camera/hands/SlapTap.cpp
 	src/camera/hands/ScriptPicture.cpp
 	src/camera/hands/Swings.cpp
+	src/camera/hands/ShieldBashTrace.cpp
 	src/camera/hands/Teleport.cpp
 	src/camera/hands/TwoHands.cpp
 	src/camera/hands/HandoverHold.cpp

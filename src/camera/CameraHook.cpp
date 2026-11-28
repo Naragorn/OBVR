@@ -28,6 +28,7 @@
 #include "camera/hands/ReachRing.h"
 #include "camera/hands/Rings.h"
 #include "camera/hands/ScriptPicture.h"
+#include "camera/hands/ShieldBashTrace.h"
 #include "camera/hands/SlapTap.h"
 #include "camera/hands/Swings.h"
 #include "camera/hands/ThrowHits.h"
@@ -2295,12 +2296,9 @@ game::BladeDiscs g_bladeDiscs;
 game::ShieldDisc g_shieldDisc;
 bool g_shieldDiscHave = false;
 
-// The shield bash (game/ShieldBashLogic.h; Nadi, 2026-10-31: "Schildstoß ...
-// bauen wir den"): the off hand with a shield on its arm driven into someone -
-// the shield's middle at their body - bashes: the engine's fist blow for the
-// damage (game::KickStrike), the stagger or the knockdown through the shove's
-// push, the shield's sound, a pulse, its fatigue. Instead of the off hand's
-// punch or slap (StepShoves leaves the shield hand to this).
+// The shield bash (game/ShieldBashLogic.h; Nadi, 2026-10-31): the shield's middle driven into someone's body bashes - the
+// engine's fist blow (game::KickStrike), the stagger or knockdown by the shove's push, the sound, a pulse, its fatigue -
+// instead of the off hand's punch or slap (StepShoves leaves the shield hand to this). Each attempt logged once.
 void StepShieldBash(const Config& config) {
 	const game::ShieldBashSettings& s = config.hands.shieldBash;
 	if (!s.enabled || !g_hand.leftHandValid || !g_cyclopeanCameraWorldValid) {
@@ -2313,16 +2311,16 @@ void StepShieldBash(const Config& config) {
 	const NiPoint3 at = g_shieldDiscHave ? hand + (camRot * g_hand.offHandRotation) * g_shieldDisc.centre : hand;
 	NiPoint3 centre{0.0f, 0.0f, 0.0f};
 	void* const actor = game::LivingActorAt(at, 0.5f, 8.0f, &centre, 1.0f);
-	if (actor == nullptr || !game::ShoveAllowed(g_shoveCooldown, actor)) {
-		return;
-	}
+	const bool cooling = actor != nullptr && !game::ShoveAllowed(g_shoveCooldown, actor);
 	const NiPoint3 velocity = camRot * g_hand.offHandVelocity;
 	game::ShieldBashHand h;
 	h.shieldWorn = true;
 	h.valid = true;
 	h.holdsSomething = g_twoHands.leftGripOnHandle || g_grapple.actor != 0;
-	h.towardsSpeed = game::SpeedTowards(velocity, at, centre);
-	const game::ShoveKind kind = game::ShieldBashFor(s, h);
+	h.towardsSpeed = actor != nullptr ? game::SpeedTowards(velocity, at, centre) : 0.0f;
+	const game::ShoveKind kind = actor != nullptr && !cooling ? game::ShieldBashFor(s, h) : game::ShoveKind::None;
+	hands::TraceShieldBash({at, velocity, camRot * g_hand.leftVelocity, actor, centre, cooling, h.holdsSomething,
+	                        h.towardsSpeed, s.speed, kind != game::ShoveKind::None});  // camera/hands/ShieldBashTrace.h
 	if (kind == game::ShoveKind::None) {
 		return;
 	}
