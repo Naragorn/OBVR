@@ -325,6 +325,14 @@ MirrorFrame ReadMirrorFrame(MirrorState& s, const MirrorPageState& page, bool se
 // render alone (game/MirrorHead.h): shown right before RunMirrorWorldRender,
 // hidden again right after it - its true transform, the FaceGen bits, the
 // palettes of the skins on its bones, each put back there.
+//
+// Stage 4 calls it once for each eye in a frame, everything above set and put
+// back around each call: the bone lock replaces from the eyes' render's rows
+// with each camera's own shift (Replace mode writes no row of the log), the
+// head is shown and hidden per call (its skins' stamps turned each time, so it
+// is built for each camera whatever the engine's stamp did), the shadows keep
+// the frame's maps both times, and the water's reflection and the culling are
+// each render's own (docs/mirror-spec.md 14.2 says why).
 bool RenderFromMirror(const vr::MirrorCamera& camera, vr::MirrorPictureSize size, const d3d9::SurfaceDesc& back,
                       UInt32& draws, bool trace, game::MirrorHeadSwitch& head) {
 	draws = 0;
@@ -464,9 +472,10 @@ void MarkBoneLock(const perf::EventContext& context) {
 
 // The palette builder's stamp source (docs/mirror-spec.md 14.2): the word at
 // [[renderer+0x8B0]+0x3C], which 0x007655F0 compares with each skin's stamp.
-// Read in the EXE: its only writer is the add at 0x0076262B inside 0x00762600,
-// the renderer's vtable +0x134 - the end of a scene frame (device EndScene,
-// then the add). For the trace and the cost line: whether a frame's two
+// Read in the EXE: counted up by 0x00777A40, called only at 0x0076262B inside
+// 0x00762600, the renderer's vtable +0x134 - the end of a scene frame (device
+// EndScene, then the add); no other writer was found (a search for increments,
+// not for plain stores). For the trace and the cost line: whether a frame's two
 // passes see different stamps (each skin built again in the second) or the
 // same. 0 when not readable.
 UInt32 SkinBuildStamp() {

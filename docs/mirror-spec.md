@@ -1,4 +1,4 @@
-# A mirror on the tablet (feasibility and plan, 2026-11-28; stage 1 built, section 11; stage 2 built, section 12; stage 3 and the steady picture built, section 13)
+# A mirror on the tablet (feasibility and plan, 2026-11-28; stage 1 built, section 11; stage 2 built, section 12; stage 3 and the steady picture built, section 13; stage 4, the depth, built, section 14)
 
 The wish (Nadi, 2026-11-28): "neues feature: im inv egal wie eingestellt, gibts oben am ende ein
 neuen tab: spiegel, das gibt mir ein echtes spiegel erlebnis und ich kann mich selber ansehen und
@@ -859,3 +859,224 @@ new parts expected. **Written, not run** (Linux harness).
   room's pose handed to the renderer (small), if the run asks for it.
 - **The texture's edge strips**: the ColorFill on a default-pool render target is read in the D3D9
   rules, not seen; a smeared edge where the glass reaches past the picture would mean it failed.
+
+## 14. Stage 4, each eye its own reflection, as built (2026-11-28, branch mirror-4-1128)
+
+Asked by Nadi after seeing stage 3 in the headset ("kopf da im spiegel da. und ruhig ... der sah gut
+aus"): "go spiegel tiefe, aber mit option zurückzugehen auf stufe 3." So stage 3 is the accepted
+baseline and stays reachable as it is: `[Tablet] MirrorDepth=0` (14.5). Not run in the game yet.
+
+### 14.1 The second measurement: the owner's run of 2026-11-28 13:55
+
+Build: main with stages 1-3 and the steady picture. Log `OBVR.log` of the run ending 13:55
+(Windows, Pimax, image space on, 2 samples), the cost lines read and summed here [M]:
+
+| What | Value | Mark |
+| --- | --- | --- |
+| Cost lines | 127 (10288 passes; 1142 frames skipped: no glass 597, facing away 450, out of view 74, eyes not captured 11, edge-on 10, loading, stopped and switched off 0; no "switched off" line) | M |
+| The pass's CPU time, the mean of the lines' means | 1.39 ms (over all passes, weighted: 1.47 ms) | M |
+| The highest line's mean | 2.89 ms; 2 of 127 lines over 2.5 ms, 3 over 2.0 | M |
+| The worst single pass | 6.00 ms (log line 5849) | M |
+| Draws a pass, the mean of the lines | 770 (weighted 813) | M |
+| How the cost moves | with the draws: a straight fit over the 127 lines gives 0.24 ms + 1.50 ms per 1000 draws (correlation 0.92). The first run's fit was 0.93 ms + 0.40 ms per 1000 (12.9): the two runs do not agree on the slope, so neither fit is a rule | D, from the M lines |
+| The head | shown in 10288 of 10288 passes, 0.00-0.03 ms a pass ("Mirror head: shown ... 2 skin(s) on the head's bones of 322 node(s)") | M |
+| Steady 60 | the glass turned 0.43 degrees mean from the steadied over the lines (0 to 1.66 a line, median 0.42); a corner past the picture in 31 of 127 lines, 1362 of 20714 eye draws, at most 174 of a line's draws | M |
+| The texture | 1024x1024, format 22 (X8R8G8B8: 4 MiB) | M |
+
+A frame at 90 Hz is 11.1 ms. Two passes a frame at these numbers: about 2.8-2.9 ms a frame on
+average, 5.8 ms in the busiest second [D: twice the lines' means].
+
+### 14.2 What was read, and what was decided
+
+**1. Two extra world renders in a frame, and the skin stamp.** The bone palette builder 0x007655F0
+rebuilds a skin when its stamp (NiSkinInstance +0x18) differs from the word 0x00422DE0 returns on
+`[renderer+0x8B0]` - that is `MOV EAX,[ECX+0x3C]` on the renderer's buffer manager
+(`../OBNG/re/functions/0x00776D80.md` C14). Read this stage in the EXE's bytes: 0x00777A40 is
+`ADD dword [ECX+0x3C],1; RET`, and its one call in the code is at 0x0076262B inside 0x00762600,
+right after `MOV ECX,[ESI+0x8B0]` - the buffer manager's word. 0x00762600 is the NiDX9Renderer
+vtable's +0x134 (the vtable at file offset 0x6880A4: +0x140 is 0x00762640, the camera setter, +0x134
+is 0x00762600, its only reference), and it calls the device's EndScene (device vtable +0xA8) first,
+adding only when that succeeds and `[this+0x6F0]` is 0. So the stamp counts the renderer's ended
+scene frames [R]. A search of the decompile for other increments of a +0x3C word found one more,
+0x00775FA0 (the cursor of a 4096-slot bit allocator, called from 0x007763A0; not shown to be the
+same object); a plain store to the word elsewhere is not excluded by that search. A world render with no texture argument
+begins one through 0x007D7280 when neither +0x200 nor +0x204 is set, and at its end calls 0x007D72D0
+(image space on: when +0x200 or +0x204 is set), which ends it through +0x134 when +0x204 is 1 and
++0x200 is 0 (`0x40c830.c` lines 107-120, 310-330; `0x7d7280.c`, `0x7d72d0.c`) [R]. So each mirror
+render most likely ends with the stamp counted up, and the second pass builds every skin again from
+its own camera [D]. That also fits 12.9's hair row, rebuilt in the mirror's render with no stamp
+turned [M]. Unproven: that the default group's +0x200 is 0 at those ends on the owner's route; with
+it set, no render ends a frame and the two passes share one stamp.
+
+Decided: the second pass is a plain repeat of the first pass's proven steps with its own camera,
+which is right in both cases for everything the eyes' render drew (below, point 2) and for the
+head (turned per pass). The one case it is not right for: a skinned body the eyes did not draw but
+both mirror passes did (behind the player), if the stamp does not move between the passes: the
+second pass would draw it with the first pass's rows, 4.4 units (63 mm, the cameras' distance)
+off in the right eye's glass. The trace says it: "skin stamp N" before every traced pass with the
+renderer's two frame flags, and the cost line "skin stamp moved between the two passes in N of M
+frames". N = M settles it; N = 0 means that case is real (then the next step is the rebase of
+point 2, recorded from the first pass).
+
+What else is reset "once" in stage 2 and holds for two passes in a row [R in RenderFromMirror,
+MirrorGlassPass.cpp:336-420]: the frame clock is zeroed and put back inside each
+`RunMirrorWorldRender` (SceneRenderHook.cpp:733); the camera's local transform, frustum and port
+and the device's viewport are saved and put back around each pass; `CloseSceneFrameBetweenPasses`
+runs before each (a no-op on the owner's route; after the first pass's copy the frame is in the
+state the eyes' copy left it in, so the second needs it as the first did).
+
+**2. Riding on the first pass's palettes.** Read in InterfaceRenderHook.cpp (HandleBoneUpload,
+SetBonePassMode): Replace mode pairs each row with the eyes' render's log by register and rotation
+and serves the logged row shifted by the camera's move; it writes nothing into the log, and entering
+Replace resets only the running position (`g_boneCompareIndex`) [R]. So the second pass replaces
+from the same log with its own shift (camera 2 minus the eye camera), exactly as the first does,
+and both are right whatever the engine rebuilt: a rebuilt row and a stale one pair alike and get
+the same logged row shifted [D]. Riding on the first pass (record its output, replace the second's
+from it with the 4.4-unit shift, the dual pass's way) would save no work: the engine still builds
+the rows (the stamp, point 1), and the lock's lookup runs either way; it would only cover the
+mirror-only bodies of point 1, and needs a second log of 1.7 MB and a second mode in the upload
+hook. Not built; it is the fix if the cost line says the stamp does not move.
+
+**3. Texture memory.** Each eye's picture is a render target texture of the back buffer's format,
+MirrorPixels a side, one level, default pool (`EnsureTarget`, MirrorGlassPass.cpp:200), as stage 2
+made the one: 4 MiB at 1024 with the owner's format 22, 16 MiB at 2048. No depth surface of
+OBVR's own: the renders draw into the back buffer with the game's depth and are copied out with
+StretchRect. The right eye's texture is made at its first pass and let go when MirrorDepth goes
+to 0 (`DropRightEye`, :149: the left eye's picture handed to both eyes first, so no frame of dark
+glass and nothing on the glass refers to the texture when it goes) or when the mirror is switched
+off for the session (both). So depth costs one more 4 MiB texture at the default.
+
+**The culling: each pass culls itself, no replay.** Read in CullingHook.cpp: the dual pass's
+"replay" calls the engine's cull again with the camera's position swapped for the first eye's
+(:57-66) - it saves no work, it makes both eyes cull the same set, which the bone lock's pairing
+of the second eye against the first needed. The mirror's two passes pair against the eyes' log,
+not against each other, so that reason does not apply. And it would cost correctness: the second
+mirror camera's off-axis frustum moved 4.4 units to the first camera's place misses up to about a
+fifth of the glass's width near the glass plane [D: 4.4 units against the frustum's width there,
+about 21 units]. Spec section 8's "with culling replay" is not built.
+
+**The water's reflection: rendered in each pass.** Its reuse for a second eye
+(`ShouldRenderWaterReflection`, WaterReprojection.h:76) lays the first pass's stored per-draw
+matrices on the second's water draws (mode 2, `ReuseStored`); whether those are free of the camera
+for a mirror camera is not read, and the saving is 6-13 draws a pass (12.2) - at the measured 0.4
+to 1.5 ms per 1000 draws, 0.002-0.02 ms. Not shared.
+
+**The actor shadows: kept both times.** `PlanActorShadows` (ShadowShare.h) lets a mirror pass keep
+the maps the frame's world render drew and never notes its own draw, so the second pass keeps them
+too [R; shadow_share_test]. The cost line counts it.
+
+**The head: shown and hidden per pass**, not once around both: the stamps are turned per pass, so
+each pass builds the head's skins from its own camera whatever point 1 turns out to be; at 0.02 ms a
+pass [M] the repeat is cheap.
+
+### 14.3 How it runs
+
+`RunMirrorGlassPass` (MirrorGlassPass.cpp:747), after both eyes' captures as in stage 2: the depth
+setting against the last frame's (`NoteDepthSetting`, :164), the page, the steadied glass and the
+frame's decision as in stage 3 (the cyclopean camera decides "facing away", "edge-on" and the like),
+then with MirrorDepth=1 `RenderEachEye` (:633): both eyes' cameras through the same steadied glass
+(`vr::MirrorEyeCamerasFor`), an eye that can render is one whose camera is there and whose glass is
+in its view, the eyes this frame (`vr::PlanMirrorEyes`), one `RenderMirror` (:542) per eye into its
+own texture (left first), each picture noted with the camera it was rendered with (`NotePicture`),
+then both handed to the glass at once (`HandInGlass`, :129). The tablet draws each eye's glass with
+its own picture through its own camera (`vr::GlassPictureFor`, TabletQuad.cpp:393; the steady
+mapping of 13.3 per eye). A picture not renewed this frame keeps its camera, so it stays laid where
+it was rendered. While one eye's picture is not made yet the other's is shown in both
+(`vr::MirrorGlassSources`): no dark flash in one eye.
+
+### 14.4 The budget, and the eyes taking turns (option E)
+
+`vr::StepMirrorBudget` (vr/MirrorDepthLogic.h), each frame with the page up: the passes'
+milliseconds and count, over a second of the real clock. At the end of each second, the pass's
+mean against `[Tablet] MirrorBudgetMs`: over it, the eyes take turns; under 0.8 of it, both again;
+between, nothing changes. A change holds at least 3 s. A frame time of no number, zero, backwards
+or over a quarter second is not counted. 0 never takes turns. Taking turns, each frame renders the
+eye whose picture is older (one without a picture first, the left on a tie), so each eye is renewed
+every second frame; the other keeps its picture through its own camera. The page going down or the
+depth setting changing starts the budget over (both eyes).
+
+The default, 2.5 ms a pass, is the spec's section 8 rule [G]: in the run of 14.1 it would have made
+the eyes take turns in the two busiest seconds only. It is in OBVR.ini, not on the settings page:
+a millisecond count is not a player's setting. Each change is one log line: "Mirror: the eyes take
+turns now - a pass cost X ms on average over the last second, over the budget of B ms ..." and
+"Mirror: both eyes every frame again - ...".
+
+### 14.5 The way back
+
+`[Tablet] MirrorDepth` (default 1), on the settings page in "Laser & wrist menus" right after
+"Steady mirror": **"Mirror depth"** - "Each eye sees its own reflection, so the mirror looks deep.
+Off, both eyes share one flatter picture". OBVR.ini documents it; `tests/settings-rows.txt` is
+re-pinned. 0 runs stage 3's path: `RenderOneForBoth` (:617) - one pass, the cyclopean camera
+(`f.camera`, made as stage 3 made it), texture 0, handed in as stage 3 did
+(`SetMirrorGlass(texture, nullptr, uv)`); no eye cameras, no budget step. What 0 still runs of
+stage 4: the setting's compare each frame and the cost line's depth fields ("one for both N").
+Changeable while the mirror is up: on, the right eye's texture is made at its first pass and the
+left's picture is shown in both until then; off, the right eye's texture is let go after the left
+picture is handed to both (14.2, point 3); both ways the trace logs the next three frames' passes
+and one line says "Mirror: depth turned on/off".
+
+### 14.6 The cost line's new parts
+
+    ... in 88 frames, laid on ...; depth on: both eyes 84, taking turns 0, one for both 0 frames, passes left 84 right 84, together 2.81 ms a frame mean, 5.40 worst; budget 2.50 ms a pass (last second 1.41); kept: actor shadow maps 168 times; skin stamp moved between the two passes in 84 of 84 frames
+
+(the numbers made up). The passes, mean, worst and draws at the line's start now count every pass
+(two a frame with both eyes). "the glass turned ... in N frames" counts frames (was "passes": one a
+frame until now). "depth on/off" is the setting; the three frame counts the mode each rendered
+frame ran in; "passes left/right" each eye's (one for both counts as the left); "together" the
+passes of a frame added up - the number to hold against the 11.1 ms frame; "budget" the setting and
+the last full second's pass mean; "kept" the shadow maps the mirror's passes did not draw again;
+"skin stamp" 14.2, point 1.
+
+### 14.7 Tests
+
+Written first, run red, then green (Windows, MSVC):
+
+| Test | Red | Green |
+| --- | --- | --- |
+| `mirror_depth_test` (new, vr/MirrorDepthLogic.h, and `GlassPictureFor`): each eye's camera its own eye reflected, the two apart by the eye offset reflected (4.4 units), the same turn, mirrored frustums; MirrorDepth=0 exactly stage 3's camera in both; one eye not drawn, behind the glass, no glass; the budget's clamp; the window, the change both ways, the hold, the hysteresis band both ways, no passes, frame times of no number / zero / backwards / half a second, a budget of 0 or no number, a tiny budget; the mode; which eyes render in each mode with every refusal; 20 frames of turns alternating 10 and 10; each eye's picture and age, a stale eye laid through its own camera, the glass's sources in each case; the cost line's new parts | 63 of 84 checks failing (a stub header) | 84 |
+| `shadow_share_test`: two mirror passes both keep the maps, counted; the dual pass's second eye not counted | 2 of 25 failing | 25 |
+| `config_test`: MirrorDepth's default and 0, MirrorBudgetMs's default, 0, 0.1, the clamps | 5 failing | green |
+| `settings_list_test`: the pinned rows with "Mirror depth" | 1 failing | green, re-pinned |
+
+The whole suite: 341 of 343 pass; the two that fail are the known ones (`water_visual_harness`,
+`grass_flicker_map`: no numpy on this machine). `function_sizes_test` green, no row raised; the
+pass file is 796 lines, its longest function `RenderMirror` 61. The DLL builds with no new
+warning. Scenario `tools/hand-scripts/tablet-mirror-world.txt`: marks `mirror-depth`,
+`mirror-flat` (MirrorDepth=0), `mirror-turns` (MirrorBudgetMs=0.1) and `mirror-both` (2.5 again),
+both eyes dumped at each, the new lines expected. **Written, not run** (Linux harness).
+
+### 14.8 Not verified, and what settles each
+
+- **Anything in the game**: nothing of stage 4 has run. The next log: "Mirror: the reflection's
+  texture made for the right eye", the cost line's "depth on: both eyes N", the trace lines with
+  "the left eye" and "the right eye".
+- **The depth itself**: the two glasses' pictures differ by the reflected disparity [D from the
+  test's cameras]. Settled by the eye dumps at `mirror-depth` against `mirror-flat` (the
+  reflected room shifted between the glasses by its depth, against the same picture in both), and
+  by the headset.
+- **The skin stamp between the passes** (14.2, point 1): the cost line's "skin stamp moved ... in N
+  of M frames" and the trace's "skin stamp" and frame flags. N less than M with bodies behind the
+  player: those bodies sit 4.4 units off in the right eye's glass.
+- **The cost of two passes**: twice 14.1's means is a guess for the second pass, which renders the
+  same world from 63 mm away (its draws should match the first's within the frustums' edges). The
+  cost line's "together" and the passes' mean settle it; the busy places' numbers decide whether
+  2.5 ms is the right budget.
+- **Taking turns in the headset**: each eye 45 Hz at 90 Hz while the glass moves; the steady mapping
+  keeps a stale picture where it was rendered (13.3), but the eye's own move between its renders
+  (one frame) shows as parallax a frame older than the other eye's. Headset; with MirrorSteady=0
+  the stale picture rides on the glass for a frame.
+- **The glass out of one eye's view** (the glass at the edge of one eye's sight): that eye is not
+  rendered and keeps its last picture; with both out the frame counts "out of view". Not seen.
+
+### 14.9 Deviations from the brief and the spec, with the reason
+
+- **No culling replay** (section 8's stage 4 row): 14.2 - it saves no work and would cut the
+  second picture's edge.
+- **The head shown and hidden per pass**, not once around both: the repeat is the proven step and
+  is right whatever the skin stamp does; it costs 0.02 ms a pass.
+- **The water's reflection not shared** between the two passes: unread for a mirror camera, and
+  worth at most 0.02 ms.
+- **The port and viewport put back after each pass**, not once after both: each pass's own
+  save-and-restore is stage 2's tested code; it costs four floats and one device call.
+- **The budget on the pass's mean**, not on the frame's: the spec's 2.5 ms rule is per pass, and the
+  mean per pass is the same quantity whether one or two run a frame.
