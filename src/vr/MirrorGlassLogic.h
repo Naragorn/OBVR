@@ -530,6 +530,8 @@ struct MirrorCostWindow {
 	std::uint32_t stampAsked = 0;
 	std::uint32_t stampChanged = 0;
 	std::uint32_t shadowsKept = 0;
+	// The passes OBVR counted the skin stamp up for (game/MirrorStampLogic.h).
+	std::uint32_t stampCounted = 0;
 };
 
 // One steadied pass: how far the held glass stood turned from the steadied
