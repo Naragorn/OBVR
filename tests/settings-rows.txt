@@ -148,7 +148,7 @@ Weapon physics|Blade slides off people|A body turns your blade aside and it slid
 Weapon physics|Hands stop at walls|Your free hand and shield stop at walls and furniture too|Hands|HandsStopAtWalls|||0|0|1|1|0|0|1|1|1|0|0|RW
 Weapon physics|Hands rest on people|Move slowly and your hand or shield rests on people|Hands|HandsStopAtBodies|||0|0|1|1|0|0|1|1|1|0|0|RW
 Weapon physics|Punches stop at people|Punches and slaps stop at the body they hit and still land. Press on and they go in|Hands|PunchesStopAtBodies|||0|0|1|1|0|0|1|1|1|0|0|RW
-Weapon physics|Weapon heft|How much heavy weapons lag behind your hand. Higher feels heavier|Hands|WeaponWeight|||1|1|100|5|0|0|1|40|40|0|0|RW
+Weapon physics|Heft|How much heavy weapons, shields, bows and staffs lag behind your hand, torches a little. Higher feels heavier|Hands|WeaponWeight|||1|1|100|5|0|0|1|40|40|0|0|RW
 Weapon physics|Weapon momentum|A heavy swing carries on a little after your hand stops|Hands|WeaponSwingThrough|||0|0|1|1|0|0|1|1|1|0|0|RW
 Weapon physics|Big weapon in one hand: heft|How much more a two-hander lags in one hand. Staffs aren't affected|Hands|OneHandTwoHanderWeight|||1|0|100|10|0|0|1|40|40|0|0|RW
 Weapon physics|Big weapon in one hand: fatigue|How much more fatigue everything costs with a two-hander in one hand|Hands|OneHandTwoHanderFatigue|||1|0|100|10|0|0|1|40|40|0|0|RW
@@ -342,7 +342,7 @@ Comfort|No knockdown|Hits and spells never throw you around|Look|NoPlayerKnockdo
 Comfort|Exhaustion, not collapse|Out of fatigue or paralysed, you stay up, but your weapon gets heavy and you gasp|Look|Exhaustion|||0|0|1|1|0|0|1|1|1|0|0|RW
 Comfort|Exhausted below (%)|Below this much fatigue you're exhausted, in percent|Look|ExhaustionBelowPercent|||1|1|50|1|0|0|1|12|12|0|0|RW
 Comfort|Recovered above (%)|Above this much fatigue you recover, in percent|Look|ExhaustionAbovePercent|||1|1|90|1|0|0|1|25|25|0|0|RW
-Comfort|Exhausted weapon weight|How much heavier your weapon feels when you're exhausted|Look|ExhaustionWeight|||1|1|10|0.5|1|0|1|2.5|2.5|0|0|RW
+Comfort|Heft when exhausted|How much heavier what you hold feels when you're exhausted|Look|ExhaustionWeight|||1|1|10|0.5|1|0|1|2.5|2.5|0|0|RW
 Comfort|Heavy weapon when tired|Your weapon gets heavier when you're out of breath|Look|ExhaustionHeavyWeapon|||0|0|1|1|0|0|1|1|1|0|0|RW
 Comfort|Exhaustion sounds|Gasp and pant while you're exhausted|Look|ExhaustionSounds|||0|0|1|1|0|0|1|1|1|0|0|RW
 Comfort|No hit blur|Hits never blur or shake your view|Look|NoHitBlur|||0|0|1|1|0|0|1|1|1|0|0|RW
