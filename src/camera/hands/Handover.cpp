@@ -10,7 +10,9 @@
 #include "game/NearbyItems.h"
 #include "game/TakeItem.h"
 #include "test/HandScriptRuntime.h"
+#include "vr/GripClaim.h"
 #include "vr/HandSides.h"
+#include "vr/TabletScroll.h"
 
 namespace obvr::camera::hands {
 
@@ -123,6 +125,58 @@ void SayClosingMissed(bool left, UInt32 ref, float toThing, float reach) {
 	}
 }
 
+// The shield worn on the other hand, the weapon hand closing on it (a ball of
+// HandoverThingMetres round that hand), not at a holster place: the shield to
+// that hand. The shield has no let go of its own - the arm wears it - so the
+// closing is the hand-over. Where the tablet's gesture can begin it waits for
+// the gesture's second grip first (vr/GripClaim.h; 2026-11-28: the gesture's
+// own closing switched the sides).
+void StepShieldHandover(HandoverState& state, const HandShared& shared, const HandoverLinks& links, const Config& config,
+                        bool usable, float dt) {
+	const vr::HandModeResult& hand = shared.hand;
+	const float upm = config.tracker.unitsPerMetre;
+	const float reach = config.hands.handoverReachMetres * upm;
+	bool wanted = false;
+	if (usable && links.inventoryHold.ref == 0 && state.handBack.ref == 0 && hand.rightHoldClosed && game::GrabbedRef() == 0 &&
+	    hand.holster.rightSlot == vr::HolsterSlot::None && hand.rightHandValid && hand.leftHandValid &&
+	    shared.cyclopeanCameraValid && reach > 0.0f && game::WornShieldForm() != nullptr) {
+		const NiPoint3 leftWorld = shared.cyclopeanCamera.pos + shared.cyclopeanCamera.rot * hand.leftHandOffsetUnits;
+		const NiPoint3 rightWorld = shared.cyclopeanCamera.pos + shared.cyclopeanCamera.rot * hand.rightHandOffsetUnits;
+		const float toThing = game::NearHeldInHandUnits(math::Sqrt((rightWorld - leftWorld).LengthSquared()),
+		                                                config.hands.handoverThingMetres * upm);
+		wanted = game::HandOverAtLetGo(true, true, toThing, reach);
+		if (wanted) {
+			state.shieldToThing = toThing;
+		}
+	}
+	vr::GripClaimFrame claim;
+	claim.usable = usable;
+	claim.zone = hand.tabletZone;
+	claim.gestureBegan = hand.tabletBegan;
+	claim.gripsOpen = hand.tabletGripsOpen;
+	claim.handoverWanted = wanted;
+	claim.dt = dt;
+	const bool waiting = state.gripClaim.waited >= 0.0f;
+	const vr::GripClaimer who = vr::StepGripClaim(state.gripClaim, claim, vr::TabletScrollLimits{}.pairSeconds);
+	if (who == vr::GripClaimer::Gesture && (waiting || wanted)) {
+		OBVR_LOG("Handover: the weapon hand closed %.1f units from the worn shield - the tablet's gesture took the grips, "
+		         "no handover", static_cast<double>(state.shieldToThing));
+	} else if (who == vr::GripClaimer::Nobody && wanted && state.gripClaim.waited == 0.0f) {
+		OBVR_LOG("Handover: the weapon hand closed %.1f units from the worn shield at the inventory ring - waiting for "
+		         "the tablet's other grip", static_cast<double>(state.shieldToThing));
+	}
+	const bool late = who == vr::GripClaimer::HandoverAfterWait;
+	if (who != vr::GripClaimer::HandoverNow && !(late && game::WornShieldForm() != nullptr)) {
+		return;
+	}
+	// free-weapons-spec 5.16 step 4: the shield to that hand - the sides switch.
+	const bool switches = game::HandOverSwitchesSides(game::HandoverThing::Shield, links.weaponDrawn);
+	vr::WeaponSideNow().flip = vr::WeaponSideNow().flip || switches;
+	OBVR_LOG("Handover: the weapon hand closed %.1f units from the worn shield - %s%s", static_cast<double>(state.shieldToThing),
+	         switches ? "the sides switch, the shield to that hand" : "it holds its weapon, nothing",
+	         late ? " (after the tablet's wait, no other grip)" : "");
+}
+
 }  // namespace
 
 void StepHandover(HandoverState& state, const HandStep& step, const HandShared& shared, HandoverLinks& links) {
@@ -148,30 +202,7 @@ void StepHandover(HandoverState& state, const HandStep& step, const HandShared& 
 	const float upm = config.tracker.unitsPerMetre;
 	const float reach = config.hands.handoverReachMetres * upm;
 	LogHeldThingAtMark(shared, handResult, links.inventoryHold, upm, config.hands.heldObjectMetres);
-	// The shield worn on the other hand, the weapon hand closing on it (a
-	// ball of HandoverThingMetres round that hand), not at a holster
-	// place: the shield to that hand (below). The shield has no let go of
-	// its own - the arm wears it - so the closing is the hand-over.
-	if (usable && links.inventoryHold.ref == 0 && state.handBack.ref == 0 && rightClosedNow && game::GrabbedRef() == 0 &&
-	    handResult.holster.rightSlot == vr::HolsterSlot::None && handResult.rightHandValid && handResult.leftHandValid &&
-	    shared.cyclopeanCameraValid && reach > 0.0f) {
-		UInt8* const shield = game::WornShieldForm();
-		if (shield != nullptr) {
-			const NiPoint3 leftWorld =
-				shared.cyclopeanCamera.pos + shared.cyclopeanCamera.rot * handResult.leftHandOffsetUnits;
-			const NiPoint3 rightWorld =
-				shared.cyclopeanCamera.pos + shared.cyclopeanCamera.rot * handResult.rightHandOffsetUnits;
-			const float toThing = game::NearHeldInHandUnits(math::Sqrt((rightWorld - leftWorld).LengthSquared()),
-			                                                config.hands.handoverThingMetres * upm);
-			if (game::HandOverAtLetGo(true, true, toThing, reach)) {
-				// free-weapons-spec 5.16 step 4: the shield to that hand - the sides switch.
-				const bool switches = game::HandOverSwitchesSides(game::HandoverThing::Shield, links.weaponDrawn);
-				vr::WeaponSideNow().flip = vr::WeaponSideNow().flip || switches;
-				OBVR_LOG("Handover: the weapon hand closed %.1f units from the worn shield - %s", static_cast<double>(toThing),
-				         switches ? "the sides switch, the shield to that hand" : "it holds its weapon, nothing");
-			}
-		}
-	}
+	StepShieldHandover(state, shared, links, config, usable, dt);
 	const auto handToRef = [&](UInt32 ref, bool left) {
 		NiPoint3 centre{};
 		float radius = 0.0f;
