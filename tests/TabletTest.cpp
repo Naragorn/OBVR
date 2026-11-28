@@ -520,9 +520,9 @@ void TestHeldTurnedAndCentred() {
 	const NiPoint3 palmSide = CrossOf(left.edge, left.blade);
 	const NiPoint3 away = left.edge * -1.0f;  // away from the knuckles: the thumb's and the wrist's way
 	const float lift = PageLiftMetres(HandReach{}, true);
-	Check(Near(s.held.turnDegrees, 90.0f) && Near(s.held.leanDegrees, 15.0f) && Near(s.held.rollDegrees, -10.0f) &&
-	          Near(s.held.acrossCm, 22.0f) && Near(s.held.upCm, 0.0f) && Near(s.held.outCm, -9.0f),
-	      "the defaults: Nadi's of 2026-11-28 - a quarter turn, leant 15, tilted -10, 22 cm across, 9 cm back");
+	Check(Near(s.held.turnDegrees, 90.0f) && Near(s.held.leanDegrees, 20.0f) && Near(s.held.rollDegrees, -10.0f) &&
+	          Near(s.held.acrossCm, 22.0f) && Near(s.held.upCm, 0.0f) && Near(s.held.outCm, -10.0f),
+	      "the defaults: Nadi's of 2026-11-28 (evening) - a quarter turn, leant 20, tilted -10, 22 cm across, 10 cm back");
 	Check(Near(TabletSettings{}.widthMetres, 0.34f), "the default width: 0.34 m");
 	// The checks below take one angle or place at a time from a quarter turn alone.
 	s.held.leanDegrees = 0.0f;

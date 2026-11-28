@@ -2772,6 +2772,18 @@ sein!"
 - Tests: tablet_test (the defaults and the width, 1 red), settings_list_test (settings-rows.txt
   re-pinned, 1 red).
 
+### 32.1.1 Set again the same evening
+
+Nadi, after the run of 2026-11-28 20:17-20:35: "ausserdem habe ich die tablet position wieder
+angepasst, diese werte sollen nun default werden".
+
+- [R his INI, [Tablet], read 2026-11-28 20:40] `WidthMetres=0.34`, `HeldTurnDegrees=90`,
+  `HeldOutCm=-10`, `HeldAcrossCm=22`, `HeldUpCm=0`, `HeldLeanDegrees=20`, `HeldRollDegrees=-10`.
+- **Changed**: `vr::HeldPlace` Lean 15 -> 20 and Out -9 -> -10; the other five are as in 32.1. The
+  shipped OBVR.ini with its comments, the settings rows' defaults (tests/settings-rows.txt) and
+  tablet_test's default check follow. Both values lie inside their rows (lean +-90, distance -30
+  to 20). Nothing estimated: both are read from his file.
+
 ### 32.2 The holding hand's fingers behind the page
 
 Nadi: "versuchen wir nun noch dass die finger der hand die das tablet hält (mit ausnahme vom daumen)

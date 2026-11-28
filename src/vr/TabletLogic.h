@@ -77,11 +77,11 @@ inline TabletUnroll TabletUnrollFromIndex(float value) {
 // the hand sits by the same values.
 struct HeldPlace {
 	float turnDegrees = 90.0f;   // about its upright, the blade: + the face away from the knuckles, to the head
-	float leanDegrees = 15.0f;   // about its width: + the top back, the face up
+	float leanDegrees = 20.0f;   // about its width: + the top back, the face up
 	float rollDegrees = -10.0f;  // in its own flat: + the top towards the body's middle
 	float acrossCm = 22.0f;      // its middle off the palm's: + towards the body's middle
 	float upCm = 0.0f;           // + up the page
-	float outCm = -9.0f;         // + out of its face, past the hand's reach
+	float outCm = -10.0f;        // + out of its face, past the hand's reach
 };
 
 // [Tablet].

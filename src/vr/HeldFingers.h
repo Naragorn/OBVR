@@ -5,7 +5,7 @@
 // der hand die das tablet hält (mit ausnahme vom daumen) nun nicht mehr durch
 // das tablet clippen können"). The hand that holds the tablet is drawn with
 // the controller's finger curls (game::FingerPose::Tracked); the page stands
-// where the player set it (HeldOutCm, 9 cm back by default), so a curled
+// where the player set it (HeldOutCm, 10 cm back by default), so a curled
 // finger could reach through its face. Each frame, before the fingers are
 // posed, every one of the holding hand's four fingers (not the thumb) is
 // given the curl nearest the controller's at which none of its joints, nor
