@@ -10,7 +10,8 @@
 //   moving, it coasts on (the laser's coasting, vr::StepLaserPress);
 // - swiped sideways past kTabletTouchSwipeMetres: the next or the previous
 //   page, once per touch - the finger moved left turns to the page on the
-//   right, as a page is turned on a tablet;
+//   right, as a page is turned on a tablet; a book read alone turns, a
+//   letter only scrolls (TabletTouchInput::turns and scrolls);
 // - held still for kTabletTouchHoldSeconds, or put down on a scroll bar's
 //   knob: the button goes down and stays until the finger leaves (sliders,
 //   the quantity box, the bar's knob);
@@ -148,6 +149,11 @@ struct TabletTouchInput {
 	float pixelX = 0.0f;    // the layer's pixel under the tip
 	float pixelY = 0.0f;
 	bool onScrollBar = false;  // a scroll bar's knob or a drag surface under the cursor
+	// What a move may do here (vr/TabletBook.h): a book turns but does not
+	// scroll, a letter scrolls but does not turn. A move it may not do is let
+	// go as one that was neither.
+	bool turns = true;
+	bool scrolls = true;
 };
 
 struct TabletTouchVerdict {
@@ -217,13 +223,13 @@ inline void StepTabletTouchDown(TabletTouchState& s, const TabletTouchInput& in,
 	if (in.onScrollBar || (s.travel < kTabletTouchSlopMetres && s.seconds >= kTabletTouchHoldSeconds)) {
 		s.phase = TabletTouchPhase::Dragging;
 		v.event = TabletTouchEvent::HoldStart;
-	} else if (ay >= kTabletTouchSlopMetres && ay >= ax) {
+	} else if (in.scrolls && ay >= kTabletTouchSlopMetres && ay >= ax) {
 		s.phase = TabletTouchPhase::Scrolling;
 		s.scroll.phase = LaserPressPhase::Scrolling;
 		s.scroll.startX = s.startX * kTabletTouchUnits;
 		s.scroll.startY = s.scroll.lastY = s.startY * kTabletTouchUnits;
 		v.event = TabletTouchEvent::ScrollStart;
-	} else if (ax >= kTabletTouchSwipeMetres && ax > ay) {
+	} else if (in.turns && ax >= kTabletTouchSwipeMetres && ax > ay) {
 		s.phase = TabletTouchPhase::Turned;
 		v.pageStep = dx < 0.0f ? 1 : -1;
 		v.event = TabletTouchEvent::PageTurn;

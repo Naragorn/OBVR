@@ -8,6 +8,7 @@
 // of the head. Pure; covered by hand_mode_test.
 
 #include "vr/HandMode.h"
+#include "vr/TabletBook.h"
 #include "vr/TabletScroll.h"
 #include "vr/TabletTabStrip.h"
 
@@ -457,6 +458,8 @@ inline FingerVerdict StepFingerOnTarget(PokeState& poke, TabletTouchState& touch
 	in.pixelX = sample.pixelX;
 	in.pixelY = sample.pixelY;
 	in.onScrollBar = onScrollBar;
+	in.turns = TabletTouchTurns(TabletLookOf(*t.tablet));
+	in.scrolls = TabletTouchScrolls(TabletLookOf(*t.tablet));
 	const TabletTouchVerdict touched = StepTabletTouch(touch, in, f.dtSeconds);
 	v.hover = p.hover || touched.active;
 	v.mouseDown = touched.mouseDown;

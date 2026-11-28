@@ -1,0 +1,174 @@
+# A book from the world held in the hand and turned by swipes (docs/
+# inventory-tablet-spec.md 25.4): "The Pig Children" (00024590) dropped at
+# the feet and activated by the console, as the player would on a shelf. The
+# book menu alone in the stack is the tablet's: held in the off hand at the
+# book's own width (BookWidthMetres), the world running behind it. The finger
+# (tablet-touch.txt's geometry: a point d metres up the leant-back face at
+# 0.0414 - 0.866 (0.377 - d) up and -0.4398 + 0.5 (0.377 - d) back, h metres
+# off the glass along (0, 0.5, 0.866)) swipes 10 cm left at d 0.15 - the next
+# two pages, a wheel notch down - then 10 cm right, back to the first; then
+# it draws 10 cm up the book, which turns nothing; the right stick flicked
+# right turns on once more. The left page (the menu's user9) is said at each
+# mark ("Book: at the mark"). Last the left B, which should put the book down
+# (the menu key; book-probe.txt measures whether it closes the book menu).
+# Not yet: Take tapped, which puts the book in the inventory - its place on
+# the face comes from book-sweep.txt's run.
+# [G] The swipes' d 0.15 and x 0.02..-0.08 lie on the book's paper if it
+# sits as the inventory's page does (the paper's bottom at the hold);
+# book-sweep.txt's run gives the real face. [G] The left page counted from
+# 0 and stepping by 2 (the wheel 0x00595DA0 writes a step of 2).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/book-world-in-hand.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet DrawnFinger=0
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: a book (the book menu's book look) read alone, held in the hand
+expect Tablet: in the off hand
+expect behind menu Book (0x402) the world keeps running
+reject behind menu Book (0x402) the world pauses
+expect Book: at the mark open the book's left page is 0
+count 2 Tablet: the finger swiped sideways
+expect Tablet: the finger turns the book's page on - a wheel notch down sent
+expect Book: at the mark swiped-on the book's left page is 2
+expect Tablet: the finger turns the book's page back - a wheel notch up sent
+expect Book: at the mark swiped-back the book's left page is 0
+expect Book: at the mark drawn-up the book's left page is 0
+expect Tablet: the right stick turns the book's page on - a wheel notch down sent
+expect Book: at the mark stick-on the book's left page is 2
+reject Tablet: no page read from the book menu
+reject HandScript: WARNING
+
+console-at ready player.additem 00024590 1
+console-at ready player.drop 00024590 1
+console-at dropped {near}.activate player
+wait 12
+mark ready
+wait 3
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+mark dropped
+wait 4
+mark open
+right pos 0.0200 -0.1427 -0.3047
+wait 0.4
+mark swiped-on-hover
+right pos 0.0200 -0.1552 -0.3263
+wait 0.2
+right pos 0.0100 -0.1552 -0.3263
+wait 0.03
+right pos 0.0000 -0.1552 -0.3263
+wait 0.03
+right pos -0.0100 -0.1552 -0.3263
+wait 0.03
+right pos -0.0200 -0.1552 -0.3263
+wait 0.03
+right pos -0.0300 -0.1552 -0.3263
+wait 0.03
+right pos -0.0400 -0.1552 -0.3263
+wait 0.03
+right pos -0.0500 -0.1552 -0.3263
+wait 0.03
+right pos -0.0600 -0.1552 -0.3263
+wait 0.03
+right pos -0.0700 -0.1552 -0.3263
+wait 0.03
+right pos -0.0800 -0.1552 -0.3263
+wait 0.03
+right pos -0.0800 -0.1252 -0.2743
+wait 0.5
+right pos -0.0800 -0.0952 -0.2224
+wait 1.5
+mark swiped-on
+right pos -0.0800 -0.1427 -0.3047
+wait 0.4
+mark swiped-back-hover
+right pos -0.0800 -0.1552 -0.3263
+wait 0.2
+right pos -0.0700 -0.1552 -0.3263
+wait 0.03
+right pos -0.0600 -0.1552 -0.3263
+wait 0.03
+right pos -0.0500 -0.1552 -0.3263
+wait 0.03
+right pos -0.0400 -0.1552 -0.3263
+wait 0.03
+right pos -0.0300 -0.1552 -0.3263
+wait 0.03
+right pos -0.0200 -0.1552 -0.3263
+wait 0.03
+right pos -0.0100 -0.1552 -0.3263
+wait 0.03
+right pos 0.0000 -0.1552 -0.3263
+wait 0.03
+right pos 0.0100 -0.1552 -0.3263
+wait 0.03
+right pos 0.0200 -0.1552 -0.3263
+wait 0.03
+right pos 0.0200 -0.1252 -0.2743
+wait 0.5
+right pos 0.0200 -0.0952 -0.2224
+wait 1.5
+mark swiped-back
+right pos -0.0300 -0.1860 -0.2797
+wait 0.4
+mark drawn-up-hover
+right pos -0.0300 -0.1985 -0.3013
+wait 0.2
+right pos -0.0300 -0.1898 -0.3063
+wait 0.05
+right pos -0.0300 -0.1812 -0.3113
+wait 0.05
+right pos -0.0300 -0.1725 -0.3163
+wait 0.05
+right pos -0.0300 -0.1638 -0.3213
+wait 0.05
+right pos -0.0300 -0.1552 -0.3263
+wait 0.05
+right pos -0.0300 -0.1465 -0.3313
+wait 0.05
+right pos -0.0300 -0.1379 -0.3363
+wait 0.05
+right pos -0.0300 -0.1292 -0.3413
+wait 0.05
+right pos -0.0300 -0.1205 -0.3463
+wait 0.05
+right pos -0.0300 -0.1119 -0.3513
+wait 0.05
+right pos -0.0300 -0.0819 -0.2993
+wait 0.5
+right pos -0.0300 -0.0519 -0.2474
+wait 1.5
+mark drawn-up
+right pos 0.15 -0.30 -0.15
+wait 0.5
+right stick 1 0
+wait 0.1
+right stick 0 0
+wait 1.5
+mark stick-on
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark after_b
+wait 1

@@ -101,8 +101,8 @@ void TestMenus() {
 	          TabletMenuRunsWorld(game::kMenuIdMap) && TabletMenuRunsWorld(game::kMenuIdQuantity) &&
 	          TabletMenuRunsWorld(game::kMenuIdMagicPopup),
 	      "the world runs behind the pages and their two boxes");
-	Check(!TabletMenuRunsWorld(game::kMenuIdMessage) && !TabletMenuRunsWorld(game::kMenuIdBook),
-	      "a message and a book pause it as vanilla");
+	Check(!TabletMenuRunsWorld(game::kMenuIdMessage) && TabletMenuRunsWorld(game::kMenuIdBook),
+	      "a message pauses it as vanilla, a book runs it (tablet_book_test)");
 	Check(!TabletMenuRunsWorld(game::kMenuIdPause) && !TabletMenuRunsWorld(game::kMenuIdNone),
 	      "and so does everything the tablet does not carry");
 
