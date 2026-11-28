@@ -1,4 +1,4 @@
-# A mirror on the tablet (feasibility and plan, 2026-11-28; stage 1 built, section 11; stage 2 built, section 12; stage 3 and the steady picture built, section 13; stage 4, the depth, built, section 14)
+# A mirror on the tablet (feasibility and plan, 2026-11-28; stage 1 built, section 11; stage 2 built, section 12; stage 3 and the steady picture built, section 13; stage 4, the depth, built, section 14; its two faults fixed, section 15)
 
 The wish (Nadi, 2026-11-28): "neues feature: im inv egal wie eingestellt, gibts oben am ende ein
 neuen tab: spiegel, das gibt mir ein echtes spiegel erlebnis und ich kann mich selber ansehen und
@@ -1080,3 +1080,145 @@ both eyes dumped at each, the new lines expected. **Written, not run** (Linux ha
   save-and-restore is stage 2's tested code; it costs four floats and one device call.
 - **The budget on the pass's mean**, not on the frame's: the spec's 2.5 ms rule is per pass, and the
   mean per pass is the same quantity whether one or two run a frame.
+
+## 15. Stage 4's two faults: face and hair off the head, the water's reflection off (2026-11-28, branch mirror-5-1128)
+
+Nadi ran stage 4 in the headset (main 35abb6a, log `OBVR.log` ending 14:56): "geht aber reflexionen
+von wasser, sind noch versetzt und haare + face ist auch noch versetzt am kopf so wie wir das mal
+in vr bei npcs hatten am anfang". The depth works; in the mirror his face and hair sit off his head
+(as NPCs' did between the eyes in OBVR's early dual pass), and the water's reflections are off. Not
+said: which eye, or whether only with depth on. Both fixes below are built and unit-tested, not run
+in the game.
+
+### 15.1 The third measurement: the run of 14:56 [M]
+
+| What | Value |
+| --- | --- |
+| Cost lines | 57 (log lines 4636 to 22183), 9781 passes; skipped: facing away 72, no glass 46, eyes not captured 6, edge-on 1, the rest 0 |
+| Modes | both eyes 4788 frames, taking turns 217, one for both 0; passes left 4895, right 4886 |
+| A pass | 1.32 ms, the mean of the lines' means (1.30 weighted by passes); the highest line 2.83 ms (line 21819, 3955 draws a pass); the worst pass 5.56 ms; 784 draws a pass, the lines' mean |
+| Both passes of a frame together | 2.54 ms, the mean of the lines; the highest line 4.50 ms; the worst frame 8.11 ms |
+| The budget | one switch to taking turns at log line 21733 ("a pass cost 2.84 ms on average over the last second") in the heavy stretch |
+| The actor shadow maps | kept in all 9781 passes |
+| The skin stamp | "moved between the two passes in 0 of N frames" in every line (0 of 4776 frames in all); the trace at 4381 and 4403: "skin stamp 79675, renderer frames open 1 0" before both eyes' passes of scene call 3017, 79704 before both of 3018, 79733 of 3019 - so it moves about 29 a frame, but not between the two mirror passes |
+
+### 15.2 Face and hair: the second pass drew the first camera's rows
+
+**The stamp's answer.** 14.2's unproven case is the real one. The renderer's frame flag +0x200 is 1
+during the mirror's renders [M: "renderer frames open 1 0"], so RenderScene opens no frame of its
+own (0x007D7280 needs both flags 0) and ends none (0x007D72D0 needs +0x204 1 and +0x200 0)
+[R: `0x7d7280.c`, `0x7d72d0.c`]: no end of a scene frame inside or between the two mirror renders,
+so the stamp 0x00777A40 counts stays [R+M].
+
+**What each pass draws, derived from the builder's rule** (0x007655F0 builds a skin again only when
+its stamp is not the renderer's, then writes the renderer's in, 0x00765614/0x00765638 [R]):
+
+| Skin | The eyes' render (stamp S0) | First mirror pass (left, stamp S) | Second mirror pass (right, still S) |
+| --- | --- | --- | --- |
+| The player's face and hair (2 skins, "Mirror head: shown ... 2 skin(s)") | built from the collapsed head, stamp S0 | Show turns S0 to S0^bit: built from the shown head for the left camera, stamp S; Hide turns it to S^bit | Show turns S^bit back to S - **the renderer's: not built**. The rows are the left camera's; they pair with nothing in the eyes' log (the eyes' rows were the collapse's zeros) and pass the bone lock unchanged: the face and hair 4.4 units off (63 mm, the cameras' distance, game/MirrorStampLogic.h) in the right eye's glass |
+| The body (drawn by the eyes too) | built, logged | built for the left camera (S0 is not S [D: the stamp moved since the eyes, about 29 a frame, and 12.9's rebuilt row M]) | not built - left camera's rows; but the bone lock pairs them with the eyes' log by rotation and serves the eyes' row shifted by the right camera's move: right [R: HandleBoneUpload] |
+| An actor only the mirror sees (behind the player) | not drawn | built for the left camera | not built, pairs with nothing: 4.4 units off in the right eye's glass |
+
+So the right eye's reflection had the player's face and hair, and anything only the mirror sees, off
+by the two mirror cameras' distance - the early dual pass's fault (a skin drawn with the other
+camera's palette origin). The left eye's was right. One pass a frame - MirrorDepth=0 (stage 3) and
+the frames taking turns - is right: there the stamp has moved since the eyes' render [D, as above].
+The head's own turn (`StaleMirrorStamp`, game/MirrorHeadLogic.h) is a toggle: two turns in one
+stamp period cancel, which is how the second pass lost its rebuild.
+
+**The fix, at the stamp.** Two candidates were read. Riding on the first pass's rows (record them,
+replace the second's from them, shifted by the cameras' move) would fix the actors and, by pairing,
+the head - but it adds a second bone log and mode to the upload hook to work around rows the
+engine never rebuilt. The direct one: the second pass is a render of its own, so it gets a stamp of
+its own. Before a mirror pass that follows another in the same scene call with the stamp that pass
+drew with, the renderer's word is counted up once - exactly what the engine's end of a scene frame
+does (`ADD [ECX+0x3C],1`, 0x00777A40) - and every skin the pass draws is built for its camera: the
+head (its turn S^bit -> S is then not the renderer's S+1), the body, every other actor
+(`NewStampForPass`, render/MirrorGlassPass.cpp:505, called at :598 before the render;
+`MirrorPassNeedsNewStamp`, game/MirrorStampLogic.h). One pass a frame never counts (another scene
+call). The word's other reader, 0x00767B40 (a skin's geometry pack, also compares and writes the
+skin's +0x18 [R: `0x767b40.c` lines 77-81]), then packs again in the second pass, as it does in any
+new render. Cost: the second pass now builds every skin's palette the first built [D: per bone one
+compose of 13 floats, 13.1]; the cost line's passes say it.
+
+**Proof [unit, plain values].** `mirror_stamp_test` (new): the builder's rule; a frame played as
+the log measured it (the eyes at stamp 79646, then 79675 before both passes): the left pass builds
+head, body and a mirror-only actor for the left camera; the right pass must build all three for the
+right camera; the stamp counted once; the next frame's eyes rebuild the head; when it counts (same
+scene call and stamp only; not after the stamp moved by itself, not in another scene call, never for
+an unread 0); six frames of one pass never count. **Red: 6 of 24 checks failing** on a stub with
+today's behaviour (the head, the body and the actor built for the left camera in the right pass, no
+count). **Green: 24.** `mirror_depth_test` gains the cost line's count (85 checks).
+
+### 15.3 The water's reflection: made from the head, looked up from the eye
+
+**Read.** The owner's water runs the stable capture (`StableWaterReflections=1`, `WaterReflectionMode=2`
+in his deployed OBVR.ini; OBVR.log 1011 "head-independent camera rendered into the original
+target"). In `WaterReflectionHook.cpp` Hooked the capture camera is set to the head-independent
+cyclopean camera (`GetHeadIndependentWaterCameraTransforms`, CameraHook.cpp:12136, from the camera
+node's tracked pose), whatever camera the engine renders with, and the engine mirrors that pose into
+its water camera (0x0049BEF0 copies the passed camera's world rows +0x64..+0x94 and +0x88,
+water-reflections.md) [R]. The lookup the replacement water shader gets through c13-c16
+(`BuildWaterReprojectionConstantsInner`, WaterReprojection.cpp:247) restores the water's world
+matrix from camera-relative with the camera NODE's position (:264, :272) and swaps the live camera
+for the capture (`BuildReprojectedWaterMatrix`) [R]. Inside the mirror's render the engine renders
+from the NiCamera the pass moved behind the glass - not the camera node, which the pass leaves at the
+eye (12.2) - and its camera-relative matrices are relative to that camera (the origin 0x00B3F92C is
+written from the render's camera, 0x00762640, bone-palettes.md) [R]. So in the mirror: the map
+rendered from the head, not from the mirror's camera, and each water point looked up a camera's
+distance off (the eye against the mirror camera: about twice the eye's 32-47 units in front of the
+glass in the traces, 0.9-1.3 m) [D]. That is the offset, in both eyes and with MirrorDepth=0 too
+(stage 2 already listed it as unverified, 12.7).
+
+**The fix, at the decision.** `CanUseStableWaterCapture` (WaterReprojection.h) takes a sixth input,
+the mirror's render, and refuses there: the hook takes the engine's own path (WaterReflectionHook.cpp,
+`MirrorRenderRunning()` at :286), the same as `StableWaterReflections=0` - the engine mirrors the
+camera it renders with, and with no stable capture the replacement shader is not selected
+(`SelectWaterVertexShader`, captures not stable) and the water reads the map through the engine's own
+matrices, which match the map by construction [D: the engine's planar reflection]. The eyes' renders
+are untouched: their next capture sets the stable state again before any water draw (the water
+pre-pass runs first in RenderScene; no map is kept across frames). This changes the MirrorDepth=0
+path too: stage 3's mirror render had the same offset (the same capture), and the engine's own
+reflection is what the flat game shows; the accepted picture of stage 3 is the head and the room,
+which this does not touch.
+
+**Proof [unit].** `water_reprojection_test`: every gate combination with the mirror's render added -
+never stable there. **Red: 2 of 684 failing** (the gate's input ignored), **green 684.**
+
+**Unproven, and the trace that settles it.** Whether the engine's water camera covers what the
+mirror's strongly off-axis frustum sees of the water (the trace's frustum at 4381: -0.570 0.200
+-0.273 -1.097, all below the axis): 0x0049BEF0 copies the camera's place and turn but no frustum
+write to its own camera was found in the decompile, and the reflected camera's up is the remade
+cross product (its image flipped vertically), so an asymmetric vertical frustum may fall outside the
+map. The first four captures inside the mirror's render log "Water reflection in the mirror's
+render: the engine's own (no stable capture) - the scene camera at ..., frustum ...; the water camera
+read at ..., frustum ..." (`TraceMirrorWater`, WaterReflectionHook.cpp:244). If the water camera
+keeps the scene camera's off-axis frustum, or its own symmetric one, and the glass then shows the
+water's reflection cut or smeared at an edge, the next step is the capture's frustum made symmetric
+over the mirror's tangents for that render (small). The eye dumps with water in the glass, and the
+headset, settle the look.
+
+### 15.4 Not run, and what the next log must show
+
+- Nothing of section 15 ran in the game.
+- The cost line's end: "skin stamp moved between the two passes in 0 of N frames, counted up by OBVR
+  for N passes" - the second number equal to the frames with both eyes; the trace's second pass
+  "the skin stamp counted up for this pass (now S+1)".
+- The face and hair on the head in both glasses (the right one especially), and people behind the
+  player standing where they stand in both: the headset, or the scenario's `mirror-depth` eye dumps.
+- "Water reflection in the mirror's render: the engine's own ..." four times when water is in the
+  mirror, with both frustums; the reflections in the glass where the water is.
+- The second pass's cost now with the palettes built (the passes' mean against 15.1's 1.32 ms).
+
+### 15.5 Tests
+
+| Test | Red | Green |
+| --- | --- | --- |
+| `mirror_stamp_test` (new, game/MirrorStampLogic.h) | 6 of 24 failing (a stub of today's behaviour) | 24 |
+| `water_reprojection_test`: the mirror's render never stable | 2 of 684 failing | 684 |
+| `mirror_depth_test`: the cost line's "counted up" | did not build (the note missing) | 85 |
+
+The whole suite: 346 of 348 pass; the two that fail are the known ones (`water_visual_harness`,
+`grass_flicker_map`: no numpy here). `function_sizes_test` green, no row raised. The DLL builds with
+no new warning. Scenario `tools/hand-scripts/tablet-mirror-world.txt` expects the count, **written,
+not run**.
