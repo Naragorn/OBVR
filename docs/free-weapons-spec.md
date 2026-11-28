@@ -2554,7 +2554,7 @@ my hand, so they were not equipped but shot on. That was with hold-to-grip off" 
   as before; a pull let go of while the hand swings is a throw with the hand's speed, as a throw
   from the hand is; the feel of one grip taking in the headset.
 
-### The shield flickers in the hand at a draw or a sheathe (open, instrumented 2026-11-27)
+### The shield flickers in the hand at a draw or a sheathe (instrumented 2026-11-27; held to the hand 2026-11-28, see "The shield held to the hand")
 
 "The shield, when equipped, still flickers around in the hand when I draw or sheathe the weapon."
 The same open point as 5.16's "the shield one frame higher while the sword is drawn at the hip".
@@ -3137,9 +3137,141 @@ Both bones hang under "Bip01 L Forearm"; no frame went without a pin.
   tools/hand-scripts/shield-draw-trace.txt.
 - **Model and effort:** Sonnet 5.5 medium for (a); Opus 5.5 medium for (b) (the readers of
   the twist bone are to be found).
+- **Built 2026-11-28:** (b), with the locals held as (a) holds them - see "The shield held
+  to the hand" below.
 
 ### Pulls under the grip toggle
 
 10 pulls, each "pulled to the hand and taken"; no "the pull given up" line [R]. The
 morning's three failures (the grip let go at 81 to 98 % of the way) did not come back in
 this run. Nadi has not said so himself.
+
+## The shield held to the hand (built 2026-11-28, unit tests; harness and headset open)
+
+Nadi, headset, 2026-11-28 (OBVR.log of 12:28, 22027 lines): "schilde wackeln noch in der
+hand" - the shield still wobbles in the hand. Asked for the fix as discussed: the shield
+sits where the pinned hand puts it, through a draw, a sheathe and any other animation of
+that arm, with the offset it has at rest. Branch fix-shield-wobble-1128.
+
+### What the log says [R]
+
+- 2086: through a sheathe with the shield, 10 pins: the twist bone (the shield's) moved
+  2.6 units a frame against the pinned left hand, 3.5 from where it began; the hand's
+  local turned 15.9 degrees a frame, the twist's 15.7, the controller 0.1.
+- 21985: through a sheathe with the shield: 5.9 units a frame, 9.2 from where it began;
+  the hand's local 73.9 degrees a frame, the twist's 79.3, the controller 0.2.
+- 21829: through a draw without a shield: 1.6 a frame, 2.0 from the start. The animation
+  swings the arm with or without a shield; the shield only shows it.
+- Both bones hang under "Bip01 L Forearm" in every line; no frame went without a pin.
+- 1048: the Leather Shield's weight lag has a time constant of 0 ms - the off hand's lag
+  did not move this shield.
+- 1301, 1478: the body IK follows the left arm and carries "1 thing(s) on its forearm"
+  with the hand: the shield keeps the place the pin gave the twist bone, not the body's
+  forearm.
+- Outside a draw or a sheathe the log cannot tell: the trace only opened windows for those
+  two actions. The other lines with the shield worn (1045-2420, 21907-22027) are three
+  "the shield meets the world" contacts (1349, 1958, 2327: the hand stops at a wall while
+  the controller goes on - the hand and the shield move together, by design), the shield
+  hand up and down six times each (OBVR's own block by contact, no engine block action),
+  and nothing per frame.
+
+### The cause [R in the code]
+
+game/HandBones.cpp PinHandBone places the forearm so the hand, with the local the
+animation gave it, lands on the controller: forearm = wanted x inverse(hand's local). The
+twist bone is the forearm's other child, so it - and the shield on it - sits at wanted x
+inverse(hand's local) x twist's local. Whenever an animation turns the wrist or the twist,
+the shield swings round a hand that stays on the controller.
+
+### (a) or (b): (b), built with (a)'s means
+
+The checks the evening's note asked for, read in the code:
+- The chain: hand and twist are siblings under the forearm (the trace lines). Holding
+  both locals at one rest makes the twist's place in the hand's frame constant -
+  inverse(hand's rest) x twist's rest - whatever the animation does. That is (b) "rigid to
+  the pinned hand always", done the way (a) and 83531dd hold locals. It also keeps the
+  forearm behind the hand still, and the wrist's skin (weighted on the forearm and the
+  twist, BonePin.h "Bare wrists") at its rest shape. Writing only the twist after the pin,
+  as (b) was first written, would have sheared that skin when the wrist turns.
+- What hangs on or reads the twist: the shield's model only (the body's line 1297, "Shield
+  (00025058)" on "Bip01 L ForearmTwist"). No Havok body hangs on it: the hands' bodies
+  follow the drawn hand's pose (camera/hands/WorldPush.cpp).
+- The body IK (game/BodyIk.cpp AlignFirstPersonArm) lays the first-person arm onto the
+  body's after the pins but carries what hangs on the twist from where the pin left it
+  (twistBefore) - so it carries the held place.
+- The mirror: the hold is in locals; the left-handed mirror lives on the skeleton's root.
+  Nothing to refuse; the unit test runs the pin's arithmetic mirrored too.
+- When the rest is taken: after 36 pins in a row at rest (the player's action none, no
+  step asked - about half a second, as the trunk's rest waits), so a draw's blend, a load
+  in the middle of an action or an equip mid-swing is not taken. Until then the animation's
+  locals as before.
+
+No check failed, so (a) alone was not needed.
+
+### Built
+
+- game/ShieldHoldLogic.h (pure, shield_hold_test, 27 checks): the step. No shield worn:
+  the animation's, the rest forgotten. The twist not beside the hand: the animation's,
+  logged once. A new tree or hand bone: starts afresh. Waiting for the rest: the
+  animation's. Taken: the animation's locals of that pin, so nothing jumps. Held: the
+  rest's turn and place, the animation's scale. A pin that does not run (third person, the
+  hands away in a menu) keeps the rest. The hands being adjusted is no refusal: the fit
+  reads the hand bone and the controller, and the hand's world is the pin's either way.
+- game/ShieldHold.cpp: called by the left hand's pin before the forearm is placed; the
+  twist looked up once per first-person tree. Worn means the game's shield getter and
+  something other than a bone hanging on the twist (the getter answers "worn" when it
+  cannot be read). One line when the rest is taken ("Shield hold: the shield held to the
+  left hand from now on ...") or the chain is refused. Per pin: two reads of the player,
+  one walk of the twist's children, two local writes; nothing allocated, nothing logged.
+- PinHandBone: the bare-wrist taper moved to its own function (TaperWrist) so the pin stays
+  under 100 lines.
+- The "Arm draw trace" now opens a window for every action of the arm (the draw, the
+  sheathe, an attack, a block, a recoil, a stagger ...), named in the line; a change of
+  action starts the next window. Budgets: 12 lines for the draw and the sheathe with a
+  shield, 12 for other actions with a shield, 4 without. New in the line: the pins with the
+  shield held, the twist's own turn against the hand, and the verdict - "held still on the
+  hand" under 0.1 units and 0.5 degrees a frame, else "SWUNG on the hand" ("no shield on
+  it" without one). The hand's and the twist's local turns stay the animation's, read
+  before the hold. arm_draw_trace_test, 21 checks.
+
+### Readers of the shield's place
+
+- The disc and outline (game/ShieldShape, the block by contact, the stoppers, the guard,
+  the contacts): read from the shield's vertices in the frame of the drawn hand pose and
+  placed with the drawn pose every frame. With the shield held, the disc reads the same
+  whenever it is read again (every 90 frames, HandContactLogic.h ShieldDiscStale); before,
+  a read inside a draw kept the swung place for the next 90 frames (about a second).
+- The bash (StepShieldBash): the disc's centre in the drawn hand's frame. Follows.
+- The parry's ball and the ball fallback: the twist's world bound, now where the hand puts
+  it. Follows.
+- The holster's reach: reads the hands, not the shield. Unchanged.
+- The left-hander's mirror: held in locals, see above.
+- The off hand's weight lag (vr/HandLags.cpp): the pin's pose is the drawn hand, behind the
+  controller; the hold is relative to the pinned bone, so the shield follows the drawn hand.
+
+### The torch
+
+The torch hangs on the "Torch" node, a child of "Bip01 L Hand" (inventory-tablet-spec,
+BodyIkTest), so the pin carries it with the hand and the forearm's swing does not reach
+it. Not the same chain; nothing built. Whether an animation turns the Torch node's own
+local is not traced [G].
+
+### Tests and what was not run
+
+- shield_hold_test: 27 checks, 19 red against a stub, all green. Among them the log's
+  sheathe through the pin's arithmetic: without the hold the twist swings 14.4 units round
+  the hand, with it 0.0000 units and 0.0000 degrees, mirrored or not.
+- arm_draw_trace_test: 21 checks, 6 red before the change, all green.
+- The full suite on Windows: 334 of 336, the two failures the known missing numpy
+  (water_visual_harness, grass_flicker_map). function_sizes_test green.
+- Not run: the harness and the headset. tools/hand-scripts/shield-draw-trace.txt is
+  updated for the fix and not run: it expects the rest taken and four draw and sheathe
+  lines ending "held still on the hand", and rejects "SWUNG on the hand".
+- The next log's proof: each "Arm draw trace:" line with "a shield worn 1" should read
+  "at most 0.00 units and 0.00 degrees a frame ... - held still on the hand", with "the
+  hand's local (the animation's)" still turning by the draw's degrees. A "SWUNG" line with
+  "0 with the shield held" is a window before the rest was taken.
+- Open [G]: whether the rest taken at the standing idle looks right with the weapon drawn
+  (the drawn idle may hold the wrist a little differently - before, the shield moved
+  between the two idles; now it keeps the first); a spell cast in the half second the rest
+  is taken (a cast is no action in the engine's list) would be taken as the rest.
