@@ -4,8 +4,9 @@
 // 2026-11-18: "go"): both hands empty, together at the inventory ring
 // (vr::StowSettings - the gold ring at the chest; Nadi, 2026-11-22: "lass uns
 // die an den stow spot koppeln"), both grips closed - pulling them apart unrolls the tablet between them, by the
-// measured distance; fully open, letting go with one hand leaves it in the
-// other. Let go short of fully open, it rolls back and the menus close. Held,
+// measured distance; fully open, letting go with either hand leaves it in the
+// off hand (vr/TabletHolder.h; Nadi, 2026-11-28 - before, the hand that kept
+// its grip). Let go short of fully open, it rolls back and the menus close. Held,
 // the other hand's grip closed near the holding hand rolls it up again as the
 // hands come together. The game's menus open the moment the unrolling starts
 // (the menu key, as the left B sends it) and close as it rolls back or up.
@@ -21,6 +22,7 @@
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "vr/TabletHolder.h"
 
 namespace obvr::vr {
 
@@ -77,6 +79,9 @@ struct TabletScrollFrame {
 	bool freeEndValid = false;
 	NiPoint3 freeEnd{0.0f, 0.0f, 0.0f};
 	float dt = 0.0f;
+	// The roles swapped this frame (vr::AssignHandRoles): the hands above are
+	// roles; a switch between the pair's grips is read against it.
+	bool rolesSwapped = false;
 };
 
 enum class TabletScrollPhase : UInt8 { Idle, Unrolling, Held, RollingUp, AwaitRelease };
@@ -97,6 +102,7 @@ struct TabletScrollState {
 	bool menuSent = false;     // the menu key sent to open; the menus not yet seen
 	float closeOwed = -1.0f;   // seconds a close has waited for the menus to be up; < 0 none
 	bool lastGrip[2] = {false, false};
+	bool rolesAtGrip = false;  // the roles as the pair's first grip closed from both open
 };
 
 struct TabletScrollResult {
@@ -109,6 +115,12 @@ struct TabletScrollResult {
 	bool gesture = false;      // the scroll owns the frame: unrolling or rolling up
 	TabletScrollRefusal refused = TabletScrollRefusal::None;  // both grips closed and the scroll not begun: why
 	float refusedBy = 0.0f;    // the measure that refused it (metres, or the seconds between the grips)
+	// For the handover's gate (vr/GripClaim.h): the hands where the gesture can
+	// begin (allowed, no menu, both empty, the controllers together at the
+	// ring), the frame it began, both grips open.
+	bool zone = false;
+	bool began = false;
+	bool gripsOpen = false;
 };
 
 inline float Distance(const NiPoint3& a, const NiPoint3& b) {
@@ -190,13 +202,14 @@ inline TabletScrollRefusal ScrollTry(const TabletScrollFrame& f, const TabletScr
 
 // The second grip closed with the hands together at the ring, soon after the
 // first: unrolling begins and the menus open. Opened another way (the left
-// B): held by the left hand.
+// B): held by the off hand.
 inline void StepIdle(TabletScrollState& s, const TabletScrollFrame& f, const TabletScrollLimits& l, const bool (&down)[2],
                      float apart, TabletScrollResult& r) {
 	if (f.allowed && f.tabletUp && f.menuMode) {
+		const TabletHolder holder = TabletHolderOnceOpen(TabletOpenedBy::Button, f.left.y, f.right.y, false, f.rolesSwapped);
 		s.phase = TabletScrollPhase::Held;
-		s.holderRight = false;
-		s.holderTop = false;
+		s.holderRight = holder.weaponHand;
+		s.holderTop = holder.onTop;
 		return;
 	}
 	if (!(f.grip[0] && f.grip[1] && (down[0] || down[1]))) {
@@ -251,7 +264,7 @@ inline bool StepHeld(TabletScrollState& s, const TabletScrollFrame& f, const Tab
 }
 
 // Unrolling: both grips closed it follows the hands, brought back together
-// after a pull it rolls back; one let go fully open, the other keeps it.
+// after a pull it rolls back; one let go fully open, the off hand keeps it.
 // False when the scroll is to close.
 inline bool StepUnrolling(TabletScrollState& s, const TabletScrollFrame& f, const TabletScrollLimits& l, float apart) {
 	if (!f.allowed || !f.tracked) {
@@ -263,9 +276,15 @@ inline bool StepUnrolling(TabletScrollState& s, const TabletScrollFrame& f, cons
 		return !(s.pulled && s.amount <= l.rolledShare);
 	}
 	if ((f.grip[0] || f.grip[1]) && s.amount >= 1.0f) {
+		// Whichever hand let go, the off hand holds it (vr/TabletHolder.h). The
+		// scroll works in roles; the controller is the caller's (ControlsOut).
+		// The sides as the pair's first grip closed decide, so a switch since
+		// cannot move it to the weapon hand.
+		const TabletHolder holder = TabletHolderOnceOpen(TabletOpenedBy::Scroll, f.left.y, f.right.y,
+		                                                 f.rolesSwapped != s.rolesAtGrip, f.rolesSwapped);
 		s.phase = TabletScrollPhase::Held;
-		s.holderRight = f.grip[1];
-		s.holderTop = s.holderRight ? f.right.y > f.left.y : f.left.y > f.right.y;
+		s.holderRight = holder.weaponHand;
+		s.holderTop = holder.onTop;
 		s.amount = 1.0f;
 		return true;
 	}
@@ -316,6 +335,15 @@ inline TabletScrollResult StepTabletScroll(TabletScrollState& s, const TabletScr
 		s.menuSent = false;
 	}
 	AgeGrips(s, f, down, dt);
+	// The sides as the pair's first grip closes from both open (vr/TabletHolder.h).
+	if ((down[0] || down[1]) && !s.lastGrip[0] && !s.lastGrip[1]) {
+		s.rolesAtGrip = f.rolesSwapped;
+	}
+	// Where the gesture can begin, for the handover's gate (vr/GripClaim.h).
+	float by = 0.0f;
+	r.zone = s.phase == TabletScrollPhase::Idle && f.allowed && !f.menuMode && f.handsEmpty &&
+	         ScrollPoseRefusal(f, l, by) == TabletScrollRefusal::None;
+	const bool wasIdle = s.phase == TabletScrollPhase::Idle;
 	switch (s.phase) {
 	case TabletScrollPhase::Idle:
 		StepIdle(s, f, l, down, apart, r);
@@ -346,6 +374,8 @@ inline TabletScrollResult StepTabletScroll(TabletScrollState& s, const TabletScr
 	r.holderTop = s.holderTop;
 	r.betweenHands = s.phase == TabletScrollPhase::Unrolling || s.phase == TabletScrollPhase::RollingUp;
 	r.gesture = r.betweenHands;
+	r.began = wasIdle && s.phase == TabletScrollPhase::Unrolling;
+	r.gripsOpen = !f.grip[0] && !f.grip[1];
 	return r;
 }
 

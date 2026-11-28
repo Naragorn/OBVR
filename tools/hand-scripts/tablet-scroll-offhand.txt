@@ -1,0 +1,127 @@
+# The tablet opened by the gesture lands in the off hand (vr/TabletHolder.h,
+# docs/inventory-tablet-spec.md section 30; Nadi, headset 2026-11-28: with the
+# right as the main hand it was in the right hand after the gesture).
+# Right-handed. Both hands empty, together at the inventory ring, both grips
+# closed, pulled apart past the tablet's width; then the left lets go and the
+# right keeps its grip - the case of the report. Wanted: in the off hand, on
+# the left controller, never "kept by the right hand"; the left B puts it down.
+# Once more with the right letting go: the same. The open line is said as it
+# begins to unroll, so the reject is what tells the old rule from the new: the
+# old one said "kept by the right hand" the moment the left let go.
+# With the Iron Shield worn (vr/GripClaim.h, spec 30.3): the weapon hand's
+# grip closing at the other hand would hand the shield over and switch the
+# sides. The first try closes the weapon hand first and the other 0.2 s after:
+# the handover waits, the gesture takes the grips, the sides stay. The second
+# closes both at once: the same. Last, the weapon hand closes alone at the
+# ring: the handover after the 0.5 s wait, the sides switch then.
+# Written 2026-11-28, not run (Linux only). Run with:
+# python3 tools/hand-script-run.py tools/hand-scripts/tablet-scroll-offhand.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Tablet Enabled=1
+# The page in the hand as it was aimed at: a quarter turn alone (the defaults of
+# 2026-11-27 lean, tilt and move it).
+ini Tablet HeldLeanDegrees=0
+ini Tablet HeldRollDegrees=0
+ini Tablet HeldAcrossCm=0
+ini Tablet HeldOutCm=0
+ini Tablet Figure=off
+ini Tablet Unroll=sideways
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands RightHandGripX=0
+ini Hands RightHandGripY=0
+ini Hands RightHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+# The inventory ring where the hands are held (the live INI's is the player's).
+ini Hands StowRight=0
+ini Hands StowForward=0.45
+ini Hands StowUp=-0.30
+ini Hands StowRadius=0.20
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+# The shield's handover on, as in handover-shield.txt.
+ini Hands HandoverReachMetres=0.12
+ini Hands HandoverThingMetres=0.15
+ini Hands Holsters=1
+# The harness save's question box closed first; the Iron Shield worn.
+console-at settle CloseAllMenus
+console player.additem 000733ED 1
+console player.equipitem 000733ED
+
+expect HandScript: finished
+count 2 Tablet: unrolling between the hands
+count 2 Tablet: in the off hand, drawn into the eyes - on the left controller
+count 2 the tablet's gesture took the grips, no handover
+expect at the inventory ring - waiting for the tablet's other grip
+count 1 the sides switch, the shield to that hand
+expect (after the tablet's wait, no other grip)
+reject Tablet: in the off hand, drawn into the eyes - on the right controller
+reject Tablet: kept by the right hand
+reject HandScript: WARNING
+
+wait 12
+mark settle
+wait 2
+left pos -0.06 -0.30 -0.45
+right pos 0.06 -0.30 -0.45
+left rot 0 0 0
+right rot 0 0 0
+wait 1
+mark ready
+right grip 1
+wait 0.2
+left grip 1
+wait 0.6
+left pos -0.16 -0.30 -0.45
+right pos 0.16 -0.30 -0.45
+wait 0.4
+left pos -0.24 -0.30 -0.45
+right pos 0.24 -0.30 -0.45
+wait 0.4
+mark open
+left grip 0
+wait 0.8
+mark held_left_right_kept_grip
+right grip 0
+wait 0.4
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark closed
+left pos -0.06 -0.30 -0.45
+right pos 0.06 -0.30 -0.45
+wait 1
+left grip 1
+right grip 1
+wait 0.6
+left pos -0.16 -0.30 -0.45
+right pos 0.16 -0.30 -0.45
+wait 0.4
+left pos -0.24 -0.30 -0.45
+right pos 0.24 -0.30 -0.45
+wait 0.4
+right grip 0
+wait 0.8
+mark held_left_left_kept_grip
+left grip 0
+wait 0.4
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark closed_again
+left pos -0.06 -0.30 -0.45
+right pos 0.06 -0.30 -0.45
+wait 1
+right grip 1
+wait 0.3
+mark waiting
+wait 0.6
+mark handed_over_late
+right grip 0
+wait 1

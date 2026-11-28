@@ -179,6 +179,7 @@ inline TabletScrollFrame ScrollFrameOf(const HandModeFrame& f, const HandSetting
 	const bool upright = s.tablet.unroll == TabletUnroll::Vertical;
 	g.fullMetres = held.valid ? (upright ? held.height : held.width) : s.tablet.widthMetres;
 	g.dt = f.dtSeconds;
+	g.rolesSwapped = f.rolesSwapped;
 	// The free end: the edge's middle opposite the holding hand - across the
 	// face held at a side, up or down held at the bottom or the top.
 	if (held.valid && f.left.valid) {
@@ -224,7 +225,9 @@ inline MenuTarget PlaceMenu(const HandModeFrame& f, const HandSettings& s, bool 
 	                                                          TabletHandReach(f.tablet, false))
 	                                            : TabletPlace{};
 	// The scroll (vr/TabletScroll.h): between the hands while it unrolls or
-	// rolls up, in the right hand when that one kept it.
+	// rolls up, in the frame's right hand when that one keeps it - since
+	// 2026-11-28 only when the sides switched mid-gesture, the off hand of
+	// before being the right role now (vr/TabletHolder.h).
 	const bool keptRight = scroll != nullptr && scroll->holderRight &&
 	                       (scroll->phase == TabletScrollPhase::Held || scroll->phase == TabletScrollPhase::RollingUp);
 	const TabletPlace held = tablet.valid && keptRight && f.right.valid ? HeldByRight(f, s, hold) : tablet;
@@ -235,6 +238,9 @@ inline MenuTarget PlaceMenu(const HandModeFrame& f, const HandSettings& s, bool 
 	r.tabletGrips = rolled.gesture;
 	r.tabletRefusal = static_cast<UInt8>(rolled.refused);
 	r.tabletRefusedBy = rolled.refusedBy;
+	r.tabletZone = rolled.zone;
+	r.tabletBegan = rolled.began;
+	r.tabletGripsOpen = scroll == nullptr || rolled.gripsOpen;
 	r.tabletUpright = s.tablet.unroll == TabletUnroll::Vertical;
 	r.tabletShare = rolled.betweenHands ? rolled.amount : -1.0f;
 	if (tablet.valid && f.right.valid && rolled.betweenHands) {
