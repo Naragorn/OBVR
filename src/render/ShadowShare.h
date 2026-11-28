@@ -38,6 +38,7 @@ struct ShadowShareState {
 	UInt32 worldSceneCall = 0;      // ... in this scene call
 	UInt32 drawn = 0;
 	UInt32 reused = 0;
+	UInt32 mirrorKept = 0;  // of `reused`, the mirror's passes (stage 4's cost line)
 };
 
 // One ask of the engine: `pass` is the dual pass's eye (0 first, 1 second,
@@ -49,6 +50,7 @@ inline ActorShadowPlan PlanActorShadows(ShadowShareState& state, bool enabled, i
 	                              : enabled && pass == 1 && state.firstEyeDrew && state.firstEyeSceneCall == sceneCall;
 	if (reuse) {
 		++state.reused;
+		state.mirrorKept += mirrorPass ? 1u : 0u;
 		return ActorShadowPlan::Reuse;
 	}
 	++state.drawn;

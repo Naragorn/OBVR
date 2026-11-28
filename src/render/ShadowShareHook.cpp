@@ -51,6 +51,8 @@ void __cdecl Hooked() {
 
 }  // namespace
 
+unsigned MirrorShadowMapsKept() { return g_state.mirrorKept; }
+
 bool InstallShadowShareHook() {
 	if (g_original != nullptr) return true;
 	if (!mem::Verify(addr::kRenderActorShadows, kEntry, sizeof(kEntry))) {

@@ -165,6 +165,20 @@ int main() {
 		const ActorShadowPlan b = PlanActorShadows(state, true, -1, 110, true);
 		Check(a == ActorShadowPlan::Draw && b == ActorShadowPlan::Draw, "mirror only: drawn each time");
 	}
+	// Stage 4: two mirror passes after the frame's world render both keep its
+	// maps, and the mirror's kept maps are counted for the cost line.
+	{
+		ShadowShareState state;
+		PlanActorShadows(state, true, -1, 130);
+		const ActorShadowPlan left = PlanActorShadows(state, true, -1, 130, true);
+		const ActorShadowPlan right = PlanActorShadows(state, true, -1, 130, true);
+		Check(left == ActorShadowPlan::Reuse && right == ActorShadowPlan::Reuse,
+		      "two mirror passes: both keep the world render's maps");
+		Check(state.drawn == 1 && state.mirrorKept == 2, "the maps drawn once, kept for the mirror twice");
+		PlanActorShadows(state, true, 0, 131);
+		PlanActorShadows(state, true, 1, 131);
+		Check(state.mirrorKept == 2, "the dual pass's second eye is not counted as the mirror's");
+	}
 	// The world render's note changes nothing for the dual pass: a single-pass
 	// render's maps are never a second eye's (another scene call), and a first
 	// eye still decides alone.
