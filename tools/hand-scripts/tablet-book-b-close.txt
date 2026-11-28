@@ -1,0 +1,101 @@
+# The left B closes a book or a letter on the tablet (docs/inventory-tablet-
+# spec.md 32.3; Nadi, 2026-11-28: the left B should close a book too). Three
+# cases: "The Pig Children" (00024590) read from the inventory - tablet-
+# book.txt's tap on its row - closed by the left B: the book goes, the
+# inventory stays on the tablet as the game's own Exit leaves it, and a second
+# left B puts the tablet down; then the "Nirnroot Missive" (0004E95E, a
+# letter) dropped and activated in the world - letter-in-hand.txt's way - and
+# closed by the left B: the tablet goes with it. Eye pictures at each mark.
+# Before: the left B sent the menu key (Tab), whose effect under the book menu
+# was never measured (book-probe.txt's after_tab, not run).
+# [G] xOBSE's ClickMenuButton "#31" 1026 reaches the book menu's Exit (id 31
+# on both looks' buttons): this run settles it - "the line ran" and the book
+# menu out of the stack.
+# Written 2026-11-28, not run.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-book-b-close.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+# The page in the hand as tablet-book.txt aims at it: a quarter turn alone.
+ini Tablet HeldLeanDegrees=0
+ini Tablet HeldRollDegrees=0
+ini Tablet HeldAcrossCm=0
+ini Tablet HeldOutCm=0
+ini Tablet DrawnFinger=0
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: the finger tapped
+expect shown with 1 popup(s)
+expect Tablet: the left B closes the book over the pages - its Exit clicked (the line ran); the pages stay
+expect Tablet: the Book box gone from the page
+expect Tablet: a letter (the book menu's scroll look) read alone, held in the hand
+expect Tablet: the left B closes the letter - its Exit clicked (the line ran)
+expect Tablet: closed - the menus' fade kept out of the room and the eyes
+reject the line failed
+reject HandScript: WARNING
+
+console-at ready player.additem 00024590 1
+console-at ready player.additem 0004E95E 1
+console-at dropped player.drop 0004E95E 1
+console-at dropped2 {near}.activate player
+wait 12
+mark ready
+wait 3
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark open
+# The book's row tapped (tablet-book.txt's places).
+right pos -0.0600 -0.1080 -0.3247
+wait 0.4
+right pos -0.0600 -0.1205 -0.3463
+wait 0.2
+right pos -0.0600 -0.0905 -0.2943
+wait 0.3
+right pos -0.0600 -0.0455 -0.2164
+wait 2
+mark book
+# The left B: the book closes, the inventory stays.
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark book-closed
+# The left B again: the inventory put down.
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark closed
+# A letter from the world.
+mark dropped
+wait 2
+mark dropped2
+wait 4
+mark letter
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark letter-closed
+wait 1

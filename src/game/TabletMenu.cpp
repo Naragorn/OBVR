@@ -382,6 +382,7 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 	LogInfoBox(state.itemInfoSeen, state.itemInfoLines, itemInfo, "the item info (MagicPopup)", rects);
 	const vr::UiRect figure = ReadFigure(state, screenWidth, layerPixelsWidth / layerPixelsHeight);
 	FillFrame(frame, rects, pageId, layerPixelsHeight);
+	frame.bookOver = InStack(stack, count, kMenuIdBook);  // a book from the inventory: the left B closes it alone
 	// [Tablet] Figure, drawn into the eyes: on a page of its own beside the
 	// page - not while a popup is up, which the game draws where that page
 	// would stand - or behind a tab (the page shown while a box is up). The

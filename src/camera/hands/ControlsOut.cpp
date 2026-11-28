@@ -8,6 +8,7 @@
 #include "core/MathFns.h"
 #include "core/Rotation.h"
 #include "game/AnalogWalk.h"
+#include "game/ConsoleLine.h"
 #include "game/EngineInput.h"
 #include "game/FlyCam.h"
 #include "game/GameSound.h"
@@ -539,8 +540,23 @@ void TurnBook(ControlsOutState& state, const vr::HandModeResult& hand, vr::Table
 	}
 }
 
+// The left B with a book or a letter up on the tablet (vr::TabletKeys): the
+// book's own Exit clicked, as a tap on it does - the game closes the book
+// alone, the pages under one from the inventory stay. Run at once, as the
+// harness's clicks are: the menu's own loop is not waited on.
+void CloseBookByB(const vr::HandModeResult& hand, const vr::TabletFrame& tablet) {
+	if (!hand.tabletBookExit) {
+		return;
+	}
+	const bool ran = game::RunConsoleLineNow(vr::kBookExitLine);
+	OBVR_LOG("Tablet: the left B closes the %s - its Exit clicked (%s)%s",
+	         tablet.page == game::kMenuIdBook ? (tablet.bookScroll ? "letter" : "book") : "book over the pages",
+	         ran ? "the line ran" : "the line failed", tablet.bookOver ? "; the pages stay" : "");
+}
+
 void StepTabletPageKey(ControlsOutState& state, const vr::HandModeResult& hand, const vr::TabletFrame& tablet) {
 	LogTabletTouch(state, hand);
+	CloseBookByB(hand, tablet);
 	if (state.pageKeyFrames > 0 && --state.pageKeyFrames == 0) {
 		game::TapKey(state.pageKey, false, false);
 		state.pageKey = 0;

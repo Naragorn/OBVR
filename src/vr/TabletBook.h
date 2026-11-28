@@ -15,6 +15,7 @@
 
 #include "core/Types.h"
 #include "game/MenuType.h"
+#include "vr/HandInput.h"
 #include "vr/TabletLogic.h"
 
 namespace obvr::vr {
@@ -86,8 +87,28 @@ inline TabletRects BookPaperOf(const PaperTile* tiles, UInt32 count, float scree
 	return rects;
 }
 
-// What the left B does on the tablet: the menu key, which opens and puts down
-// the F1-F4 pages - and closes a book read alone as its own Exit does
-// [M in the harness, book-probe.txt; spec 25.7].
+// A book or a letter is up on the tablet: read alone (from the world), or
+// over the F1-F4 pages (from the inventory).
+inline bool TabletBookUp(const TabletFrame& f) { return f.up && (f.page == game::kMenuIdBook || f.bookOver); }
+
+// The tablet's keys into the planned controls (spec 32.3; Nadi, 2026-11-28:
+// "lass nun so machen dass links B auch die schließt"). The left B - the
+// menu key, which opens and puts down the F1-F4 pages - clicks the book's own
+// Exit instead while a book or a letter is up on the tablet: the book closes
+// as a tap on its Exit closes it (the tablet's fade, no flash: section 31.1),
+// and the pages under a book from the inventory stay, as the game's own
+// close leaves them; the menu key there would put the inventory down with
+// it. Not on the tablet (the book on its panel): the B as before. The
+// scroll's own key (rolled up) is sent as before.
+inline void TabletKeys(const TabletFrame& f, bool onTablet, HandControlsWanted& controls, MenuPlaceResult& r) {
+	r.tabletBookExit = controls.menu && onTablet && TabletBookUp(f);
+	controls.menu = (controls.menu && !r.tabletBookExit) || r.tabletMenuKey;
+}
+
+// The book menu's Exit, by its id: 31 on both looks' buttons (book_exit,
+// book_scroll_exit; menus/book_menu.xml), what the game's close switches on;
+// clicked through xOBSE's ClickMenuButton, as the harness clicks a box's
+// button. The book menu is 1026 (0x402).
+inline constexpr const char* kBookExitLine = "ClickMenuButton \"#31\" 1026";
 
 }  // namespace obvr::vr

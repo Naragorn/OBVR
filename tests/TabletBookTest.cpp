@@ -8,6 +8,7 @@
 // player's mirror included.
 
 #include <cstdio>
+#include <utility>
 
 #include "vr/MenuPlace.h"
 #include "vr/TabletBook.h"
@@ -331,10 +332,90 @@ void TestInHandMode() {
 	      "flicked left: one back, a notch up");
 }
 
+// The left B closes a book or a letter on the tablet (spec 32.3; Nadi,
+// 2026-11-28: "lass nun so machen dass links B auch die schließt"): the
+// book's own Exit, not the menu key - read alone from the world, or over the
+// pages from the inventory, where Exit leaves the inventory up as the game's
+// own close does.
+void TestBCloses() {
+	std::printf("The left B closes a book\n");
+	TabletFrame alone;
+	alone.up = true;
+	alone.page = game::kMenuIdBook;
+	TabletFrame over;
+	over.up = true;
+	over.page = game::kMenuIdInventory;
+	over.bookOver = true;
+	TabletFrame pages;
+	pages.up = true;
+	pages.page = game::kMenuIdInventory;
+	TabletFrame letter = alone;
+	letter.bookScroll = true;
+	Check(TabletBookUp(alone) && TabletBookUp(letter) && TabletBookUp(over), "a book, a letter, a book over the pages: up");
+	Check(!TabletBookUp(pages), "the pages alone: no book");
+	TabletFrame down = alone;
+	down.up = false;
+	Check(!TabletBookUp(down), "the tablet down: no book");
+
+	const auto keys = [](const TabletFrame& f, bool onTablet, bool b, bool scrollKey) {
+		HandControlsWanted c;
+		c.menu = b;
+		MenuPlaceResult r;
+		r.tabletMenuKey = scrollKey;
+		TabletKeys(f, onTablet, c, r);
+		return std::make_pair(c.menu, r.tabletBookExit);
+	};
+	auto k = keys(alone, true, true, false);
+	Check(!k.first && k.second, "a book read alone: the B clicks its Exit, no menu key");
+	k = keys(letter, true, true, false);
+	Check(!k.first && k.second, "a letter: the same");
+	k = keys(over, true, true, false);
+	Check(!k.first && k.second, "a book over the inventory: its Exit - the inventory stays, as the game's own close");
+	k = keys(pages, true, true, false);
+	Check(k.first && !k.second, "the pages: the B is the menu key, as before");
+	k = keys(alone, true, false, false);
+	Check(!k.first && !k.second, "no B: nothing");
+	k = keys(alone, false, true, false);
+	Check(k.first && !k.second, "the book not on the tablet (on its panel): the B as before");
+	k = keys(alone, true, false, true);
+	Check(k.first && !k.second, "the scroll rolled up over a book: its menu key, as before");
+	k = keys(pages, true, false, true);
+	Check(k.first && !k.second, "the scroll's key on the pages: as before");
+
+	// Through the hand mode: the left B's press, held and let go.
+	const HandSettings s = BookSettings();
+	for (int handed = 0; handed < 2; ++handed) {
+		const bool leftHanded = handed == 1;
+		HandMode mode;
+		HandModeFrame f = BookUp(true, leftHanded);
+		mode.Update(f, s);
+		f.left.buttonsPressed = 1ull << openvr::kButtonIndexB;
+		HandModeResult r = mode.Update(f, s);
+		Check(r.tabletBookExit && !r.controls.menu,
+		      leftHanded ? "left-handed: the off hand's B on a letter - its Exit, no menu key"
+		                 : "the left B on a letter: its Exit, no menu key");
+		r = mode.Update(f, s);
+		Check(!r.tabletBookExit && !r.controls.menu, "held: once only");
+		f.left.buttonsPressed = 0;
+		mode.Update(f, s);
+		f.right.buttonsPressed = 1ull << openvr::kButtonIndexB;
+		r = mode.Update(f, s);
+		Check(!r.tabletBookExit && !r.controls.menu, "the other hand's B: not the close (Escape, as before)");
+	}
+	HandMode mode;
+	HandModeFrame f = BookUp(false, false);
+	f.tablet.page = game::kMenuIdInventory;
+	mode.Update(f, s);
+	f.left.buttonsPressed = 1ull << openvr::kButtonIndexB;
+	const HandModeResult r = mode.Update(f, s);
+	Check(r.controls.menu && !r.tabletBookExit, "the inventory without a book: the left B puts it down, as before");
+}
+
 }  // namespace
 
 int main() {
 	TestWhich();
+	TestBCloses();
 	TestLook();
 	TestTurn();
 	TestWidth();

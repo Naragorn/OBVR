@@ -2836,3 +2836,49 @@ nun nicht mehr durch das tablet clippen können."
   hard, half, open, fist again, closed; eye dumps at each mark). Written, not run.
 - Not verified: how it looks in the headset; whether the fingers held open by the page look natural
   (they stop at the page rather than wrap round its edge); the curl the Index controllers give.
+
+### 32.3 The left B closes a book
+
+Nadi: "bücher sind gut, aber lass nun so machen dass links B auch die schließt (ich glaube dort war
+des schließen oder?)."
+
+- [R log 13:55] He closed every book and letter with a tap on its Exit: "Hands: click sent to the
+  Book menu ... the tile under it "book_scroll_exit"" (1834; 46786, 47250, 47475, 48832 the
+  presses), followed by the tablet's close with its fade: "Menu pause: the tablet's menus fade out",
+  "Tablet: put down", "Tablet: closed - the menus' fade kept out of the room and the eyes (22
+  frame(s))", "Hud: back after the tablet - ..." (1835-1855). Twice a book over the inventory:
+  "Tablet: the Book box gone from the page" (47252, 47476) - the book closed, the inventory stayed.
+  No left B while a book was up in the log.
+- [R code, before] The left B in a menu is the menu key (`vr::PlanHandControls`, `out.menu =
+  in.leftMenuButton`; Tab by default), as on the F1-F4 pages. What Tab does under the book menu was
+  never measured (25.7: book-probe.txt's after_tab, not run). [D] Over the inventory it would put
+  the inventory down with the book, unlike the game's own close.
+- [R menus/book_menu.xml] Both looks' Exit buttons (`book_exit`, `book_scroll_exit`) carry id 31, and
+  the gamepad's B (`xbuttonb`) is "book_exit clicked" / "book_scroll_exit clicked": the game's own
+  close is a click on id 31.
+- **Built**: while a book or a letter is up on the tablet - read alone (from the world) or over the
+  pages (from the inventory; `TabletFrame::bookOver`, read in game/TabletMenu.cpp) - the left B (the
+  off hand's B, the other controller's left-handed) clicks the book's Exit instead of sending the
+  menu key (`vr::TabletKeys`, vr/TabletBook.h, one call in `HandMode::PointAtMenu` in place of the
+  line it replaces). The click: `ClickMenuButton "#31" 1026` through xOBSE, at once
+  (camera/hands/ControlsOut.cpp `CloseBookByB`), as the harness clicks a box's button. The close
+  then runs the path his taps on Exit ran: the tablet's fade and the HUD's return of 31.1.
+- The cases: from the world, the book closes and the tablet with it (nothing under it); from the
+  inventory, the book closes and the inventory stays on the tablet, as Exit leaves it - a second B
+  puts it down; a magic scroll casts on use and never opens the book menu, so there is nothing to
+  close and the B is as before. The scroll gesture's key (rolled up) still closes everything, as
+  before. The right B is Escape as before. The book on its panel (tablet off or not placed): as
+  before.
+- The log: "Tablet: the left B closes the letter - its Exit clicked (the line ran)", "... the book
+  over the pages - ...; the pages stay".
+- [G] xOBSE's ClickMenuButton with "#31" finds the first tile with id 31 and the book menu acts on
+  the id, whichever look's button that tile is (book_exit is hidden in the scroll look). Not
+  verified; the harness scenario says "the line ran" and whether the book menu left the stack.
+- Not covered: a box raised over a book (a script's message) - the B then still clicks the book's
+  Exit under it [D from the code].
+- Tests: tablet_book_test TestBCloses (6 red against stubs, 16 green): the book up alone, as a letter,
+  over the pages; the B's Exit and no menu key there; the pages, no B, off the tablet, the scroll's
+  key as before; through the hand mode, right- and left-handed, once per press, the other hand's B,
+  the inventory without a book.
+- Harness: `tablet-book-b-close.txt` (a book from the inventory closed by the B, the inventory kept,
+  put down by a second B; a letter from the world closed by the B). Written, not run.
