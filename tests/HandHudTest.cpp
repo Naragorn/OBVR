@@ -164,8 +164,10 @@ void TestElements() {
 	Check(xp.valid && Near(xp.left, 87) && xp.top > 832 && Near(xp.right, 286) && Near(xp.bottom, 932),
 	      "Ultimate Leveling: its XP bar joins the bars, its text line no longer");
 	const UiRect line = HudElementRect(ul, un, HudElement::XpText);
-	Check(line.valid && Near(line.left, 87) && Near(line.top, 808) && Near(line.right, 631) && Near(line.bottom, 832),
-	      "Ultimate Leveling: its text line is an element of its own, the whole line");
+	const float m = kHudTextMarginUnits;
+	Check(line.valid && Near(line.left, 87 - m) && Near(line.top, 808 - m) && Near(line.right, 631 + m) &&
+	          Near(line.bottom, 832 + m),
+	      "Ultimate Leveling: its text line is an element of its own, the whole line and its letters' edges");
 	Check(!HudElementRect(t, n, HudElement::XpText).valid, "no Ultimate Leveling: no text line to lift");
 	Check(!HudElementRect(ul, un, HudElement::Spell).valid ||
 	          HudElementRect(ul, un, HudElement::Spell).left > xp.right,
@@ -334,13 +336,14 @@ void TestText() {
 	t[n] = Tile("hudsubtitle_text", 1, 853.25f, 700, 400, 45);
 	t[n++].justify = kHudJustifyCentre;
 	const UiRect notice = HudElementRect(t, n, HudElement::Messages);
-	Check(notice.valid && Near(notice.left, 48) && Near(notice.right, 602) && Near(notice.bottom, 85),
-	      "the notice: its text, the hidden icon left out");
+	const float m = kHudTextMarginUnits;
+	Check(notice.valid && Near(notice.left, 48 - m) && Near(notice.right, 602 + m) && Near(notice.bottom, 85 + m),
+	      "the notice: its text and its letters' edges, the hidden icon left out");
 	const UiRect said = HudElementRect(t, n, HudElement::Subtitles);
-	Check(said.valid && Near(said.left, 653.25f) && Near(said.right, 1053.25f),
+	Check(said.valid && Near(said.left, 653.25f - m) && Near(said.right, 1053.25f + m),
 	      "a subtitle, centred: x is its middle");
 	t[n - 1].justify = kHudJustifyRight;
-	Check(Near(HudElementRect(t, n, HudElement::Subtitles).left, 453.25f), "right-justified: x is its right edge");
+	Check(Near(HudElementRect(t, n, HudElement::Subtitles).left, 453.25f - m), "right-justified: x is its right edge");
 
 	HudTile main[3] = {Tile("HUDMainMenu", -1, 0, 0), Tile("hudmain_background", 0, 87, 850, 620, 70),
 	                   Tile("hudmain_region", 1, 0, -45, 360, 45)};
@@ -348,7 +351,7 @@ void TestText() {
 	Check(!HudElementRect(main, 3, HudElement::Region).valid, "the region's name at alpha 0: nothing to show");
 	main[2].alpha = 200.0f;
 	const UiRect region = HudElementRect(main, 3, HudElement::Region);
-	Check(region.valid && Near(region.top, 805), "fading in: its rectangle");
+	Check(region.valid && Near(region.top, 805 - m), "fading in: its rectangle");
 }
 
 void TestViewAnchor() {
@@ -645,12 +648,14 @@ void TestTarget() {
 	HudTile t[4] = {Tile("HUDInfoMenu", -1, 0, 0), Tile("hudinfo_name", 0, 1600, 880, 120, 45),
 	                Tile("hudinfo_action_icon", 0, 1580, 827, 64, 64), Tile("elsewhere", -1, 10, 10, 5, 5)};
 	const UiRect info = HudElementRect(t, 4, HudElement::Info);
-	Check(info.valid && Near(info.left, 1600) && Near(info.top, 880) && Near(info.right, 1720) && Near(info.bottom, 925),
-	      "the info: every tile under HUDInfoMenu but its action icon, nothing else");
+	const float m = kHudTextMarginUnits;
+	Check(info.valid && Near(info.left, 1600 - m) && Near(info.top, 880 - m) && Near(info.right, 1720 + m) &&
+	          Near(info.bottom, 925 + m),
+	      "the info: every tile under HUDInfoMenu but its action icon, nothing else, with the text's margin");
 	HudTile noIcon[3] = {Tile("HUDInfoMenu", -1, 0, 0), Tile("hudinfo_name", 0, 1600, 880, 120, 45),
 	                     Tile("elsewhere", -1, 10, 10, 5, 5)};
 	const UiRect infoNoIcon = HudElementRect(noIcon, 3, HudElement::Info);
-	Check(infoNoIcon.valid && Near(infoNoIcon.left, 1600) && Near(infoNoIcon.bottom, 925),
+	Check(infoNoIcon.valid && Near(infoNoIcon.left, 1600 - m) && Near(infoNoIcon.bottom, 925 + m),
 	      "the info without an action icon tile: the same");
 
 	const NiPoint3 hit{10.0f, 20.0f, 104.0f};
@@ -728,7 +733,64 @@ void TestTarget() {
 	      "its face turned to the eyes, level");
 }
 
+void TestMargins() {
+	std::printf("The margins round the elements\n");
+	const HudElement text[] = {HudElement::Region, HudElement::Messages, HudElement::Subtitles, HudElement::Info,
+	                           HudElement::XpText};
+	const HudElement other[] = {HudElement::Bars,    HudElement::Spell,   HudElement::Weapon,
+	                            HudElement::Effects, HudElement::LevelUp, HudElement::Compass};
+	bool allText = true;
+	for (const HudElement e : text) {
+		allText = allText && HudElementIsText(e);
+	}
+	bool noneText = true;
+	for (const HudElement e : other) {
+		noneText = noneText && !HudElementIsText(e);
+	}
+	Check(allText && noneText, "the region's name, the notices, the subtitles, the info and the XP line are text");
+
+	const UiRect box{100, 200, 300, 224, true};
+	const float m = kHudTextMarginUnits;
+	const UiRect padded = PadHudElementRect(box, HudElement::XpText);
+	Check(padded.valid && Near(padded.left, 100 - m) && Near(padded.top, 200 - m) && Near(padded.right, 300 + m) &&
+	          Near(padded.bottom, 224 + m),
+	      "a text: its letters' edges past the measured box, on every side");
+	const UiRect bars = PadHudElementRect(box, HudElement::Bars);
+	Check(Near(bars.left, 100) && Near(bars.top, 200) && Near(bars.right, 300) && Near(bars.bottom, 224),
+	      "a picture (the bars): no margin");
+	const UiRect effects = PadHudElementRect(box, HudElement::Effects);
+	Check(Near(effects.left, 92) && Near(effects.top, 184) && Near(effects.right, 312) && Near(effects.bottom, 224),
+	      "the effects: their timer arcs' margin, none below");
+	Check(!PadHudElementRect(UiRect{}, HudElement::Messages).valid, "no rectangle: none, margin or not");
+
+	// The margins in vanilla's layout with Ultimate Leveling's line: each
+	// text stays clear of the pictures beside it.
+	HudTile t[kHudTilesMax];
+	UInt32 n = VanillaTree(t);
+	t[n++] = Tile("hudmain_xp_description", 1, 0, -42, 544, 24);
+	t[n++] = Tile("hudmain_region", 1, 0, -45, 360, 45);
+	const UiRect line = HudElementRect(t, n, HudElement::XpText);
+	const UiRect region = HudElementRect(t, n, HudElement::Region);
+	const UiRect barsRect = HudElementRect(t, n, HudElement::Bars);
+	const UiRect compass = HudElementRect(t, n, HudElement::Compass);
+	const UiRect weapon = HudElementRect(t, n, HudElement::Weapon);
+	const UiRect spell = HudElementRect(t, n, HudElement::Spell);
+	Check(line.valid && barsRect.valid && line.bottom < barsRect.top && line.bottom < compass.top,
+	      "the XP line's margin: above the bars and the compass");
+	Check(region.valid && region.right < compass.left, "the region's name's margin: left of the compass");
+	// Its box already reaches 3 units into the covers over the weapon and
+	// the spell (850 against 847); the margin makes it 7. HandHudLayer::Lift
+	// copies and erases in the elements' order, so the bars, the spell and
+	// the weapon, lifted, are on their quads before the region's name is
+	// erased.
+	Check(Near(region.bottom - weapon.top, 3 + m) && Near(region.bottom - spell.top, 3 + m) &&
+	          static_cast<UInt32>(HudElement::Region) > static_cast<UInt32>(HudElement::Weapon) &&
+	          static_cast<UInt32>(HudElement::Region) > static_cast<UInt32>(HudElement::Spell),
+	      "the region's name: into the covers by its margin, lifted after them");
+}
+
 int main() {
+	TestMargins();
 	TestTarget();
 	TestPlaces();
 	TestTiles();

@@ -3,7 +3,7 @@
 # function_sizes_test allows it.
 # Smaller passes; larger fails. Rewrite with: function_sizes_test --print > tests/function-sizes.txt
 # file<TAB>function or (file globals) or (file lines)<TAB>lines or count
-src/camera/CameraHook.cpp	(file lines)	12396
+src/camera/CameraHook.cpp	(file lines)	12392
 src/camera/CameraHook.cpp	StepShoves	112
 src/camera/CameraHook.cpp	StepGrapple	296
 src/camera/CameraHook.cpp	StepEnemyHealthBars	168
@@ -14,7 +14,7 @@ src/camera/CameraHook.cpp	StepOneHandTwoHander	109
 src/camera/CameraHook.cpp	UpdateHandMode	544
 src/camera/CameraHook.cpp	OnFrameEnd	592
 src/camera/CameraHook.cpp	BeforeFirstScenePass	505
-src/camera/CameraHook.cpp	MaybeSubmitOverlays	930
+src/camera/CameraHook.cpp	MaybeSubmitOverlays	925
 src/camera/CameraHook.cpp	UpdateCrosshairDepth	127
 src/camera/CameraHook.cpp	Install	240
 src/camera/CameraHook.cpp	(file globals)	370
@@ -203,7 +203,6 @@ src/test/WaterVRTestRuntime.cpp	(file globals)	21
 src/ui/ControlPhrase.h	ControlPieces	106
 src/ui/MenuPainter.cpp	PaintMenu#2	163
 src/ui/NativeControlsCard.h	ControlsCardFor	126
-src/vr/HandHud.h	(file lines)	1003
 src/vr/HandInput.h	(file lines)	2071
 src/vr/HandInput.h	StepLaserPress	106
 src/vr/HandMode.cpp	(file lines)	1317

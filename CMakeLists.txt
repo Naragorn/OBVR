@@ -309,6 +309,7 @@ add_library(OBVR SHARED
 	src/game/HudTiles.cpp
 	src/game/Lead.cpp
 	src/render/HandHudLayer.cpp
+	src/render/HandHudMarks.cpp
 	src/game/PlayerAim.cpp
 	src/render/GameDevice.cpp
 	src/render/GameProjection.cpp

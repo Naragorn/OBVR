@@ -56,6 +56,14 @@ void AccumulateCoveredRow(const UInt32* row, UInt32 width, UInt32 y, bool byAlph
 bool MeasureCoveredRect(void* gameDevice, void* surface, UInt32 width, UInt32 height,
                         UInt32 format, bool byAlpha, CoveredRect& out);
 
+// Reads the surface back and hands every row to `visit`, top to bottom -
+// the plumbing under MeasureCoveredRect, for any other count over the
+// pixels (render/HandHudMarks.cpp: the fringes round the hand HUD's cuts).
+// The same GPU stall; false when any step refuses.
+using SurfaceRowVisitor = void (*)(const UInt32* row, UInt32 width, UInt32 y, void* context);
+bool VisitSurfaceRows(void* gameDevice, void* surface, UInt32 width, UInt32 height, UInt32 format,
+                      SurfaceRowVisitor visit, void* context);
+
 // The same measurement on the game's back buffer, which is where the cinema
 // frames - films, loading screens, the main menu - carry their picture.
 // Hands back the buffer's size alongside the box so the log line can show

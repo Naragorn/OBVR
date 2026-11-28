@@ -16,39 +16,13 @@
 #include "core/MathFns.h"
 #include "core/Types.h"
 #include "game/NiMath.h"
+#include "vr/HudElement.h"
 #include "vr/HudTileTree.h"
 #include "vr/OpenVRTypes.h"
 
 namespace obvr::vr {
 
-// ---- The elements and where they go --------------------------------------
-
-enum class HudElement : UInt8 {
-	Bars = 0,     // health, magicka, fatigue
-	Spell = 1,    // the equipped spell
-	Weapon = 2,   // the equipped weapon, the arrow count, its condition
-	Effects = 3,  // the active effects' icons
-	LevelUp = 4,  // the level-up icon
-	Compass = 5,
-	Region = 6,     // the region's name, shown when one is discovered
-	Messages = 7,   // the notices, top left in vanilla ("Your Blade skill increased.")
-	Subtitles = 8,  // what people say
-	Info = 9,       // what the crosshair is on: its name, the action, value and weight (HUDInfoMenu)
-	XpText = 10,    // Ultimate Leveling's text line over the bars (hudmain_xp_description)
-};
-inline constexpr UInt32 kHudElementCount = 11;
-
-// The INI's key stems ([HandHud] <Stem>Place, <Stem>Opacity, <Stem>Size).
-inline constexpr const char* kHudElementKeys[kHudElementCount] = {
-	"Bars", "Spell", "Weapon", "Effects", "LevelUp", "Compass", "Region", "Messages", "Subtitles", "Info", "XpText"};
-
-// Which menu an element's tiles are in: HUDMainMenu, HUDSubtitleMenu for the
-// notices and the subtitles (hud_subtitle_menu.xml), HUDInfoMenu for what the
-// crosshair is on.
-inline bool HudElementInSubtitleMenu(HudElement e) {
-	return e == HudElement::Messages || e == HudElement::Subtitles;
-}
-inline bool HudElementInInfoMenu(HudElement e) { return e == HudElement::Info; }
+// ---- Where the elements go (the elements: vr/HudElement.h) -------------
 
 // Where an element goes. View leaves it in the main panel ahead of the
 // player, as the game drew it; Off takes it out and shows it nowhere. Top and
@@ -367,10 +341,10 @@ inline constexpr const char* kHudInfoRoot = "HUDInfoMenu";
 // 2026-10-07: "doppelte tooltips ... nicht dieselbe größe").
 inline constexpr const char* kHudInfoActionIcon = "hudinfo_action_icon";
 
-// An element's rectangle in HUD units, invalid when none of its tiles is
-// found with a size - a UI mod that renamed them, or nothing to show (no
-// active effect).
-inline UiRect HudElementRect(const HudTile* tiles, UInt32 count, HudElement element) {
+// An element's box in HUD units: the union of its tiles' own rectangles,
+// invalid when none of its tiles is found with a size - a UI mod that
+// renamed them, or nothing to show (no active effect).
+inline UiRect HudElementBox(const HudTile* tiles, UInt32 count, HudElement element) {
 	UiRect r;
 	if (element == HudElement::Effects || element == HudElement::Info) {
 		const SInt32 root =
@@ -383,13 +357,6 @@ inline UiRect HudElementRect(const HudTile* tiles, UInt32 count, HudElement elem
 			if (static_cast<SInt32>(i) != actionIcon && HudTileUnder(tiles, count, static_cast<SInt32>(i), root)) {
 				r = UnionRect(r, HudTileRect(tiles, count, static_cast<SInt32>(i)));
 			}
-		}
-		// Each icon's timer arc (icon_timer, a NIF without a size) reaches past
-		// the icon - measured 2026-11-15 about 5 units left, 8 right, 13 above.
-		if (element == HudElement::Effects && r.valid) {
-			r.left -= 8.0f;
-			r.right += 12.0f;
-			r.top -= 16.0f;
 		}
 		return r;
 	}
@@ -406,6 +373,13 @@ inline UiRect HudElementRect(const HudTile* tiles, UInt32 count, HudElement elem
 		r = UnionRect(r, HudTileRect(tiles, count, index));
 	}
 	return r;
+}
+
+// The element's rectangle as it is lifted: its box with its margin
+// (PadHudElementRect) - the effects' timer arcs, the letters' edges past a
+// text's box.
+inline UiRect HudElementRect(const HudTile* tiles, UInt32 count, HudElement element) {
+	return PadHudElementRect(HudElementBox(tiles, count, element), element);
 }
 
 struct CaptureRect {

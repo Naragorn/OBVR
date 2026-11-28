@@ -710,3 +710,50 @@ die sollen nun auch an die hand links". `EffectsPlace` was `left` on both machin
   (`icon_timer`, `Health_Bar01.NIF`, no width or height) in the panel: measured in the panel
   picture about 5 units left, 8 right and 13 above the icon. The Effects rectangle now keeps a
   margin of 8, 12 and 16 units (hand_hud_test).
+
+## 13. The fringes on the letters (2026-11-28; harness and headset open)
+
+Nadi: in the world, bits of the texts stayed in the view instead of going
+with them - Ultimate Leveling's line among them - "Fransen an den
+Buchstaben".
+
+- **Cause (derived from the code, not yet measured).** A text element was
+  cut at its tiles' box exactly: a text tile's width and height are its
+  string's measured box (Ultimate Leveling's line 544 x 24 units for the start
+  message, section 10), and the letters are drawn past it - the font's
+  flourishes and the filtered edge of each glyph at about 2.3 pixels a unit.
+  `HandHudLayer::Lift` erases only the rectangle, so those pixels stayed in
+  the main panel, and the copy on the hand lost them. The effects had the
+  same fault with their timer arcs (section 12), fixed by a margin.
+- **Fix.** `vr::PadHudElementRect` (vr/HudElement.h, split out of
+  vr/HandHud.h with the element list): the text elements - Region, Messages,
+  Subtitles, Info, XpText - keep `kHudTextMarginUnits` (4, a first guess, about
+  9 pixels) on every side; the effects keep their measured arc margin.
+  `HudElementBox` is the box without it, `HudElementRect` the box with it; the
+  tablet's texts (vr/TabletTexts.h) take the same rectangles. In vanilla's
+  layout the margin stays clear of the bars and the compass (the XP line's
+  bottom 836 against 845 and 847) and the region's name left of the compass;
+  the region's box already reaches 3 units into the covers over the weapon
+  and the spell and now 7 - those are lifted before it (`Lift` goes in the
+  elements' order), so with the default places nothing of them is erased
+  (hand_hud_test "The margins round the elements").
+- **Cost.** Four additions an element a frame; no read, no allocation. The boxes without the margin are converted only on a probe mark.
+- **The instrument.** At a hand script's mark with `[Debug] HudTileProbe`,
+  render/HandHudMarks.cpp reads the panel back at full size twice (a GPU
+  stall, on the mark's frame only) and logs per element, side by side, how
+  many rings of pixels next to the edge are drawn on (vr/HudFringe.h,
+  hud_fringe_test): before the cut "<element> drawn past its box" - the
+  overhang, what the cut without the margin left, the number the margin must
+  cover - and after it "<element> fringe" - 0 on every side is a clean cut.
+  A neighbour behind a clear ring does not count; one touching the box (the
+  region's name over the XP line) does.
+- **Harness.** `hand-hud-fringe.txt` (a notice; with Ultimate Leveling active
+  its line too) expects "fringe left 0 px, top 0 px, right 0 px, bottom 0 px"
+  at both marks. Written, not run: the change was made in a cloud session
+  without the game. If the overhang comes out above the margin, the margin
+  takes the measured number, as the effects' did.
+- **For OBNG (to write to `knowledge/`, derived, unverified):** a text tile's
+  width and height traits are the string's measured box, and the drawn glyphs
+  reach past it; a cut-out by the traits needs a margin or the text node's
+  drawn bound.
+

@@ -248,6 +248,7 @@
 #include "render/CrosshairCache.h"
 #include "render/CrosshairLayer.h"
 #include "render/HandHudLayer.h"
+#include "render/HandHudMarks.h"
 #include "render/VignetteLayer.h"
 #include "render/HudLayer.h"
 #include "render/LaserLayer.h"
@@ -8723,6 +8724,8 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		render::GameBelievedSize(believedWidth, believedHeight);
 		const UInt32 uiHeight = believedHeight > 0 ? believedHeight : g_hudLayer.CaptureHeight();
 		vr::CaptureRect rects[vr::kHudElementCount];
+		vr::CaptureRect boxes[vr::kHudElementCount];  // without the margins, for the probe at a mark
+		const bool probeAtMark = test::HandScriptMarkedThisFrame() && config.hudTileProbe;
 		bool lift[vr::kHudElementCount];
 		bool show[vr::kHudElementCount];
 		for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {
@@ -8731,12 +8734,21 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			show[e] = vr::HudElementShown(handHud, element);
 			const bool subtitleMenu = vr::HudElementInSubtitleMenu(element);
 			const bool infoMenu = vr::HudElementInInfoMenu(element);
-			const vr::UiRect r =
-				lift[e] ? vr::HudElementRect(infoMenu ? s_infoTiles : subtitleMenu ? s_subtitleTiles : s_hudTiles,
-				                             infoMenu ? infoCount : subtitleMenu ? subtitleCount : tileCount, element)
+			const vr::UiRect box =
+				lift[e] ? vr::HudElementBox(infoMenu ? s_infoTiles : subtitleMenu ? s_subtitleTiles : s_hudTiles,
+				                            infoMenu ? infoCount : subtitleMenu ? subtitleCount : tileCount, element)
 				        : vr::UiRect{};
+			const vr::UiRect r = vr::PadHudElementRect(box, element);
 			rects[e] = vr::UiRectToCapture(r, uiHeight, g_hudLayer.CaptureWidth(), g_hudLayer.CaptureHeight());
+			boxes[e] = probeAtMark ? vr::UiRectToCapture(box, uiHeight, g_hudLayer.CaptureWidth(),
+			                                             g_hudLayer.CaptureHeight())
+			                       : vr::CaptureRect{};
 			handHudFrame.rect[e] = r;
+		}
+		const render::HandHudPanel panel{render::GetGameDevice(), g_hudLayer.CaptureSurface(),
+		                                 g_hudLayer.CaptureWidth(), g_hudLayer.CaptureHeight()};
+		if (probeAtMark) {
+			render::LogHandHudOverhang(test::HandScriptMarkName(), boxes, lift, panel);
 		}
 		g_handHudLayer.Lift(render::GetGameDevice(), g_hudLayer.CaptureSurface(), g_hudLayer.CaptureWidth(),
 		                    g_hudLayer.CaptureHeight(), rects, lift, show);
@@ -8773,26 +8785,10 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			s_infoState = state;
 		}
 		// At a hand-script mark: what was found and lifted, and with the tile
-		// probe on the atlas and the panel left behind as pictures.
+		// probe on the fringes round the cuts and the pictures.
 		if (test::HandScriptMarkedThisFrame()) {
-			for (UInt32 e = 0; e < vr::kHudElementCount; ++e) {
-				OBVR_LOG("Hand HUD: at \"%s\" - %s %s, %s, pixels %d,%d..%d,%d", test::HandScriptMarkName(),
-				         vr::kHudElementKeys[e],
-				         vr::kHudPlaceNames[static_cast<UInt32>(handHud.element[e].place)],
-				         g_handHudLayer.Lifted(e) ? "lifted" : (rects[e].valid ? "found, not lifted" : "not found"),
-				         rects[e].left, rects[e].top, rects[e].right, rects[e].bottom);
-			}
-			if (config.hudTileProbe) {
-				char name[96];
-				std::snprintf(name, sizeof(name), "OBVR-HandHud-atlas-%s.bmp", test::HandScriptMarkName());
-				const bool atlas = g_handHudLayer.DumpAtlas(render::GetGameDevice(), name);
-				std::snprintf(name, sizeof(name), "OBVR-HandHud-panel-%s.bmp", test::HandScriptMarkName());
-				const bool panel = render::DumpSurfaceBmp(
-					render::GetGameDevice(), g_hudLayer.CaptureSurface(), g_hudLayer.CaptureWidth(),
-					g_hudLayer.CaptureHeight(), render::d3d9::kFormatA8R8G8B8, name);
-				OBVR_LOG("Hand HUD: the atlas %s, the panel left behind %s", atlas ? "written" : "refused",
-				         panel ? "written" : "refused");
-			}
+			render::ReportHandHudAtMark(test::HandScriptMarkName(), handHud, g_handHudLayer, rects, panel,
+			                            config.hudTileProbe);
 		}
 	}
 

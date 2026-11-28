@@ -1,0 +1,42 @@
+# The fringes on the letters (docs/hud-on-hands-spec.md section 13; Nadi,
+# 2026-11-28: bits of the texts stayed in the view, "Fransen an den
+# Buchstaben", Ultimate Leveling's line among them). A text is cut out of the
+# panel with a margin round its measured box (vr::kHudTextMarginUnits). At
+# each mark the tile probe reads the panel back twice: before the cut, how far
+# the drawn letters reach past their box ("drawn past its box" - what the cut
+# without the margin left behind, the number the margin has to cover); after
+# the cut, how far drawn pixels still reach past it ("fringe" - 0 on every
+# side is a clean cut).
+#
+# The notice is vanilla's: a skill increase puts "Your Blade skill
+# increased." into HUDSubtitleMenu (Messages, top), and it stands about 3 s
+# (hand-hud-text.txt). With Ultimate Leveling active the same lines come for
+# XpText, its line over the bars, and with the crosshair on something for
+# Info; neither is expected here, since neither is there without them.
+#
+# Run with:
+#   python3 tools/hand-script-run.py tools/hand-scripts/hand-hud-fringe.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini HandHud Enabled=1
+ini Debug HudTileProbe=1
+
+expect HandScript: finished
+expect - Messages top, lifted
+expect Hand HUD: at "msg" - Messages drawn past its box
+expect Hand HUD: at "msg" - Messages fringe left 0 px, top 0 px, right 0 px, bottom 0 px
+expect Hand HUD: at "msg2" - Messages fringe left 0 px, top 0 px, right 0 px, bottom 0 px
+reject could not be read back
+reject HandScript: WARNING
+
+wait 10
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.40 -0.30
+wait 1
+mark before
+console-at before player.advskill blade 1
+wait 1
+mark msg
+wait 1
+mark msg2
+wait 2
