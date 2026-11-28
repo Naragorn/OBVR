@@ -1134,3 +1134,18 @@ scenario with eye dumps or a film, docs/hand-script-harness.md) before a fix is 
 the mould of `tools/water-far-flicker.py`), Linux harness. The fixes cannot be costed
 before that. **Model and effort:** Sonnet 5.5 medium for the scenarios and the measuring;
 the fix by what the measurement shows (a shader twin like WaterAA's: Opus 5.5 high).
+
+## Swimming with the arms: parked, needs more work (Nadi, 2026-11-28)
+
+Built on 2026-11-27 on the branch `swim-1127-win` (arm strokes carry the swimmer; its spec
+is `docs/swimming-spec.md` on that branch) and in the owner's Windows test builds since
+then. His verdict after two days of runs: "ja schwimmen ging noch nicht gut. das braucht
+mehr arbeit, aber nicht jetzt."
+
+- **State:** not merged into main, and not to be merged as it is. From 2026-11-28 the
+  Windows test build is main alone, so swimming is the stick's again.
+- **Not known:** what exactly was not good - he gave no detail, and no run was read for
+  it. The log of 2026-11-27 23:34 has five strokes; how far each carried and whether a
+  stroke downward dives was never evaluated.
+- **When it is taken up again:** his words on what felt wrong first; then the strokes'
+  lines of a run against what he did; then the harness scenario of the branch on Linux.
