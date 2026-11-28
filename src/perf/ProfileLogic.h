@@ -176,6 +176,10 @@ enum class EventType : UInt8 {
 	// whether the log costs performance).
 	LogWrite,
 	LogDebugString,
+	// The mirror's world render on the tablet's glass (render/MirrorGlassPass.cpp,
+	// docs/mirror-spec.md stage 2): one span a pass, the CPU and GPU time of
+	// the engine's render from the mirror's camera and the copy to the glass.
+	MirrorPass,
 };
 
 enum class DeliveryMode : UInt8 {

@@ -481,6 +481,22 @@ void TestTabletMirror() {
 	obvr::Config both;
 	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirror=1\nMirrorDust=1\n", both);
 	Check(both.hands.tablet.mirror && both.hands.tablet.mirrorDust, "both set on");
+
+	// Stage 2 (docs/mirror-spec.md): the reflection on the glass and its size.
+	Check(untouched.hands.tablet.mirrorWorld, "the reflection defaults on");
+	Check(untouched.hands.tablet.mirrorPixels == 1024u, "the mirror's picture defaults to 1024 pixels a side");
+	obvr::Config dark;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorWorld=0\n", dark);
+	Check(!dark.hands.tablet.mirrorWorld && dark.hands.tablet.mirror, "MirrorWorld=0 leaves the dark glass, the tab stays");
+	obvr::Config small;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorPixels=100\n", small);
+	Check(small.hands.tablet.mirrorPixels == 256u, "MirrorPixels below 256: 256");
+	obvr::Config large;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorPixels=4096\n", large);
+	Check(large.hands.tablet.mirrorPixels == 2048u, "MirrorPixels above 2048: 2048");
+	obvr::Config softer;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorPixels=768\n", softer);
+	Check(softer.hands.tablet.mirrorPixels == 768u, "MirrorPixels=768 as it is");
 }
 
 void TestMonitorMenusOnly() {

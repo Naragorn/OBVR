@@ -99,6 +99,11 @@ struct TabletSettings {
 	// the light dust over its glass.
 	bool mirror = true;
 	bool mirrorDust = true;
+	// Stage 2 (render/MirrorGlassPass.cpp): the world reflected on the glass
+	// (off: the dark glass of stage 1), and the mirror's texture's side in
+	// pixels, 256 to 2048 (vr/MirrorGlassLogic.h ClampMirrorPixels).
+	bool mirrorWorld = true;
+	UInt32 mirrorPixels = 1024;
 	TabletFigure figure = TabletFigure::Tab;  // Nadi, 2026-11-18: the tab by default
 	TabletUnroll unroll = TabletUnroll::Sideways;
 	// Where the page's lower edge meets the hand: above and ahead of the
