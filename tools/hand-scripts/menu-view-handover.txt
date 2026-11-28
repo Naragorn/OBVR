@@ -1,0 +1,102 @@
+# The view keeps its place as a menu opens and closes with the body turned
+# under it (Nadi in the headset, 2026-11-28: "inv öffnen b/geste, der körper
+# bleibt stabil aber die vr view switcht auf die position vom linken auge.
+# beim schließen wieder zurück. dass ist auch so bei schriftrollen/bücher und
+# auch beim Esc menü"; docs/inventory-tablet-spec.md 28.4).
+# A menu frame the camera hook does not run on is built by the menu stand-in
+# (PlaceMenuCamera), which left out what the hook lays on the engine's eye
+# besides the head: the aim arc above all, which the walk direction leaves
+# standing after a walk (camera/MenuViewTerms.h). So the body is turned first:
+# WalkDirection=head, the head turned 40 degrees, a walk of a second, the head
+# back - the body keeps the turn (an arc of 2 x 4.6 x sin 20 = 3.1 units).
+# Then the tablet (the left B), a book (equipped from the console: equipping
+# reads it; a click closes it) and the Esc menu, each with a mark before, in
+# and after.
+#
+# To read: "View handover:" lines at each change between the camera hook and
+# the menu stand-in (two lines a frame, the change's frame and two after) -
+# the first eye drawn against the last frame of the other kind, in the head's
+# right, forward, up and in half-IPDs, and every term's difference. After the
+# fix the first eye moves by the head's own motion only (here none: well under
+# 0.1 units, 0.0x half-IPDs) and the arc's difference is 0; before it the
+# first eye and the arc both moved about 3 units. "Camera: at the mark - the
+# eyes at ..." is the same place at all marks of a menu (before, in, after).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/menu-view-handover.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands WalkDirection=head
+ini Hands ReachOpens=0
+ini Tablet Enabled=1
+ini Tablet InScene=1
+ini Render UnpausedMenus=0
+ini Render MonitorMenusOnly=0
+ini Render LiveMenuBackground=1
+ini Render MenuStandIn=1
+
+console-at settle CloseAllMenus
+console-at turned player.additem 00024590 1
+console-at book-before player.equipitem 00024590
+
+expect HandScript: finished
+expect Walk: the body turns to the walk direction
+expect View handover: menu stand-in frame 0 after the change from the camera hook
+expect View handover: camera hook frame 0 after the change from the menu stand-in
+expect View handover: against the last camera hook frame
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.20 -0.45 -0.10
+right rot 40 32 0
+mark settle
+wait 2
+head yaw 40
+wait 1
+left stick 0 1
+wait 1
+left stick 0 0
+wait 1
+head yaw 0
+wait 2
+mark turned
+wait 2
+
+mark tablet-before
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark tablet-in
+wait 2
+left b 1
+wait 0.2
+left b 0
+wait 2.5
+mark tablet-after
+wait 2
+
+mark book-before
+wait 3
+mark book-in
+wait 1
+key 0x01 1
+wait 0.2
+key 0x01 0
+wait 2
+mark book-after
+wait 2
+
+mark esc-before
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark esc-in
+wait 1
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark esc-after
+wait 1
