@@ -244,6 +244,7 @@ inline MenuTarget PlaceMenu(const HandModeFrame& f, const HandSettings& s, bool 
 	r.tabletGripsOpen = scroll == nullptr || rolled.gripsOpen;
 	r.tabletUpright = s.tablet.unroll == TabletUnroll::Vertical;
 	r.tabletShare = rolled.betweenHands ? rolled.amount : -1.0f;
+	r.tabletRolledUp = rolled.rolledUp;
 	if (tablet.valid && f.right.valid && rolled.betweenHands) {
 		tablet = PlaceBetweenHands(tablet, f, s);
 	} else if (tablet.valid && f.right.valid && rolled.holderRight &&

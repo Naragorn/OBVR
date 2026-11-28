@@ -512,9 +512,53 @@ void TestRolesBeforeTheGrips() {
 	Check(r.phase == TabletScrollPhase::Held && !r.holderRight, "switched before the grips: the off hand as it is now");
 }
 
+// Rolled up or back with its close sent: nothing of it shown while the menus
+// are still up (vr::TabletDrawnShare), until menu mode is over.
+void TestRolledUp() {
+	std::printf("Rolled up, the close sent:\n");
+	TabletScrollState s;
+	Begin(s, 0.12f);
+	TabletScrollResult r = StepTabletScroll(s, InMenu(Hands(0.45f, true, true)));
+	Check(!r.rolledUp, "unrolling: not rolled up");
+	r = StepTabletScroll(s, InMenu(Hands(0.45f, true, false)));
+	Check(!r.rolledUp && r.phase == TabletScrollPhase::Held, "held: not rolled up");
+	TabletScrollFrame f = InMenu(Hands(0.30f, true, true));
+	f.freeEndValid = true;
+	f.freeEnd = f.right;
+	StepTabletScroll(s, f);
+	r = StepTabletScroll(s, InMenu(Hands(0.14f, true, true)));
+	Check(r.menuKey && r.rolledUp, "rolled up and the key sent: rolled up, the same frame");
+	r = StepTabletScroll(s, InMenu(Hands(0.14f, true, true)));
+	Check(r.rolledUp, "the menus still up (their fade): still rolled up");
+	r = StepTabletScroll(s, Hands(0.14f, true, true));
+	Check(!r.rolledUp, "menu mode over: no longer");
+
+	TabletScrollState back;
+	Begin(back, 0.12f);
+	StepTabletScroll(back, InMenu(Hands(0.25f, true, true)));
+	r = StepTabletScroll(back, InMenu(Hands(0.25f, true, false)));
+	Check(r.rolledUp, "let go half open: rolled back, nothing shown");
+
+	TabletScrollState owed;
+	Begin(owed, 0.12f);
+	r = StepTabletScroll(owed, Hands(0.12f, true, false));
+	Check(r.rolledUp, "rolled back before the menus came: rolled up");
+	r = StepTabletScroll(owed, InMenu(Hands(0.12f, true, false)));
+	Check(r.menuKey && r.rolledUp, "the menus come and the owed close goes: still nothing shown");
+
+	TabletScrollState b;
+	f = InMenu(Hands(0.40f, false, false));
+	f.tabletUp = true;
+	r = StepTabletScroll(b, f);
+	Check(!r.rolledUp, "opened by the B: not rolled up");
+	r = StepTabletScroll(b, Hands(0.40f, false, false));
+	Check(!r.rolledUp, "closed by the B: not rolled up (the B's close is its own)");
+}
+
 }  // namespace
 
 int main() {
+	TestRolledUp();
 	TestOpen();
 	TestShort();
 	TestRefused();

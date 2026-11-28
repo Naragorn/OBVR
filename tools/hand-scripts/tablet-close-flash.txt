@@ -1,0 +1,96 @@
+# No frame of the menus in front as the tablet closes (Nadi, headset
+# 2026-11-28: "beim schließen egal ob B oder geste sehe ich für einen frame
+# das komplette inventar + texte ... vor mir aufploppen";
+# docs/inventory-tablet-spec.md section 31.1).
+# Two causes, each with its line: the room's panel came back with the frame
+# the fade ended, given that frame's picture and shown in the same breath -
+# now it is handed the picture and shown a frame later ("Hud: back after the
+# tablet"); and the scroll's close showed the page fully open again for the
+# frame the key went out - now nothing of it is drawn once rolled up (no
+# "the overlay ... the tablet" width line after the open's).
+# Part 1: the left B opens and closes it. Part 2: the gesture opens it,
+# unrolled between the hands, the right takes the free end and rolls it up.
+# The eye dumps at the marks right after each close show the room (no page,
+# no panel) - a mark lands some frames after the press, so the one frame
+# itself is told by the lines, not a picture [the harness has no per-frame
+# dump].
+# Written 2026-11-28, not run (Linux only). Run with:
+# python3 tools/hand-script-run.py tools/hand-scripts/tablet-close-flash.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Tablet Enabled=1
+ini Tablet InScene=1
+ini Tablet HeldLeanDegrees=0
+ini Tablet HeldRollDegrees=0
+ini Tablet HeldAcrossCm=0
+ini Tablet HeldOutCm=0
+ini Tablet Figure=off
+ini Tablet Unroll=sideways
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands RightHandGripX=0
+ini Hands RightHandGripY=0
+ini Hands RightHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands StowRight=0
+ini Hands StowForward=0.45
+ini Hands StowUp=-0.30
+ini Hands StowRadius=0.20
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at settle CloseAllMenus
+
+expect HandScript: finished
+count 2 Tablet: closed - the menus' fade kept out of the room and the eyes
+count 2 Hud: back after the tablet - this frame's picture handed over, the overlay shown from the next
+expect Tablet: the scroll sends the menu key (the menus close)
+reject HandScript: WARNING
+
+wait 12
+mark settle
+wait 2
+left pos -0.06 -0.30 -0.45
+right pos 0.06 -0.30 -0.45
+left rot 0 0 0
+right rot 0 0 0
+wait 1
+mark world
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark open_b
+left b 1
+wait 0.2
+left b 0
+wait 0.1
+mark closing_b
+wait 1
+mark closed_b
+left grip 1
+right grip 1
+wait 0.6
+left pos -0.16 -0.30 -0.45
+right pos 0.16 -0.30 -0.45
+wait 0.4
+left pos -0.24 -0.30 -0.45
+right pos 0.24 -0.30 -0.45
+wait 0.4
+right grip 0
+wait 0.8
+mark open_gesture
+right pos 0.10 -0.30 -0.45
+wait 0.3
+right grip 1
+wait 0.3
+right pos -0.02 -0.30 -0.45
+wait 0.4
+mark closing_gesture
+right grip 0
+left grip 0
+wait 1
+mark closed_gesture
+wait 1

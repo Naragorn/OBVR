@@ -103,6 +103,7 @@ struct TabletScrollState {
 	float closeOwed = -1.0f;   // seconds a close has waited for the menus to be up; < 0 none
 	bool lastGrip[2] = {false, false};
 	bool rolesAtGrip = false;  // the roles as the pair's first grip closed from both open
+	bool rolledUp = false;     // the scroll sent its close; kept until menu mode is over
 };
 
 struct TabletScrollResult {
@@ -113,6 +114,9 @@ struct TabletScrollResult {
 	bool holderRight = false;  // held by the right hand (the left points and taps)
 	bool holderTop = false;    // the hand that keeps it was the upper one
 	bool gesture = false;      // the scroll owns the frame: unrolling or rolling up
+	// Rolled up or back and its close sent: nothing of it to show while the
+	// menus are still up (vr::TabletDrawnShare).
+	bool rolledUp = false;
 	TabletScrollRefusal refused = TabletScrollRefusal::None;  // both grips closed and the scroll not begun: why
 	float refusedBy = 0.0f;    // the measure that refused it (metres, or the seconds between the grips)
 	// For the handover's gate (vr/GripClaim.h): the hands where the gesture can
@@ -330,6 +334,7 @@ inline TabletScrollResult StepTabletScroll(TabletScrollState& s, const TabletScr
 		}
 		s.menuSent = false;
 		s.phase = TabletScrollPhase::AwaitRelease;
+		s.rolledUp = true;
 	};
 	if (f.menuMode) {
 		s.menuSent = false;
@@ -368,6 +373,9 @@ inline TabletScrollResult StepTabletScroll(TabletScrollState& s, const TabletScr
 	}
 	s.lastGrip[0] = f.grip[0];
 	s.lastGrip[1] = f.grip[1];
+	// Rolled up until its menus are gone - or, owed, until they came and went.
+	s.rolledUp = s.rolledUp && (f.menuMode || s.closeOwed >= 0.0f);
+	r.rolledUp = s.rolledUp;
 	r.phase = s.phase;
 	r.amount = s.amount;
 	r.holderRight = s.holderRight;

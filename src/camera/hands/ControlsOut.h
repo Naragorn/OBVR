@@ -26,6 +26,7 @@
 #include "render/VignetteLayer.h"
 #include "vr/MenuHaptics.h"
 #include "vr/TabletClose.h"
+#include "vr/TabletOverlayGate.h"
 
 namespace obvr::camera::hands {
 
@@ -75,6 +76,7 @@ struct ControlsOutState {
 	float tabletSeconds = 0.0f;
 	bool tabletWasUp = false;
 	vr::TabletCloseState tabletClose;  // the frames its menus close on (vr/TabletClose.h)
+	vr::OverlayReturnState overlayReturn;  // the room's panel back after the tablet (vr/TabletOverlayGate.h)
 	vr::HeldPlace heldSaid;            // the place in the hand as last said (vr::HeldPlace), and its lines
 	bool heldSaidOnce = false;
 	UInt32 heldLinesLeft = 40;
