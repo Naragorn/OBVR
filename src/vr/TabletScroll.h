@@ -79,6 +79,9 @@ struct TabletScrollFrame {
 	bool freeEndValid = false;
 	NiPoint3 freeEnd{0.0f, 0.0f, 0.0f};
 	float dt = 0.0f;
+	// The roles swapped this frame (vr::AssignHandRoles): the hands above are
+	// roles; a switch between the pair's grips is read against it.
+	bool rolesSwapped = false;
 };
 
 enum class TabletScrollPhase : UInt8 { Idle, Unrolling, Held, RollingUp, AwaitRelease };
@@ -99,6 +102,7 @@ struct TabletScrollState {
 	bool menuSent = false;     // the menu key sent to open; the menus not yet seen
 	float closeOwed = -1.0f;   // seconds a close has waited for the menus to be up; < 0 none
 	bool lastGrip[2] = {false, false};
+	bool rolesAtGrip = false;  // the roles as the pair's first grip closed from both open
 };
 
 struct TabletScrollResult {
@@ -111,6 +115,12 @@ struct TabletScrollResult {
 	bool gesture = false;      // the scroll owns the frame: unrolling or rolling up
 	TabletScrollRefusal refused = TabletScrollRefusal::None;  // both grips closed and the scroll not begun: why
 	float refusedBy = 0.0f;    // the measure that refused it (metres, or the seconds between the grips)
+	// For the handover's gate (vr/GripClaim.h): the hands where the gesture can
+	// begin (allowed, no menu, both empty, the controllers together at the
+	// ring), the frame it began, both grips open.
+	bool zone = false;
+	bool began = false;
+	bool gripsOpen = false;
 };
 
 inline float Distance(const NiPoint3& a, const NiPoint3& b) {
@@ -196,7 +206,7 @@ inline TabletScrollRefusal ScrollTry(const TabletScrollFrame& f, const TabletScr
 inline void StepIdle(TabletScrollState& s, const TabletScrollFrame& f, const TabletScrollLimits& l, const bool (&down)[2],
                      float apart, TabletScrollResult& r) {
 	if (f.allowed && f.tabletUp && f.menuMode) {
-		const TabletHolder holder = TabletHolderOnceOpen(TabletOpenedBy::Button, f.left.y, f.right.y, false);
+		const TabletHolder holder = TabletHolderOnceOpen(TabletOpenedBy::Button, f.left.y, f.right.y, false, f.rolesSwapped);
 		s.phase = TabletScrollPhase::Held;
 		s.holderRight = holder.weaponHand;
 		s.holderTop = holder.onTop;
@@ -268,7 +278,10 @@ inline bool StepUnrolling(TabletScrollState& s, const TabletScrollFrame& f, cons
 	if ((f.grip[0] || f.grip[1]) && s.amount >= 1.0f) {
 		// Whichever hand let go, the off hand holds it (vr/TabletHolder.h). The
 		// scroll works in roles; the controller is the caller's (ControlsOut).
-		const TabletHolder holder = TabletHolderOnceOpen(TabletOpenedBy::Scroll, f.left.y, f.right.y, false);
+		// The sides as the pair's first grip closed decide, so a switch since
+		// cannot move it to the weapon hand.
+		const TabletHolder holder = TabletHolderOnceOpen(TabletOpenedBy::Scroll, f.left.y, f.right.y,
+		                                                 f.rolesSwapped != s.rolesAtGrip, f.rolesSwapped);
 		s.phase = TabletScrollPhase::Held;
 		s.holderRight = holder.weaponHand;
 		s.holderTop = holder.onTop;
@@ -322,6 +335,15 @@ inline TabletScrollResult StepTabletScroll(TabletScrollState& s, const TabletScr
 		s.menuSent = false;
 	}
 	AgeGrips(s, f, down, dt);
+	// The sides as the pair's first grip closes from both open (vr/TabletHolder.h).
+	if ((down[0] || down[1]) && !s.lastGrip[0] && !s.lastGrip[1]) {
+		s.rolesAtGrip = f.rolesSwapped;
+	}
+	// Where the gesture can begin, for the handover's gate (vr/GripClaim.h).
+	float by = 0.0f;
+	r.zone = s.phase == TabletScrollPhase::Idle && f.allowed && !f.menuMode && f.handsEmpty &&
+	         ScrollPoseRefusal(f, l, by) == TabletScrollRefusal::None;
+	const bool wasIdle = s.phase == TabletScrollPhase::Idle;
 	switch (s.phase) {
 	case TabletScrollPhase::Idle:
 		StepIdle(s, f, l, down, apart, r);
@@ -352,6 +374,8 @@ inline TabletScrollResult StepTabletScroll(TabletScrollState& s, const TabletScr
 	r.holderTop = s.holderTop;
 	r.betweenHands = s.phase == TabletScrollPhase::Unrolling || s.phase == TabletScrollPhase::RollingUp;
 	r.gesture = r.betweenHands;
+	r.began = wasIdle && s.phase == TabletScrollPhase::Unrolling;
+	r.gripsOpen = !f.grip[0] && !f.grip[1];
 	return r;
 }
 

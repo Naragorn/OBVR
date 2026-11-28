@@ -760,11 +760,13 @@ void TestScroll() {
 		r = mode.Update(f, s);
 	}
 	Check(!r.controls.menu, "the pose held with open grips: nothing yet");
+	Check(r.tabletZone && r.tabletGripsOpen && !r.tabletBegan, "the handover's gate reads: in the gesture's zone, grips open");
 	const UInt64 grip = 1ull << openvr::kButtonIndexGrip;
 	f.left.buttonsPressed = grip;
 	f.right.buttonsPressed = grip;
 	r = mode.Update(f, s);
 	Check(r.controls.menu && r.tabletGrips, "both grips closed: the menu key, the menus open as it unrolls; the grips are the scroll's");
+	Check(r.tabletBegan && !r.tabletGripsOpen, "and reads: the gesture began");
 	// The menus up, the hands pulled 0.3 m apart.
 	const HandModeFrame up = TabletFrameUp();
 	f.menuMode = true;

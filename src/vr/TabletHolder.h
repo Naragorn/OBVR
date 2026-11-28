@@ -24,19 +24,24 @@ namespace obvr::vr {
 enum class TabletOpenedBy : UInt8 { Button, Scroll };
 
 struct TabletHolder {
-	bool weaponHand = false;    // held by the weapon hand (the right role): never
+	bool weaponHand = false;    // held by the frame's weapon role: only when the sides switched mid-gesture
 	bool onTop = false;         // held at its top edge (unrolled up and down), else its bottom or its side
 	bool physicalLeft = true;   // on the left controller
 };
 
 // `offUp` and `weaponUp`: the two hands' heights as the scroll let go (read
-// for the scroll only - the upper hand holds the top edge). `rolesSwapped`:
-// the roles swapped this frame (vr::PhysicalLeftOf).
-inline TabletHolder TabletHolderOnceOpen(TabletOpenedBy by, float offUp, float weaponUp, bool rolesSwapped) {
+// for the scroll only - the upper hand holds the top edge). `sidesSwitched`:
+// the roles changed since the scroll's first grip closed (a handover that
+// slipped through, vr/GripClaim.h) - the off hand is the one of before, now
+// the weapon role; the B reads no grips and ignores it. `rolesSwapped`: the
+// roles swapped this frame (vr::PhysicalLeftOf).
+inline TabletHolder TabletHolderOnceOpen(TabletOpenedBy by, float offUp, float weaponUp, bool sidesSwitched,
+                                         bool rolesSwapped) {
 	TabletHolder h;
-	h.weaponHand = false;
-	h.onTop = by == TabletOpenedBy::Scroll && offUp > weaponUp;
-	h.physicalLeft = !rolesSwapped;  // vr::PhysicalLeftOf(true, rolesSwapped)
+	const bool scroll = by == TabletOpenedBy::Scroll;
+	h.weaponHand = scroll && sidesSwitched;
+	h.onTop = scroll && (h.weaponHand ? weaponUp > offUp : offUp > weaponUp);
+	h.physicalLeft = (!h.weaponHand) != rolesSwapped;  // vr::PhysicalLeftOf(!weaponHand, rolesSwapped)
 	return h;
 }
 
