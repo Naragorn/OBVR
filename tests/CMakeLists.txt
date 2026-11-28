@@ -1789,6 +1789,17 @@ endif()
 
 add_test(NAME hand_hud COMMAND hand_hud_test)
 
+# The fringes left round the hand HUD's cuts (vr/HudFringe.h): pure.
+add_executable(hud_fringe_test HudFringeTest.cpp)
+
+target_include_directories(hud_fringe_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(hud_fringe_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME hud_fringe COMMAND hud_fringe_test)
+
 # The monitor window's present interval while OBVR drives the headset
 # (render/PresentInterval.h): pure, so it builds everywhere.
 add_executable(present_interval_test PresentIntervalTest.cpp)

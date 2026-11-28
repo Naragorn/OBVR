@@ -52,10 +52,9 @@ void AccumulateCoveredRow(const UInt32* row, UInt32 width, UInt32 y, bool byAlph
 	}
 }
 
-bool MeasureCoveredRect(void* gameDevice, void* surface, UInt32 width, UInt32 height,
-                        UInt32 format, bool byAlpha, CoveredRect& out) {
-	out = CoveredRect{};
-	if (gameDevice == nullptr || surface == nullptr || width == 0 || height == 0) {
+bool VisitSurfaceRows(void* gameDevice, void* surface, UInt32 width, UInt32 height, UInt32 format,
+                      SurfaceRowVisitor visit, void* context) {
+	if (gameDevice == nullptr || surface == nullptr || width == 0 || height == 0 || visit == nullptr) {
 		return false;
 	}
 
@@ -94,12 +93,33 @@ bool MeasureCoveredRect(void* gameDevice, void* surface, UInt32 width, UInt32 he
 	for (UInt32 y = 0; y < height; ++y) {
 		const auto* row = reinterpret_cast<const UInt32*>(
 			static_cast<const UInt8*>(locked.bits) + static_cast<SInt32>(y) * locked.pitch);
-		AccumulateCoveredRow(row, width, y, byAlpha, out);
+		visit(row, width, y, context);
 	}
 
 	unlockRect(staging);
 	d3d11::Release(staging);
 	return true;
+}
+
+namespace {
+
+struct CoveredVisit {
+	bool byAlpha;
+	CoveredRect* box;
+};
+
+void AccumulateCoveredVisit(const UInt32* row, UInt32 width, UInt32 y, void* context) {
+	auto* visit = static_cast<CoveredVisit*>(context);
+	AccumulateCoveredRow(row, width, y, visit->byAlpha, *visit->box);
+}
+
+}  // namespace
+
+bool MeasureCoveredRect(void* gameDevice, void* surface, UInt32 width, UInt32 height,
+                        UInt32 format, bool byAlpha, CoveredRect& out) {
+	out = CoveredRect{};
+	CoveredVisit visit{byAlpha, &out};
+	return VisitSurfaceRows(gameDevice, surface, width, height, format, AccumulateCoveredVisit, &visit);
 }
 
 DumpAlpha g_lastDumpAlpha;
