@@ -511,6 +511,14 @@ inline constexpr SettingDefinition kHandsRows[] = {
 		+[](Config& c, float v) { c.hands.tablet.inScene = v != 0.0f; },
 	},
 	{
+		"Laser & wrist menus", "Messages above the hand menu",
+		"Messages from the game and your mods show above the menu in your hand",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Tablet", "TextsOnTablet",
+		+[](const Config& c) { return c.hands.tablet.textsOnTablet ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.tablet.textsOnTablet = v != 0.0f; },
+	},
+	{
 		"Laser & wrist menus", "Mirror on the hand menu", "A mirror tab at the end of your hand menu's tabs",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Tablet", "Mirror",

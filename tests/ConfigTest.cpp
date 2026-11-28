@@ -463,6 +463,17 @@ void TestMirrorMenusToMonitor() {
 	      "MirrorMenusToMonitor=0 leaves the monitor showing the world alone");
 }
 
+void TestTabletTexts() {
+	std::printf("The HUD's texts above the tablet\n");
+	obvr::Config untouched;
+	Check(untouched.hands.tablet.textsOnTablet, "TextsOnTablet defaults on");
+	obvr::Config off;
+	LoadFrom("ConfigTestTabletTexts.ini", "[Tablet]\nTextsOnTablet=0\n", off);
+	Check(!off.hands.tablet.textsOnTablet, "TextsOnTablet=0: as before, none shown");
+	obvr::Config on;
+	LoadFrom("ConfigTestTabletTexts.ini", "[Tablet]\nTextsOnTablet=1\n", on);
+	Check(on.hands.tablet.textsOnTablet, "TextsOnTablet=1: shown");
+}
 void TestTabletMirror() {
 	std::printf("The tablet's Mirror tab and its dust\n");
 
@@ -1345,6 +1356,7 @@ int main() {
 	TestCrosshairCutoutDefault();
 	TestCrosshairTooltips();
 	TestMirrorMenusToMonitor();
+	TestTabletTexts();
 	TestTabletMirror();
 	TestMonitorMenusOnly();
 	TestUnpausedMenus();

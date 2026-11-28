@@ -20,6 +20,7 @@
 #include "camera/hands/HandReachRead.h"
 #include "camera/hands/HandStep.h"
 #include "game/TabletMenu.h"
+#include "game/TabletTexts.h"
 #include "render/HeadsetRenderer.h"
 #include "render/HudLayer.h"
 #include "ui/SettingsMenuLayer.h"
@@ -34,6 +35,7 @@ struct LaserTargetsState {
 	bool wasPulled = false;
 	// The tablet's menus (game/TabletMenu.h).
 	game::TabletMenuState tabletMenu;
+	game::TabletTextsState tabletTexts;  // the HUD's texts beside its page (game/TabletTexts.h)
 	// The drawn index fingers' tips in their controllers' frames (vr/FingerTip.h), and the lines left to say them.
 	vr::IndexTip rightIndexTip;
 	vr::IndexTip leftIndexTip;

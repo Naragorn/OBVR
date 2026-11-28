@@ -1,0 +1,60 @@
+# The game's and the mods' texts over the inventory shown above the tablet's
+# page ([Tablet] TextsOnTablet, vr/TabletTexts.h; Nadi, headset 2026-11-28:
+# "texte von mods oder game die über dem inventar kamen können wir nun also
+# auch über das inventar an die hand schieben"; docs/inventory-tablet-spec.md
+# section 31.3). The left B opens the tablet; a notice is put up from the
+# console while it is up (Basic Primary Needs' lines are notices too [G]);
+# the eye dump at "notice" shows it above the page, at the page's scale. The
+# log names what was read: the elements found with their menu and rectangle,
+# and once every sized HUD tile beside the page.
+# Written 2026-11-28, not run (Linux only). Run with:
+# python3 tools/hand-script-run.py tools/hand-scripts/tablet-texts.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet InScene=1
+ini Tablet TextsOnTablet=1
+ini Tablet HeldLeanDegrees=0
+ini Tablet HeldRollDegrees=0
+ini Tablet HeldAcrossCm=0
+ini Tablet HeldOutCm=0
+ini Tablet Figure=off
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+console-at settle CloseAllMenus
+console-at open message "A notice over the inventory"
+
+expect HandScript: finished
+expect Tablet: in the off hand, drawn into the eyes
+expect Tablet: HUDSubtitleMenu tiles beside the page
+expect Tablet: the HUD's texts while it is up - Messages
+expect (HUDSubtitleMenu, above the page)
+reject HandScript: WARNING
+
+wait 12
+mark settle
+wait 2
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.25 -0.15
+right rot 40 32 0
+wait 1
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark open
+wait 1.5
+mark notice
+wait 1
+left b 1
+wait 0.2
+left b 0
+wait 1.5
+mark closed
+wait 1

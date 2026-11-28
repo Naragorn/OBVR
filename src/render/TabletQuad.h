@@ -51,7 +51,9 @@ struct TabletQuadPiece {
 	float v[4] = {};
 };
 
-inline constexpr UInt32 kTabletPieces = 20;
+inline constexpr UInt32 kTabletPieces = 21;
+// The HUD's texts above the page (vr/TabletTexts.h), drawn last.
+inline constexpr UInt32 kTabletTextsPiece = 20;
 // The Mirror tab: its paper, then the rim and the glass of its small picture.
 inline constexpr UInt32 kTabletMirrorTabPieces = 14;
 // The mirror page, drawn over the page's picture: the frame, the glass inside

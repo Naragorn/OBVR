@@ -265,6 +265,12 @@ render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::T
 		                       textureHeight, 1.0f),
 		      false, kFigurePageEdge);
 	}
+	// The HUD's texts beside the menus, above the page at its scale once it is
+	// open (vr/TabletTexts.h) - out past the face, so no tap reaches them.
+	if (t.textsAt.valid && share >= 1.0f) {
+		Piece(quad.pieces[render::kTabletTextsPiece],
+		      vr::RectOnTablet(place, t.crop, t.textsAt, t.texts, textureWidth, textureHeight, 1.0f), true, 0);
+	}
 	quad.valid = quad.pieces[0].valid;
 	return quad;
 }

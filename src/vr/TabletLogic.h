@@ -95,6 +95,8 @@ struct TabletSettings {
 	bool inScene = true;
 	// The tap's tip from the drawn index finger (vr/FingerTip.h); off, the controller's tip ahead.
 	bool drawnFinger = true;
+	// The HUD's texts beside the menus shown above the tablet's page (vr/TabletTexts.h).
+	bool textsOnTablet = true;
 	// The Mirror tab at the end of the tablet's tabs (docs/mirror-spec.md), and
 	// the light dust over its glass.
 	bool mirror = true;
@@ -444,6 +446,9 @@ struct TabletFrame {
 	// The figure behind a tab (SetFigureTab): the figure fitted into the page's
 	// own rectangle, shown there instead of the page while its tab is chosen.
 	bool figureTab = false;
+	// The HUD's texts beside the face (vr/TabletTexts.h), and where they stand above it.
+	UiRect texts;
+	UiRect textsAt;
 	bool popupUp = false;  // a popup over the page: the page is shown whatever tab is chosen
 	UInt32 page = 0;       // the page shown: the inventory's, stats', magic's or map's menu id
 	// The tab strip over the page's top edge (SetTabs, vr/TabletTabStrip.h):

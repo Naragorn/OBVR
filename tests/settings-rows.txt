@@ -230,6 +230,7 @@ Laser & wrist menus|Hand menu sideways|Move the menu in your hand towards your m
 Laser & wrist menus|Hand menu height|Move the menu in your hand up or down|Tablet|HeldUpCm|||1|-20|20|1|0|0|1|0|0|0|0|RW
 Laser & wrist menus|Hand menu distance|Move the menu in your hand closer to your eyes, or back to your palm|Tablet|HeldOutCm|||1|-30|20|1|0|0|1|-15|-15|0|0|RW
 Laser & wrist menus|Hand menu in the world|Your finger shows in front of it. Off, it floats over your hand|Tablet|InScene|||0|0|1|1|0|0|1|1|1|0|0|RW
+Laser & wrist menus|Messages above the hand menu|Messages from the game and your mods show above the menu in your hand|Tablet|TextsOnTablet|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Mirror on the hand menu|A mirror tab at the end of your hand menu's tabs|Tablet|Mirror|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Dust on the mirror|A light layer of dust on the mirror's glass|Tablet|MirrorDust|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Live mirror|The mirror shows the room behind you. Off, its glass stays dark|Tablet|MirrorWorld|||0|0|1|1|0|0|1|1|1|0|0|RW
