@@ -1,0 +1,67 @@
+# The staff's weight (vr/HeldItemWeight.h): a staff lags by its own form
+# weight as a weapon does, and is not a swung two-hander (no heavier lag in
+# one hand). The staff (000CA153, as two-hand-staff.txt) drawn over the right
+# shoulder, the right hand jerked 0.30 m left in one frame and held: the drawn
+# hand ("| R" columns 4-6 against 1-3 in [Debug] HandLagTrace's lines, "lag"
+# the gap) arrives later than the controller; then the Iron Longsword
+# (00000C0C) drawn the same way for the comparison. Read with
+# tools/hand-lag.py. The staff's line for the block by contact is read off the
+# drawn staff's node (game/StaffLine.cpp), so it is where the staff is drawn.
+# The weights are logged at the draws: "Weapon weight: ... (a staff)" with no
+# "a two-hander: in one hand" part, "Weapon weight: ... (a weapon)".
+# Not run yet (written 2026-11-28 on Windows).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weight-staff.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponWeight=100
+ini Hands WeaponSwingThrough=0
+ini Debug HandLagTrace=40
+console player.additem 000CA153 1
+console player.additem 00000C0C 1
+console player.equipitem 000CA153
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at sword_on player.equipitem 00000C0C
+
+expect HandScript: finished
+expect (a staff)
+expect (a weapon)
+expect Lag trace: jerk_staff
+expect Lag trace: jerk_sword
+reject HandScript: WARNING
+reject (a staff), time constant 0 ms
+
+wait 20
+mark ready
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+left pos -0.20 -0.45 -0.25
+wait 3
+mark jerk_staff
+right pos -0.10 -0.40 -0.30
+wait 0.02
+mark jerked_staff
+wait 1.5
+right pos 0.20 -0.40 -0.30
+wait 1
+mark sword_on
+wait 3
+right pos 0.18 -0.15 0.12
+wait 0.3
+right grip 1
+wait 0.2
+right grip 0
+right pos 0.20 -0.40 -0.30
+wait 3
+mark jerk_sword
+right pos -0.10 -0.40 -0.30
+wait 0.02
+mark jerked_sword
+wait 1.5
+mark end
+wait 1

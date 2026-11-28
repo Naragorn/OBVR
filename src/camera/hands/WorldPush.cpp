@@ -50,8 +50,8 @@ WorldPushOutput StepWorldPush(WorldPushState& state, const HandStep& step, const
 			                             : game::HandSegment(grip, forward);
 		}
 		if (hand.leftHandValid) {
-			const NiPoint3 grip = camPos + camRot * hand.leftHandOffsetUnits;
-			const NiPoint3 forward = camRot * (hand.leftHandRotation * NiPoint3{0.0f, 1.0f, 0.0f});
+			const NiPoint3 grip = camPos + camRot * hand.offHandOffsetUnits;  // drawn, as the weapon hand's
+			const NiPoint3 forward = camRot * (hand.offHandRotation * NiPoint3{0.0f, 1.0f, 0.0f});
 			push.valid[other] = true;
 			push.segment[other] = game::HandSegment(grip, forward);
 		}
@@ -147,8 +147,8 @@ WorldPushOutput StepWorldPush(WorldPushState& state, const HandStep& step, const
 		if (hand.leftHandValid) {
 			const int slot = static_cast<int>(game::HandBodySlot::LeftHand);
 			bodies.valid[slot] = true;
-			bodies.rot[slot] = camRot * hand.leftHandRotation;
-			bodies.pos[slot] = camPos + camRot * hand.leftHandOffsetUnits;
+			bodies.rot[slot] = camRot * hand.offHandRotation;
+			bodies.pos[slot] = camPos + camRot * hand.offHandOffsetUnits;
 		}
 		// Each body's span from what is drawn (game::HandSpanFromBones,
 		// BladeSpanFromNode), in the body's own frame.

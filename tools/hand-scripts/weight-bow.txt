@@ -1,0 +1,56 @@
+# The bow's weight (vr/HeldItemWeight.h): the bow hand (the off hand) trails
+# its controller by the Iron Bow's (00025231) form weight; the string hand
+# does not. The bow drawn from behind the left shoulder (as bow-hand.txt),
+# held ahead, then the bow hand turned 40 degrees left in one frame and held:
+# the drawn hand ("| O" in [Debug] HandLagTrace's lines) arrives later than
+# the controller ("| L"), the weapon hand's columns (R) stay on its
+# controller (the string hand never lags). A turn shows in the trace only as
+# far as it moves the bone's target; the jerk after it is the plain read. That
+# the arrow flies along the bow as drawn is checked in hand_mode_test ("the
+# arrow along the drawn bow"); here no arrow is nocked. The bow's limb line for
+# the block by contact is read off the drawn bow's node, so it is where the
+# bow is drawn.
+# Not run yet (written 2026-11-28 on Windows).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weight-bow.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands Holsters=1
+ini Hands WeaponWeight=100
+ini Hands WeaponSwingThrough=0
+ini Debug HandLagTrace=40
+console player.additem 00025231 1
+console player.equipitem 00025231
+console-at ready CloseAllMenus
+console-at ready tgm
+
+expect HandScript: finished
+expect Hands: ready weapon done
+expect Off-hand weight: a bow
+expect (its form's)
+expect Lag trace: turn_bow
+reject HandScript: WARNING
+reject its form's weight could not be read
+
+wait 16
+mark ready
+left pos -0.18 -0.15 0.12
+wait 0.3
+left grip 1
+wait 0.2
+left grip 0
+right pos 0.25 -0.45 -0.2
+left pos -0.05 -0.15 -0.35
+left rot 0 0 0
+wait 3
+mark turn_bow
+left rot 0 40 0
+wait 0.02
+mark turned_bow
+wait 1.5
+mark jerk_bow
+left pos 0.25 -0.15 -0.35
+wait 0.02
+mark jerked_bow
+wait 1.5
+mark end
+wait 1

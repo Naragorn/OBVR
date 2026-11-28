@@ -520,8 +520,8 @@ inline constexpr SettingDefinition kCombatRows[] = {
 		+[](Config& c, float v) { c.hands.punchesStopAtBodies = v != 0.0f; },
 	},
 	{
-		"Weapon physics", "Weapon heft",
-		"How much heavy weapons lag behind your hand. Higher feels heavier",
+		"Weapon physics", "Heft",
+		"How much heavy weapons, shields, bows and staffs lag behind your hand, torches a little. Higher feels heavier",
 		ItemKind::Number, 1.0f, 100.0f, 5.0f, 0, false,
 		"Hands", "WeaponWeight",
 		+[](const Config& c) { return c.hands.weaponWeightPercent; },

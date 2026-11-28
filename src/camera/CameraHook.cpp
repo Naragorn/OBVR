@@ -895,7 +895,7 @@ void StepShoves(const Config& config, float dt) {
 	hands::StepTorchTouch(g_torchBlow, config, torchLinks, g_handBodies, torchByTouch,
 	                      game::TorchPose{g_torchWorldValid, g_torchWorldA, g_torchWorldB,
 	                                      game::TorchGripShare(g_torchShaft.a, g_torchShaft.b)},
-	                      game::TorchHand{camRot * g_hand.leftVelocity, camRot * g_hand.leftAngularVelocity,
+	                      game::TorchHand{camRot * g_hand.offHandVelocity, camRot * g_hand.leftAngularVelocity,
 	                                      config.tracker.unitsPerMetre},
 	                      g_hand.leftHandValid && config.hands.grapple.strikes && !g_twoHands.leftGripOnHandle &&
 	                          g_grapple.actor == 0 && !game::PlayerWearsShield(),
@@ -2308,15 +2308,15 @@ void StepShieldBash(const Config& config) {
 	}
 	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
-	const NiPoint3 hand = camPos + camRot * g_hand.leftHandOffsetUnits;
+	const NiPoint3 hand = camPos + camRot * g_hand.offHandOffsetUnits;  // drawn, behind by the shield's weight
 	// The shield's middle in the world (the disc read in the hand's frame), else the hand.
-	const NiPoint3 at = g_shieldDiscHave ? hand + (camRot * g_hand.leftHandRotation) * g_shieldDisc.centre : hand;
+	const NiPoint3 at = g_shieldDiscHave ? hand + (camRot * g_hand.offHandRotation) * g_shieldDisc.centre : hand;
 	NiPoint3 centre{0.0f, 0.0f, 0.0f};
 	void* const actor = game::LivingActorAt(at, 0.5f, 8.0f, &centre, 1.0f);
 	if (actor == nullptr || !game::ShoveAllowed(g_shoveCooldown, actor)) {
 		return;
 	}
-	const NiPoint3 velocity = camRot * g_hand.leftVelocity;
+	const NiPoint3 velocity = camRot * g_hand.offHandVelocity;
 	game::ShieldBashHand h;
 	h.shieldWorn = true;
 	h.valid = true;
@@ -2943,8 +2943,8 @@ bool StepWeaponContact(const Config& config, bool inPlace, float dt) {
 	g_bladeDiscs.count = 0;
 	if (f.active && settings.enabled) {
 		if (game::PlayerWearsShield() && g_hand.leftHandValid) {
-			const NiMatrix33 leftRot = camRot * g_hand.leftHandRotation;
-			const NiPoint3 leftPos = camPos + camRot * g_hand.leftHandOffsetUnits;
+			const NiMatrix33 leftRot = camRot * g_hand.offHandRotation;
+			const NiPoint3 leftPos = camPos + camRot * g_hand.offHandOffsetUnits;
 			if (g_shieldDiscHave) {
 				const game::BladeDisc d = game::ShieldDiscInWorld(g_shieldDisc, leftRot, leftPos, game::kStopperOwnShield);
 				g_bladeDiscs.Add(d.centre, d.normal, d.radius, d.halfThick, d.id);
@@ -3361,8 +3361,8 @@ bool HeldItemPoseNow(int side, const char* attachName, game::ItemPose& out) {
 	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
 	const bool weaponHand = side == 0;
 	out = game::CarryItemPose(camRot * h.outRotation, camPos + camRot * h.outOffset, model->worldTransform.rot,
-	                          model->worldTransform.pos, camRot * (weaponHand ? g_hand.weaponHandRotation : g_hand.leftHandRotation),
-	                          camPos + camRot * (weaponHand ? g_hand.weaponHandOffsetUnits : g_hand.leftHandOffsetUnits),
+	                          model->worldTransform.pos, camRot * (weaponHand ? g_hand.weaponHandRotation : g_hand.offHandRotation),
+	                          camPos + camRot * (weaponHand ? g_hand.weaponHandOffsetUnits : g_hand.offHandOffsetUnits),
 	                          &model->worldBound);
 	return true;
 }
@@ -3486,8 +3486,8 @@ void StepTorchShaft(bool inPlace) {
 		++g_torchShaftAge;
 	}
 	if (g_torchShaftHave) {
-		const NiMatrix33 leftRot = camRot * g_hand.leftHandRotation;
-		const NiPoint3 leftPos = camPos + camRot * g_hand.leftHandOffsetUnits;
+		const NiMatrix33 leftRot = camRot * g_hand.offHandRotation;  // drawn, behind by the torch's weight
+		const NiPoint3 leftPos = camPos + camRot * g_hand.offHandOffsetUnits;
 		g_torchWorldValid = game::TorchShaftInWorld(g_torchShaft, leftRot, leftPos, g_torchWorldA, g_torchWorldB);
 	}
 }
@@ -3723,8 +3723,8 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		const bool right = side == 0;
 		const game::HandShape shape = shapes[side];
 		const char* const name = HandContactName(side, shape);
-		NiMatrix33& handRot = right ? g_hand.weaponHandRotation : g_hand.leftHandRotation;
-		NiPoint3& handOffset = right ? g_hand.weaponHandOffsetUnits : g_hand.leftHandOffsetUnits;
+		NiMatrix33& handRot = right ? g_hand.weaponHandRotation : g_hand.offHandRotation;
+		NiPoint3& handOffset = right ? g_hand.weaponHandOffsetUnits : g_hand.offHandOffsetUnits;
 
 		// The shape in the hand's frame, read from the drawn bones against
 		// the pose they were pinned to: this camera and the pose written the
@@ -3760,19 +3760,16 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		f.eye = camPos;
 		f.dtSeconds = dt;
 		f.jumped = jumped;
-		// A person holds a hand only while the controller is inside them: a
-		// hand walked or turned away from them with the stick comes free where
-		// the controller is (a Quest tester, 2026-10-22: "'Sticky' hands ...
-		// your arm stretches out like a piece of spaghetti"); the blade keeps
-		// its hold for good (BodyLetGoMetres 0).
+		// A person holds a hand only while the controller is inside them: a hand walked or turned away from them
+		// with the stick comes free where the controller is (a Quest tester, 2026-10-22: "'Sticky' hands ... your
+		// arm stretches out like a piece of spaghetti"); the blade keeps its hold for good (BodyLetGoMetres 0).
 		f.holdWhileInside = true;
 		if (people) {
 			f.bodies = &g_handBodies;
 		}
-		// The stoppers this hand is held at whatever its speed: the drawn blade
-		// for the hand that does not hold it (the tester, 2026-10-11: "hand
-		// nicht mit waffe"), the shield for the hand that does not carry it,
-		// the foes' blades and shields.
+		// The stoppers this hand is held at whatever its speed: the drawn blade for the hand that does not hold it
+		// (the tester, 2026-10-11: "hand nicht mit waffe"), the shield for the hand that does not carry it, the foes'
+		// blades and shields.
 		game::BladeBodies& stoppers = g_handStoppers[side];
 		game::BladeDiscs& discs = g_handDiscs[side];
 		stoppers.count = 0;
@@ -3785,8 +3782,8 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 				game::AddOwnBladeStopper(drawn, g_bladeSpan.span, stoppers);
 			}
 			if (right && shieldWorn && g_hand.leftHandValid) {
-				const NiMatrix33 leftRot = camRot * g_hand.leftHandRotation;
-				const NiPoint3 leftPos = camPos + camRot * g_hand.leftHandOffsetUnits;
+				const NiMatrix33 leftRot = camRot * g_hand.offHandRotation;
+				const NiPoint3 leftPos = camPos + camRot * g_hand.offHandOffsetUnits;
 				if (g_shieldDiscHave) {
 					const game::BladeDisc d = game::ShieldDiscInWorld(g_shieldDisc, leftRot, leftPos, game::kStopperOwnShield);
 					discs.Add(d.centre, d.normal, d.radius, d.halfThick, d.id);
@@ -3866,6 +3863,9 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 				g_hand.rightHandOffsetUnits = handOffset;
 				g_bladeOutRotation = handRot;
 				g_bladeOutOffset = handOffset;
+			} else if (!g_hand.offHandLagging) {  // the same for the off hand while nothing it holds lags it
+				g_hand.leftHandRotation = handRot;
+				g_hand.leftHandOffsetUnits = handOffset;
 			}
 		}
 		const bool announce = (shape != h.shape || key != h.key) && key != game::kSpanKeyNone;
@@ -4000,8 +4000,8 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 		HandContactSide& h = g_handContact[side];
 		const bool right = side == 0;
 		h.outValid = inPlace && cameraValid && (right ? g_hand.rightHandValid : g_hand.leftHandValid);
-		h.outRotation = right ? g_hand.weaponHandRotation : g_hand.leftHandRotation;
-		h.outOffset = right ? g_hand.weaponHandOffsetUnits : g_hand.leftHandOffsetUnits;
+		h.outRotation = right ? g_hand.weaponHandRotation : g_hand.offHandRotation;
+		h.outOffset = right ? g_hand.weaponHandOffsetUnits : g_hand.offHandOffsetUnits;
 	}
 	if (stepped) {
 		NoteHandContactCost(world.casts, ticksPerSecond > 0 ? static_cast<double>(after - before) /
@@ -4015,8 +4015,8 @@ void StepHandContacts(const Config& config, bool inPlace, bool bladeHasWeaponHan
 			const bool right = side == 0;
 			const game::BodySpan& span = h.span.span;
 			game::BladePose drawn;
-			drawn.rot = camRot * (right ? g_hand.weaponHandRotation : g_hand.leftHandRotation);
-			drawn.pos = camPos + camRot * (right ? g_hand.weaponHandOffsetUnits : g_hand.leftHandOffsetUnits);
+			drawn.rot = camRot * (right ? g_hand.weaponHandRotation : g_hand.offHandRotation);
+			drawn.pos = camPos + camRot * (right ? g_hand.weaponHandOffsetUnits : g_hand.offHandOffsetUnits);
 			const NiPoint3 tip = span.valid ? game::BladePointAt(drawn, span, 1.0f) : drawn.pos;
 			const NiPoint3 wanted = h.wantedPos;
 			OBVR_LOG("Contact: %s - %s (setting %d), span %s %.1f units, margin %.1f, held %d, through %d, gap %.1f "
@@ -7100,7 +7100,7 @@ void LogMirrorAtMark(bool mirrored, const NiMatrix33& cameraRot, const NiPoint3&
 			continue;
 		}
 		const NiPoint3 origin =
-			cameraPos + cameraRot * (right ? g_hand.weaponHandOffsetUnits : g_hand.leftHandOffsetUnits);
+			cameraPos + cameraRot * (right ? g_hand.weaponHandOffsetUnits : g_hand.offHandOffsetUnits);
 		det[i] = Determinant(rot);
 		off[i] = math::Sqrt((pos - origin).LengthSquared());
 	}
@@ -7473,7 +7473,7 @@ void BeforeFirstScenePass() {
 			} else {
 				leftCommitted = PinAdjustableHand(
 					false, hands, adjusting, g_hand.leftHandValid, g_hand.leftGripDown,
-				                  g_hand.leftHandRotation, g_hand.leftHandOffsetUnits, cameraRot,
+				                  g_hand.offHandRotation, g_hand.offHandOffsetUnits, cameraRot,
 				                  cameraPos, sharedGrip, perMetre);
 			}
 			hands::AfterHandPins(g_twoHands, twoHandEnv, hands, cameraRot, cameraPos, sharedGrip, perMetre);
@@ -7554,11 +7554,11 @@ void BeforeFirstScenePass() {
 				s_wasOnString = g_bowVisual.arrow == vr::ArrowShown::OnString;
 				if (g_hand.leftHandValid && game::BowShotAxis(shot)) {
 					g_bowShotValid = true;
-					g_bowShotLocal = vr::ControllerLocalOf(cameraRot, g_hand.leftHandRotation, shot);
+					g_bowShotLocal = vr::ControllerLocalOf(cameraRot, g_hand.offHandRotation, shot);  // the drawn bow's frame
 					NiPoint3 limb{};
 					if (game::BowLimbAxis(limb)) {
 						g_bowLimbValid = true;
-						g_bowLimbLocal = vr::ControllerLocalOf(cameraRot, g_hand.leftHandRotation, limb);
+						g_bowLimbLocal = vr::ControllerLocalOf(cameraRot, g_hand.offHandRotation, limb);
 					}
 					// Each time an arrow goes onto the string: the bow is then
 					// held as it is shot (while it is drawn out of the holster
@@ -11084,9 +11084,9 @@ extern "C" void __cdecl OBVR_OnCameraUpdated(NiAVObject* cameraNode) {
 			guard.torchA = g_torchWorldA;
 			guard.torchB = g_torchWorldB;
 			if (g_shieldDiscHave && g_hand.leftHandValid && g_cyclopeanCameraWorldValid && game::PlayerWearsShield()) {
-				const NiMatrix33 leftRot = g_cyclopeanCameraWorldTransform.rot * g_hand.leftHandRotation;
+				const NiMatrix33 leftRot = g_cyclopeanCameraWorldTransform.rot * g_hand.offHandRotation;
 				const NiPoint3 leftPos =
-					g_cyclopeanCameraWorldTransform.pos + g_cyclopeanCameraWorldTransform.rot * g_hand.leftHandOffsetUnits;
+					g_cyclopeanCameraWorldTransform.pos + g_cyclopeanCameraWorldTransform.rot * g_hand.offHandOffsetUnits;
 				game::ShieldIntoGuard(g_shieldDisc, leftRot, leftPos, guard);  // with its outline (game/ShieldGuardLogic.h)
 			}
 			const game::BlockAngleSettings angle = vr::BlockAngleSettingsOf(GetConfig().hands);  // vr/HandBlockFrame.h

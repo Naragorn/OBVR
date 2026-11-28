@@ -34,7 +34,7 @@ The OBVR column names the INI key (OBVR.ini). A key's default is what ships.
 | Half-swording, choke-up | Grip the blade with the second hand: a short, strong stab. Blunt weapons are gripped higher (`HalfSwording`, `ChokeUp`). | None [C] | new |
 | Two-hand grip | The second hand on the grip steadies a weapon and slides along it (`TwoHandGrip`, `TwoHandOneHanders`, `TwoHandSlide`). | Two-handers are always two-handed. There is no grip choice [?] | new |
 | Two-hander in one hand | Possible, but heavier, slower and costs fatigue (`OneHandTwoHander*`). | Not possible [?] | new |
-| Weapon weight | Heavy weapons lag behind the hand and keep swinging (`WeaponWeight`, `WeaponSwingThrough`). | The animation is the same speed for every weight class [?] | new |
+| Weapon weight | Heavy weapons, shields, bows and staffs lag behind the hand and keep swinging, torches a little (`WeaponWeight`, `WeaponSwingThrough`). | The animation is the same speed for every weight class [?] | new |
 | Blocking | Hold the weapon or the shield in the blow's way. The angle and reach decide (`BlockByAngle`, `BlockShieldDegrees`). | Hold a key; every blow from the front is blocked, scaled by the Block skill [U] | by hand |
 | Parry | Blade on blade stops the blow and costs fatigue (`WeaponParries`, `ParryFatigue`). | Blocking only [U] | new |
 | Torch blocks and parries | A raised torch blocks, and a torch hit staggers (`TorchBlocks`). | No blocking with the torch [?] | new |
