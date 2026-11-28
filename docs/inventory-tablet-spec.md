@@ -501,6 +501,12 @@ inventory menu, beside its category tabs, instead of the tablet's tab?
   tablet can read. Kept as the way; this stays open only if the headset finds
   the tablet's tab wanting.
 
+**2026-11-28: the strip is in every figure mode, with a last tab, Mirror.** The tabs over the
+page's top edge are now laid by `vr::SetTabs` from `vr::TabsFor` (`vr/TabletTabs.h`,
+`vr/TabletTabStrip.h`): page, figure (with `Figure=tab`), mirror (`[Tablet] Mirror`, default on).
+The mirror page is OBVR's own and touches nothing of the game's page underneath; see
+`docs/mirror-spec.md` section 11.
+
 ## 10. How it is held and unrolled (2026-11-18)
 
 Nadi, 2026-11-18: a setting for unrolling it sideways or up and down,

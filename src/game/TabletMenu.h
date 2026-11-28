@@ -74,13 +74,15 @@ struct TabletMenuState {
 // changes with a tab, a popup comes and goes; logged at each change.
 // `inScene` and `mode`: the tablet drawn into the eyes, and where the figure
 // is on it ([Tablet] Figure: vr::SetFigurePage, vr::SetFigureTab); the
-// overlay's cut holds it where the game draws it, unless it is off.
+// overlay's cut holds it where the game draws it, unless it is off. `mirror`:
+// [Tablet] Mirror - the tabs over the page (vr::TabsFor, vr::SetTabs) end in
+// the Mirror tab, in every figure mode drawn into the eyes.
 // `mark`: a hand-script mark this frame - the read's cost since the last is
 // said. With the boxes on the page (vr::BoxesOnPage) a box that waits for an
 // answer is moved by the game onto the page's middle - its menu's root tile
 // shifted, and put back when the box is no longer on the page.
 vr::TabletFrame ReadTabletMenus(TabletMenuState& state, bool wanted, float layerPixelsWidth,
-                                float layerPixelsHeight, bool inScene, vr::TabletFigure mode,
+                                float layerPixelsHeight, bool inScene, vr::TabletFigure mode, bool mirror,
                                 bool mark = false);
 
 }  // namespace obvr::game

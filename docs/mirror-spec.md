@@ -1,4 +1,4 @@
-# A mirror on the tablet (feasibility and plan, 2026-11-28, nothing built)
+# A mirror on the tablet (feasibility and plan, 2026-11-28; stage 1 built, section 11)
 
 The wish (Nadi, 2026-11-28): "neues feature: im inv egal wie eingestellt, gibts oben am ende ein
 neuen tab: spiegel, das gibt mir ein echtes spiegel erlebnis und ich kann mich selber ansehen und
@@ -306,3 +306,77 @@ Total: large. Stage 2 carries most of the risk and settles it: if its pass costs
 - The headset feel of all of it.
 - Mobbin was not checked for the tab's look: the Mobbin MCP is not authenticated in this session.
   The tab reuses the tablet's existing tab style, so there is no new layout to compare.
+
+## 11. Stage 1 as built (2026-11-28, branch mirror-1128)
+
+Asked and approved by Nadi, 2026-11-28: stages 1 and 2; the recommendations of section 9 stand
+(name "Mirror", the last tab, a small drawn glass, no live picture, dust on by default and light,
+no mirror with the traditional inventory). Stage 2 is not built. What is there is the tab, the page
+and the way in for the reflection.
+
+**What the tab strip is [R].** OBVR's own, not the game's: pieces of the tablet's quad drawn into the
+eyes (`render/TabletQuad.h`, textured and plain quads on the holding hand), laid out in the layer's
+pixels on the page's top edge (`vr/TabletTabStrip.h` `SetTabs`), clicked by the finger's tip or the
+beam on the same face (`vr/MenuPlace.h` `StepTabletTabs`). It was only there with `Figure=tab`, with
+two tabs. Now it is there in every figure mode, `page, [figure], mirror`: `vr/TabletTabs.h` `TabsFor`
+decides which (the figure's only with `Figure=tab` and a figure fitted behind it; the mirror's with
+`[Tablet] Mirror`; one tab alone is no strip). The tab state is an enum (`TabletTab`), not
+`showFigure`.
+
+**Built.**
+- `vr/TabletTabs.h` (pure): the tabs of a frame, the click's choice with its refusals (a popup over
+  the page shows the page and the choice waits; a tab the strip no longer has is forgotten; the
+  tablet closed gives the page), the page turn that leaves the mirror.
+- `vr/TabletTabStrip.h` (pure): three tabs at 0.28 of the page's width on its top edge, the third
+  inside the page's width; `MirrorTabToLayer`: a press on the glass or a tab reaches nothing of the
+  game's.
+- `vr/MirrorPage.h` (pure): the frame (0.05 of the page's width), the glass inside it, the tab's
+  small hand mirror (a rim and its glass), `GlassTexCoords` (the reflection's rectangle, u flipped).
+- `vr/MirrorDust.h` (pure): the dust texture's texels, 256 by 256, the same every time: 2 by 2 texel
+  specks of 5 to 12 percent alpha and six faint smudges of at most 5 percent, pale grey,
+  premultiplied. Made once on the CPU like the paper (`TabletQuad::Dust`, with `Prepare` at the main
+  menu, else at the first draw), drawn as one blended piece over the glass with the tablet's
+  premultiplied blend. No shader, no file.
+- The game's page underneath is not touched: no key, no click, no scroll reaches it while the
+  mirror is shown (`MirrorTabToLayer`, `KeepMirrorFromGame`); a page turn by the right stick leaves
+  the mirror (the proposal of section 7) and goes on to the game as it always did. A popup over the
+  page shows the page; the mirror comes back when it goes.
+- Settings: `[Tablet] Mirror` (default 1; 0 takes the tab away) and `[Tablet] MirrorDust` (default
+  1); on the settings page, in "Laser & wrist menus" after "Hand menu in the world": "Mirror on the
+  hand menu" ("A mirror tab at the end of your hand menu's tabs") and "Dust on the mirror" ("A
+  light layer of dust on the mirror's glass"). `OBVR.ini` documents both.
+
+**Where stage 2 hands in, and how it asks [R].**
+- Asking: `render::TabletQuad::MirrorPage()` (through `HeadsetRenderer::MirrorPage()`) returns
+  `MirrorPageState`: `up` (the mirror's page is shown this frame, the tablet drawn into the eyes,
+  no popup over it) and the glass's four corners in the holding controller's frame (OpenVR's axes,
+  metres; top left, top right, bottom left, bottom right). Render only when `up`.
+- Handing in: `HeadsetRenderer::SetMirrorGlass(left, right, uv)` (`TabletQuad::SetMirrorGlass`): an
+  `IDirect3DTexture9` for each eye (one alone is shown to both) and `MirrorGlassUv` (the part of the
+  texture the glass shows, left, top, right, bottom in 0..1). The glass piece (index
+  `kTabletMirrorGlassPiece` = 18) is then drawn with that texture, u flipped, in place of its dark
+  colour (`TabletQuad::DrawIntoWorld`). The texture must be premultiplied or opaque, as the layer's.
+
+**Deviations from the spec, with the reason.**
+- `[Tablet] InScene=0`: stage 1 has no Mirror tab there (section 9, point 9 recommended the mirror
+  page drawn in the scene anyway). The strip is made of the scene's pieces and the overlay is
+  composited over the scene, so a scene-drawn mirror page would lie behind the overlay's picture of
+  the page. Showing it needs the overlay's page hidden while the mirror is chosen, which needs a
+  strip on the overlay too. Not built; a decision for stage 2 with the render route in hand.
+- The dust is drawn over the glass only; the "slight darkening" of section 7 is the glass's own dark
+  colour for now and becomes the piece's tint when the reflection is there.
+
+**Tests.** Written first and run red on stub headers: `tablet_tabs_test` 26 failing checks,
+`mirror_page_test` 15, `menu_place_test` 7 (the Mirror tab in the hand mode; one more fix found by
+it, `KeepMirrorFromGame`), `tablet_test` 4 (the strip moved to `SetTabs`), `config_test` 3 (the two
+settings and the INI's documentation of them), `settings_list_test` 1 (the pinned rows). Green after:
+`tablet_tabs_test` 58 checks, `mirror_page_test` 23, `menu_place_test` 120 (11 new). The whole suite:
+332 of 334 pass; the two that fail are the known ones (`water_visual_harness`, `grass_flicker_map`:
+no numpy on this machine). Scenario `tools/hand-scripts/tablet-mirror-tab.txt` written for the three figure modes,
+**not run** (Linux harness).
+
+**Not verified.** How the tab, the frame, the glass and the dust look in the headset (the colours,
+the tab's picture, the dust's size and strength); whether the coplanar pieces z-fight in the eye
+(the figure's paper pieces draw the same way); the finger's place on the third tab; the dust
+texture's creation cost (measured by the log line "the mirror's dust made on the CPU", not yet
+read from a run). The unrolled tablet (`share` below 1) draws the mirror page cut like the others.

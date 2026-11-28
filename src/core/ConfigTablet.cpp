@@ -15,6 +15,8 @@ void ReadTabletStep(Config& config, const char* path) {
 	t.bookWidthMetres = ReadFloat("Tablet", "BookWidthMetres", t.bookWidthMetres, path);
 	t.inScene = ReadBool("Tablet", "InScene", t.inScene, path);
 	t.drawnFinger = ReadBool("Tablet", "DrawnFinger", t.drawnFinger, path);
+	t.mirror = ReadBool("Tablet", "Mirror", t.mirror, path);
+	t.mirrorDust = ReadBool("Tablet", "MirrorDust", t.mirrorDust, path);
 	t.gripUp = ReadFloat("Tablet", "GripUp", t.gripUp, path);
 	t.gripForward = ReadFloat("Tablet", "GripForward", t.gripForward, path);
 	t.tiltDegrees = ReadFloat("Tablet", "TiltDegrees", t.tiltDegrees, path);

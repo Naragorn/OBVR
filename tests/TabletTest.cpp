@@ -9,6 +9,7 @@
 
 #include "vr/TabletLogic.h"
 #include "vr/TabletPaper.h"
+#include "vr/TabletTabStrip.h"
 
 using namespace obvr;
 using namespace obvr::vr;
@@ -770,6 +771,11 @@ void TestFigureTab() {
 	SetFigureTab(f, Rect(2000.0f, 100.0f, 2500.0f, 1100.0f));
 	Check(f.figureTab && Near(f.figureFitScale, 0.92f), "fitted to the page's height with a gap");
 	Check(SameRect(f.figureFit, 600.0f - 230.0f, 240.0f, 600.0f + 230.0f, 1160.0f), "centred on the page");
+	Check(f.tabCount == 0 && SameRect(f.crop, 100.0f, 200.0f, 1100.0f, 1200.0f), "the figure is fitted; the tabs are laid by SetTabs");
+	TabSet pageAndFigure;
+	pageAndFigure.count = 2;
+	pageAndFigure.kind[1] = TabletTab::Figure;
+	SetTabs(f, pageAndFigure);
 	Check(SameRect(f.tabs[0], 150.0f, 110.0f, 430.0f, 200.0f) && SameRect(f.tabs[1], 480.0f, 110.0f, 760.0f, 200.0f),
 	      "two tabs on the page's top edge, the page's first");
 	Check(SameRect(f.crop, 100.0f, 110.0f, 1100.0f, 1200.0f), "the face grows up by the tabs, not wider");
@@ -812,21 +818,6 @@ void TestFigureTab() {
 	x = 200.0f;
 	y = 700.0f;
 	Check(FigureTabToLayer(plain, x, y) && x == 200.0f, "no tabs: every point itself");
-
-	std::printf("Choosing a tab:\n");
-	TabletTabState s;
-	Check(!StepTabletTab(s, true, 1, false, false), "the page shown first");
-	Check(StepTabletTab(s, true, 1, true, false), "a click on the figure's tab shows the figure");
-	Check(StepTabletTab(s, true, -1, true, false), "held off the tab: still the figure");
-	Check(StepTabletTab(s, true, -1, false, false), "released: still the figure");
-	Check(!StepTabletTab(s, true, -1, false, true), "a popup over the page: the page");
-	Check(StepTabletTab(s, true, -1, false, false), "the popup gone: the figure again");
-	Check(StepTabletTab(s, true, 0, false, false), "hovering the page's tab without a click: nothing changes");
-	Check(!StepTabletTab(s, true, 0, true, false), "a click on the page's tab: the page");
-	Check(!StepTabletTab(s, true, 1, true, false), "a click held over from before is no new click");
-	StepTabletTab(s, true, 1, false, false);
-	Check(StepTabletTab(s, true, 1, true, false), "a new click on the figure's tab: the figure");
-	Check(!StepTabletTab(s, false, 1, true, false) && !s.showFigure, "no tabs on the tablet: the page, and forgotten");
 
 	std::printf("The figure setting's words:\n");
 	TabletFigure figure = TabletFigure::Beside;

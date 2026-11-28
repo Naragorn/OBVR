@@ -10,6 +10,7 @@
 #include "vr/HandMode.h"
 #include "vr/TabletBook.h"
 #include "vr/TabletScroll.h"
+#include "vr/TabletTabStrip.h"
 
 namespace obvr::vr {
 
@@ -25,7 +26,7 @@ struct MenuTarget {
 	// The tablet's face, when the quad is the tablet: a point on the figure's
 	// page maps to the figure where the game draws it (vr::SurfaceToLayer).
 	const TabletFrame* tablet = nullptr;
-	bool showFigure = false;  // the figure's tab chosen: the page's rectangle shows the figure
+	TabletTab tab = TabletTab::Page;  // the tab shown: the page's rectangle shows the page, the figure or the mirror
 };
 
 // A quad carried by a hand: the device-to-overlay transform's position is
@@ -300,10 +301,14 @@ inline float FaceOffEyesDegrees(const openvr::HmdMatrix34& place, const HandPose
 }
 
 // A point on the tablet's face to the game's pixel under it: the figure's
-// page, the figure behind its tab, or a tab (nothing of the game's).
+// page, the figure behind its tab, the mirror (nothing of the game's), or a
+// tab (nothing of the game's).
 inline bool FaceToLayer(const MenuTarget& t, float& x, float& y) {
-	if (t.showFigure) {
+	if (t.tab == TabletTab::Figure) {
 		return FigureTabToLayer(*t.tablet, x, y);
+	}
+	if (t.tab == TabletTab::Mirror) {
+		return MirrorTabToLayer(*t.tablet, x, y);
 	}
 	return TabletTabAt(*t.tablet, x, y) < 0 && SurfaceToLayer(*t.tablet, x, y);
 }
@@ -318,13 +323,13 @@ inline IndexTip TapFinger(const HandModeFrame& f, const HandSettings& s, const M
 	return t.pointRight ? f.rightIndexTip : f.leftIndexTip;
 }
 
-// The tablet's tabs (vr::SetFigureTab): which one the finger's tip or the
-// beam is on, and the tab chosen by a press there - the finger through the
-// glass or the trigger pulled. The figure's tab chosen is what the face then
-// shows; the press on a tab reaches nothing of the game's (FaceToLayer).
-inline bool StepTabletTabs(TabletTabState& state, const HandModeFrame& f, const HandSettings& s,
-                           const MenuTarget& t) {
-	const bool tabs = t.tablet != nullptr && t.tablet->figureTab && t.quad.valid && t.pointHand != nullptr &&
+// The tablet's tabs (vr::SetTabs): which one the finger's tip or the beam is
+// on, and the tab chosen by a press there - the finger through the glass or
+// the trigger pulled. The tab chosen is what the face then shows; the press on
+// a tab reaches nothing of the game's (FaceToLayer).
+inline TabletTab StepTabletTabs(TabletTabState& state, const HandModeFrame& f, const HandSettings& s,
+                                const MenuTarget& t) {
+	const bool tabs = t.tablet != nullptr && t.tablet->tabCount > 0 && t.quad.valid && t.pointHand != nullptr &&
 	                  t.pointHand->valid;
 	int under = -1;
 	bool down = false;
@@ -345,10 +350,25 @@ inline bool StepTabletTabs(TabletTabState& state, const HandModeFrame& f, const 
 		                                  t.quad.height, t.pixelWidth, t.pixelHeight);
 		const float x = (finger ? tip.pixelX : beam.pixelX) + t.pixelLeft;
 		const float y = (finger ? tip.pixelY : beam.pixelY) + t.pixelTop;
-		under = finger || beam.hit ? TabletTabAt(*t.tablet, x, y) : -1;
+		const int at = finger || beam.hit ? TabletTabAt(*t.tablet, x, y) : -1;
+		under = at >= 0 ? static_cast<int>(t.tablet->tabKind[at]) : -1;
 		down = finger ? tip.depth <= s.poke.press : hand.trigger > 0.5f;
 	}
-	return StepTabletTab(state, tabs, under, down, t.tablet != nullptr && t.tablet->popupUp);
+	return StepTabletTab(state, tabs ? TabsOf(*t.tablet) : TabSet{}, under, down,
+	                     t.tablet != nullptr && t.tablet->popupUp);
+}
+
+// The mirror's page is OBVR's own glass: nothing the hand does while it is
+// shown - the trigger, the stick - reaches the game's page underneath, which
+// stays as it was. Applied to the frame's answer last.
+inline void KeepMirrorFromGame(HandModeResult& r) {
+	if (r.tabletTab != TabletTab::Mirror) {
+		return;
+	}
+	r.menuScroll = 0;
+	r.controls.menuClick = false;
+	r.menuDragging = false;
+	r.menuPressRunning = false;
 }
 
 // The finger's tip and the laser against the target, their pixel in the

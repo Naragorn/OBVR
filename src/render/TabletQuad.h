@@ -21,12 +21,13 @@
 namespace obvr::render {
 
 // What is drawn this frame (the rolls at the open part's edges last, while it
-// unrolls): up to eleven quads on the hand of the left role,
+// unrolls): up to twenty quads on the hand of the left role,
 // in order - the page (the layer's picture); with the figure on a page of its
 // own (vr::SetFigurePage) that page's edge and paper in plain colour and the
-// figure; with the figure behind a tab (vr::SetFigureTab) the two tabs with a
-// small picture of the page and of the figure, and the figure on paper over
-// the page while its tab is chosen. Corners in the holding controller's frame (OpenVR's axes - x
+// figure; with the tab strip (vr::SetTabs) the page's and the figure's tabs
+// with a small picture of the page and of the figure, and the figure on paper
+// over the page while its tab is chosen; the Mirror tab and the mirror page
+// (kTabletMirrorTabPieces, kTabletMirrorPagePieces). Corners in the holding controller's frame (OpenVR's axes - x
 // right, y up, z back - in metres; top left, top right, bottom left, bottom
 // right) with their texture coordinates; the layer's texture
 // (IDirect3DTexture9) for the textured ones.
@@ -39,15 +40,41 @@ struct TabletQuadPiece {
 	// colour while the paper is not loaded.
 	bool paper = false;
 	UInt32 tint = 0xFFFFFFFFu;
+	// The mirror page's glass (the reflection once there is one, else its
+	// plain colour) and the dust over it (TabletQuad's own texture, drawn
+	// blended; none while that texture is not made).
+	bool glass = false;
+	bool dust = false;
 	NiPoint3 corners[4] = {};
 	float u[4] = {};
 	float v[4] = {};
 };
 
-inline constexpr UInt32 kTabletPieces = 14;
+inline constexpr UInt32 kTabletPieces = 20;
+// The Mirror tab: its paper, then the rim and the glass of its small picture.
+inline constexpr UInt32 kTabletMirrorTabPieces = 14;
+// The mirror page, drawn over the page's picture: the frame, the glass inside
+// it, the dust over the glass.
+inline constexpr UInt32 kTabletMirrorPagePieces = 17;
+inline constexpr UInt32 kTabletMirrorGlassPiece = kTabletMirrorPagePieces + 1;
+
+// Where the mirror's glass is, for whoever renders the reflection (stage 2).
+struct MirrorPageState {
+	bool up = false;  // the mirror's page is shown this frame (and was drawn into the eyes)
+	// The glass's four corners in the holding controller's frame (OpenVR's
+	// axes, metres): top left, top right, bottom left, bottom right.
+	NiPoint3 corners[4] = {};
+};
+
+// The part of the mirror's texture the glass shows: left, top, right, bottom,
+// in 0..1 of the texture (all of it by default).
+struct MirrorGlassUv {
+	float rect[4] = {0.0f, 0.0f, 1.0f, 1.0f};
+};
 
 struct TabletQuadFrame {
 	bool valid = false;
+	bool mirrorUp = false;  // the mirror's page is among the pieces
 	TabletQuadPiece pieces[kTabletPieces];
 	void* texture = nullptr;
 };
@@ -56,15 +83,43 @@ class TabletQuad {
 public:
 	void Set(const TabletQuadFrame& frame) { m_frame = frame; }
 
+	// Whether the mirror's page is up this frame, and where its glass is. The
+	// one thing stage 2 asks before it renders a reflection: nothing is
+	// rendered unless `up`.
+	MirrorPageState MirrorPage() const {
+		MirrorPageState state;
+		state.up = m_frame.valid && m_frame.mirrorUp && m_frame.pieces[kTabletMirrorGlassPiece].valid;
+		if (state.up) {
+			for (int i = 0; i < 4; ++i) {
+				state.corners[i] = m_frame.pieces[kTabletMirrorGlassPiece].corners[i];
+			}
+		}
+		return state;
+	}
+
+	// Where stage 2 hands in the reflection: the mirror's picture for each eye
+	// (an IDirect3DTexture9 on the game's device, drawn as it is, premultiplied
+	// or opaque) and the part of it the glass shows. With no texture the glass
+	// stays its plain dark colour. One texture alone is shown to both eyes.
+	void SetMirrorGlass(void* leftEye, void* rightEye, const MirrorGlassUv& uv) {
+		m_glassTexture[0] = leftEye;
+		m_glassTexture[1] = rightEye;
+		m_glassUv = uv;
+	}
+
 	// Into the back buffer for one eye, on the hand of the left role
 	// (view.hands[1]). False, drawing nothing, without a quad, a hand, or the
 	// world camera's projection on the device.
 	bool DrawIntoWorld(void* device, const ControllerModels::WorldView& view, bool leftEye);
 
-	// The game's paper made now, while nothing is seen to wait for it (the
-	// main menu): made at the tablet's first draw it cost that frame about
-	// 12 ms (tablet-open-hitch.txt, 2026-11-20). Once; later calls are free.
-	void Prepare(void* device) { Paper(device); }
+	// The game's paper and the mirror's dust made now, while nothing is seen to
+	// wait for them (the main menu): the paper made at the tablet's first draw
+	// cost that frame about 12 ms (tablet-open-hitch.txt, 2026-11-20). Once;
+	// later calls are free.
+	void Prepare(void* device) {
+		Paper(device);
+		Dust(device);
+	}
 
 	// Both eyes had the tablet drawn into them since the last asking - the
 	// overlay need not show it - and a fresh count from here. Asked once a
@@ -81,10 +136,16 @@ private:
 	// The paper's texture on the game's device, made the first time a piece
 	// asks for it; tried once.
 	void* Paper(void* device);
+	// The mirror's dust, made the same way (vr/MirrorDust.h).
+	void* Dust(void* device);
 
 	TabletQuadFrame m_frame;
 	void* m_paper = nullptr;
 	bool m_paperTried = false;
+	void* m_dust = nullptr;
+	bool m_dustTried = false;
+	void* m_glassTexture[2] = {nullptr, nullptr};
+	MirrorGlassUv m_glassUv;
 	UInt32 m_eyes = 0;  // bit 1 left, bit 2 right
 	// The frame's count (TakeDrawnBoth), and the world projection of its
 	// first eye, for the second when the 2D pass between them set another.

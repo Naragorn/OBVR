@@ -99,7 +99,7 @@ void FillLaserTargets(LaserTargetsState& state, const HandStep& step, vr::HandMo
 	                                     step.active && step.config.hands.tablet.enabled && frame.inWorld,
 	                                     frame.layerPixelsWidth, frame.layerPixelsHeight,
 	                                     step.config.hands.tablet.inScene, step.config.hands.tablet.figure,
-	                                     step.scriptMarked);
+	                                     step.config.hands.tablet.mirror, step.scriptMarked);
 	PalmsToTablet(state, frame.tablet);
 	frame.walkUnderTablet = WalkUnderTablet(state, frame.tablet);
 	frame.walkUnderMenu = frame.walkUnderMenu || frame.walkUnderTablet;

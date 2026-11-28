@@ -205,6 +205,11 @@ public:
 	void SetTablet(const TabletQuadFrame& frame) { m_tablet.Set(frame); }
 	void PrepareTablet(void* device) { m_tablet.Prepare(device); }
 	bool TakeTabletDrawnBoth() { return m_tablet.TakeDrawnBoth(); }
+	// The mirror page on the tablet (docs/mirror-spec.md, stage 2's way in): whether
+	// it is up this frame and where its glass stands; and the reflection, per eye,
+	// for the glass (render/TabletQuad.h).
+	MirrorPageState MirrorPage() const { return m_tablet.MirrorPage(); }
+	void SetMirrorGlass(void* leftEye, void* rightEye, const MirrorGlassUv& uv) { m_tablet.SetMirrorGlass(leftEye, rightEye, uv); }
 
 	// Whether a picture is actually going to the headset right now.
 	bool IsActive() const { return m_textures.IsReady() && !m_policy.HasStopped(); }
