@@ -2197,33 +2197,94 @@ work at all."
   closed side by side at the chest always read under 0.20 m (his five
   did), and whether 0.5 s is enough for a natural squeeze.
 
-## 28. To fix: the view and the body step back as the inventory opens (Nadi, headset, 2026-11-27 evening)
+## 28. The view and the body step back as the inventory opens (Nadi, headset, 2026-11-27 evening)
 
 Nadi, after his second run of the day (OBVR.log 2026-11-27 23:34, the DLL of 23:04, main
 4f1124f plus the swimming and books branches): "at inventory open the view and body steps
-back one step. closing moves forward."
+back one step. closing moves forward." On 2026-11-28: "fix jetzt".
 
-- **Not fixed, not looked into.** Noted for the next round.
-- [R log] The log has no line for it: around an open (e.g. line 3967, "Tablet: in the off
-  hand, drawn into the eyes") and a close ("Tablet: put down", "Tablet: closed - the menus'
-  fade kept out of the room and the eyes (22 frame(s))") it says nothing of the camera's,
-  the room's or the body's place. So the first step is an instrument: the eyes' and the
-  body root's world place in the frame before and after the tablet's menus come and go,
-  logged at the open and the close only.
-- Candidates, none checked [G]:
-  - The engine moves the player's camera or model as a menu of the F1-F4 stack opens
-    (the first-person/third-person handling of the paperdoll; "Menu near shapes: the body
-    ..." is logged right at the open).
-  - OBVR's own steps that change with menu mode: the room follow or the body's place under
-    the head while the world runs behind the tablet, the eyes' forward offset
-    (`[Body] Eyes`), the physics step ("Hands: the physics step back to 0.01670 s" at the
-    open, "0.01670 s -> 0.01111 s" at the close).
-  - New since this day: the world runs on through the menus' fade at the close (26.3) -
-    if a place is taken at the menu's start and given back at its end, the close's step
-    forward would be that.
-- Evidence for the fix, when it is found: the harness can show it (tablet-walk.txt or a
-  new scenario reading the player's position and the eyes at the open and the close; a
-  film from the side).
+**State: a fix built on 2026-11-28, unit-tested, not run in the game.** The engine-side
+mechanism is derived from reading, not measured; the fix does not depend on it, and it
+carries the measurement that will say what the engine did.
+
+### 28.1 What was read
+
+- [R log] The run's log has no line for the camera's, the room's or the body's place
+  around an open or a close. `Menu trace: ... camera pass=1` stands before and after each
+  open: under the tablet's menus the camera pass runs on, every frame.
+- [R code] What the camera pass builds the view from, and what of it asks for the menu:
+  - the base is the engine's first-person eye - the world place of `Camera01` in the
+    first-person skeleton (FUN_0066b710 reads `[0x00B3BB0C] + 0x88`), written to the
+    camera node just before OBVR's hook;
+  - `camera/StandingEyeHold.h` holds that eye over the feet against the first-person
+    animation - and was **not live under a menu** (`!game::IsMenuMode()`): from the
+    menu's first frame to its last the engine's eye passed as it was;
+  - the room follow stands still under a menu (`RoomFollowAllowed`), which moves nothing
+    by itself: the head's offset less what was followed stays what it was;
+  - the head's offset, the look control's base rotation and the heights are built the
+    same way under a menu.
+  So the one place the view's base can change with a menu is the engine's eye itself.
+- [R code] The body hangs from the camera (`game::ShowPlayerBody`, the cyclopean camera's
+  world place), and the hands are pinned to it: a base that steps takes the body and the
+  hands with it - "the view and the body".
+- [D] Why the engine's eye would differ under the tablet: `Camera01` hangs under the
+  first-person root, and OBVR places that root with the right hand every frame at the
+  draw (`game::PlaceFirstPersonArms`: the hand's turn and its offset from the arms' rest
+  pose, some tens of units). In a world frame the player's update puts the root back
+  before the engine reads `Camera01`. Under the tablet's menus the player's update does
+  not run while the player stands (the body's check reads a stale skeleton at each open
+  in this run's log and words it so: "world transforms out of date (a frame without the
+  player's update: a menu with the world running)" - a reading of the bones, not a trace
+  of the update), so the camera update would read `Camera01` where OBVR's placement left it
+  the frame before: the eye displaced by the hand's offset, from the menu's second frame
+  on, and back with the first world frame. The same leak is on record twice: the mounted
+  view (game/FirstPersonArmsLogic.h, 2026-10-19) and the NPCs' look at the player
+  (game/PlayerLookAt.h). [R exe] The two halves run apart in the engine: the camera
+  update 0x0066B710 is called from the render path (0x00411B70), the first-person root is
+  placed by the actor's update (0x00603CA0, then 0x00660130 for its turn) -
+  ../OBNG/knowledge/first-person-camera.md. **Not proved for this case** - no run has the engine's eye under
+  a menu. If it holds, the view would also follow the right hand while the tablet is up.
+
+### 28.2 The fix
+
+- `camera/StandingEyeHold.h`: under a menu with the world running the view keeps the
+  place it had over the feet as the menu came up (the offset in the player's frame, so
+  the walk under the tablet carries it and a turn turns it). Nothing is eased toward the
+  engine's eye there and no jump is taken. A menu moves nobody's head. For ten frames
+  after the menu a far offset is eased like a near one, so one last frame of the menu's
+  eye is no jump there and back. Sneaking, the height stays the engine's as in the world.
+- Not changed: a conversation (the camera hook holds the dialogue's base itself), knocked
+  down under a menu, riding, swimming - the engine's eye, as before; menus that pause the
+  world never reach the camera pass.
+- The decisions are pure: `StandingEyeLive`, `StandingEyeUnderMenu` (the gates),
+  `StepStandingEyeHold` (the hold), covered by `standing_eye_hold_test` - 28 new checks,
+  among them "as it was": the menu's first frame showing the engine's eye 40 units back.
+- **The measurement** rides along: once a menu is gone the log says
+  `Camera: under a menu with the world running the view was kept where it stood over the
+  feet for N frame(s) - the engine's eye stood up to U units from it (x right, y forward,
+  z up at the furthest; 2 units off from its frame F), the feet went W units meanwhile`.
+  - U near 0: the engine's eye does not move under the menu - the step has another cause,
+    this fix does nothing for it, and the next thing to read is the feet (W) and the
+    head's offset.
+  - U of some tens of units: the cause is the engine's eye; the vector says which way,
+    and whether it follows the right hand (the [D] above) shows in U changing from menu
+    to menu with where the hand was.
+- Harness: `tools/hand-scripts/tablet-open-step.txt` (written, not run - Linux): four
+  marks, world / open / the right hand moved / closed; the held eye and the eyes' place
+  must be the same at all four.
+- Cost of the change per frame: a handful of float operations more in the camera pass;
+  no allocation, no log line outside a menu's end.
+
+### 28.3 Open
+
+- The headset: whether the step is gone at the open and the close.
+- The next log's `Camera: under a menu ...` lines: the size and the direction of what the
+  engine's eye did, and with them whether 28.1's [D] is the mechanism.
+- If it is: the engine's eye is displaced by OBVR's own placement of the first-person
+  root, and whatever else reads `Camera01` under a running-world menu reads it displaced
+  too (the engine's own picks and sounds from the eye). Putting the root back after the
+  draw on those frames would end it at the source; not built on a mechanism not measured.
+- The Linux harness run of the scenario above.
 
 ## 29. The evening run of 2026-11-27 (log of 23:34): read, nothing built
 

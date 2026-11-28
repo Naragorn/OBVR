@@ -1,0 +1,63 @@
+# The view stays where it stood as the tablet's menus come and go (Nadi in
+# the headset, 2026-11-27: "at inventory open the vr view and body take back
+# one step. closing inv moves forward"; docs/inventory-tablet-spec.md 28).
+# Under the tablet's menus the world runs on and the camera pass with it; the
+# standing eye's hold was "not live" under a menu and passed the engine's
+# first-person eye as it was. It keeps the eye's place over the feet now
+# (camera/StandingEyeHold.h) and says, once the menu is gone, how far the
+# engine's eye stood from it meanwhile - the measurement no run had taken.
+#
+# The run: the hands held away from the arms' rest pose (the first-person
+# root is placed with the right hand, and Camera01 hangs under that root - the
+# suspected way the engine's eye moves under a menu, not proved), a mark in
+# the world, the left B opens the inventory on the tablet, a mark, the right
+# hand moved 30 cm, a mark, the left B closes it, a mark.
+#
+# To read: "Camera: standing eye at the mark" at the four marks - the held
+# eye over the feet is the same at all four ("held, standing" in the world,
+# "kept under a menu" under it), whatever the engine's eye beside it reads;
+# "Camera: at the mark - the eyes at ..." likewise the same place at all four; and the line
+# "Camera: under a menu with the world running the view was kept ..." with
+# how far the engine's eye stood off and from which frame.
+# Before the change: the mark under the menu says "not held", and its eyes
+# are where the engine's eye is.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-open-step.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands WalkDirection=head
+ini Tablet Enabled=1
+ini Tablet InScene=1
+ini Render UnpausedMenus=0
+ini Render MonitorMenusOnly=0
+
+expect HandScript: finished
+expect Tablet: in the off hand, drawn into the eyes
+expect Camera: standing eye at the mark - kept under a menu
+expect Camera: under a menu with the world running the view was kept where it stood
+expect Tablet: closed - the menus' fade kept out of the room and the eyes
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.20 -0.45 -0.10
+right rot 40 32 0
+wait 2.5
+mark world
+wait 8
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark open
+wait 8
+right pos 0.20 -0.30 -0.40
+wait 1.5
+mark moved
+wait 8
+left b 1
+wait 0.2
+left b 0
+wait 2.5
+mark closed
+wait 1
