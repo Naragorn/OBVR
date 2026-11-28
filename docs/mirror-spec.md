@@ -1,4 +1,4 @@
-# A mirror on the tablet (feasibility and plan, 2026-11-28; stage 1 built, section 11; stage 2 built, section 12; stage 3 and the steady picture built, section 13; stage 4, the depth, built, section 14; its two faults fixed, section 15)
+# A mirror on the tablet (feasibility and plan, 2026-11-28; stage 1 built, section 11; stage 2 built, section 12; stage 3 and the steady picture built, section 13; stage 4, the depth, built, section 14; its two faults fixed, section 15; the water's offset and the near sky, section 16)
 
 The wish (Nadi, 2026-11-28): "neues feature: im inv egal wie eingestellt, gibts oben am ende ein
 neuen tab: spiegel, das gibt mir ein echtes spiegel erlebnis und ich kann mich selber ansehen und
@@ -1222,3 +1222,182 @@ The whole suite: 346 of 348 pass; the two that fail are the known ones (`water_v
 `grass_flicker_map`: no numpy here). `function_sizes_test` green, no row raised. The DLL builds with
 no new warning. Scenario `tools/hand-scripts/tablet-mirror-world.txt` expects the count, **written,
 not run**.
+
+## 16. The water's reflection still off, the sky too near (2026-11-28, branch mirror-6-1128)
+
+Nadi's headset run of 2026-11-28 20:17-20:35 (the DLL from 13577ab, sections 1-15): the face and hair sit on
+the head now (log: "skin stamp moved between the two passes in 0 of 90 frames, counted up by OBVR for 90
+passes" - 15.2 holds); the water's reflections in the mirror are still off ("wasserreflexionen nein noch
+nicht"); and new: "der himmel ist auch viel zu nah im vergleich zur landschaft" - the sky much too near
+against the land, with depth on ("depth on: both eyes 90, taking turns 0"). Both fixes below are built and
+unit-tested, not run in the game.
+
+### 16.1 What the log shows [M]
+
+`OBVR.log` of the run (Windows, Pimax):
+
+| Line | What |
+| --- | --- |
+| 1725 | The eyes' game camera: frustum l -1.40194845, r 1.40194845, t 1.09130871, b -1.09130871 - symmetric top to bottom |
+| 4393 | The left mirror camera (scene call 3951): at 47380.9 83237.3 255.3, the eye 47.6 units in front of the glass, frustum -0.416 0.102 0.049 -0.506 |
+| 4396 | Its water: "the engine's own (no stable capture) - the scene camera at 47380.9 83237.3 255.3, frustum -0.416 0.102 0.049 -0.506; the water camera read at 47380.9 83237.3 -255.3, frustum -0.416 0.102 0.049 -0.506" - the water at height 0, the water camera's frustum the scene camera's |
+| 4415, 4417 | The right mirror camera: at 47385.2 83236.8 254.7 (4.3 units from the left), the eye 48.3 in front, frustum -0.320 0.191 0.046 -0.500; its water camera the same frustum |
+| 15120 | Later: the eye 32.4 units in front, frustum -0.424 0.337 0.212 -0.603 |
+
+### 16.2 The water: the engine's reflection is right only for a frustum symmetric top to bottom
+
+**Read.**
+- 0x0049BEF0 builds its reflection camera from the passed camera's view direction (column 0: +0x64, +0x70,
+  +0x7C) and right (column 2: +0x6C, +0x78, +0x84), both reflected about z = the water's height, and makes
+  its up (column 1) again as R(right) x R(view) - the decompile's three negated differences before
+  0x0070FCC0 assembles the columns. The up is not reflected.
+- 0x0070C190 is called at 0x0049C27A with ECX = the manager's camera (`MOV ECX,[ESI]`) and the argument
+  EBX + 0xEC (`ADD EBX,0xEC; PUSH EBX`), EBX loaded from [EBP+8], the passed camera, at 0x0049BF4B (read in
+  the EXE's bytes; that EBX is not written in between is shown by the log, not by a full disassembly). Its
+  body copies l, r, t, b, far and the ortho flag into +0xEC.. and derives the near (a frustum setter; the
+  name derived). [M]: lines 4396 and 4417, the water camera's frustum equal to the scene camera's.
+- The stock water vertex shader (the patterns `PatchWaterVertexShaderNative` matches,
+  render/WaterReprojection.h): oT2-oT4 the rows c0-c2 of the scene's view-projection each plus c3 times the
+  half-w term, oT5 = c3: the pixel shader reads the map at the scene camera's own clip coordinates.
+
+**Derived.** For a camera with up = right x view (a proper rotation), the remade up is -R(up): the true
+mirror's up turned over, so the map is the true reflection upside down. A water point at the scene
+camera's tangents (X, Y) stands in the water camera at (X, -Y). The lookup reads u = 0.5 + 0.5 x,
+v = 0.5 + 0.5 y of the scene camera's clip coordinates - v upward, which undoes the turned-over up - and that
+is exactly right when t = -b (the only form under which the flat game's reflection is right; the pixel
+shader's bytecode is not read). With the same frustum handed to the water camera the map holds the point at
+v = 0.5 + (2Y + t + b) / (2 (t - b)), the lookup reads v = 0.5 + (2Y - t - b) / (2 (t - b)): a miss of
+-(t + b) / (t - b) of the map's height. For the flat game and the eyes 0 (line 1725); for the left mirror
+camera 0.82, the right 0.83 - and the two differ, a false depth on top. Worse, the map was rendered over the
+tangents [-t, -b] of the true reflection, the rows above the mirror's view: of the water the mirror sees,
+only the band |Y| < t is in the map at all (mirror_water_test: 99 of 121 sampled water points outside it;
+all 121 for 15.3's frustum, wholly under the axis). Section 15.3's cause (the stable capture from the head)
+was real; this one lay under it. 15.3's open point named the frustum but not the turned-over up.
+
+**The fix, where it is decided.** The engine's reflection copies the frustum it is handed; in the mirror's
+render it is handed the camera's frustum with top and bottom mirrored (t' = -b, b' = -t), put back right
+after the call: `EngineReflectionFrustumFor` (render/WaterReprojection.h, the rule) and
+`RenderEngineReflection` (render/WaterReflectionHook.cpp:278, the hook's non-stable branch, moved out of
+`Hooked`). The water camera then covers the tangents [b, t] of the true reflection - what the mirror sees -
+and the lookup meets the map's texel exactly (mirror_water_test: 0 of 121 outside, a miss under 1e-6 for
+all three measured frustums). Outside the mirror's render nothing changes: the eyes hand theirs as it is,
+and theirs is symmetric anyway, where the rule would change nothing. Considered and not taken: a symmetric
+frustum for the whole mirror render with the picture cut from it (up to half its pixels thrown away -
+0.506 + 0.506 rendered for 0.555 shown - and the glass's mapping changed), for a fault decided in one copy.
+
+Cost: two copies of the 28-byte frustum per mirror pass that renders water.
+
+### 16.3 The sky: centred on the eye, not on the mirror's camera
+
+**Read.**
+- RenderScene 0x0040C830 at 0x0040C95F-0x0040C9F0: the scene graph's first child - the camera node -
+  its local translation (+0x54..+0x5C) copied into the nodes at [0x00B333D8] and [0x00B333DC], then
+  0x00707370(0.0f, 0) on each (OBNG `re/functions/0x0040C830.md` step 6).
+- 0x00406950 makes both: [0x00B333D8] named "Sky" (the string at 0x00A30044, read in the EXE's bytes),
+  [0x00B333DC] "Weather"; both attached under the node 0x007C7340 makes, under the World root. 0x00406360
+  hands [0x00B333D8] to Sky::Init 0x005411D0, which keeps it as the Sky's root (Sky+0x04) and hangs the
+  "Moons Root" under it; 0x0053D8F0 takes "Weather" as the precipitation's parent.
+- The engine's own water reflection places the Sky root itself: 0x0049BEF0 writes the reflected camera's
+  place into [[TES+0x5C]+0x04]+0x54, updates, renders, puts the old place back and updates.
+- So the engine's sky stands on whatever camera the camera node carries, render by render. OBVR's dual
+  pass moves the camera node to each eye (camera/CameraHook.cpp:7936, back at :8000): each eye's sky is on
+  that eye, at infinity. The mirror's pass moves only the NiCamera, the node's leaf
+  (render/MirrorGlassPass.cpp RenderFromMirror; 12.2 point 2): both mirror renders copied the node's place,
+  the eye's.
+
+**Derived.** In the mirror's render the sky was centred on the eye, twice the eye's distance from the glass
+off the mirror camera: 95 units in the first trace (2 x 47.6), 65 at line 15120. Two mirror cameras 4.3
+units apart seeing one dome of radius R round one point give a dome point a disparity of 4.3 / R radians
+across their baseline (mirror_sky_test: 0.46 degrees at R = 500, 0.06 at 4000) - the stereo of a thing at
+the dome's radius, where the far land in the mirror shows its own, smaller one: the sky stands in front of
+the land. With MirrorDepth=0 there is one picture and no disparity; the sky is only seen from 95 units off
+its centre. The dome's radius is not read [unverified]; the new trace logs the Sky root's world bound
+radius, an upper bound (the sun and moons hang in it). This corrects 12.7's guess ("up to a metre off at
+the horizon"): it was taken for a shift; the stereo is what shows.
+
+**The fix, where it is decided.** RenderScene places the sky from the camera node's local translation; for
+the mirror's render that translation holds the mirror camera's place, expressed in the Sky root's
+parent's space, and the engine's own copy puts the Sky and Weather roots on the mirror's camera
+(game/MirrorSkyLogic.h `PlanMirrorSky`, pure; game/MirrorSky.cpp `PlaceSkyForMirror`,
+`PutSkyBackAfterMirror`; called at render/MirrorGlassPass.cpp:411 and :415, item (8) of RenderFromMirror's
+list). Only those 12 bytes: the node's world transform is not updated, so the NiCamera under it stays where
+the pass put it. Right after the render - before the camera's own transform goes back - the node's
+translation and both roots' are put back and the roots updated as RenderScene updates them, so nothing of
+the mirror's sky outlives its render. The water pass inside the mirror's render still places the Sky root
+on its own reflected camera first and puts it back as it found it. Considered and not taken: moving the
+camera node as the dual pass does (all under the node moves with it; 12.2's reason against holds), and a
+patch inside RenderScene after its copy (a mid-function hook for the same 12 bytes).
+
+Refusals, in order, each logged once when it changes ("Mirror sky: not placed on the mirror's camera -
+<why>"): no camera node, no Sky root, the Sky root's parent with no usable transform (no number, a scale or
+a determinant under 1e-5 - the same guard as `BuildWaterCameraLocalFromParent`), the camera no number. The
+sky then stays as before.
+
+Safety: a render that remade the node's world from its local would move the camera under it. Read: no
+instruction of RenderScene updates the camera node; the decompile's readers of
+[[0x00B333CC+0xB0]]+0x54 are 0x0040C830 (the copy) and 0x0053B3F0 (the sky's construction), its writers
+0x006643A0 and 0x0066EAF0 (camera updates of the main loop), and the Sky updates 0x0053F4C0, 0x00541DD0,
+0x00542F20 read its world height (+0x90) - none inside the render [R, a search for the expression; a pointer
+to the node kept elsewhere is not excluded]. Checked at run time too: after each render the node's world
+place is compared with the one before; moved, it is made again from the put-back translation and the trace
+says "MOVED".
+
+Cost [D]: per mirror pass about ten pointer reads and three 12-byte writes, and two engine updates of the
+sky's and the weather's subtrees - the call RenderScene makes on them in every render, so a frame with both
+mirror passes makes four more. The trace's "put back in X ms" measures the putting back for the first four
+passes; not measured yet.
+
+### 16.4 MirrorDepth=0: a deviation from the brief
+
+The brief asked that MirrorDepth=0 stay exactly stage 3. Both fixes sit in the render both settings share,
+so stage 3's one picture gets them too, as 15.3's water change already did. Stage 3's path itself - one
+pass a frame, the cyclopean camera, texture 0, no budget - is untouched. Why: both faults are in that render
+with either setting (the cyclopean camera's frustum is off-axis the same way; its sky is seen from 95 units
+off its centre), and keeping them for the way back would make depth and no depth differ in more than the
+depth. If stage 3 must keep its old water and sky, one condition on `t.mirrorDepth` at the two call sites
+does it - the owner's call.
+
+### 16.5 Tests
+
+Written first, run red against a stub of today's behaviour (the frustum handed as it is, the sky never
+placed), then green (Windows, MSVC):
+
+| Test | Red | Green |
+| --- | --- | --- |
+| `mirror_water_test` (new): a model of the engine's planar reflection (0x0049BEF0's camera, the stock shader's lookup) over the eyes' measured frustum (lookup and map agree: the model's check) and the three mirror frustums measured (the miss of (t + b) / (t - b) and the water outside the map before; none after); the rule's refusals (outside the mirror, orthographic, no height, top under bottom, no number, endless) | 9 of 26 checks failing | 26 |
+| `mirror_sky_test` (new, game/MirrorSkyLogic.h): placed under an identity, under no parent, under a turned, moved and scaled parent (the engine's update of the copied translation lands on the camera); every refusal and its order; the two measured mirror cameras with the sky on the eye (a disparity of baseline over radius) and on each camera (none, at any radius) | 15 of 19 failing | 19 |
+
+The whole suite: 355 of 357 pass; the two that fail are the known ones (`water_visual_harness`,
+`grass_flicker_map`: no numpy here). `function_sizes_test` green, no row raised (the sky's two addresses
+live in game/MirrorSky.cpp: GameAddresses.h may not grow). A first full run also showed `config` and
+`settings_list` failing and seven tests not run; they passed alone and in two full runs after it, with only
+the sky's addresses moved out of GameAddresses.h in between, which none of them reads [unexplained]. The
+DLL builds with no new warning. Scenario
+`tools/hand-scripts/tablet-mirror-world.txt` expects the sky's trace and rejects a refusal, a moved node and
+an unmirrored water frustum: **written, not run**.
+
+### 16.6 What the next log must show
+
+- With water in the glass, four times: "Water reflection in the mirror's render: the engine's own (no stable
+  capture), handed the frustum with top and bottom mirrored - the scene camera at ..., frustum l r t b; the
+  water camera read at ..., frustum l r -b -t". The water camera still with t and b of its own: the copy
+  takes the frustum from somewhere else, and the fix did not reach it.
+- Four times: "Mirror sky: in the mirror's render the Sky root stood 0.00 units from the mirror's camera, the
+  Weather root 0.00 (both placed); the engine's own copy would have put them on the camera node, 95 units
+  from it; the Sky root's world bound radius R; the camera node not moved in the render; put back in X ms".
+  The Sky root a unit or more off: its parent is not what was read; the Weather root off alone: their
+  parents differ; "MOVED": something in the render updates the camera node.
+- No "Mirror sky: not placed".
+- The cost line's pass mean against 15.1's 1.32 ms (the sky's put-back is in it).
+- The headset: the water's reflections in the glass where the water is; the sky behind the far land.
+
+### 16.7 Not verified
+
+- Nothing of section 16 ran in the game.
+- The stock pixel shader's lookup (u and v from oT2 and oT3 over oT5, v upward) is derived from the vertex
+  shader's patterns and from the flat game being right, not read in the pixel shader's bytecode.
+- That the scene camera's projection ignores its port (the mirror renders into a corner) as the water
+  camera's full-target one does: if not, the lookup would be off by the port's scale. The headset settles it.
+- The dome's radius: the trace's bound radius.
+- Estimated values: none. The one new constant, the refusal guard 1e-5, is the existing
+  `BuildWaterCameraLocalFromParent`'s.

@@ -153,6 +153,7 @@ add_library(OBVR SHARED
 	src/game/WalkerGrip.cpp
 	src/game/HeadCull.cpp
 	src/game/MirrorHead.cpp
+	src/game/MirrorSky.cpp
 	src/game/ThrowNoise.cpp
 	src/game/CampKill.cpp
 	src/game/MenuMode.cpp
