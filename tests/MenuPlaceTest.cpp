@@ -671,7 +671,71 @@ void TestScrollUpright() {
 	      "upright between the hands, its middle between them, facing the eyes");
 	f.left.buttonsPressed = 0;
 	r = mode.Update(f, s);
-	Check(r.tabletHolderRight, "the lower hand let go: kept by the upper one");
+	Check(r.menuOnTablet && !r.tabletHolderRight, "the off hand, the lower one, let go: still kept by the off hand");
+}
+
+// Left-handed (the roles swapped before the frame, vr::AssignHandRoles): the
+// frame's left is the off hand - the right controller. Unrolled at the ring
+// and let go by the off hand, it stays in the off hand (Nadi, 2026-11-28).
+void TestScrollLeftHanded() {
+	std::printf("The scroll left-handed\n");
+	HandSettings s = PlainSettings();
+	s.tablet.unroll = TabletUnroll::Sideways;
+	s.stow.centreForward = 0.5f;
+	s.stow.centreUp = -0.3f;
+	HandModeFrame f;
+	f.rolesSwapped = true;
+	f.headValid = true;
+	f.inWorld = true;
+	f.dtSeconds = 0.05f;
+	f.layerPixelsWidth = 1600.0f;
+	f.layerPixelsHeight = 1200.0f;
+	f.left.valid = true;
+	f.right.valid = true;
+	f.left.position = NiPoint3{0.06f, -0.3f, -0.5f};  // the off hand on the right
+	f.right.position = NiPoint3{-0.06f, -0.3f, -0.5f};
+	HandMode mode;
+	HandModeResult r;
+	for (int i = 0; i < 9; ++i) {
+		r = mode.Update(f, s);
+	}
+	const UInt64 grip = 1ull << openvr::kButtonIndexGrip;
+	f.left.buttonsPressed = grip;
+	f.right.buttonsPressed = grip;
+	r = mode.Update(f, s);
+	Check(r.controls.menu && r.tabletGrips, "both grips closed at the ring: the menus open");
+	f.menuMode = true;
+	f.tablet = TabletFrameUp().tablet;
+	f.left.position = NiPoint3{0.25f, -0.3f, -0.5f};
+	f.right.position = NiPoint3{-0.25f, -0.3f, -0.5f};
+	r = mode.Update(f, s);
+	Check(Near(r.tabletShare, 1.0f), "pulled past its width: fully open");
+	f.left.buttonsPressed = 0;
+	r = mode.Update(f, s);
+	Check(r.menuOnTablet && !r.tabletHolderRight && r.tabletShare < 0.0f,
+	      "the off hand let go, the weapon hand kept its grip: held by the off hand");
+	Check(r.laserVisible && r.laserRight, "the weapon hand points at it");
+	// Again, the weapon hand letting go this time.
+	HandMode other;
+	HandModeFrame g = f;
+	g.menuMode = false;
+	g.tablet = HandModeFrame{}.tablet;
+	g.left.position = NiPoint3{0.06f, -0.3f, -0.5f};
+	g.right.position = NiPoint3{-0.06f, -0.3f, -0.5f};
+	g.left.buttonsPressed = g.right.buttonsPressed = 0;
+	for (int i = 0; i < 9; ++i) {
+		other.Update(g, s);
+	}
+	g.left.buttonsPressed = g.right.buttonsPressed = grip;
+	other.Update(g, s);
+	g.menuMode = true;
+	g.tablet = TabletFrameUp().tablet;
+	g.left.position = NiPoint3{0.25f, -0.3f, -0.5f};
+	g.right.position = NiPoint3{-0.25f, -0.3f, -0.5f};
+	other.Update(g, s);
+	g.right.buttonsPressed = 0;
+	r = other.Update(g, s);
+	Check(r.menuOnTablet && !r.tabletHolderRight && r.laserRight, "the weapon hand let go: held by the off hand as well");
 }
 
 void TestScroll() {
@@ -719,9 +783,9 @@ void TestScroll() {
 	Check(Near(r.tabletShare, 1.0f), "pulled past its width: fully open");
 	f.left.buttonsPressed = 0;
 	r = mode.Update(f, s);
-	Check(r.menuOnTablet && r.tabletHolderRight && r.tabletShare < 0.0f && !r.controls.menu,
-	      "the left let go: kept by the right hand, the menus open");
-	Check(r.laserVisible && !r.laserRight, "the left hand points at it now");
+	Check(r.menuOnTablet && !r.tabletHolderRight && r.tabletShare < 0.0f && !r.controls.menu,
+	      "the left let go: kept by the off hand, not the right that kept its grip; the menus open");
+	Check(r.laserVisible && r.laserRight, "the right hand points at it");
 	// Opened by the left B instead: held by the left hand.
 	HandMode byButton;
 	HandModeFrame b = TabletFrameUp();
@@ -773,6 +837,7 @@ int main() {
 	TestSword();
 	TestFaceOffEyes();
 	TestScrollUpright();
+	TestScrollLeftHanded();
 	std::printf("%d failure(s)\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }

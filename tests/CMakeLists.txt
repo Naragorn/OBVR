@@ -2848,6 +2848,14 @@ if(NOT MSVC)
 endif()
 add_test(NAME tablet_scroll COMMAND tablet_scroll_test)
 
+# Which hand holds the tablet once it is open (vr/TabletHolder.h).
+add_executable(tablet_holder_test TabletHolderTest.cpp)
+target_include_directories(tablet_holder_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_holder_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet_holder COMMAND tablet_holder_test)
+
 # The tablet's pages by the right stick (vr/TabletPages.h).
 add_executable(tablet_pages_test TabletPagesTest.cpp)
 target_include_directories(tablet_pages_test PRIVATE ../src)

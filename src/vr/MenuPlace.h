@@ -224,7 +224,8 @@ inline MenuTarget PlaceMenu(const HandModeFrame& f, const HandSettings& s, bool 
 	                                                          TabletHandReach(f.tablet, false))
 	                                            : TabletPlace{};
 	// The scroll (vr/TabletScroll.h): between the hands while it unrolls or
-	// rolls up, in the right hand when that one kept it.
+	// rolls up, in the right hand when that one kept it - which the scroll no
+	// longer asks for since 2026-11-28: the off hand keeps it (vr/TabletHolder.h).
 	const bool keptRight = scroll != nullptr && scroll->holderRight &&
 	                       (scroll->phase == TabletScrollPhase::Held || scroll->phase == TabletScrollPhase::RollingUp);
 	const TabletPlace held = tablet.valid && keptRight && f.right.valid ? HeldByRight(f, s, hold) : tablet;
