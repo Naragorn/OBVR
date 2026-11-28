@@ -19,6 +19,7 @@
 #include "game/HandoverLogic.h"
 #include "game/InventoryGrabLogic.h"
 #include "game/WeaponGrab.h"
+#include "vr/GripClaim.h"
 
 namespace obvr::camera::hands {
 
@@ -37,6 +38,8 @@ struct HandoverState {
 	game::HandBackState handBack{};
 	bool handBackLeft = false;  // the hand taking it back
 	game::InventoryItemKind handBackKind = game::InventoryItemKind::Other;
+	vr::GripClaimState gripClaim{};  // the shield's handover waiting for the tablet's gesture (vr/GripClaim.h)
+	float shieldToThing = 0.0f;      // the weapon hand's distance from the shield at the closing, for its line
 };
 
 // What the handover shares with the other hand features this frame.

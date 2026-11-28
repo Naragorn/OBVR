@@ -2340,6 +2340,19 @@ body trace tools. Evidence page: https://claude.ai/artifact/3i4PoScGEF7XY4MiRU1G
   way to switch, not the feature's); this time both switches made a swing nobody made (six
   fatigue lines, four wanted); one 152.9 ms frame inside the left hand's jump to the swing's
   start, left-handed (cause not read).
+- **The shield's handover waits in the tablet's gesture zone (built 2026-11-28, not run in the
+  headset).** The weapon hand closing near the other hand is both the shield's handover (step 4)
+  and the tablet's open gesture (inventory-tablet-spec 27, 30): in the run of 2026-11-28 the
+  gesture switched the sides (OBVR.log 9326-9329), and the tablet could land in the weapon hand.
+  Decided that day: the gesture has the first claim. Where the gesture can begin (the tablet on,
+  no menu, both hands empty, the controllers within 0.20 m, their palms' middle at the inventory
+  ring) the handover's closing waits up to the gesture's 0.5 s for the other grip; the gesture
+  begins - no handover from those grips till both are open again; it does not - the handover,
+  0.5 s late. Everywhere else, and with the tablet off, at once as before. vr/GripClaim.h
+  (grip_claim_test), camera/hands/Handover.cpp `StepShieldHandover`; inventory-tablet-spec 30.3.
+  The other handovers (a weapon, a two-hander, a torch, a thing held) need something in a hand,
+  which keeps the gesture's zone shut, so they are not gated [D from TabletScrollFrame::handsEmpty;
+  a drawn bow is not counted there - not read whether the bow's handover can meet the zone].
 
 ## The tester's Windows run of 2026-11-26 (14:09-14:44, the DLL of main 8095bfd)
 

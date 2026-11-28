@@ -981,6 +981,11 @@ struct MenuPlaceResult {
 	float tabletShare = -1.0f;       // unrolled between the hands by this much; < 0 by the time it has been up
 	UInt8 tabletRefusal = 0;         // both grips closed and the scroll not begun: why (vr::TabletScrollRefusal)
 	float tabletRefusedBy = 0.0f;    // and the measure that refused it
+	// For the handover's gate (vr/GripClaim.h): the hands where the scroll can
+	// begin, the frame it began, both grips open (vr::TabletScrollResult).
+	bool tabletZone = false;
+	bool tabletBegan = false;
+	bool tabletGripsOpen = true;
 	openvr::HmdMatrix34 hudTransform{};
 	openvr::HmdMatrix34 menuTransform{};
 };
