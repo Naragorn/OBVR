@@ -3,6 +3,7 @@
 #include "core/Config.h"
 #include "core/ConfigRead.h"
 #include "core/Log.h"
+#include "vr/MirrorDepthLogic.h"
 #include "vr/MirrorGlassLogic.h"
 #include "vr/MirrorSteadyLogic.h"
 
@@ -29,6 +30,8 @@ void ReadTabletStep(Config& config, const char* path) {
 		const float limited = rounded < -1.0f ? -1.0f : (rounded > 1000.0f ? 1000.0f : rounded);
 		t.mirrorSteady = static_cast<UInt32>(vr::ClampMirrorSteady(static_cast<std::int32_t>(limited)));
 	}
+	t.mirrorDepth = ReadBool("Tablet", "MirrorDepth", t.mirrorDepth, path);
+	t.mirrorBudgetMs = vr::ClampMirrorBudgetMs(ReadFloat("Tablet", "MirrorBudgetMs", t.mirrorBudgetMs, path));
 	t.gripUp = ReadFloat("Tablet", "GripUp", t.gripUp, path);
 	t.gripForward = ReadFloat("Tablet", "GripForward", t.gripForward, path);
 	t.tiltDegrees = ReadFloat("Tablet", "TiltDegrees", t.tiltDegrees, path);

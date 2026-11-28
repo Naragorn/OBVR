@@ -110,6 +110,11 @@ struct TabletSettings {
 	// The steady picture (vr/MirrorSteadyLogic.h kMirrorSteadyDefault): 0 off,
 	// 1 to 100 stronger.
 	UInt32 mirrorSteady = 60;
+	// Stage 4 (vr/MirrorDepthLogic.h): each eye its own reflection (0: one for
+	// both, stage 3), and the pass's mean in ms above which the eyes take turns
+	// (0 never; kMirrorBudgetMsDefault).
+	bool mirrorDepth = true;
+	float mirrorBudgetMs = 2.5f;
 	TabletFigure figure = TabletFigure::Tab;  // Nadi, 2026-11-18: the tab by default
 	TabletUnroll unroll = TabletUnroll::Sideways;
 	// Where the page's lower edge meets the hand: above and ahead of the

@@ -548,6 +548,14 @@ inline constexpr SettingDefinition kHandsRows[] = {
 		+[](Config& c, float v) { c.hands.tablet.mirrorSteady = v > 0.0f ? static_cast<UInt32>(v > 100.0f ? 100.0f : v + 0.5f) : 0u; },
 	},
 	{
+		"Laser & wrist menus", "Mirror depth",
+		"Each eye sees its own reflection, so the mirror looks deep. Off, both eyes share one flatter picture",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Tablet", "MirrorDepth",
+		+[](const Config& c) { return c.hands.tablet.mirrorDepth ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.hands.tablet.mirrorDepth = v != 0.0f; },
+	},
+	{
 		"Laser & wrist menus", "Hands stay in menus",
 		"Keep your hands in inventory, chests, map, books and talks. Only the pause menu hides them",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
