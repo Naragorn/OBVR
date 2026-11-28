@@ -728,12 +728,13 @@ void TestScrollUpright() {
 	      "upright between the hands, its middle between them, facing the eyes");
 	f.left.buttonsPressed = 0;
 	r = mode.Update(f, s);
-	Check(r.menuOnTablet && !r.tabletHolderRight, "the off hand, the lower one, let go: still kept by the off hand");
+	Check(r.menuOnTablet && r.tabletHolderRight, "the off hand, the lower one, let go: kept by the right that kept its grip");
 }
 
 // Left-handed (the roles swapped before the frame, vr::AssignHandRoles): the
 // frame's left is the off hand - the right controller. Unrolled at the ring
-// and let go by the off hand, it stays in the off hand (Nadi, 2026-11-28).
+// and let go by one hand, it stays in the other, the hand that kept its grip
+// (Nadi, 2026-11-28, the second run).
 void TestScrollLeftHanded() {
 	std::printf("The scroll left-handed\n");
 	HandSettings s = PlainSettings();
@@ -769,9 +770,9 @@ void TestScrollLeftHanded() {
 	Check(Near(r.tabletShare, 1.0f), "pulled past its width: fully open");
 	f.left.buttonsPressed = 0;
 	r = mode.Update(f, s);
-	Check(r.menuOnTablet && !r.tabletHolderRight && r.tabletShare < 0.0f,
-	      "the off hand let go, the weapon hand kept its grip: held by the off hand");
-	Check(r.laserVisible && r.laserRight, "the weapon hand points at it");
+	Check(r.menuOnTablet && r.tabletHolderRight && r.tabletShare < 0.0f,
+	      "the off hand let go, the weapon hand kept its grip: held by the weapon hand");
+	Check(r.laserVisible && !r.laserRight, "the off hand points at it");
 	// Again, the weapon hand letting go this time.
 	HandMode other;
 	HandModeFrame g = f;
@@ -792,7 +793,7 @@ void TestScrollLeftHanded() {
 	other.Update(g, s);
 	g.right.buttonsPressed = 0;
 	r = other.Update(g, s);
-	Check(r.menuOnTablet && !r.tabletHolderRight && r.laserRight, "the weapon hand let go: held by the off hand as well");
+	Check(r.menuOnTablet && !r.tabletHolderRight && r.laserRight, "the weapon hand let go: held by the off hand, the weapon hand points");
 }
 
 void TestScroll() {
@@ -842,9 +843,9 @@ void TestScroll() {
 	Check(Near(r.tabletShare, 1.0f), "pulled past its width: fully open");
 	f.left.buttonsPressed = 0;
 	r = mode.Update(f, s);
-	Check(r.menuOnTablet && !r.tabletHolderRight && r.tabletShare < 0.0f && !r.controls.menu,
-	      "the left let go: kept by the off hand, not the right that kept its grip; the menus open");
-	Check(r.laserVisible && r.laserRight, "the right hand points at it");
+	Check(r.menuOnTablet && r.tabletHolderRight && r.tabletShare < 0.0f && !r.controls.menu,
+	      "the left let go: kept by the right that kept its grip; the menus open");
+	Check(r.laserVisible && !r.laserRight, "the left hand points at it - the weapon hand holds, the other is free");
 	// Opened by the left B instead: held by the left hand.
 	HandMode byButton;
 	HandModeFrame b = TabletFrameUp();

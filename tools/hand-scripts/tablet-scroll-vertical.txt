@@ -2,9 +2,8 @@
 # the hands one above the other. Both hands empty,
 # together at the inventory ring; both grips
 # closed - the menus open, the tablet unrolls between the hands as they move
-# apart; fully open, the left lets go - kept by the off hand (the left, the
-# lower) all the same; the right hand's grip at its free end rolls it up as
-# the hands come together - closed. Then
+# apart; fully open, the left lets go - kept by the right hand, which kept its grip (again since 2026-11-28, spec 31.4); the left
+# hand's grip near it rolls it up as the hands come together - closed. Then
 # once more, let go half open: rolled back, closed. Eye pictures at each mark.
 
 ini Hands Enabled=1
@@ -36,8 +35,7 @@ ini Debug EyeDump=1
 expect HandScript: finished
 count 4 Tablet: the scroll sends the menu key
 expect Tablet: unrolling between the hands
-expect Tablet: in the off hand, drawn into the eyes - on the left controller
-reject Tablet: kept by the right hand
+expect Tablet: kept by the weapon hand - on the right controller
 expect Tablet: the Inventory page read
 reject HandScript: WARNING
 
@@ -65,23 +63,20 @@ wait 0.4
 mark open
 left grip 0
 wait 0.6
-mark held_left
-# The off hand holds it since 2026-11-28 (vr/TabletHolder.h): the lower hand,
-# at its bottom edge. The free end: the top edge 0.36 m up the page leant back
-# 30 degrees [mirrored from the upper hand's hold before; not run].
-right grip 0
-wait 0.2
-right pos 0.00 -0.23 -0.63
+mark held_right
+# The free end: held by the upper hand at its top edge, the bottom edge 0.36 m
+# down the page leant back 30 degrees.
+left pos 0.00 -0.37 -0.27
 wait 0.4
-right grip 1
+left grip 1
 wait 0.2
-right pos 0.00 -0.30 -0.45
+left pos 0.00 -0.30 -0.45
 wait 0.2
-left pos 0.00 -0.45 -0.45
+right pos 0.00 -0.15 -0.45
 wait 0.2
 mark rolling
-right pos 0.00 -0.28 -0.45
 left pos 0.00 -0.32 -0.45
+right pos 0.00 -0.28 -0.45
 wait 0.5
 mark closed
 left grip 0

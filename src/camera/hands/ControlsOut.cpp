@@ -389,8 +389,13 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 		OBVR_LOG("Tablet: %s", between ? "unrolling between the hands" : "no longer between the hands");
 	}
 	state.tabletWasBetween = between;
+	// The hand that kept its grip as the other let go holds it (vr/TabletHolder.h):
+	// said when that is the weapon hand, with its controller.
 	if (hand.tabletHolderRight != state.tabletWasRight) {
-		OBVR_LOG("Tablet: %s", hand.tabletHolderRight ? "kept by the right hand" : "not in the right hand");
+		OBVR_LOG("Tablet: %s",
+		         !hand.tabletHolderRight                         ? "not in the weapon hand"
+		         : vr::PhysicalLeftOf(false, links.rolesSwapped) ? "kept by the weapon hand - on the left controller"
+		                                                         : "kept by the weapon hand - on the right controller");
 	}
 	state.tabletWasRight = hand.tabletHolderRight;
 	if (hand.menuOnTablet != state.tabletWasUp) {

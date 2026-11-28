@@ -74,31 +74,31 @@ void TestOpen() {
 	r = StepTabletScroll(s, InMenu(Hands(0.45f, true, true)));
 	Check(r.amount == 1.0f, "past the tablet's width: fully open");
 	r = StepTabletScroll(s, InMenu(Hands(0.45f, false, true)));
-	Check(r.phase == TabletScrollPhase::Held && !r.holderRight && !r.betweenHands && !r.menuKey,
-	      "the left let go fully open: held by the off hand, not the right that kept its grip; the menus kept");
+	Check(r.phase == TabletScrollPhase::Held && r.holderRight && !r.betweenHands && !r.menuKey,
+	      "the left let go fully open: held by the right that kept its grip; the menus kept");
 	r = StepTabletScroll(s, InMenu(Hands(0.45f, true, true)));
-	Check(r.phase == TabletScrollPhase::Held && !r.holderRight,
-	      "the off hand's grip closed again (no free end in reach): still held by it");
+	Check(r.phase == TabletScrollPhase::Held && r.holderRight,
+	      "the left's grip closed again (no free end in reach): still held by the right");
 	StepTabletScroll(s, InMenu(Hands(0.30f, false, false)));
 
-	// Rolled up by the free hand - the weapon hand - at the free end.
-	TabletScrollFrame f = InMenu(Hands(0.30f, false, true));
+	// Rolled up by the free hand - the left - at the free end.
+	TabletScrollFrame f = InMenu(Hands(0.30f, true, false));
 	f.freeEndValid = true;
-	f.freeEnd = NiPoint3{f.right.x - 0.30f, f.right.y, f.right.z};  // over the page, not the end
+	f.freeEnd = NiPoint3{f.left.x + 0.30f, f.left.y, f.left.z};  // over the page, not the end
 	r = StepTabletScroll(s, f);
 	Check(r.phase == TabletScrollPhase::Held, "the free hand's grip over the page: no rolling up (the item there is the inventory's)");
 	StepTabletScroll(s, InMenu(Hands(0.30f, false, false)));
-	f = InMenu(Hands(0.30f, false, true));
+	f = InMenu(Hands(0.30f, true, false));
 	f.freeEndValid = true;
-	f.freeEnd = NiPoint3{f.right.x - 0.05f, f.right.y, f.right.z};
+	f.freeEnd = NiPoint3{f.left.x + 0.05f, f.left.y, f.left.z};
 	r = StepTabletScroll(s, f);
 	Check(r.phase == TabletScrollPhase::RollingUp && r.betweenHands && Near(r.amount, 0.18f / 0.28f),
 	      "the free hand's grip at the free end: rolling up, from where the scroll began");
 	r = StepTabletScroll(s, InMenu(Hands(0.30f, false, false)));
-	Check(r.phase == TabletScrollPhase::Held && r.amount == 1.0f && !r.holderRight, "let go: held again by the off hand, open");
-	f = InMenu(Hands(0.30f, false, true));
+	Check(r.phase == TabletScrollPhase::Held && r.amount == 1.0f && r.holderRight, "let go: held again by the right, open");
+	f = InMenu(Hands(0.30f, true, false));
 	f.freeEndValid = true;
-	f.freeEnd = f.right;
+	f.freeEnd = f.left;
 	StepTabletScroll(s, f);
 	r = StepTabletScroll(s, InMenu(Hands(0.16f, true, true)));
 	Check(r.phase == TabletScrollPhase::RollingUp && !r.menuKey, "the hands coming together: still rolling up");
@@ -107,7 +107,7 @@ void TestOpen() {
 	r = StepTabletScroll(s, Hands(0.14f, false, false));
 	Check(r.phase == TabletScrollPhase::Idle, "both let go, the menus gone: idle");
 
-	// The other hand let go: the off hand that kept its grip holds it, as before.
+	// The other hand let go: the off hand that kept its grip holds it.
 	TabletScrollState other;
 	Begin(other, 0.12f);
 	StepTabletScroll(other, InMenu(Hands(0.45f, true, true)));
@@ -135,7 +135,8 @@ void TestShort() {
 	Begin(both, 0.12f);
 	StepTabletScroll(both, InMenu(Hands(0.45f, true, true)));
 	r = StepTabletScroll(both, InMenu(Hands(0.45f, false, false)));
-	Check(r.phase == TabletScrollPhase::AwaitRelease && r.menuKey, "both let go at once, even fully open: closed");
+	Check(r.phase == TabletScrollPhase::Held && !r.holderRight && !r.menuKey,
+	      "both let go at once fully open: no keeper to tell, held by the off hand, the menus kept");
 
 	// The menus not yet up when it rolls back: the close waits for them.
 	TabletScrollState early;
@@ -460,14 +461,14 @@ void TestZone() {
 	Check(!StepTabletScroll(lost, f).zone, "a hand lost: out of the zone");
 }
 
-// The sides switched between the pair's first grip and the hold (a handover
-// that slipped through): the tablet goes to the hand that was the off hand as
-// the first grip closed (2026-11-28).
-void TestRolesBeforeTheGrips() {
-	std::printf("The off hand as the sides were before the grips:\n");
+// The sides switched during the gesture (a handover that slipped through):
+// the grips are read in the frame's roles, so the hand that keeps its grip
+// holds it whichever role it has now (2026-11-28, the second run's rule).
+void TestSidesSwitched() {
+	std::printf("The sides switched during the gesture:\n");
 	TabletScrollState s;
 	StepTabletScroll(s, Hands(0.12f, false, false));
-	StepTabletScroll(s, Hands(0.12f, false, true));  // the weapon hand first, right-handed
+	StepTabletScroll(s, Hands(0.12f, false, true));
 	TabletScrollFrame f = Hands(0.12f, true, true);
 	f.rolesSwapped = true;  // the sides switched in between: the frame's hands swapped
 	StepTabletScroll(s, f);
@@ -478,40 +479,23 @@ void TestRolesBeforeTheGrips() {
 	f.rolesSwapped = true;
 	TabletScrollResult r = StepTabletScroll(s, f);
 	Check(r.phase == TabletScrollPhase::Held && r.holderRight,
-	      "switched since the first grip: held by the frame's right hand - the left controller, the off hand before");
+	      "the frame's right role kept its grip: held by it - the hand that kept its grip, whatever the switch");
 
-	TabletScrollState same;
+	TabletScrollState left;
 	f = Hands(0.12f, false, false);
 	f.rolesSwapped = true;  // left-handed all along
-	StepTabletScroll(same, f);
+	StepTabletScroll(left, f);
 	f = Hands(0.12f, true, true);
 	f.rolesSwapped = true;
-	StepTabletScroll(same, f);
+	StepTabletScroll(left, f);
 	f = InMenu(Hands(0.45f, true, true));
 	f.rolesSwapped = true;
-	StepTabletScroll(same, f);
+	StepTabletScroll(left, f);
 	f = InMenu(Hands(0.45f, true, false));
 	f.rolesSwapped = true;
-	r = StepTabletScroll(same, f);
-	Check(r.phase == TabletScrollPhase::Held && !r.holderRight, "left-handed, nothing switched: the off hand");
-
-	TabletScrollState earlier;
-	f = Hands(0.12f, false, false);
-	StepTabletScroll(earlier, f);
-	f.rolesSwapped = true;  // switched before the grips closed: that is the side now
-	StepTabletScroll(earlier, f);
-	f = Hands(0.12f, true, true);
-	f.rolesSwapped = true;
-	StepTabletScroll(earlier, f);
-	f = InMenu(Hands(0.45f, true, true));
-	f.rolesSwapped = true;
-	StepTabletScroll(earlier, f);
-	f = InMenu(Hands(0.45f, false, true));
-	f.rolesSwapped = true;
-	r = StepTabletScroll(earlier, f);
-	Check(r.phase == TabletScrollPhase::Held && !r.holderRight, "switched before the grips: the off hand as it is now");
+	r = StepTabletScroll(left, f);
+	Check(r.phase == TabletScrollPhase::Held && !r.holderRight, "left-handed, the off hand kept its grip: the off hand");
 }
-
 // Rolled up or back with its close sent: nothing of it shown while the menus
 // are still up (vr::TabletDrawnShare), until menu mode is over.
 void TestRolledUp() {
@@ -566,7 +550,7 @@ int main() {
 	TestByButton();
 	TestHisTries();
 	TestZone();
-	TestRolesBeforeTheGrips();
+	TestSidesSwitched();
 	std::printf("%d failure(s)\n", g_failures);
 	return g_failures == 0 ? 0 : 1;
 }
