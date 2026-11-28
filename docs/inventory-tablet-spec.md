@@ -2397,24 +2397,59 @@ code; [D] derived; [G] guessed.
 - The log line of the open names the controller: "Tablet: in the off hand, drawn into the
   eyes - on the left controller"; the held place's line names the controller by its side,
   not its role.
-- `MenuPlace`'s right-hand hold (`HeldByRight`) is no longer reached from the scroll; left in
-  place.
+- `MenuPlace`'s right-hand hold (`HeldByRight`) is reached again only through 30.3's last
+  point: the sides switched between the pair's grips.
 
-### 30.3 Found on the way, not changed
+### 30.3 The shield's handover waits for the gesture (built 2026-11-28)
 
 - [R, OBVR.log of 08:18, 9326, 9328, 9711, 9897, 9919] Closing both grips with the hands
-  together at the chest while a shield is worn starts the shield handover: "Handover: the
+  together at the chest while a shield is worn started the shield handover: "Handover: the
   weapon hand closed 0.0 units from the worn shield - the sides switch, the shield to that
   hand". After some of these tries the Holster lines read "left-handed 1" (9329, 9812,
-  9898). [D] If the sides switch with the gesture, the off hand is the right controller
-  from then on, and the tablet goes there under the new rule as well. The handover is
-  free-weapons-spec 5.16's; not touched here. A gate on it - no handover while the
-  tablet's scroll owns the grips, or with the hands at the inventory ring - is the next
-  thing to decide.
+  9898): the sides had switched, and the off hand was the right controller. So with a
+  shield worn 30.2 alone did not fix the report.
+- Decided 2026-11-28 (the coordinator): where both claim the grips, the gesture has the
+  first claim. **Built** (vr/GripClaim.h `StepGripClaim`, grip_claim_test;
+  camera/hands/Handover.cpp `StepShieldHandover`):
+  - The gesture's zone (vr/TabletScroll.h, `TabletScrollResult::zone`): the scroll idle,
+    the tablet on, no menu, both hands empty, the controllers within 0.20 m and their
+    palms' middle at the inventory ring - its own gates. In it the shield's closing waits
+    up to the gesture's 0.5 s for the other grip.
+  - The gesture begins in that time: no handover, and none from those grips until both
+    are open again. The log: "... from the worn shield - the tablet's gesture took the
+    grips, no handover".
+  - The window passes without it (one grip only, or the gesture refused the second): the
+    handover 0.5 s late ("... (after the tablet's wait, no other grip)"); a shield taken off
+    meanwhile, or a menu come up, drops it.
+  - Outside the zone, the tablet off, a hand holding something: at once, as before.
+- The other handovers (a weapon, a two-hander, a torch, a thing held) all need something
+  in a hand, which shuts the zone, so they are not gated [D from `handsEmpty`]. A drawn bow
+  is not counted in `handsEmpty` (it reads the melee weapon, the torch, a held thing, a
+  two-hand grip); whether the bow's handover can meet the zone is not read.
+- The seven "a hand holds something" refusals of the morning (10241, 10653, 10661, 10671,
+  10682, 10740, 10805) [R]: the Iron War Axe drawn from the right shoulder (10185 to 10253;
+  10600 on, in the two-hand hold until the handover of 10681; still drawn at 10740), and at
+  10805 a thing grabbed by the left grip (870FC9F0, 10788). None came from the shield's
+  handover; the gate leaves them as they are - the gesture is meant to refuse a full hand.
+- The roles before the grips: the scroll keeps the sides as the pair's first grip closed
+  from both open (`TabletScrollState::rolesAtGrip`). If they switched before it is held - a
+  handover that slipped through, from outside the zone - the hand that was the off hand
+  keeps it: `TabletHolderOnceOpen`'s `sidesSwitched`, the frame's right role then.
+- [G] The flip of a handover is taken at the next frame's roles; a role swap in the middle
+  of the pair also swaps the frame's grips, so the scroll may read the swapped hand's grip
+  as a new closing. Not met in tests beyond the cases above.
 
 ### 30.4 Tests and what is untested
 
-- tablet_holder_test (new): the B and the scroll, right- and left-handed, the edge held.
+- tablet_holder_test (new): the B and the scroll, right- and left-handed, the edge held, the
+  sides switched mid-gesture (3 checks red before the change).
+- grip_claim_test (new): outside the zone at once; the gesture taking the grips with the
+  weapon hand first or second; no late handover after it; both grips open ends the pair;
+  one grip only - late by the window; a second closing while waiting; the second grip
+  refused by the gesture; a menu up while waiting (10 checks red against a stub of
+  today's behaviour). tablet_scroll_test: the zone and its gates (the tablet off, a hand
+  holding, apart, at the hip, a menu, a hand lost), the begin, the roles before the grips
+  (4 red). menu_place_test: the zone and the begin through the hand mode.
 - tablet_scroll_test: either hand letting go leaves it in the off hand; the weapon hand
   rolls it up at the free end. menu_place_test: through the hand mode, right-handed (the
   sideways and the upright scroll) and left-handed (the roles swapped, each hand letting
@@ -2424,6 +2459,10 @@ code; [D] derived; [G] guessed.
   (right-handed) and tablet-scroll-offhand-left.txt (left-handed); tablet-scroll.txt and
   tablet-scroll-vertical.txt rewritten for the new holder - their roll-up by the right
   hand at the free end is mirrored from the old case [G: the free end's place not
-  measured].
+  measured]. The two offhand scenarios wear the Iron Shield: the weapon hand closing
+  first, then both at once (the gesture takes the grips, no switch), and right-handed a
+  last weapon-hand closing alone at the ring (the handover late).
+- Not verified: the shield's gate in the game - whether the hold's closing and the
+  scroll's raw grip land in the same frame, as the gate assumes [G].
 - Not verified: the feel in the headset - the tablet now jumps to the off hand when the
   off hand lets go first.
