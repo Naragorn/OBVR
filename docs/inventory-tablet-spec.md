@@ -2349,3 +2349,81 @@ flicker is gone for the eye is Nadi's to say - not said yet.
   How far each carried him and whether diving by a stroke works is not read from the log
   yet.
 - Both branches (books-1127-win, swim-1127-win) are in the test DLL only, not on main.
+
+## 30. After the gesture the tablet is in the off hand (Nadi, headset, 2026-11-28)
+
+Nadi, after the run of 2026-11-28 08:18-08:27: "inv geste geht nun. das inv geht aber auf
+die rechte hand nach der geste. wenn rechts meine main hand ist sollte sie auf die linke
+gehen denn rechts brauche ich zum tippen/zeigen usw." Marks: [R] read in the log or the
+code; [D] derived; [G] guessed.
+
+### 30.1 What the log says
+
+- [R, OBVR.log of 08:18] The gesture opened the menus 9 times ("Tablet: the scroll sends
+  the menu key (the menus open)", 9330 to 15683). 5 of them were let go fully open, and
+  each said "Tablet: no longer between the hands" and then "Tablet: kept by the right hand"
+  (9612, 14926, 15383, 15575, 15840): the left let go, the right kept its grip. The other 4
+  rolled back and closed. Opened by the left B the tablet is in the off hand ("Tablet: in
+  the off hand, drawn into the eyes", 1360 and on, with no "kept by" line).
+- [R] Why the gesture began now and not the evening before (the gates of section 27 are
+  unchanged): the evening's tries had the controllers 0.24 to 0.40 m apart (section 29.1),
+  the last three the hands' middle 0.13 to 0.14 m past the ring. This morning the Holster
+  lines at the same grips put the two controllers 4 to 12 cm apart, 25 to 29 cm under the
+  eyes and just in front of them (9327/9329: 0.01 -0.05 -0.28 and -0.03 -0.06 -0.26;
+  9710/9712: -0.03 -0.02 -0.29 and 0.04 -0.04 -0.29; 9918/9920: -0.06 -0.02 -0.25 and
+  0.06 -0.02 -0.26, right, forward, up from the head). Every refusal of this run is "a
+  hand holds something" (7 times) or "the second grip 7.90 s after the first" (once); none
+  for the distance or the ring. [D] He held the hands closer together. The evening log
+  has no Holster line in the 14 lines before its tries, so where his hands were then is
+  known only by the refusals' measures.
+
+### 30.2 The rule
+
+- **Before** (vr/TabletScroll.h `StepUnrolling`): fully open, the hand that kept its grip
+  held it (`holderRight = f.grip[1]`), and the upper of the two when unrolled up and down.
+  The spec's stage 3 (section 8) had it so: "letting go with one hand leaves it in the
+  other". A right-hander who lets go with the left had it in the right hand, pointed at by
+  the left.
+- **Now** (vr/TabletHolder.h `TabletHolderOnceOpen`, called by `StepUnrolling` and for the
+  B by `StepIdle`): the off hand holds it, whichever hand let go - the left controller for
+  a right-hander, the right one for a left-hander. The weapon hand points, taps and
+  scrolls. Unrolled up and down, the off hand holds the top edge when it was the upper
+  hand, else the bottom. The B is unchanged: the off hand, its bottom edge.
+- There was no hand-over of the tablet between the hands to keep: held, the free hand's
+  grip at the free end rolls it up, and that is the free hand's only use of it.
+- The roles follow the weapon's side (vr::AssignHandRoles), so after a weapon or shield
+  handed to the other hand the off hand is the hand without the weapon, for the B as for
+  the gesture.
+- The log line of the open names the controller: "Tablet: in the off hand, drawn into the
+  eyes - on the left controller"; the held place's line names the controller by its side,
+  not its role.
+- `MenuPlace`'s right-hand hold (`HeldByRight`) is no longer reached from the scroll; left in
+  place.
+
+### 30.3 Found on the way, not changed
+
+- [R, OBVR.log of 08:18, 9326, 9328, 9711, 9897, 9919] Closing both grips with the hands
+  together at the chest while a shield is worn starts the shield handover: "Handover: the
+  weapon hand closed 0.0 units from the worn shield - the sides switch, the shield to that
+  hand". After some of these tries the Holster lines read "left-handed 1" (9329, 9812,
+  9898). [D] If the sides switch with the gesture, the off hand is the right controller
+  from then on, and the tablet goes there under the new rule as well. The handover is
+  free-weapons-spec 5.16's; not touched here. A gate on it - no handover while the
+  tablet's scroll owns the grips, or with the hands at the inventory ring - is the next
+  thing to decide.
+
+### 30.4 Tests and what is untested
+
+- tablet_holder_test (new): the B and the scroll, right- and left-handed, the edge held.
+- tablet_scroll_test: either hand letting go leaves it in the off hand; the weapon hand
+  rolls it up at the free end. menu_place_test: through the hand mode, right-handed (the
+  sideways and the upright scroll) and left-handed (the roles swapped, each hand letting
+  go); the weapon hand points. Red before the change: 7 checks in tablet_scroll_test, 5 in
+  menu_place_test.
+- Harness, written, not run (Linux): tools/hand-scripts/tablet-scroll-offhand.txt
+  (right-handed) and tablet-scroll-offhand-left.txt (left-handed); tablet-scroll.txt and
+  tablet-scroll-vertical.txt rewritten for the new holder - their roll-up by the right
+  hand at the free end is mirrored from the old case [G: the free end's place not
+  measured].
+- Not verified: the feel in the headset - the tablet now jumps to the off hand when the
+  off hand lets go first.
