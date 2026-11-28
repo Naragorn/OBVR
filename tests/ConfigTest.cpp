@@ -463,6 +463,26 @@ void TestMirrorMenusToMonitor() {
 	      "MirrorMenusToMonitor=0 leaves the monitor showing the world alone");
 }
 
+void TestTabletMirror() {
+	std::printf("The tablet's Mirror tab and its dust\n");
+
+	obvr::Config untouched;
+	Check(untouched.hands.tablet.mirror, "the Mirror tab defaults on");
+	Check(untouched.hands.tablet.mirrorDust, "the dust on the glass defaults on");
+
+	obvr::Config off;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirror=0\n", off);
+	Check(!off.hands.tablet.mirror && off.hands.tablet.mirrorDust, "Mirror=0 takes the tab away and leaves the dust setting alone");
+
+	obvr::Config clean;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorDust=0\n", clean);
+	Check(clean.hands.tablet.mirror && !clean.hands.tablet.mirrorDust, "MirrorDust=0 keeps the tab and clears the glass");
+
+	obvr::Config both;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirror=1\nMirrorDust=1\n", both);
+	Check(both.hands.tablet.mirror && both.hands.tablet.mirrorDust, "both set on");
+}
+
 void TestMonitorMenusOnly() {
 	std::printf("Only the menus on the monitor\n");
 
@@ -1309,6 +1329,7 @@ int main() {
 	TestCrosshairCutoutDefault();
 	TestCrosshairTooltips();
 	TestMirrorMenusToMonitor();
+	TestTabletMirror();
 	TestMonitorMenusOnly();
 	TestUnpausedMenus();
 	TestHandTracking();

@@ -1007,7 +1007,7 @@ void HandMode::SteerSettingsMenu(const HandModeFrame& f, const HandSettings& s,
 void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandModeResult& r) {
 	// Where the menu is - the tablet (and its tab), the menu wrist or its big quad - and who points (vr/MenuPlace.h).
 	MenuTarget target = PlaceMenu(f, s, m_pointRight, r, &m_tabletScroll);
-	r.tabletShowsFigure = target.showFigure = StepTabletTabs(m_tabletTab, f, s, target);
+	r.tabletTab = target.tab = StepTabletTabs(m_tabletTab, f, s, target);
 	r.controls.menu = r.controls.menu || r.tabletMenuKey;
 	const MenuQuad& quad = target.quad;
 	const HandPose* const pointHand = target.pointHand;
@@ -1102,8 +1102,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	int touchPage = 0;
 	if (quad.valid && pointHand != nullptr && pointHand->valid && f.cursorValid &&
 	    f.layerPixelsWidth > 0.0f && f.layerPixelsHeight > 0.0f) {
-		const NiPoint3 pointing =
-			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, LaserYawFor(!pointRight, f.rolesSwapped, s.laserYawDegrees)));
+		const NiPoint3 pointing = TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, LaserYawFor(!pointRight, f.rolesSwapped, s.laserYawDegrees)));
 		const NiPoint3 origin =
 			pointHand->position +
 			TrackingRotate(pointHand->orientation,
@@ -1149,8 +1148,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		// The laser alone, no finger - there is nothing at arm's length to
 		// press. The pixel is the one the head sees the beam's end against.
 		m_poke = PokeState{};
-		const NiPoint3 pointing =
-			TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, LaserYawFor(!pointRight, f.rolesSwapped, s.laserYawDegrees)));
+		const NiPoint3 pointing = TrackingRotate(pointHand->orientation, LaserDirectionLocal(s.laserPitchDegrees, LaserYawFor(!pointRight, f.rolesSwapped, s.laserYawDegrees)));
 		const NiPoint3 origin =
 			pointHand->position +
 			TrackingRotate(pointHand->orientation,
@@ -1213,8 +1211,8 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	// Either stick as the mouse wheel: a notch on the flick, then repeats while held. Under a walked
 	// menu the left stick walks (PlanHandControls); the right keeps the wheel, and under the tablet
 	// its sides turn the page (vr/TabletPages.h).
-	r.tabletPageStep = touchPage + StepTabletFlick(m_tabletFlick, f.tablet.up && !f.tablet.popupUp && f.right.valid,
-	                                   f.right.valid ? f.right.thumbX : 0.0f, s.stickDeadZone);
+	r.tabletPageStep = TurnTabletPage(m_tabletTab, touchPage + StepTabletFlick(m_tabletFlick, f.tablet.up && !f.tablet.popupUp && f.right.valid,
+	                                   f.right.valid ? f.right.thumbX : 0.0f, s.stickDeadZone));
 	const bool leftScrolls = f.left.valid && !f.walkUnderMenu;
 	const bool up = (leftScrolls && f.left.thumbY >= s.stickDeadZone) ||
 	                (f.right.valid && f.right.thumbY >= s.stickDeadZone);
@@ -1228,6 +1226,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		r.menuScroll = -1;
 	}
 	r.menuScroll += dragWheel + touchWheel;
+	KeepMirrorFromGame(r);
 }
 
 HandModeResult HandMode::UpdateMenusOnly(const HandModeFrame& f, const HandSettings& s) {

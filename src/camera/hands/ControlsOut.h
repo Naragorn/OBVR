@@ -78,7 +78,7 @@ struct ControlsOutState {
 	vr::HeldPlace heldSaid;            // the place in the hand as last said (vr::HeldPlace), and its lines
 	bool heldSaidOnce = false;
 	UInt32 heldLinesLeft = 40;
-	bool tabletShowedFigure = false;  // the figure's tab, as last said
+	vr::TabletTab tabletShowedTab = vr::TabletTab::Page;  // the tab shown, as last said
 	bool tabletWasBetween = false;     // the scroll between the hands, as last said
 	bool tabletWasRight = false;       // kept by the right hand, as last said
 	UInt32 scrollRefusalLinesLeft = 40;  // "the scroll not begun" lines left (vr::TabletScrollRefusal)

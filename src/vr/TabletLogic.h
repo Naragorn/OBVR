@@ -17,6 +17,7 @@
 #include "game/SegmentGeometry.h"
 #include "vr/HudTileTree.h"
 #include "vr/OpenVRTypes.h"
+#include "vr/TabletTabs.h"
 
 namespace obvr::vr {
 
@@ -94,6 +95,10 @@ struct TabletSettings {
 	bool inScene = true;
 	// The tap's tip from the drawn index finger (vr/FingerTip.h); off, the controller's tip ahead.
 	bool drawnFinger = true;
+	// The Mirror tab at the end of the tablet's tabs (docs/mirror-spec.md), and
+	// the light dust over its glass.
+	bool mirror = true;
+	bool mirrorDust = true;
 	TabletFigure figure = TabletFigure::Tab;  // Nadi, 2026-11-18: the tab by default
 	TabletUnroll unroll = TabletUnroll::Sideways;
 	// Where the page's lower edge meets the hand: above and ahead of the
@@ -431,13 +436,16 @@ struct TabletFrame {
 	UiRect figureAt;
 	float figureScale = 1.0f;
 	UiRect backing;
-	// The figure behind a tab (SetFigureTab): the two tabs over the page's top
-	// edge - the page's, the figure's - and the figure fitted into the page's
+	// The figure behind a tab (SetFigureTab): the figure fitted into the page's
 	// own rectangle, shown there instead of the page while its tab is chosen.
 	bool figureTab = false;
 	bool popupUp = false;  // a popup over the page: the page is shown whatever tab is chosen
 	UInt32 page = 0;       // the page shown: the inventory's, stats', magic's or map's menu id
-	UiRect tabs[2];
+	// The tab strip over the page's top edge (SetTabs, vr/TabletTabStrip.h):
+	// the page's, the figure's when it has one, the mirror's last.
+	UInt32 tabCount = 0;
+	TabletTab tabKind[kTabletTabsMost] = {};
+	UiRect tabs[kTabletTabsMost];
 	UiRect figureFit;
 	float figureFitScale = 1.0f;
 	// The palm's middle of each drawn hand (0 the left role's - the off hand -
@@ -529,15 +537,9 @@ inline void SetFigurePage(TabletFrame& f, const UiRect& figure) {
 	f.crop = UnionRect(f.pageCrop.valid ? f.pageCrop : f.paper, f.backing);
 }
 
-// The figure behind a tab: two tabs standing on the page's top edge at its
-// left - the page's, then the figure's - and the figure fitted into the
-// page's rectangle with a gap round it, centred. The face grows up by the
-// tabs; the tablet keeps the page's width. Nothing without the page or the
-// figure.
-inline constexpr float kTabWidthShare = 0.28f;   // of the page's width
-inline constexpr float kTabHeightShare = 0.09f;  // of the page's width
-inline constexpr float kTabInsetShare = 0.05f;   // from the page's left edge, and between the tabs
-
+// The figure behind a tab: fitted into the page's rectangle with a gap round
+// it, centred. Nothing without the page or the figure. The tabs over the page
+// are laid by SetTabs.
 inline void SetFigureTab(TabletFrame& f, const UiRect& figure) {
 	const float pageWidth = f.paper.right - f.paper.left;
 	const float pageHeight = f.paper.bottom - f.paper.top;
@@ -564,28 +566,15 @@ inline void SetFigureTab(TabletFrame& f, const UiRect& figure) {
 	f.figureFit.top = f.paper.top + 0.5f * (pageHeight - figureHeight * scale);
 	f.figureFit.bottom = f.figureFit.top + figureHeight * scale;
 	f.figureFit.valid = true;
-	const float tabWidth = kTabWidthShare * pageWidth;
-	const float tabHeight = kTabHeightShare * pageWidth;
-	const float inset = kTabInsetShare * pageWidth;
-	for (int i = 0; i < 2; ++i) {
-		UiRect& tab = f.tabs[i];
-		tab.left = f.paper.left + inset + static_cast<float>(i) * (tabWidth + inset);
-		tab.right = tab.left + tabWidth;
-		tab.bottom = f.paper.top;
-		tab.top = f.paper.top - tabHeight;
-		tab.valid = true;
-	}
-	f.crop = UnionRect(f.pageCrop.valid ? f.pageCrop : f.paper, f.tabs[1]);
-	f.crop = UnionRect(f.crop, f.tabs[0]);
 }
 
-// Which of the tabs a point on the face lies on: 0 the page's, 1 the
-// figure's, -1 neither (or no tabs).
+// Which of the tabs a point on the face lies on: its place in the strip
+// (tabKind says which tab that is), -1 none (or no tabs).
 inline int TabletTabAt(const TabletFrame& f, float x, float y) {
-	for (int i = 0; f.figureTab && i < 2; ++i) {
+	for (UInt32 i = 0; i < f.tabCount && i < kTabletTabsMost; ++i) {
 		const UiRect& t = f.tabs[i];
 		if (x >= t.left && x <= t.right && y >= t.top && y <= t.bottom) {
-			return i;
+			return static_cast<int>(i);
 		}
 	}
 	return -1;
@@ -607,26 +596,6 @@ inline bool FigureTabToLayer(const TabletFrame& f, float& x, float& y) {
 	x = f.figure.left + (x - f.figureFit.left) / f.figureFitScale;
 	y = f.figure.top + (y - f.figureFit.top) / f.figureFitScale;
 	return true;
-}
-
-// A tab chosen: the click's rising edge on a tab picks it; a popup over the
-// page shows the page whatever was chosen (the game draws it there).
-struct TabletTabState {
-	bool showFigure = false;
-	bool wasDown = false;
-};
-
-inline bool StepTabletTab(TabletTabState& s, bool figureTab, int tabUnder, bool clickDown, bool popupUp) {
-	const bool edge = clickDown && !s.wasDown;
-	s.wasDown = clickDown;
-	if (!figureTab) {
-		s.showFigure = false;
-		return false;
-	}
-	if (edge && tabUnder >= 0) {
-		s.showFigure = tabUnder == 1;
-	}
-	return s.showFigure && !popupUp;
 }
 
 // A point on the tablet's face to the layer's pixel the game has under it:
@@ -966,7 +935,7 @@ struct MenuPlaceResult {
 	bool menuOnTablet = false;
 	float tabletWidth = 0.0f;
 	float tabletHeight = 0.0f;
-	bool tabletShowsFigure = false;  // the figure's tab chosen (StepTabletTab)
+	TabletTab tabletTab = TabletTab::Page;  // the tab shown (StepTabletTab)
 	bool tabletHolderRight = false;  // the scroll kept by the right hand (vr/TabletScroll.h)
 	bool tabletUpright = false;      // unrolled up and down ([Tablet] Unroll)
 	bool tabletMenuKey = false;      // the scroll opens or closes the menus this frame

@@ -7,6 +7,7 @@
 #include <cstdio>
 
 #include "vr/MenuPlace.h"
+#include "vr/TabletTabStrip.h"
 
 using namespace obvr;
 using namespace obvr::vr;
@@ -475,29 +476,85 @@ void TestTabs() {
 	const HandSettings s = PlainSettings();
 	HandModeFrame f = TabletFrameUp();
 	SetFigureTab(f.tablet, Rect(2000.0f, 100.0f, 2400.0f, 1100.0f));
+	SetTabs(f.tablet, TabsFor(TabsWanted{true, true, true, false}));
 	HandMode mode;
 	// The beam on the figure's tab: 404..628 by 128..200 on the face, the
 	// page 800 pixels to 0.4 m, held at its middle.
 	f.right.position = NiPoint3{(516.0f - 500.0f) * 0.0005f, (1000.0f - 164.0f) * 0.0005f, 0.0f};
 	HandModeResult r = mode.Update(f, s);
-	Check(r.menuOnTablet && !r.tabletShowsFigure, "the beam on the figure's tab: the page still shown");
+	Check(r.menuOnTablet && r.tabletTab != TabletTab::Figure, "the beam on the figure's tab: the page still shown");
 	Check(!r.laserHit, "the tab is nothing of the game's: no hit for the cursor");
 	f.right.trigger = 1.0f;
 	r = mode.Update(f, s);
-	Check(r.tabletShowsFigure, "the trigger pulled on it: the figure shown");
+	Check(r.tabletTab == TabletTab::Figure, "the trigger pulled on it: the figure shown");
 	f.right.trigger = 0.0f;
 	f.right.position = NiPoint3{0.0f, (1000.0f - 600.0f) * 0.0005f, 0.0f};
 	r = mode.Update(f, s);
-	Check(r.tabletShowsFigure && r.laserHit && r.laserPixelX > 2000.0f,
+	Check(r.tabletTab == TabletTab::Figure && r.laserHit && r.laserPixelX > 2000.0f,
 	      "it stays; the beam on the page's middle hits the figure where the game draws it");
 	f.tablet.popupUp = true;
 	r = mode.Update(f, s);
-	Check(!r.tabletShowsFigure, "a popup over the page: the page");
+	Check(r.tabletTab != TabletTab::Figure, "a popup over the page: the page");
 	f.tablet.popupUp = false;
 	// The finger on the page's tab: 150..374.
 	f.right.position = NiPoint3{(262.0f - 500.0f) * 0.0005f, (1000.0f - 164.0f) * 0.0005f, -0.5f + 0.08f + 0.01f};
 	r = mode.Update(f, s);
-	Check(!r.tabletShowsFigure, "the finger through the page's tab: the page");
+	Check(r.tabletTab != TabletTab::Figure, "the finger through the page's tab: the page");
+}
+
+void TestMirrorTab() {
+	std::printf("The mirror's tab in the hand mode\n");
+	const HandSettings s = PlainSettings();
+	HandModeFrame f = TabletFrameUp();
+	SetTabs(f.tablet, TabsFor(TabsWanted{true, true, false, true}));  // page, mirror
+	HandMode mode;
+	// The second tab, where the figure's was: 404..628 by 128..200.
+	f.right.position = NiPoint3{(516.0f - 500.0f) * 0.0005f, (1000.0f - 164.0f) * 0.0005f, 0.0f};
+	HandModeResult r = mode.Update(f, s);
+	Check(r.menuOnTablet && r.tabletTab == TabletTab::Page, "the beam on the mirror's tab: the page still shown");
+	Check(!r.laserHit, "the tab is nothing of the game's: no hit for the cursor");
+	f.right.trigger = 1.0f;
+	r = mode.Update(f, s);
+	Check(r.tabletTab == TabletTab::Mirror, "the trigger pulled on it: the mirror shown");
+	Check(!r.laserHit && !r.controls.menuClick, "and the pull reached nothing of the game's");
+	f.right.trigger = 0.0f;
+	f.right.position = NiPoint3{0.0f, (1000.0f - 600.0f) * 0.0005f, 0.0f};
+	r = mode.Update(f, s);
+	Check(r.tabletTab == TabletTab::Mirror && !r.laserHit, "it stays; the beam on the glass hits nothing of the game's");
+	f.right.trigger = 1.0f;
+	r = mode.Update(f, s);
+	Check(r.tabletTab == TabletTab::Mirror && !r.laserHit && !r.controls.menuClick && !r.menuDragging,
+	      "a pull on the glass: no click, no drag in the game's page underneath");
+	f.right.trigger = 0.0f;
+	f.right.thumbY = 0.9f;
+	r = mode.Update(f, s);
+	Check(r.tabletTab == TabletTab::Mirror && r.menuScroll == 0, "the stick up: the page underneath is not scrolled unseen");
+	f.right.thumbY = 0.0f;
+	r = mode.Update(f, s);
+	f.right.thumbX = 0.9f;
+	r = mode.Update(f, s);
+	Check(r.tabletPageStep == 1, "the stick to the right: the page turn goes on to the game");
+	f.right.thumbX = 0.0f;
+	r = mode.Update(f, s);
+	Check(r.tabletTab == TabletTab::Page, "and the mirror is left");
+	f.right.thumbY = 0.9f;
+	r = mode.Update(f, s);
+	Check(r.tabletTab == TabletTab::Page && r.menuScroll == 1, "back on the page the stick scrolls it as before");
+	f.right.thumbY = 0.0f;
+	// A popup over the page while the mirror is chosen: the page, and its game's own clicks.
+	f.right.position = NiPoint3{(516.0f - 500.0f) * 0.0005f, (1000.0f - 164.0f) * 0.0005f, 0.0f};
+	f.right.trigger = 1.0f;
+	r = mode.Update(f, s);
+	f.right.trigger = 0.0f;
+	f.tablet.popupUp = true;
+	r = mode.Update(f, s);
+	Check(r.tabletTab == TabletTab::Page, "a popup over the page: the page, not the mirror");
+	HandMode off;
+	HandModeFrame none = TabletFrameUp();
+	none.right.position = NiPoint3{(516.0f - 500.0f) * 0.0005f, (1000.0f - 164.0f) * 0.0005f, 0.0f};
+	none.right.trigger = 1.0f;
+	r = off.Update(none, s);
+	Check(r.tabletTab == TabletTab::Page, "no strip on the frame ([Tablet] Mirror=0): a pull there is no tab");
 }
 
 void TestHolds() {
@@ -833,6 +890,7 @@ int main() {
 	TestPixels();
 	TestInHandMode();
 	TestTabs();
+	TestMirrorTab();
 	TestTouch();
 	TestScroll();
 	TestHolds();

@@ -2856,6 +2856,22 @@ if(NOT MSVC)
 endif()
 add_test(NAME tablet_figure_steady COMMAND tablet_figure_steady_test)
 
+# The tablet's tab strip and its Mirror tab (vr/TabletTabs.h, vr/TabletTabStrip.h): pure.
+add_executable(tablet_tabs_test TabletTabsTest.cpp)
+target_include_directories(tablet_tabs_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_tabs_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet_tabs COMMAND tablet_tabs_test)
+
+# The mirror page, its tab's picture and the dust texture (vr/MirrorPage.h, vr/MirrorDust.h): pure.
+add_executable(mirror_page_test MirrorPageTest.cpp)
+target_include_directories(mirror_page_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(mirror_page_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME mirror_page COMMAND mirror_page_test)
+
 # How far ahead the poses are predicted when the wait comes late (vr/PosePrediction.h): pure.
 add_executable(pose_prediction_test PosePredictionTest.cpp)
 target_include_directories(pose_prediction_test PRIVATE ../src)

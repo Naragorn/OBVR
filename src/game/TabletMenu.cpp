@@ -9,6 +9,7 @@
 #include "game/MenuType.h"
 #include "platform/Win32Min.h"
 #include "vr/TabletClose.h"
+#include "vr/TabletTabStrip.h"
 
 namespace obvr::game {
 namespace {
@@ -294,7 +295,7 @@ void FillFrame(vr::TabletFrame& frame, const vr::TabletRects& rects, UInt32 page
 }
 
 vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWidth, float layerPixelsHeight,
-                        bool inScene, vr::TabletFigure mode) {
+                        bool inScene, vr::TabletFigure mode, bool mirror) {
 	vr::TabletFrame frame;
 	UInt32 stack[kMenuStackEntries];
 	const bool asked = wanted && layerPixelsWidth > 0.0f && layerPixelsHeight > 0.0f && IsMenuMode();
@@ -348,6 +349,7 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 	} else if (figure.valid && !inScene && mode != vr::TabletFigure::Off) {
 		frame.crop = vr::UnionRect(frame.crop, figurePixels);
 	}
+	vr::SetTabs(frame, vr::TabsFor(vr::TabsWanted{frame.up, inScene, frame.figureTab, mirror}));
 	state.figureSeen = frame.figurePage || frame.figureTab || (figure.valid && !inScene && mode != vr::TabletFigure::Off);
 	LogChange(state, pageId, frame, popups);
 	return frame;
@@ -356,10 +358,10 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 }  // namespace
 
 vr::TabletFrame ReadTabletMenus(TabletMenuState& state, bool wanted, float layerPixelsWidth, float layerPixelsHeight,
-                                bool inScene, vr::TabletFigure mode, bool mark) {
+                                bool inScene, vr::TabletFigure mode, bool mirror, bool mark) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long before = ReadPerformanceCounter();
-	const vr::TabletFrame frame = ReadNow(state, wanted, layerPixelsWidth, layerPixelsHeight, inScene, mode);
+	const vr::TabletFrame frame = ReadNow(state, wanted, layerPixelsWidth, layerPixelsHeight, inScene, mode, mirror);
 	if (frame.up && ticksPerSecond > 0) {
 		const double seconds = static_cast<double>(ReadPerformanceCounter() - before) / static_cast<double>(ticksPerSecond);
 		state.costSeconds += seconds;

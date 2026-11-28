@@ -23,6 +23,7 @@
 #include "vr/Holster.h"
 #include "vr/MenuPlace.h"
 #include "test/HandScriptRuntime.h"
+#include "vr/MirrorPage.h"
 #include "vr/TabletPages.h"
 #include "vr/TabletPaper.h"
 
@@ -122,31 +123,97 @@ vr::UiRect TabPicture(const vr::UiRect& tab, const vr::UiRect& source) {
 	return r;
 }
 
-// The figure behind a tab (vr::SetFigureTab): the two tabs on the game's
-// paper, the one behind darker, each with its small picture; with the
-// figure's chosen, the figure over the page's rectangle on an empty page of
-// the game's paper (its frame and bar, parchment down to its lower edge).
-void TabPieces(render::TabletQuadFrame& quad, const vr::TabletPlace& place, const vr::TabletFrame& t, bool showFigure,
-               float textureWidth, float textureHeight, float share, bool upright) {
+// What the strip's pieces are laid out on: the tablet's place and face, the
+// layer's texture size, how much of it is unrolled, and its way up.
+struct StripDraw {
+	const vr::TabletPlace& place;
+	const vr::TabletFrame& t;
+	float textureWidth;
+	float textureHeight;
+	float share;
+	bool upright;
+};
+
+constexpr UInt32 kMirrorFrameColour = kFigurePageEdge;  // the frame: the figure page's dark edge
+constexpr UInt32 kMirrorGlassColour = 0xFF0B1115u;      // dark glass, until a reflection stands in it
+constexpr UInt32 kMirrorIconRimColour = 0xFF8A6A3Au;    // the tab's hand mirror: a bronze rim
+constexpr UInt32 kMirrorIconGlassColour = 0xFFA9BFC8u;  // and pale glass
+
+// A plain piece over `rect` of the face.
+void PlainPiece(render::TabletQuadPiece& piece, const StripDraw& d, const vr::UiRect& rect, UInt32 colour) {
+	const vr::UiRect none;
+	Piece(piece, vr::RectOnTablet(d.place, d.t.crop, rect, none, d.textureWidth, d.textureHeight, d.share, d.upright),
+	      false, colour);
+}
+
+// The Mirror tab (vr::MirrorIconIn): the tab on the game's paper, a hand
+// mirror drawn on it - a rim and its glass in plain colour.
+void MirrorTabPieces(render::TabletQuadFrame& quad, const StripDraw& d, const vr::UiRect& tab, bool chosen) {
+	const vr::MirrorIconRects icon = vr::MirrorIconIn(tab);
+	PaperPiece(quad.pieces[render::kTabletMirrorTabPieces], d.place, d.t, tab, vr::ParchmentSource(tab), d.share, d.upright,
+	           chosen ? kTabChosen : kTabBehind, chosen ? kTabChosenTint : kTabBehindTint);
+	PlainPiece(quad.pieces[render::kTabletMirrorTabPieces + 1], d, icon.rim, kMirrorIconRimColour);
+	PlainPiece(quad.pieces[render::kTabletMirrorTabPieces + 2], d, icon.glass, kMirrorIconGlassColour);
+}
+
+// The mirror page over the page's picture (vr::MirrorPageOf): the frame, the
+// glass in it - plain dark colour here; stage 2's reflection replaces it
+// through render::TabletQuad::SetMirrorGlass - and the dust over the glass,
+// blended, unless it is off.
+void MirrorPagePieces(render::TabletQuadFrame& quad, const StripDraw& d, bool dust) {
+	const vr::MirrorPageRects page = vr::MirrorPageOf(d.t.paper);
+	render::TabletQuadPiece* pieces = quad.pieces + render::kTabletMirrorPagePieces;
+	PlainPiece(pieces[0], d, page.frame, kMirrorFrameColour);
+	PlainPiece(pieces[1], d, page.glass, kMirrorGlassColour);
+	pieces[1].glass = true;
+	if (dust) {
+		PlainPiece(pieces[2], d, page.glass, 0xFFFFFFFFu);
+		pieces[2].dust = true;
+		const float u[4] = {0.0f, 1.0f, 0.0f, 1.0f};
+		const float v[4] = {0.0f, 0.0f, 1.0f, 1.0f};
+		for (int i = 0; i < 4; ++i) {
+			pieces[2].u[i] = u[i];
+			pieces[2].v[i] = v[i];
+		}
+	}
+	quad.mirrorUp = pieces[1].valid;
+}
+
+// The tab strip (vr::SetTabs): each tab on the game's paper, the one behind
+// darker, the page's and the figure's with a small picture of the page and of
+// the figure, the mirror's with a small glass; then what the tab chosen shows:
+// the figure over the page's rectangle on an empty page of the game's paper
+// (its frame and bar, parchment down to its lower edge), or the mirror page.
+void TabPieces(render::TabletQuadFrame& quad, const StripDraw& d, vr::TabletTab shown, bool dust) {
+	const vr::TabletFrame& t = d.t;
 	const vr::UiRect* sources[2] = {&t.paper, &t.figure};
-	for (int i = 0; i < 2; ++i) {
-		const bool chosen = (i == 1) == showFigure;
-		PaperPiece(quad.pieces[1 + 2 * i], place, t, t.tabs[i], vr::ParchmentSource(t.tabs[i]), share, upright,
+	for (UInt32 i = 0; i < t.tabCount; ++i) {
+		const bool chosen = t.tabKind[i] == shown;
+		if (t.tabKind[i] == vr::TabletTab::Mirror) {
+			MirrorTabPieces(quad, d, t.tabs[i], chosen);
+			continue;
+		}
+		const UInt32 k = t.tabKind[i] == vr::TabletTab::Figure ? 1u : 0u;
+		PaperPiece(quad.pieces[1 + 2 * k], d.place, t, t.tabs[i], vr::ParchmentSource(t.tabs[i]), d.share, d.upright,
 		           chosen ? kTabChosen : kTabBehind, chosen ? kTabChosenTint : kTabBehindTint);
-		Piece(quad.pieces[2 + 2 * i],
-		      vr::RectOnTablet(place, t.crop, TabPicture(t.tabs[i], *sources[i]), *sources[i], textureWidth,
-		                       textureHeight, share, upright),
+		Piece(quad.pieces[2 + 2 * k],
+		      vr::RectOnTablet(d.place, t.crop, TabPicture(t.tabs[i], *sources[k]), *sources[k], d.textureWidth,
+		                       d.textureHeight, d.share, d.upright),
 		      true, 0);
 	}
-	if (showFigure) {
+	if (shown == vr::TabletTab::Figure) {
 		vr::PaperBand bands[2];
 		vr::FigurePaperBands(t.paper, bands);
 		for (int i = 0; i < 2; ++i) {
-			PaperPiece(quad.pieces[5 + i], place, t, bands[i].rect, bands[i].source, share, upright, kFigurePagePaper,
+			PaperPiece(quad.pieces[5 + i], d.place, t, bands[i].rect, bands[i].source, d.share, d.upright, kFigurePagePaper,
 			           kTabChosenTint);
 		}
 		Piece(quad.pieces[7],
-		      vr::RectOnTablet(place, t.crop, t.figureFit, t.figure, textureWidth, textureHeight, share, upright), true, 0);
+		      vr::RectOnTablet(d.place, t.crop, t.figureFit, t.figure, d.textureWidth, d.textureHeight, d.share, d.upright),
+		      true, 0);
+	}
+	if (shown == vr::TabletTab::Mirror) {
+		MirrorPagePieces(quad, d, dust);
 	}
 }
 
@@ -154,7 +221,7 @@ void TabPieces(render::TabletQuadFrame& quad, const vr::TabletPlace& place, cons
 // draws them, and with the figure on its own page that page's edge, its paper
 // and the figure - all rising from the lower edge together.
 render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::TabletFrame& t, float textureWidth,
-                                     float textureHeight, float share) {
+                                     float textureHeight, float share, bool mirrorDust) {
 	const bool upright = hand.tabletUpright;
 	render::TabletQuadFrame quad;
 	vr::TabletPlace place;
@@ -186,8 +253,8 @@ render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::T
 		Piece(quad.pieces[3],
 		      vr::RectOnTablet(place, t.crop, t.figureAt, t.figure, textureWidth, textureHeight, share, upright), true, 0);
 	}
-	if (t.figureTab) {
-		TabPieces(quad, place, t, hand.tabletShowsFigure, textureWidth, textureHeight, share, upright);
+	if (t.tabCount > 0) {
+		TabPieces(quad, StripDraw{place, t, textureWidth, textureHeight, share, upright}, hand.tabletTab, mirrorDust);
 	}
 	// The rolls at the open part's edges while it unrolls.
 	const float pageWidth = t.paper.right - t.paper.left;
@@ -290,17 +357,17 @@ void PlaceMenusOnHands(ControlsOutState& state, const Config& config, vr::OpenVR
 			state.tabletSeconds = vr::kTabletUnrollSeconds;
 		}
 		const float share = hand.tabletShare >= 0.0f ? hand.tabletShare : vr::TabletUnrollShare(state.tabletSeconds);
-		quad = TabletPieces(hand, frame.tablet, textureWidth, textureHeight, share);
+		quad = TabletPieces(hand, frame.tablet, textureWidth, textureHeight, share, config.hands.tablet.mirrorDust);
 		quad.texture = links.hudLayer.CaptureTexture();
 	}
 	links.headsetRenderer.SetTablet(quad);
 	if (config.hands.tablet.enabled && config.hands.tablet.inScene && game::TopVisibleMenu() == game::kMenuIdMain) {
 		links.headsetRenderer.PrepareTablet(render::GetGameDevice());  // the game's paper, before the first open
 	}
-	if (hand.menuOnTablet && hand.tabletShowsFigure != state.tabletShowedFigure) {
-		OBVR_LOG("Tablet: the %s tab chosen", hand.tabletShowsFigure ? "figure's" : "page's");
+	if (hand.menuOnTablet && hand.tabletTab != state.tabletShowedTab) {
+		OBVR_LOG("Tablet: the %s tab chosen", vr::TabletTabName(hand.tabletTab));
 	}
-	state.tabletShowedFigure = hand.menuOnTablet && hand.tabletShowsFigure;
+	state.tabletShowedTab = hand.menuOnTablet ? hand.tabletTab : vr::TabletTab::Page;
 	// The scroll (vr/TabletScroll.h), said as it changes.
 	LogScrollRefusal(state, hand);
 	if (hand.tabletMenuKey) {

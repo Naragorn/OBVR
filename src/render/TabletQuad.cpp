@@ -11,6 +11,8 @@
 #include "render/D3D9Types.h"
 #include "render/DdsImage.h"
 #include "render/InterfaceRenderHook.h"
+#include "vr/MirrorDust.h"
+#include "vr/MirrorPage.h"
 #include "vr/TabletPaper.h"
 
 namespace obvr::render {
@@ -120,13 +122,62 @@ void* MakePaperTexture(void* device) {
 	return texture;
 }
 
+// The mirror's dust as a texture on the device (vr/MirrorDust.h): made once on
+// the CPU, colour already weighed by its alpha, into a managed texture in
+// A8R8G8B8's order. Null when any step fails (the glass then has no dust).
+void* MakeDustTexture(void* device) {
+	if (device == nullptr) {
+		return nullptr;
+	}
+	static const long long ticksPerSecond = ReadPerformanceFrequency();
+	const long long before = ReadPerformanceCounter();
+	constexpr UInt32 side = vr::kMirrorDustSide;
+	auto create = d3d9::Method<d3d9::CreateTextureFn>(device, d3d9::kDeviceCreateTexture);
+	void* texture = nullptr;
+	if (create == nullptr || d3d11::Failed(create(device, side, side, 1, 0, d3d9::kFormatA8R8G8B8, d3d9::kPoolManaged,
+	                                              &texture, nullptr)) ||
+	    texture == nullptr) {
+		OBVR_LOG("Tablet: no texture for the mirror's dust - the glass stays clean");
+		return nullptr;
+	}
+	auto lock = d3d9::Method<d3d9::TextureLockRectFn>(texture, d3d9::kTextureLevelLockRect);
+	auto unlock = d3d9::Method<d3d9::TextureUnlockRectFn>(texture, d3d9::kTextureLevelUnlockRect);
+	d3d9::LockedRect locked{};
+	if (lock == nullptr || unlock == nullptr || d3d11::Failed(lock(texture, 0, &locked, nullptr, 0)) ||
+	    locked.bits == nullptr) {
+		d3d11::Release(texture);
+		OBVR_LOG("Tablet: the mirror's dust texture did not lock - the glass stays clean");
+		return nullptr;
+	}
+	std::vector<UInt32> texels(side * side);
+	vr::FillMirrorDust(texels.data(), side);
+	for (UInt32 y = 0; y < side; ++y) {
+		UInt8* row = static_cast<UInt8*>(locked.bits) + y * static_cast<UInt32>(locked.pitch);
+		for (UInt32 x = 0; x < side; ++x) {
+			const UInt32 t = texels[y * side + x];
+			row[4 * x + 0] = static_cast<UInt8>(t & 0xFFu);
+			row[4 * x + 1] = static_cast<UInt8>((t >> 8) & 0xFFu);
+			row[4 * x + 2] = static_cast<UInt8>((t >> 16) & 0xFFu);
+			row[4 * x + 3] = static_cast<UInt8>(t >> 24);
+		}
+	}
+	unlock(texture, 0);
+	const double ms = ticksPerSecond > 0 ? 1000.0 * static_cast<double>(ReadPerformanceCounter() - before) /
+	                                           static_cast<double>(ticksPerSecond)
+	                                     : 0.0;
+	OBVR_LOG("Tablet: the mirror's dust made on the CPU (%ux%u), in %.2f ms", side, side, ms);
+	return texture;
+}
+
 // What a piece is drawn with.
-enum class PieceKind : UInt8 { Plain, Layer, Paper };
+enum class PieceKind : UInt8 { Plain, Layer, Paper, Dust, Glass };
 
 // The pieces over the eye's picture, the device's states captured before and
 // put back after: a layer's piece takes the layer's colour and alpha, a
-// paper's the paper's times its vertices', a plain one its vertices'.
-bool DrawPieces(void* device, void* texture, void* paper, const PieceKind* kinds, const TabletVertex (*vertices)[4],
+// paper's the paper's times its vertices', a plain one its vertices'; the
+// dust and the glass's reflection their own texture's, as the layer's does.
+// `textures[i]` is the texture of piece i (none for a plain one).
+bool DrawPieces(void* device, void* const* textures, const PieceKind* kinds, const TabletVertex (*vertices)[4],
                 UInt32 count) {
 	auto createBlock = d3d9::Method<d3d9::CreateStateBlockFn>(device, d3d9::kDeviceCreateStateBlock);
 	auto setState = d3d9::Method<d3d9::SetRenderStateFn>(device, d3d9::kDeviceSetRenderState);
@@ -153,7 +204,7 @@ bool DrawPieces(void* device, void* texture, void* paper, const PieceKind* kinds
 	// stands in front - the tapping hand - hides it; never written into it.
 	setVertexShader(device, nullptr);
 	setPixelShader(device, nullptr);
-	setTexture(device, 0, texture);
+	setTexture(device, 0, nullptr);
 	setStage(device, 0, d3d9::kTssColorOp, d3d9::kTopSelectArg1);
 	setStage(device, 0, d3d9::kTssColorArg1, kTaTexture);
 	setStage(device, 0, d3d9::kTssAlphaOp, d3d9::kTopSelectArg1);
@@ -189,7 +240,7 @@ bool DrawPieces(void* device, void* texture, void* paper, const PieceKind* kinds
 		const bool onPaper = kinds[i] == PieceKind::Paper;
 		const UInt32 argument = kinds[i] == PieceKind::Plain ? d3d9::kTaDiffuse : kTaTexture;
 		const UInt32 op = onPaper ? d3d9::kTopModulate : d3d9::kTopSelectArg1;
-		setTexture(device, 0, onPaper ? paper : texture);
+		setTexture(device, 0, textures[i]);
 		setStage(device, 0, d3d9::kTssColorOp, op);
 		setStage(device, 0, d3d9::kTssAlphaOp, op);
 		setStage(device, 0, d3d9::kTssColorArg1, argument);
@@ -219,6 +270,14 @@ void* TabletQuad::Paper(void* device) {
 	return m_paper;
 }
 
+void* TabletQuad::Dust(void* device) {
+	if (!m_dustTried) {
+		m_dustTried = true;
+		m_dust = MakeDustTexture(device);
+	}
+	return m_dust;
+}
+
 bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& view, bool leftEye) {
 	if (!m_frame.valid || m_frame.texture == nullptr || device == nullptr || !view.eyeValid ||
 	    !view.hands[1].valid) {
@@ -234,7 +293,11 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 	d3d9::Viewport viewport{};
 	TabletVertex vertices[kTabletPieces][4];
 	PieceKind kinds[kTabletPieces] = {};
+	void* textures[kTabletPieces] = {};
 	void* const paper = Paper(device);
+	void* const dust = Dust(device);
+	void* glass = m_glassTexture[leftEye ? 0 : 1];
+	glass = glass != nullptr ? glass : m_glassTexture[0];
 	UInt32 count = 0;
 	const bool fresh = LastPerspectiveProjection(projection.m) && PerspectiveMatchesCamera(projection.m, view.tanHalfWidth);
 	if (fresh) {
@@ -249,9 +312,28 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 		if (!piece.valid) {
 			continue;
 		}
+		if (piece.dust && dust == nullptr) {
+			continue;  // no dust texture: the glass stays clean
+		}
 		const bool onPaper = piece.paper && paper != nullptr;
-		kinds[count] = onPaper ? PieceKind::Paper : piece.textured && !piece.paper ? PieceKind::Layer : PieceKind::Plain;
+		const bool reflects = piece.glass && glass != nullptr;
+		kinds[count] = piece.dust ? PieceKind::Dust
+		               : reflects ? PieceKind::Glass
+		               : onPaper  ? PieceKind::Paper
+		               : piece.textured && !piece.paper ? PieceKind::Layer
+		                                                : PieceKind::Plain;
+		textures[count] = piece.dust ? dust : reflects ? glass : onPaper ? paper : m_frame.texture;
 		projected = ProjectCorners(piece, onPaper ? piece.tint : piece.colour, view, projection, viewport, vertices[count]);
+		if (reflects) {
+			// Stage 2's picture on the glass, flipped as a mirror shows it (vr::GlassTexCoords).
+			float u[4];
+			float v[4];
+			vr::GlassTexCoords(m_glassUv.rect, u, v);
+			for (int i = 0; i < 4; ++i) {
+				vertices[count][i].u = u[i];
+				vertices[count][i].v = v[i];
+			}
+		}
 		++count;
 	}
 	if (!projected || count == 0) {
@@ -263,7 +345,7 @@ bool TabletQuad::DrawIntoWorld(void* device, const ControllerModels::WorldView& 
 		}
 		return false;
 	}
-	if (!DrawPieces(device, m_frame.texture, paper, kinds, vertices, count)) {
+	if (!DrawPieces(device, textures, kinds, vertices, count)) {
 		return false;
 	}
 	m_eyes |= leftEye ? 1u : 2u;
