@@ -115,4 +115,9 @@ inline GlassMap MapGlassCorners(const MirrorPictureView& v, const NiPoint3 (&cor
 	return outside ? GlassMap::Outside : GlassMap::Inside;
 }
 
+// Which of the glass's two pictures an eye draws (render/TabletQuad.cpp): its
+// own when two were given (each laid through the camera it was rendered with),
+// the one picture for both eyes otherwise.
+inline int GlassPictureFor(bool leftEye, bool rightGiven) { return leftEye || !rightGiven ? 0 : 1; }
+
 }  // namespace obvr::vr
