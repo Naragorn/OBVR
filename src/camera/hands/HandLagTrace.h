@@ -13,11 +13,13 @@
 // The line, world units:
 //   Lag trace: <mark> <n> dt <ms> steps <count> <ms> | R <controller> <pin>
 //   <bone> | L <controller> <bone> | W <weapon node> | lag <gap m> <gap deg>
+//   | O <off hand drawn> | off lag <gap m> <gap deg>
 // R's controller is where the right controller alone puts the hand bone, its
 // pin where the pin was asked to put it (the weapon's weight and a held blade
 // in it), its bone where the bone is; L's controller is the left controller's
 // own place for its bone. W is the Weapon node, 0 0 0 without one. The lag is
-// the weapon's weight's own gap (vr/WeaponWeight.h). Steps are the physics
+// the weapon's weight's own gap (vr/WeaponWeight.h); O and off lag the off
+// hand's as drawn and its gap (vr/HeldItemWeight.h). Steps are the physics
 // planner's this frame.
 
 #include "core/Types.h"
