@@ -1,0 +1,55 @@
+# The torch's light weight against the shield's (vr/HeldItemWeight.h,
+# kTorchLagWeight 12 - a guess for the headset): the same 0.30 m jerk of the
+# left hand in one frame with the torch (Torch02, 0002CF9F) and then with the
+# Arena Iron Shield (000733ED). The torch trails, less far and for fewer
+# frames than the shield - if the shield's form weight is over 12, which its
+# "Off-hand weight" line says (guessed: an iron shield weighs more than 12;
+# not checked against the item's row). Read the "| O" against the "| L"
+# columns and the "off lag" gap of [Debug] HandLagTrace's lines after each
+# mark (tools/hand-lag.py). The torch's shaft, its flame and its parry go
+# with the drawn hand: the contact line at jerked_torch logs the drawn place
+# behind the controller.
+# Not run yet (written 2026-11-28 on Windows).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weight-torch.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands WeaponWeight=100
+ini Hands WeaponSwingThrough=0
+ini Debug HandLagTrace=40
+console player.additem 0002CF9F 1
+console player.additem 000733ED 1
+console player.equipitem 0002CF9F
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at shield_on player.equipitem 000733ED
+
+expect HandScript: finished
+expect Off-hand weight: a torch
+expect (the torch's own, not its form's)
+expect Off-hand weight: a shield
+expect Lag trace: jerk_torch
+expect Lag trace: jerk_shield
+reject HandScript: WARNING
+
+wait 12
+mark ready
+right pos 0.20 -0.45 -0.25
+left pos -0.20 -0.30 -0.35
+left rot 0 0 0
+wait 3
+mark jerk_torch
+left pos 0.10 -0.30 -0.35
+wait 0.02
+mark jerked_torch
+wait 1.5
+left pos -0.20 -0.30 -0.35
+wait 1
+mark shield_on
+wait 3
+mark jerk_shield
+left pos 0.10 -0.30 -0.35
+wait 0.02
+mark jerked_shield
+wait 1.5
+mark end
+wait 1

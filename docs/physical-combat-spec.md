@@ -1628,35 +1628,81 @@ ways.
 - The turn is kept in the world's axes: someone turning round while a joint
   swings back takes the turn with them wrongly for that moment.
 
-## The shield's weight (asked 2026-11-27, nothing built)
+## The weight of shields, bows, staffs and torches (asked 2026-11-27 and 2026-11-28, built 2026-11-28; harness and headset open)
 
 Nadi, 2026-11-27, the evening the block went to contact (docs/block-by-contact-spec.md):
-"shields now also must get weight as swords do."
+"shields now also must get weight as swords do." And 2026-11-28: "all shields, bows, staffs
+now also must get weight as weapons have it. torches as well but give them a light weight".
 
-- **What there is** [R]: the weapon hand trails the controller by the weapon's weight
-  (section 6; `vr::WeaponLagFor(weight, percent, twoHanded, swingThrough)`,
-  vr/WeaponWeight.h, applied in vr/HandMode.cpp and camera/hands/WeaponFrame.cpp;
-  `[Hands] WeaponWeight`, the one slider). The shield hand has no such lag: it is pinned to
-  the controller as an empty hand is.
-- **Why now** [D]: with the block by contact the shield has to be moved into the blow's
-  way. A tower shield that moves as fast as a buckler makes the heavy shield the better one
-  in every way; weight is what a small shield would win by.
-- **The wish:** the shield hand trails the controller by the worn shield's weight (the
-  form's weight, as the weapons take theirs), under the same slider.
-- **To decide when it is built:**
-  - the lag's curve for a shield (the weapon's as it is, or its own - a shield is moved
-    into place, not swung);
-  - what follows the lagged hand: the shield's disc and outline for the block and the
-    contacts (they must, or the block judges a shield that is not where it is drawn), the
-    shield bash's speed, the hand's own contact;
-  - what does not: the tablet in that hand, the torch, the bow, a spell;
-  - whether fatigue or Strength enter it (section 7's idea, not built for weapons either).
-- **Cost:** small to medium. Reused: `WeaponLagFor` and its tests, the left hand's pin,
-  the slider. New: the lag's state for the other hand, the shield's weight read, the
-  hand-offs above. Risk: the feel (a guess until the headset), and every reader of the
-  shield hand's pose that must take the lagged one. Tests: unit flows for the lag and the
-  hand-offs, a harness scenario (the shield hand jerked 30 cm: the shield arrives later
-  with a heavy shield than with a light one; the block's disc is where the shield is
-  drawn), the headset.
-- **Model and effort:** Opus 5.5 medium - ordinary code on a known mechanism, with many
-  readers of the hand's pose to find.
+- **Why** [D]: with the block by contact the shield has to be moved into the blow's way. A
+  tower shield that moves as fast as a buckler makes the heavy shield the better one in every
+  way; weight is what a small shield would win by. The same for the bow and the staff.
+- **Decided (Nadi, 2026-11-28) and built** [R] (branch weights-1128):
+  1. One slider for all: `[Hands] WeaponWeight` and `WeaponSwingThrough`; no new key. The
+     curve is the weapon's (section 6: spring, drag, swing-through as they are).
+  2. The staff lags by its own form's weight like any weapon (WEAP, `game::WeaponWeightOf`).
+     It is not a swung two-hander: `twoHanderSwung` stays false, so `OneHandTwoHanderWeight`
+     does not make it heavier; both hands on it stiffen it (`kWeaponLagTwoHandFactor`), as
+     for the other two-handers.
+  3. The bow: OBVR draws the bow in the off hand (the left role's) and the string in the
+     weapon hand. The bow hand trails by the bow's form weight (WEAP); the string hand does
+     not lag.
+  4. The shield: the off hand trails by the worn shield's form weight (ARMO, TESWeightForm at
+     0x054, the float at 0x058, `addr::kArmorWeightOffset`, `game::ShieldWeightOf`). Read in
+     the EXE's RTTI on 2026-11-28 - the class hierarchy descriptor's base offsets of
+     TESObjectARMO (COL 0x00ABB050); the same read gives 0x078 in TESObjectWEAP, the offset
+     the weapons used since 2026-10-09 - and the DATA reader 0x0046BDA0, which casts the form
+     to TESWeightForm (RTTI 0x00B0333C) and writes the float at +4 [R].
+  5. The torch: a fixed weight, `vr::kTorchLagWeight = 12` - a guess for the headset [G], not
+     the LIGH form's (TESWeightForm at 0x060 [R]; a torch weighs about 1, under the 3 that
+     lags at all). At 40 % it is a time constant of about 11 ms, the heaviest weapon's 48 [D].
+  6. Exhausted, the off hand's lag is heavier as the weapon's (`vr::WeaponLagExhausted`, the
+     one-line reuse).
+  7. The lag is let go (taken up next where the hand is, no jump, no momentum) when the item
+     leaves the hand, while the hands are adjusted, on a reset, when the roles switch (the
+     places `m_weaponLag` is reset), and - the off hand only - in a menu, with the tablet up,
+     and with the hand on a weapon's handle.
+  8. Logged once per equip or draw: "Weapon weight: <name> <weight> (a weapon | a staff)
+     ..." and "Off-hand weight: a bow | a shield | a torch <name>, lags by <weight> ...".
+- **Where** [R]: the decisions in `vr/HeldItemWeight.h` (pure, held_item_weight_test: what
+  each hand holds that weighs, the weight, the off hand's refusals, its tuning); both hands'
+  lags stepped in `vr/HandLags.cpp` (`HandMode::StepHandLags`, out of `HandMode::Update`);
+  the weights read in camera/hands/WeaponFrame.cpp (`WeighWeaponHand`, `WeighOffHand`). The
+  result carries the off hand as drawn beside the weapon hand's: `offHandRotation`,
+  `offHandOffsetUnits`, `offHandVelocity` (the drawn hand's while it lags), `offHandLagging`
+  and its gaps; `[Debug] HandLagTrace` prints it ("| O x y z | off lag m deg").
+- **What follows the drawn off hand** [R]: its pin (CameraHook's `PinAdjustableHand` for the
+  left), the hand's contact and the pose the next frame's shapes are read against (the
+  shield's disc and outline, the torch's shaft, the hand's span), the own shield as a stopper
+  for the blade and for the other hand, the shield's guard at the blow (`ShieldIntoGuard`),
+  the shield bash (its place and its speed), the torch's shaft in the world (its parry, its
+  guard, its blow by touch with the drawn hand's speed), the off hand's strike by motion, its
+  Havok body and its push, the bodies' give, the bow's shot and limbs (`g_bowShotLocal` and
+  `g_bowLimbLocal` are read in the drawn bow's frame) - and in the hand mode the bow's nock,
+  its aim, the arrow's origin and flight, the bow's pose block. The staff's line and the bow's
+  limb line for the block by contact, the torch's flame and light are read off the drawn
+  bones, so they follow the pin.
+- **What stays on the controller** [R]: the reach to the places, the ring, the laser (the bow
+  hand's laser keeps the controller's origin, at the drawn bow's angle in the hand), the grab
+  and the grapple, the leads, the reach that opens, the throw and the release, the yield, the
+  pose blocks of the shield and the torch (as the weapon's: they judge the controller until
+  they guard by contact), the off hand's angular velocity in the torch's blow. While nothing
+  lags the off hand, its contact still moves the controller's pose as before (the empty
+  hand's laser and grab from where the hand is held).
+- **Not lagged** [R]: a tablet in that hand, a spell in it, an empty hand, the bow's string
+  hand, the staff's spell's aim (it aims as every spell does, by the weapon hand's
+  controller).
+- **Tests** [R]: held_item_weight_test (47 checks, 25 of them red before the header was
+  filled); hand_mode_test's "The off hand's weight in the mode" (25 checks, 18 red before
+  `StepHandLags`): a frame behind in place, heading and speed, every refusal, the item off
+  and on, the roles switch, the reset, the torch lighter than a heavy shield, exhaustion, the
+  staff, the arrow along the drawn bow. All 327 suite tests but the two known numpy ones
+  (water_visual_harness, grass_flicker_map) green on Windows, 2026-11-28.
+- **Harness, written and not run** (Linux only): tools/hand-scripts/weight-shield.txt,
+  weight-torch.txt, weight-bow.txt, weight-staff.txt - the hand jerked, the drawn hand's
+  trail read in `[Debug] HandLagTrace`'s lines with tools/hand-lag.py, the guard's place in
+  the "Block angle" lines.
+- **Open** [G]: the feel in the headset - the torch's 12, whether a shield wants the weapon's
+  swing-through (it is moved into place, not swung), whether the bow's lag spoils the aim;
+  the item weights read in the game (the log lines above, against the items' rows);
+  fatigue and Strength in the weight (section 7's idea, not built for weapons either).
