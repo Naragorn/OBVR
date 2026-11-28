@@ -27,8 +27,8 @@ struct BashAttemptFrame {
 	UInt32 actor = 0;           // the nearest
 	float speed = 0.0f;         // the drawn shield's speed, m/s
 	float controllerSpeed = 0.0f;
-	float towards = 0.0f;       // the gate's measure: across the ground towards their bound's axis, m/s
-	float towards3d = 0.0f;     // along the line to their bound's centre, m/s
+	float towards = 0.0f;        // the gate's measure: the controller's speed in 3D towards their middle (BashSpeedTowards)
+	float towardsGround = 0.0f;  // the same across the ground only, the measure before 2026-11-28 (SpeedTowards)
 	bool inColumn = false;      // the gate's place: the shield's middle in their column
 	bool cooling = false;       // they cool down from a shove
 	bool handBusy = false;      // the hand on a handle or holding someone

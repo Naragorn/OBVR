@@ -6,8 +6,8 @@
 // one's bound, and it logs one line per attempt:
 //
 //   Shield bash attempt: <end> - <frames> frames, the shield up to <m/s> (its
-//   controller <m/s>); closest at <actor>: <towards> m/s towards them across
-//   the ground (<3d> along the line to their middle, the bash wants <gate>),
+//   controller <m/s>); closest at <actor>: the controller <judged> m/s towards
+//   their middle, judged (<ground> across the ground alone; the bash wants <gate>),
 //   <across> units across and <up> up from their middle (the column <wide>
 //   wide, <high> high)
 //
@@ -28,7 +28,7 @@ struct ShieldBashLook {
 	NiPoint3 centre{0.0f, 0.0f, 0.0f};              // that one's bound's centre
 	bool cooling = false;                           // that one cools down from a shove
 	bool handBusy = false;
-	float towards = 0.0f;                           // the gate's speed towards them
+	float towards = 0.0f;                           // the gate's: the controller's, in 3D (BashSpeedTowards)
 	float gateSpeed = 0.0f;                         // [Hands] StaggerSpeed, the bash's
 	bool landed = false;
 };

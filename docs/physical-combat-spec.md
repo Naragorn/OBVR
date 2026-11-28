@@ -1675,8 +1675,8 @@ now also must get weight as weapons have it. torches as well but give them a lig
   left), the hand's contact and the pose the next frame's shapes are read against (the
   shield's disc and outline, the torch's shaft, the hand's span), the own shield as a stopper
   for the blade and for the other hand, the shield's guard at the blow (`ShieldIntoGuard`),
-  the shield bash (its place and its speed), the torch's shaft in the world (its parry, its
-  guard, its blow by touch with the drawn hand's speed), the off hand's strike by motion, its
+  the shield bash's place, the torch's shaft in the world (its parry, its guard, the place
+  of its blow by touch), the off hand's strike by motion, its
   Havok body and its push, the bodies' give, the bow's shot and limbs (`g_bowShotLocal` and
   `g_bowLimbLocal` are read in the drawn bow's frame) - and in the hand mode the bow's nock,
   its aim, the arrow's origin and flight, the bow's pose block. The staff's line and the bow's
@@ -1686,7 +1686,10 @@ now also must get weight as weapons have it. torches as well but give them a lig
   hand's laser keeps the controller's origin, at the drawn bow's angle in the hand), the grab
   and the grapple, the leads, the reach that opens, the throw and the release, the yield, the
   pose blocks of the shield and the torch (as the weapon's: they judge the controller until
-  they guard by contact), the off hand's angular velocity in the torch's blow. While nothing
+  they guard by contact), the speed the shield bash and the torch's blow are judged by - the
+  controller's, as a weapon strike is judged by the controller's swing (decided 2026-11-28 on
+  Nadi's rule "weight as weapons have it": a heavier shield must not make a real bash fail;
+  from 38c1f68 until then they took the drawn hand's speed) - and the off hand's angular velocity in the torch's blow. While nothing
   lags the off hand, its contact still moves the controller's pose as before (the empty
   hand's laser and grab from where the hand is held).
 - **Not lagged** [R]: a tablet in that hand, a spell in it, an empty hand, the bow's string

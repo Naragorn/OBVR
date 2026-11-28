@@ -3,6 +3,7 @@
 #include "core/Log.h"
 #include "core/MathFns.h"
 #include "game/MeleeHits.h"
+#include "game/ShieldBashLogic.h"
 #include "game/ShieldBashWatch.h"
 #include "game/ShoveLogic.h"
 
@@ -15,12 +16,6 @@ constexpr float kColumnSide = 0.5f;
 constexpr float kColumnPad = 8.0f;
 // How far from someone's bound the shield is still near them for the watch.
 constexpr float kNearPad = 200.0f;
-
-float SpeedAlong(const NiPoint3& velocity, const NiPoint3& from, const NiPoint3& to) {
-	const NiPoint3 d = to - from;
-	const float length = math::Sqrt(d.LengthSquared());
-	return length > 0.0001f ? (velocity.x * d.x + velocity.y * d.y + velocity.z * d.z) / length : 0.0f;
-}
 
 // The frame as the bash saw it against the one in the column, else the
 // nearest one near.
@@ -45,8 +40,9 @@ game::BashAttemptFrame FrameOf(const ShieldBashLook& look, float speed, float co
 	f.inColumn = look.actor != nullptr;
 	f.cooling = f.inColumn && look.cooling;
 	f.handBusy = look.handBusy;
-	f.towards = f.inColumn ? look.towards : game::SpeedTowards(look.velocity, look.at, centre);
-	f.towards3d = SpeedAlong(look.velocity, look.at, centre);
+	// The bash's speed is the controller's (StepShieldBash): judged in 3D, and across the ground for the comparison.
+	f.towards = f.inColumn ? look.towards : game::BashSpeedTowards(look.controllerVelocity, look.at, centre);
+	f.towardsGround = game::SpeedTowards(look.controllerVelocity, look.at, centre);
 	const NiPoint3 off = look.at - centre;
 	f.across = math::Sqrt(off.x * off.x + off.y * off.y);
 	f.up = off.z;
@@ -73,11 +69,11 @@ void TraceShieldBash(const ShieldBashLook& look) {
 	--s_lines;
 	const game::BashAttemptFrame& b = r.best;
 	OBVR_LOG("Shield bash attempt: %s - %u frames, the shield up to %.1f m/s (its controller %.1f); closest at %08X: "
-	         "%.1f m/s towards them across the ground (%.1f along the line to their middle, the bash wants %.1f), "
+	         "the controller %.1f m/s towards their middle, judged (%.1f across the ground alone; the bash wants %.1f), "
 	         "%.0f units across and %.0f up from their middle (the column %.0f wide, %.0f high)",
 	         game::BashAttemptEndWords(r.end), r.frames, static_cast<double>(r.mostSpeed),
 	         static_cast<double>(r.mostControllerSpeed), b.actor, static_cast<double>(b.towards),
-	         static_cast<double>(b.towards3d), static_cast<double>(look.gateSpeed), static_cast<double>(b.across),
+	         static_cast<double>(b.towardsGround), static_cast<double>(look.gateSpeed), static_cast<double>(b.across),
 	         static_cast<double>(b.up), static_cast<double>(b.columnWide), static_cast<double>(b.columnHigh));
 }
 

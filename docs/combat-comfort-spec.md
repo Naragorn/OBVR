@@ -1187,10 +1187,24 @@ hand's punch or slap (which a shield hand gave until now):
     before; camera/hands/ShieldBashTrace.cpp; no per-frame cost while the
     shield moves slowly, at most 60 lines a session). Harness
     shield-bash-attempts.txt written, not run.
+  - A gap closed by reading [D], not the proven cause of this miss (the
+    attempt line decides that): the bash's speed was the shove's measure,
+    across the ground towards the bound's axis (`game::SpeedTowards`), so a jab
+    up at a hovering imp or down at a rat lost its rise or drop and could fail
+    the 3.0 gate with a hand fast enough. The bash alone now takes it in 3D
+    along the line from the shield's middle to their bound's centre
+    (`game::BashSpeedTowards`, game/ShieldBashLogic.h; shield_bash_test 23
+    checks, 6 of the 10 new red before): level, the same number; above or
+    below, the whole approach; away, negative. The shove and the slap keep the
+    ground measure; the push's direction stays across the ground. The attempt
+    line shows the judged speed and the ground one.
+  - Decided 2026-11-28 (on Nadi's rule "weight as weapons have it"): the bash
+    and the torch's blow take the place from the drawn shield or torch and the
+    speed from the controller, as a weapon strike is judged by the
+    controller's swing - a heavier shield must not make a real bash fail.
+    From 38c1f68 to this they took the drawn hand's speed.
   - Open: the cause, from the next run's attempt lines; an imp in the harness
-    (its form ID is in no file of this repo); whether a heavy shield's lag
-    should change the bash's speed gate (the drawn speed is judged since the
-    weight; at WeaponWeight 40 a 15-weight shield trails by 14 ms) - Nadi's call.
+    (its form ID is in no file of this repo).
 
 ## Built 2026-11-01: the raised torch blocks
 

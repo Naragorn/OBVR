@@ -896,7 +896,7 @@ void StepShoves(const Config& config, float dt) {
 	hands::StepTorchTouch(g_torchBlow, config, torchLinks, g_handBodies, torchByTouch,
 	                      game::TorchPose{g_torchWorldValid, g_torchWorldA, g_torchWorldB,
 	                                      game::TorchGripShare(g_torchShaft.a, g_torchShaft.b)},
-	                      game::TorchHand{camRot * g_hand.offHandVelocity, camRot * g_hand.leftAngularVelocity,
+	                      game::TorchHand{camRot * g_hand.leftVelocity, camRot * g_hand.leftAngularVelocity,
 	                                      config.tracker.unitsPerMetre},
 	                      g_hand.leftHandValid && config.hands.grapple.strikes && !g_twoHands.leftGripOnHandle &&
 	                          g_grapple.actor == 0 && !game::PlayerWearsShield(),
@@ -2296,9 +2296,8 @@ game::BladeDiscs g_bladeDiscs;
 game::ShieldDisc g_shieldDisc;
 bool g_shieldDiscHave = false;
 
-// The shield bash (game/ShieldBashLogic.h; Nadi, 2026-10-31): the shield's middle driven into someone's body bashes - the
-// engine's fist blow (game::KickStrike), the stagger or knockdown by the shove's push, the sound, a pulse, its fatigue -
-// instead of the off hand's punch or slap (StepShoves leaves the shield hand to this). Each attempt logged once.
+// The shield bash (game/ShieldBashLogic.h): the shield driven into someone bashes - the engine's fist blow, the shove's
+// stagger or knockdown, sound, pulse, fatigue - instead of the off hand's punch or slap; each attempt logged once.
 void StepShieldBash(const Config& config) {
 	const game::ShieldBashSettings& s = config.hands.shieldBash;
 	if (!s.enabled || !g_hand.leftHandValid || !g_cyclopeanCameraWorldValid) {
@@ -2307,19 +2306,20 @@ void StepShieldBash(const Config& config) {
 	const NiMatrix33& camRot = g_cyclopeanCameraWorldTransform.rot;
 	const NiPoint3& camPos = g_cyclopeanCameraWorldTransform.pos;
 	const NiPoint3 hand = camPos + camRot * g_hand.offHandOffsetUnits;  // drawn, behind by the shield's weight
-	// The shield's middle in the world (the disc read in the hand's frame), else the hand.
+	// The shield's middle (its disc, else the hand) where it is drawn; the speed the controller's, as a weapon strike's
+	// (decided 2026-11-28: a heavier shield must not make a real bash fail), in 3D towards them (BashSpeedTowards).
 	const NiPoint3 at = g_shieldDiscHave ? hand + (camRot * g_hand.offHandRotation) * g_shieldDisc.centre : hand;
 	NiPoint3 centre{0.0f, 0.0f, 0.0f};
 	void* const actor = game::LivingActorAt(at, 0.5f, 8.0f, &centre, 1.0f);
 	const bool cooling = actor != nullptr && !game::ShoveAllowed(g_shoveCooldown, actor);
-	const NiPoint3 velocity = camRot * g_hand.offHandVelocity;
+	const NiPoint3 velocity = camRot * g_hand.leftVelocity;
 	game::ShieldBashHand h;
 	h.shieldWorn = true;
 	h.valid = true;
 	h.holdsSomething = g_twoHands.leftGripOnHandle || g_grapple.actor != 0;
-	h.towardsSpeed = actor != nullptr ? game::SpeedTowards(velocity, at, centre) : 0.0f;
+	h.towardsSpeed = actor != nullptr ? game::BashSpeedTowards(velocity, at, centre) : 0.0f;
 	const game::ShoveKind kind = actor != nullptr && !cooling ? game::ShieldBashFor(s, h) : game::ShoveKind::None;
-	hands::TraceShieldBash({at, velocity, camRot * g_hand.leftVelocity, actor, centre, cooling, h.holdsSomething,
+	hands::TraceShieldBash({at, camRot * g_hand.offHandVelocity, velocity, actor, centre, cooling, h.holdsSomething,
 	                        h.towardsSpeed, s.speed, kind != game::ShoveKind::None});  // camera/hands/ShieldBashTrace.h
 	if (kind == game::ShoveKind::None) {
 		return;
