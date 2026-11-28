@@ -306,9 +306,9 @@ bool RefreshSettings() {
    ok=CachedText(3+slot*3,trait," ") && ok;
    continue;
   }
-  // In a section its name is the heading; in the other views it leads.
-  if (section) Join(label,sizeof(label),definition->label,"","");
-  else Join(label,sizeof(label),definition->category," / ",definition->label);
+  // The row's own name alone in every view, the guide's too: "Combat / ..."
+  // read as a path (Nadi, 2026-11-28). No two rows share a name.
+  Join(label,sizeof(label),definition->label,"","");
   const auto item=ui::ItemFor(*definition,GetConfig());
   ui::FormatValue(item,value,sizeof(value));
   ui::NativeRowTrait(slot,"label\\string",trait,sizeof(trait));

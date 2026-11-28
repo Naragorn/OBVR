@@ -1369,6 +1369,15 @@ in the zip's name.
 - **On Nadi's own games:** their OBVR.ini names no revision yet, so the guide comes back once at
   the next start after this deploy.
 
+## A row is named by its own name alone (2026-11-28)
+
+Nadi, 2026-11-28: on the guide's option pages a row read "Combat / Toggle grip" - the
+section in front of the name looked like a path. Every row now shows its own name only, on
+the guide's pages and in every other view of the settings window that is not a section
+(game/NativeMenuPrototype.cpp, the one place that joined the two). In a section it was so
+already. No two rows share a name (settings_list_test checks that), so nothing becomes
+ambiguous. Not run in the game; the headset shows it on the guide's combat and comfort pages.
+
 ## State-change audit (2026-11-28)
 
 Checked against `D:\Modding\claude-md-state-changes.md` ("State changes without
