@@ -3275,3 +3275,19 @@ local is not traced [G].
   (the drawn idle may hold the wrist a little differently - before, the shield moved
   between the two idles; now it keeps the first); a spell cast in the half second the rest
   is taken (a cast is no action in the engine's list) would be taken as the rest.
+
+## To look into: the grip toggle does not latch after a draw from a place with the fists up (found 2026-11-28, nothing built)
+
+Found by reading the owner's log of 2026-11-28 13:55 for the missing draw sound, not
+reported by him as such.
+
+- [R log] Twice a weapon drawn from a holster place with the fists readied ("Holster: ...
+  equipping the one kept there, then drawing", lines 24275 and 28480) was in the hand at
+  once - and left it again when the grip opened (24288 to 24290; at 28497 it was thrown),
+  with `[Hands] GripToggle=1`, where one grip should have kept it until the next.
+- [G] The toggle's latch is taken on the grip's closing with a weapon in the hand; on this
+  path the weapon arrives after the grip has closed, so nothing latches. Not read in the
+  code.
+- **Next step:** read `vr/GripToggle.h` and the place path in `camera/hands/Holster.cpp`
+  for when the latch is taken; a unit flow for "the grip closed, the weapon arrives a
+  frame later"; the fix where the latch is decided. Cost small; Sonnet 5.5 medium.
