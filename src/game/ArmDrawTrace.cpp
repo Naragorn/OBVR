@@ -55,7 +55,8 @@ void Say(const ArmDrawTrace& t, const NiAVObject* hand, const NiAVObject* twist)
 	         "under \"%s\", the twist under \"%s\"",
 	         ArmActionName(t.action), t.shield ? 1 : 0, t.frames, t.heldPins, t.skipped,
 	         static_cast<double>(t.mostStep), static_cast<double>(t.mostTurn), t.mostStepAt,
-	         static_cast<double>(t.mostAway), ArmShieldStill(t) ? "held still on the hand" : "SWUNG on the hand",
+	         static_cast<double>(t.mostAway),
+	         !t.shield ? "no shield on it" : ArmShieldStill(t) ? "held still on the hand" : "SWUNG on the hand",
 	         static_cast<double>(t.mostHand), static_cast<double>(t.mostTwist), static_cast<double>(t.mostController),
 	         NameOrEmpty(Looks(hand) ? hand->parent : nullptr), NameOrEmpty(Looks(twist) ? twist->parent : nullptr));
 }
