@@ -2276,3 +2276,156 @@ work at all."
 - Not verified: the gesture in the headset. Whether two Index controllers
   closed side by side at the chest always read under 0.20 m (his five
   did), and whether 0.5 s is enough for a natural squeeze.
+
+## 28. The view and the body step back as the inventory opens (Nadi, headset, 2026-11-27 evening)
+
+Nadi, after his second run of the day (OBVR.log 2026-11-27 23:34, the DLL of 23:04, main
+4f1124f plus the swimming and books branches): "at inventory open the view and body steps
+back one step. closing moves forward." On 2026-11-28: "fix jetzt".
+
+**State: a fix built on 2026-11-28, unit-tested, not run in the game.** The engine-side
+mechanism is derived from reading, not measured; the fix does not depend on it, and it
+carries the measurement that will say what the engine did.
+
+### 28.1 What was read
+
+- [R log] The run's log has no line for the camera's, the room's or the body's place
+  around an open or a close. `Menu trace: ... camera pass=1` stands before and after each
+  open: under the tablet's menus the camera pass runs on, every frame.
+- [R code] What the camera pass builds the view from, and what of it asks for the menu:
+  - the base is the engine's first-person eye - the world place of `Camera01` in the
+    first-person skeleton (FUN_0066b710 reads `[0x00B3BB0C] + 0x88`), written to the
+    camera node just before OBVR's hook;
+  - `camera/StandingEyeHold.h` holds that eye over the feet against the first-person
+    animation - and was **not live under a menu** (`!game::IsMenuMode()`): from the
+    menu's first frame to its last the engine's eye passed as it was;
+  - the room follow stands still under a menu (`RoomFollowAllowed`), which moves nothing
+    by itself: the head's offset less what was followed stays what it was;
+  - the head's offset, the look control's base rotation and the heights are built the
+    same way under a menu.
+  So the one place the view's base can change with a menu is the engine's eye itself.
+- [R code] The body hangs from the camera (`game::ShowPlayerBody`, the cyclopean camera's
+  world place), and the hands are pinned to it: a base that steps takes the body and the
+  hands with it - "the view and the body".
+- [D] Why the engine's eye would differ under the tablet: `Camera01` hangs under the
+  first-person root, and OBVR places that root with the right hand every frame at the
+  draw (`game::PlaceFirstPersonArms`: the hand's turn and its offset from the arms' rest
+  pose, some tens of units). In a world frame the player's update puts the root back
+  before the engine reads `Camera01`. Under the tablet's menus the player's update does
+  not run while the player stands (the body's check reads a stale skeleton at each open
+  in this run's log and words it so: "world transforms out of date (a frame without the
+  player's update: a menu with the world running)" - a reading of the bones, not a trace
+  of the update), so the camera update would read `Camera01` where OBVR's placement left it
+  the frame before: the eye displaced by the hand's offset, from the menu's second frame
+  on, and back with the first world frame. The same leak is on record twice: the mounted
+  view (game/FirstPersonArmsLogic.h, 2026-10-19) and the NPCs' look at the player
+  (game/PlayerLookAt.h). [R exe] The two halves run apart in the engine: the camera
+  update 0x0066B710 is called from the render path (0x00411B70), the first-person root is
+  placed by the actor's update (0x00603CA0, then 0x00660130 for its turn) -
+  ../OBNG/knowledge/first-person-camera.md. **Not proved for this case** - no run has the engine's eye under
+  a menu. If it holds, the view would also follow the right hand while the tablet is up.
+
+### 28.2 The fix
+
+- `camera/StandingEyeHold.h`: under a menu with the world running the view keeps the
+  place it had over the feet as the menu came up (the offset in the player's frame, so
+  the walk under the tablet carries it and a turn turns it). Nothing is eased toward the
+  engine's eye there and no jump is taken. A menu moves nobody's head. For ten frames
+  after the menu a far offset is eased like a near one, so one last frame of the menu's
+  eye is no jump there and back. Sneaking, the height stays the engine's as in the world.
+- Not changed: a conversation (the camera hook holds the dialogue's base itself), knocked
+  down under a menu, riding, swimming - the engine's eye, as before; menus that pause the
+  world never reach the camera pass.
+- The decisions are pure: `StandingEyeLive`, `StandingEyeUnderMenu` (the gates),
+  `StepStandingEyeHold` (the hold), covered by `standing_eye_hold_test` - 28 new checks,
+  among them "as it was": the menu's first frame showing the engine's eye 40 units back.
+- **The measurement** rides along: once a menu is gone the log says
+  `Camera: under a menu with the world running the view was kept where it stood over the
+  feet for N frame(s) - the engine's eye stood up to U units from it (x right, y forward,
+  z up at the furthest; 2 units off from its frame F), the feet went W units meanwhile`.
+  - U near 0: the engine's eye does not move under the menu - the step has another cause,
+    this fix does nothing for it, and the next thing to read is the feet (W) and the
+    head's offset.
+  - U of some tens of units: the cause is the engine's eye; the vector says which way,
+    and whether it follows the right hand (the [D] above) shows in U changing from menu
+    to menu with where the hand was.
+- Harness: `tools/hand-scripts/tablet-open-step.txt` (written, not run - Linux): four
+  marks, world / open / the right hand moved / closed; the held eye and the eyes' place
+  must be the same at all four.
+- Cost of the change per frame: a handful of float operations more in the camera pass;
+  no allocation, no log line outside a menu's end.
+
+### 28.3 Open
+
+- The headset: whether the step is gone at the open and the close.
+- The next log's `Camera: under a menu ...` lines: the size and the direction of what the
+  engine's eye did, and with them whether 28.1's [D] is the mechanism.
+- If it is: the engine's eye is displaced by OBVR's own placement of the first-person
+  root, and whatever else reads `Camera01` under a running-world menu reads it displaced
+  too (the engine's own picks and sounds from the eye). Putting the root back after the
+  draw on those frames would end it at the source; not built on a mechanism not measured.
+- The Linux harness run of the scenario above.
+
+## 29. The evening run of 2026-11-27 (log of 23:34): read, nothing built
+
+The same run as section 28's note (the DLL of 23:04, main 4f1124f plus the swimming and
+books branches). Decided that evening: note everything, build nothing for now.
+
+### 29.1 The open gesture: 12 tries, none began
+
+"Tablet: both grips closed with the hands together, the scroll not begun - ..." [R]:
+
+| Log line | Refused for |
+|---|---|
+| 1937 | the controllers 0.34 m apart (at most 0.20) |
+| 9982 | the controllers 0.33 m apart |
+| 10041 | a hand holds something (a weapon out, a torch, a thing held, a two-hand grip) |
+| 10934 | the controllers 0.40 m apart |
+| 11074 | the controllers 0.34 m apart |
+| 16813, 16821, 16827 | a hand holds something |
+| 19958 | the controllers 0.24 m apart |
+| 28081, 28116, 28139 | the hands' middle 0.14, 0.14, 0.13 m past the inventory ring (its reach and 0.10) |
+
+No "unrolling" line in the run. So section 27's gates, made from the midday run's five
+tries (the controllers 2 to 9 cm apart there), do not fit what Nadi did in the evening:
+his controllers were 24 to 40 cm apart when the grips closed.
+
+- **Not known, to read first:** what he did in each try - the Holster lines at the same
+  grip presses give each hand's place from the head; which grip closed first and how far
+  apart in time; where the inventory ring stood against his hands' middle; and what the
+  hand held in the four "holds something" tries. His `[Hands] GripToggle=1` and the
+  toggle's new hold for pulls (game/PullHold.h, built the same day) may make an empty
+  hand read as holding [G: not checked].
+- **Not to do:** widen the numbers until it fires. If hands together at the ring, pulled
+  apart, is not the gesture he makes, the gesture is to be changed to the one he makes,
+  and the accident cases (a hand at the hip, the potion belt, a grab) tested against it.
+- **Cost:** small once the 12 tries are read. Model and effort: Opus 5.5 medium.
+
+### 29.2 The figure: the reads move, the tablet holds them
+
+"Tablet: the figure's rectangle as read over 90 frames - it moved in N frame(s), by at
+most P layer pixels (held steady on the tablet)" - 40 lines (the cap) [R]: 34 of them with
+P of 1 or 2 pixels in 1 to 6 frames of 90, four with 51 to 83 pixels (the figure turned or
+its gear changed); never "not read". That is 26.1's cause seen: the breathing figure's
+rectangle moves by a pixel or two at the reads, up to six times in 90 frames. Whether the
+flicker is gone for the eye is Nadi's to say - not said yet.
+
+### 29.3 The close, the touch
+
+- "Menu pause: the tablet's menus fade out - the world runs on through the fade": 33
+  times; each close's fade still 22 frames, the world no longer held through it [R].
+  Nadi's new report for the open and the close is section 28 (the view steps back and
+  forward) - whether the two are related is not looked into.
+- 23 taps, on the glass 0.157 s on average (0.169 s at midday). The time on the glass is
+  not the click's delay: the click goes out at the finger's turn since 26.2. No word from
+  Nadi on the feel yet.
+
+### 29.4 Books and letters, swimming
+
+- "Tablet: a letter (the book menu's scroll look) read alone, held in the hand": 3 times
+  [R] - a letter or note was read on the tablet. No line for a book with pages.
+- "Swim: the player swims - the arms' strokes are on", 5 x "a hand holds the water" and
+  5 x "the water let go", "out of the water" (docs/swimming-spec.md) [R]: the strokes ran.
+  How far each carried him and whether diving by a stroke works is not read from the log
+  yet.
+- Both branches (books-1127-win, swim-1127-win) are in the test DLL only, not on main.

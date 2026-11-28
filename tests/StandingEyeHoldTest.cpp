@@ -3,7 +3,10 @@
 // a frame's step of the draw spread over a second, a step there and back all
 // but gone, the change from sheathed to drawn arriving as a glide, walking
 // followed fast, the player carried and turned with the offset, a jump taken
-// at once, not live the engine's own and forgotten, numbers of no number.
+// at once, not live the engine's own and forgotten, numbers of no number;
+// under a menu with the world running the view kept where it stood over the
+// feet, whatever the engine's eye does there (Nadi, 2026-11-27: the view and
+// the body a step back as the inventory opens, forward as it closes).
 
 #include <cmath>
 #include <cstdio>
@@ -148,9 +151,136 @@ void TestSneak() {
 	Check(Near(up.z, 95.0f, 0.05f), "the sneak over: the height held from where it was, no jump");
 }
 
+
+// Under a menu with the world running: the view stays where it stood.
+StandingEyeHoldInput UnderMenu(const NiPoint3& eye, const NiPoint3& feet = NiPoint3{0, 0, 0}, float yaw = 0.0f) {
+	StandingEyeHoldInput in = Standing(eye, feet, yaw);
+	in.underMenu = true;
+	return in;
+}
+
+void TestUnderMenu() {
+	std::printf("under a menu with the world running\n");
+	const NiPoint3 eye{0.0f, 5.0f, 118.0f};
+	const NiPoint3 back{0.0f, -35.0f, 118.0f};  // the engine's eye a step back
+	// As it was: the engine's eye taken at once, there and back.
+	{
+		StandingEyeHoldState s;
+		StepStandingEyeHold(s, Standing(eye));
+		StandingEyeHoldInput asBefore = Standing(back);
+		asBefore.live = false;  // a menu was "not live"
+		const NiPoint3 opened = StepStandingEyeHold(s, asBefore);
+		Check(Near(opened.y, -35.0f), "as it was: the menu's first frame shows the engine's eye, 40 units back");
+	}
+	StandingEyeHoldState s;
+	StepStandingEyeHold(s, Standing(eye));
+	NiPoint3 out = StepStandingEyeHold(s, UnderMenu(back));
+	Check(NearPoint(out, eye), "the menu's first frame: the view where it stood, not the engine's step back");
+	for (int i = 0; i < 300; ++i) {
+		out = StepStandingEyeHold(s, UnderMenu(back));
+	}
+	Check(NearPoint(out, eye), "three seconds under it: still there - nothing eased toward the engine's");
+	Check(s.menu.up && s.menu.frames == 301, "the episode counted");
+	Check(Near(s.menu.farUnits, 40.0f) && Near(s.menu.far.y, -40.0f), "the engine's eye at its furthest: 40 units back");
+	// Walked under the tablet and turned: the offset rides on the feet.
+	const float quarter = 1.5707963f;
+	const NiPoint3 feet{30.0f, 0.0f, 0.0f};
+	out = StepStandingEyeHold(s, UnderMenu(feet + EyeFromPlayerFrame(NiPoint3{0.0f, -35.0f, 118.0f}, quarter), feet, quarter));
+	Check(NearPoint(out, feet + EyeFromPlayerFrame(NiPoint3{0.0f, 5.0f, 118.0f}, quarter)),
+	      "walked and turned under it: the kept offset on the feet, turned with the player");
+	// The close: the engine's eye one more frame where the menu had it, then its own.
+	out = StepStandingEyeHold(s, Standing(feet + EyeFromPlayerFrame(NiPoint3{0.0f, -35.0f, 118.0f}, quarter), feet, quarter));
+	Check(Near(EyeToPlayerFrame(out - feet, quarter).y, 5.0f, 0.5f),
+	      "the first frame after it, the engine's eye still back: eased, not taken at once");
+	Check(!s.menu.up && s.note.ready && s.note.frames == 302 && Near(s.note.farUnits, 40.0f) && Near(s.note.feetMovedUnits, 30.0f),
+	      "the episode's note: its frames, the furthest the engine's eye stood, how far the feet went");
+	Check(s.note.firstFarFrame == 1, "and the frame the engine's eye first stood off");
+	for (int i = 0; i < 12; ++i) {
+		out = StepStandingEyeHold(s, Standing(feet + EyeFromPlayerFrame(eye, quarter), feet, quarter));
+	}
+	Check(Near(EyeToPlayerFrame(out - feet, quarter).y, 5.0f, 0.5f), "the engine's eye its own again: the view within half a unit all along");
+	// The grace over: a jump is a jump again.
+	out = StepStandingEyeHold(s, Standing(feet + EyeFromPlayerFrame(NiPoint3{0.0f, 5.0f, 90.0f}, quarter), feet, quarter));
+	Check(Near(out.z, 90.0f), "twelve frames after the menu: 28 units at once are taken at once again");
+}
+
+void TestUnderMenuEdges() {
+	std::printf("under a menu: the edges\n");
+	const NiPoint3 eye{0.0f, 5.0f, 118.0f};
+	const NiPoint3 back{0.0f, -35.0f, 118.0f};
+	// Nothing held as the menu came up (the first frames after a load): the engine's.
+	StandingEyeHoldState fresh;
+	Check(NearPoint(StepStandingEyeHold(fresh, UnderMenu(back)), back) && !fresh.valid && !fresh.menu.up,
+	      "nothing held as it came up: the engine's eye, and nothing taken from a menu's frame");
+	// Not live under it (a horse, the water, a conversation, knocked down): the engine's, forgotten.
+	StandingEyeHoldState s;
+	StepStandingEyeHold(s, Standing(eye));
+	StepStandingEyeHold(s, UnderMenu(back));
+	StandingEyeHoldInput off = UnderMenu(back);
+	off.live = false;
+	Check(NearPoint(StepStandingEyeHold(s, off), back) && !s.valid, "not live under it: the engine's eye, the hold forgotten");
+	Check(!s.menu.up && s.note.ready && s.note.frames == 1, "and the episode ended with its note");
+	// Sneaking under it: across the ground kept, the height the engine's.
+	StandingEyeHoldState sneak;
+	StepStandingEyeHold(sneak, Standing(eye));
+	StandingEyeHoldInput low = UnderMenu(NiPoint3{0.0f, -35.0f, 95.0f});
+	low.heightFree = true;
+	const NiPoint3 out = StepStandingEyeHold(sneak, low);
+	Check(Near(out.y, 5.0f) && Near(out.z, 95.0f), "sneaking under it: kept across the ground, the height the engine's");
+	Check(Near(sneak.menu.farUnits, 40.0f), "the height is not counted as the engine's eye standing off");
+	// An eye of no number under it: forgotten, as in the world.
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	StandingEyeHoldState bad;
+	StepStandingEyeHold(bad, Standing(eye));
+	StepStandingEyeHold(bad, UnderMenu(NiPoint3{nan, 0.0f, 0.0f}));
+	Check(!bad.valid, "an eye of no number under it: forgotten");
+	// The engine's eye where it was under the menu: the note says nothing stood off.
+	StandingEyeHoldState same;
+	StepStandingEyeHold(same, Standing(eye));
+	StepStandingEyeHold(same, UnderMenu(eye));
+	StepStandingEyeHold(same, Standing(eye));
+	Check(same.note.ready && same.note.farUnits < 0.01f && same.note.firstFarFrame == 0,
+	      "the engine's eye unmoved under it: the note says so");
+	TakeMenuEyeNote(same);
+	Check(!same.note.ready, "the note taken: not said twice");
+}
+
+void TestGates() {
+	std::printf("when the hold is live\n");
+	StandingEyeGates g;
+	g.base = true;
+	g.playerRead = true;
+	Check(StandingEyeLive(g) && !StandingEyeUnderMenu(g), "first person, the headset, Full VR, on foot: live, no menu");
+	g.menuUp = true;
+	Check(StandingEyeLive(g) && StandingEyeUnderMenu(g), "a menu up over the running world: live, under the menu");
+	g.talking = true;
+	Check(!StandingEyeLive(g) && !StandingEyeUnderMenu(g), "a conversation: the engine's eye (its base is held elsewhere)");
+	g.talking = false;
+	g.knockedDown = true;
+	Check(!StandingEyeLive(g) && !StandingEyeUnderMenu(g), "knocked down under a menu: the engine's eye");
+	g.menuUp = false;
+	Check(StandingEyeLive(g), "knocked down in the world: as before, the hold eases it");
+	g.knockedDown = false;
+	g.riding = true;
+	Check(!StandingEyeLive(g), "on a horse: not live");
+	g.riding = false;
+	g.swimming = true;
+	Check(!StandingEyeLive(g), "swimming: not live");
+	g.swimming = false;
+	g.playerRead = false;
+	Check(!StandingEyeLive(g), "the player unread: not live");
+	g.playerRead = true;
+	g.base = false;
+	g.menuUp = true;
+	Check(!StandingEyeLive(g) && !StandingEyeUnderMenu(g), "third person or no headset: not live, menu or not");
+}
+
 }  // namespace
 
 int main() {
+	TestUnderMenu();
+	TestUnderMenuEdges();
+	TestGates();
 	TestSneak();
 	TestStill();
 	TestWalk();

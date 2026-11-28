@@ -166,7 +166,53 @@ a standing guard.
   shield / weapon / bow / torch by contact ...").
 - **The controls card** says "Hold your shield or blade in a blow's way." and does not
   list the staff, the torch, the bow and the forearm.
+- **Asked 2026-11-27, not built:** the shield's weight, as the weapons have theirs
+  (docs/physical-combat-spec.md, "The shield's weight").
 - **For later** (docs/next-up.md): a flight against the shield's triangles; the foe's blade
   followed over the whole blow, so the block comes when the blades meet and not 10 to 37
   units early; the parry against the shield's plate instead of a ball.
 - **Every number in section 3 marked [G]** waits for the first headset log.
+
+## 7. The first headset log (2026-11-27 23:34): read, nothing changed
+
+Nadi's evening run with everything of sections 3 and 6 in the DLL. He has not said how
+blocking felt; decided that evening: note, build nothing. 24 blows at the player
+("Parry: a blow at the player ..."), 4 of them with a parry in its window. The contact
+rule's verdicts [R]:
+
+| Guard | Foe | Angle | Distance | Verdict |
+|---|---|---|---|---|
+| Shield | blade | 61 (at most 70) | 22 units (at most 25) | blocked, by the outline's distance |
+| Shield | blade | 74 | 15 | through - the guard stands wrong |
+| Shield | blade | 80 | 8 | through - the guard stands wrong |
+| Shield | blade | 77 | 47 | through - the guard stands wrong |
+| Shield | blade | 83 | 28 (the line to the chest 28 off the shield, at most 6) | through - the guard stands wrong |
+| Shield | blade | 43 | 40 | through - the blow passes the guard |
+| Shield | blade | 37 | 50 | through - the blow passes the guard |
+| Weapon | blade | 79, 88, 89, 74, 81 (at least 60) | 21, 14, 24, 27, 20 (at most 40) | blocked |
+| Weapon | blade | 69, 76, 73 | 63, 44, 49 | through - the blow passes the guard |
+| Weapon | blade | 31, 26, 22, 44 | 21, 22, 64, 35 | through - the guard stands wrong |
+| Weapon | no blade | 59 (at least 20) | the blade 21 off their line (at most 25) | blocked |
+| Bow | no blade | 42 | the blade 17 off their line | blocked |
+
+- **The shield blocked 1 blow of 7.** Three were refused by the angle alone at 74, 80 and
+  83 degrees against the 70 allowed - one of them with the foe's blade 8 units from the
+  shield's outline. Three by the distance at 40 to 50 units against the 25 allowed. So
+  both of the shield's numbers refuse blows in this run that the old rule (40 units, a
+  circle) would have judged by the angle only. Read as too strict [G - it is Nadi's feel
+  that decides, and he asked for less generous than before]:
+  - The angle between the shield's face and the line to their blade says little when the
+    blade is already at the shield: 8 and 15 units off is contact, whatever the face's
+    angle. A candidate: within a small distance of the outline, no angle is asked.
+  - 25 units came from the weapon guards' tally (10 to 37 units at the hit); the shield's
+    own first numbers are 8 to 50.
+- **The weapon blocked 6 of 13.** The refusals by the angle (22 to 44 degrees against 60)
+  are blades held along the blow, as the rule means them; the three by the distance read
+  44, 49 and 63 units against 40.
+- **The staff's line, the forearms:** "Hands: the fists are up - no block held, a forearm
+  blocks an unarmed blow in its way" appeared (log line 10051); no blow at a forearm, no
+  staff in this run.
+- **No crash** with the arrow impact's stub installed ("Block: the arrow impact's block
+  check (0060AD01) goes through a stub"); no "Block angle: an arrow" line - no arrow met
+  the player with a shield worn.
+- **Open, Nadi's:** how it felt; then the shield's two numbers and the angle at contact.

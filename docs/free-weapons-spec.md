@@ -3072,3 +3072,61 @@ Without the shield everything worked again."
     block_angle_test (a forearm across an unarmed attacker's way blocked, one aside through, an
     unread arm). Harness, not run: tools/hand-scripts/fist-block-contact.txt (the pose only; no
     unarmed attacker placed); fist-block.txt pins the rule off.
+
+## The second Windows run of 2026-11-27 (log of 23:34): read, nothing built
+
+Nadi's evening run with the DLL of 23:04 (main 4f1124f plus the swimming and books
+branches; OBVR.log 2026-11-27 23:34, 28817 lines, a clean quit, no crash). His notes:
+"shield still wobbles check logs", and (docs/physical-combat-spec.md) "shields now also
+must get weight as swords do". Decided the same evening: **note everything in the specs,
+build nothing for now.** What the log says, for the round that builds:
+
+### The shield wobbles at the draw and the sheathe - the trace's answer
+
+The instrument of the morning ("Arm draw trace", game/ArmDrawTraceLogic.h) wrote 10
+lines (log lines 2692, 2839, 2885, 3044, 19322, 19596, 19612, 19968, 25847, 28232); six
+with a shield worn [R]:
+
+| Window | Pins | Twist bone against the pinned hand, most a frame | From where it began | Hand's local, most a frame | Twist's local | Controller |
+|---|---|---|---|---|---|---|
+| sheathe | 10 | 0.6 units | 2.3 | 17.7 degrees | 15.5 | 0.1 |
+| draw | 8 | 1.8 | 2.8 | 10.2 | 6.0 | 0.2 |
+| sheathe | 10 | 3.0 | 6.2 | 17.7 | 13.6 | 0.3 |
+| draw | 9 | 1.0 | 2.6 | 7.6 | 5.6 | 0.3 |
+| sheathe | 11 | 0.7 | 2.5 | 9.8 | 10.1 | 0.4 |
+| draw | 8 | 1.5 | 1.5 | 7.2 | 4.0 | 0.3 |
+
+Without a shield the same windows read 2.3 to 6.3 units a frame and up to 30.5 degrees.
+Both bones hang under "Bip01 L Forearm"; no frame went without a pin.
+
+- **Cause [D: from these lines and the pin's code]:** the controller stands still (under
+  half a degree a frame) while the draw's and the sheathe's animation turns the left
+  hand's and the twist bone's locals by 4 to 18 degrees a frame. `PinHandBone` places the
+  forearm so the hand lands on the controller with the animation's local turn; the shield
+  hangs on the twist bone, the forearm's other child, and swings round the pinned hand -
+  up to 6.2 units, about 9 cm. The morning's guess holds.
+- **The fix, two ways, not built:**
+  - (a) Hold the left hand's and the twist's locals through the draw and the sheathe at
+    what they were before it began - the pattern of 83531dd (the body's sheaths). Small.
+    Covers these two animations only.
+  - (b) The shield rigid to the pinned hand always: the twist's place written after the
+    pin as the hand's world place times a reference of the two locals, taken while nothing
+    animates the arm. No animation of the left arm (the draw, the sheathe, an attack's
+    sway, a stagger) can then move the shield while the controller is still - what the
+    player expects. To check first: what else hangs on or reads the twist bone (the
+    shield's disc and outline, a Havok body, the third-person body under the body IK), the
+    left-handed mirror, and when a reference can be taken safely (an equip in the middle
+    of an animation, a load). Small to medium.
+  - Recommended: (b) if those checks hold, else (a).
+- **Evidence when built:** a unit test with the trace's situation (the locals turning by
+  the logged degrees, the controller still: the twist's place against the hand unchanged),
+  and the same trace line reading about 0 units in the next run;
+  tools/hand-scripts/shield-draw-trace.txt.
+- **Model and effort:** Sonnet 5.5 medium for (a); Opus 5.5 medium for (b) (the readers of
+  the twist bone are to be found).
+
+### Pulls under the grip toggle
+
+10 pulls, each "pulled to the hand and taken"; no "the pull given up" line [R]. The
+morning's three failures (the grip let go at 81 to 98 % of the way) did not come back in
+this run. Nadi has not said so himself.
