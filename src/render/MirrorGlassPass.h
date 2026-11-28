@@ -17,6 +17,13 @@
 // and the glass shows it in the next frame's captures: a frame late, as the
 // tablet's page already is.
 //
+// Stage 4 ([Tablet] MirrorDepth=1, docs/mirror-spec.md 14): each eye its own
+// render from its own reflected eye, into its own texture, shown to that eye
+// only - two renders a frame, or one with the eyes taking turns while a pass
+// costs more than [Tablet] MirrorBudgetMs (vr/MirrorDepthLogic.h). Each is a
+// plain repeat of the one render's steps with its own camera. MirrorDepth=0
+// runs the one render of before.
+//
 // Nothing of it runs while the mirror's page is not up: one read of the page
 // state a frame, and the glass handed back dark once when it goes.
 

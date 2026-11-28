@@ -517,6 +517,19 @@ struct MirrorCostWindow {
 	std::uint32_t glassDraws = 0;
 	std::uint32_t glassOutside = 0;
 	std::uint32_t glassUnmapped = 0;
+	// Stage 4, the depth (vr/MirrorDepthLogic.h): the frames in each mode (one
+	// picture for both eyes, both eyes, the eyes taking turns), the passes per
+	// eye, the passes of a frame together, how often the engine's skin stamp
+	// moved between a frame's two passes, and the actor shadow maps the
+	// mirror's passes kept instead of drawing them.
+	std::uint32_t modeFrames[3] = {};
+	std::uint32_t eyePasses[2] = {};
+	std::uint32_t framesRendered = 0;
+	double frameMsSum = 0.0;
+	double frameWorstMs = 0.0;
+	std::uint32_t stampAsked = 0;
+	std::uint32_t stampChanged = 0;
+	std::uint32_t shadowsKept = 0;
 };
 
 // One steadied pass: how far the held glass stood turned from the steadied

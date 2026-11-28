@@ -523,6 +523,27 @@ void TestTabletMirror() {
 	obvr::Config some;
 	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorSteady=35\n", some);
 	Check(some.hands.tablet.mirrorSteady == 35u, "MirrorSteady=35 as it is");
+
+	// Stage 4, the depth (docs/mirror-spec.md 14): each eye its own picture by
+	// default, 0 the way back to stage 3; the budget for taking turns.
+	Check(untouched.hands.tablet.mirrorDepth, "the mirror's depth defaults on");
+	Check(untouched.hands.tablet.mirrorBudgetMs == 2.5f, "the mirror's budget defaults to 2.5 ms a pass");
+	obvr::Config flat;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorDepth=0\n", flat);
+	Check(!flat.hands.tablet.mirrorDepth && flat.hands.tablet.mirrorWorld, "MirrorDepth=0: one picture, the mirror stays");
+	obvr::Config never;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorBudgetMs=0\n", never);
+	Check(never.hands.tablet.mirrorBudgetMs == 0.0f, "MirrorBudgetMs=0: never taking turns");
+	obvr::Config tiny;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorBudgetMs=0.1\n", tiny);
+	Check(tiny.hands.tablet.mirrorBudgetMs > 0.099f && tiny.hands.tablet.mirrorBudgetMs < 0.101f,
+	      "MirrorBudgetMs=0.1 as it is");
+	obvr::Config wild;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorBudgetMs=-4\n", wild);
+	Check(wild.hands.tablet.mirrorBudgetMs == 0.0f, "MirrorBudgetMs below 0: 0");
+	obvr::Config huge;
+	LoadFrom("ConfigTestTabletMirror.ini", "[Tablet]\nMirrorBudgetMs=500\n", huge);
+	Check(huge.hands.tablet.mirrorBudgetMs == 20.0f, "MirrorBudgetMs above 20: 20");
 }
 
 void TestMonitorMenusOnly() {

@@ -9,4 +9,9 @@ namespace obvr::render {
 // written; the shadows are then drawn per eye as before. Install once.
 bool InstallShadowShareHook();
 
+// How many times the mirror's passes kept the frame's actor shadow maps
+// instead of drawing them, since the start (ShadowShareState::mirrorKept): the
+// mirror's cost line reads the difference over its window.
+unsigned MirrorShadowMapsKept();
+
 }  // namespace obvr::render

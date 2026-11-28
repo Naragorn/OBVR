@@ -2943,6 +2943,16 @@ if(NOT MSVC)
 endif()
 add_test(NAME mirror_glass_map COMMAND mirror_glass_map_test)
 
+# The mirror's depth, stage 4 (vr/MirrorDepthLogic.h, docs/mirror-spec.md 14): each eye's
+# reflected camera, the mode a frame runs in from the setting and the budget with its
+# hysteresis, which eyes render, the pictures each eye's glass shows, the cost line. Pure.
+add_executable(mirror_depth_test MirrorDepthTest.cpp)
+target_include_directories(mirror_depth_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(mirror_depth_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME mirror_depth COMMAND mirror_depth_test)
+
 # How far ahead the poses are predicted when the wait comes late (vr/PosePrediction.h): pure.
 add_executable(pose_prediction_test PosePredictionTest.cpp)
 target_include_directories(pose_prediction_test PRIVATE ../src)

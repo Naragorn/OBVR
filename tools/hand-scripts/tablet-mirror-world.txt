@@ -9,10 +9,13 @@
 # edge-on (the pass stops), towards the face again (the pass runs again), and
 # MirrorWorld=0 set at a mark (the dark glass of stage 1). Eye pictures at
 # each mark; the 2D layer too, to compare the page's picture with the pass on
-# and off (section 12, "Not verified").
+# and off (section 12, "Not verified"). Stage 4 (section 14): each eye its own
+# picture (MirrorDepth=1), then one for both (MirrorDepth=0), then the eyes
+# taking turns under a tiny budget, then both again - both eye dumps at each
+# of those marks, for the glasses' disparity.
 #
 # WRITTEN, NOT RUN (2026-11-28; the head and shaking marks added the same day
-# for stage 3 and the steady picture): the tablet's pose for "towards the face" is the
+# for stage 3 and the steady picture, the depth marks for stage 4): the tablet's pose for "towards the face" is the
 # one tablet-mirror-tab.txt presses its tabs in (the page standing about 0.4 m
 # in front of the eyes); "turned away" turns the holding hand half a turn about
 # its up, "edge-on" a quarter. Whether those poses put the glass where the
@@ -48,6 +51,15 @@ ini Render MonitorMenusOnly=0
 ini Debug EyeDump=1
 ini Debug LayerDump=1
 ini Tablet MirrorSteady=60
+ini Tablet MirrorDepth=1
+ini Tablet MirrorBudgetMs=2.5
+# Stage 4: one picture for both eyes from mirror-depth, each eye its own again
+# from mirror-flat with a budget of 0.1 ms (the eyes take turns), the budget
+# back to 2.5 from mirror-turns (both eyes again after the 3 s hold).
+ini-at mirror-depth Tablet MirrorDepth=0
+ini-at mirror-flat Tablet MirrorDepth=1
+ini-at mirror-flat Tablet MirrorBudgetMs=0.1
+ini-at mirror-turns Tablet MirrorBudgetMs=2.5
 # The steady picture off for the second shaking stretch, on again for the rest.
 ini-at mirror-shake Tablet MirrorSteady=0
 ini-at mirror-shake-off Tablet MirrorSteady=60
@@ -68,6 +80,16 @@ expect Mirror head: shown
 # The steady picture's part of the cost line, on and off.
 expect steady 60: the glass turned
 expect steady 0: the glass turned
+# Stage 4: the right eye's texture, the depth turned off and on at the marks,
+# the eyes taking turns under the tiny budget and both again after it, and
+# the depth part of the cost line (with the skin stamp's answer).
+expect Mirror: the reflection's texture made for the right eye
+expect Mirror: depth turned off
+expect Mirror: depth turned on
+expect Mirror: the eyes take turns now
+expect Mirror: both eyes every frame again
+expect depth on: both eyes
+expect skin stamp moved between the two passes in
 reject Mirror head: too many skins
 reject Mirror: switched off for this session
 reject HandScript: WARNING
@@ -100,6 +122,25 @@ mark mirror-towards
 left pos -0.12 -0.22 -0.26
 wait 3
 mark mirror-near
+
+# Stage 4 (docs/mirror-spec.md 14). mirror-depth: each eye its own picture -
+# in the two eye dumps the reflected room sits shifted between the glasses by
+# its depth behind the glass (a far wall more than the reflected body), and
+# the cost line says "both eyes N" frames with two passes each. mirror-flat
+# (MirrorDepth=0 since mirror-depth, read within two seconds): one picture,
+# the same in both glasses, one pass a frame, "one for both N". mirror-turns
+# (MirrorBudgetMs=0.1 since mirror-flat): "the eyes take turns now", "taking
+# turns N" with each eye's passes about half the frames. mirror-both (the
+# budget 2.5 again since mirror-turns, after the 3 s hold): "both eyes every
+# frame again".
+wait 4
+mark mirror-depth
+wait 4
+mark mirror-flat
+wait 6
+mark mirror-turns
+wait 8
+mark mirror-both
 
 # Raised to the face, straight ahead: the face, hair and helmet in the glass's
 # eye dump; the eyes' own render still without the head (the "Head cull: at
