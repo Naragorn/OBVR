@@ -39,6 +39,7 @@ add_library(OBVR SHARED
 	src/camera/RidingView.cpp
 	src/camera/RoomFollowFrame.cpp
 	src/camera/StandingEyeFrame.cpp
+	src/camera/ViewHandoverTrace.cpp
 	src/camera/hands/Archery.cpp
 	src/camera/hands/ControllerLog.cpp
 	src/camera/hands/ControlsOut.cpp
