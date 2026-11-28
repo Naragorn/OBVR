@@ -7507,17 +7507,11 @@ void BeforeFirstScenePass() {
 				s_leftPose = leftPose;
 			}
 			game::FingerCurls rightCurls;
-			game::FingerCurls leftCurls;
-			for (int finger = 0; finger < 5; ++finger) {
-				rightCurls.curl[finger] = g_hand.rightCurl[finger];
-				leftCurls.curl[finger] = g_hand.leftCurl[finger];
-			}
-			rightCurls.thumbJoints = g_hand.rightThumbValid;
-			leftCurls.thumbJoints = g_hand.leftThumbValid;
-			for (int joint = 0; joint < 3; ++joint) {
-				rightCurls.thumb[joint] = g_hand.rightThumb[joint];
-				leftCurls.thumb[joint] = g_hand.leftThumb[joint];
-			}
+			game::FingerCurls leftCurls;  // the tablet's holding hand's four fingers behind its page (hands/HeldFingers.h)
+			hands::CurlsForFingers(g_laserTargets.heldFingers, g_hand, rightPose == game::FingerPose::Tracked,
+			                       leftPose == game::FingerPose::Tracked,
+			                       g_laserTargets.reach.shown[g_hand.tabletHolderRight ? 1 : 0].valid, cameraRot,
+			                       cameraPos, perMetre, rightCurls, leftCurls);
 			game::StepHandFingers(true, hands.rightHandBone, rightPose, hands.gripCurlDegrees, &rightCurls, g_twoHands.rightApproach);
 			game::StepHandFingers(false, hands.leftHandBone, leftPose, hands.gripCurlDegrees, &leftCurls,
 			                      twoHand.handleWeight);

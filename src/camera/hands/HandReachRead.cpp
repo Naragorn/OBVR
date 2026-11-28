@@ -7,6 +7,7 @@
 #include "platform/Win32Min.h"
 #include "test/HandScriptRuntime.h"
 #include "vr/FingerTip.h"
+#include "vr/HeldFingers.h"
 
 namespace obvr::camera::hands {
 
@@ -94,7 +95,7 @@ void SayAtMark(HandReachState& state, bool holderRight) {
 }  // namespace
 
 void StepHandReachRead(HandReachState& state, bool tabletUp, const vr::HandModeResult& hand, float unitsPerMetre,
-                       const vr::HeldPlace& place) {
+                       const vr::HeldPlace& place, bool fingersHeld) {
 	static const long long ticksPerSecond = ReadPerformanceFrequency();
 	const long long before = tabletUp ? ReadPerformanceCounter() : 0;
 	const bool holderRight = hand.tabletHolderRight;
@@ -108,6 +109,9 @@ void StepHandReachRead(HandReachState& state, bool tabletUp, const vr::HandModeR
 		curls[5 + i] = thumb[i];
 	}
 	const bool told = holderRight ? hand.rightCurlValid : hand.leftCurlValid;
+	if (!fingersHeld) {
+		state.kept[0] = state.kept[1] = vr::HandReach{};
+	}
 	if (vr::StepHandReachClock(state.clock, tabletUp, told ? curls : nullptr)) {
 		const NiAVObject* const arms = game::FirstPersonArmsNode();
 		const bool got =
@@ -118,6 +122,9 @@ void StepHandReachRead(HandReachState& state, bool tabletUp, const vr::HandModeR
 			const RoleNow now = got ? ReadRole(role == 1) : RoleNow{};
 			state.read[role] = vr::ReachOfHand(vertices.data(), static_cast<UInt32>(vertices.size()), now.palm,
 			                                   now.held, place, unitsPerMetre);
+			const bool keep = fingersHeld && (role == 1) == holderRight;
+			state.read[role] = keep ? vr::KeptReach(state.kept[role], state.read[role]) : state.read[role];
+			state.kept[role] = keep ? state.read[role] : vr::HandReach{};
 			SayReading(state, role, vertices, now, unitsPerMetre, role == 1 ? hand.rightCurl[1] : hand.leftCurl[1], place);
 		}
 		++state.readsSinceMark;

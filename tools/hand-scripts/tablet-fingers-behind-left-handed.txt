@@ -1,0 +1,89 @@
+# The holding hand's four fingers behind the tablet's page, left-handed
+# (docs/inventory-tablet-spec.md 32.2): tablet-fingers-behind.txt mirrored -
+# Hands LeftHanded=1, the tablet opened by the right B in the right hand (the
+# off hand, "the left hand" in the log's roles, on the right controller), its
+# skeleton drawn mirrored. The four fingers behind the page there too; the
+# left (tapping) hand's fingers curled beside it, not held back.
+# Written 2026-11-28, not run.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --parallel --headset beyond --record 9 --record-width 1280 tools/hand-scripts/tablet-fingers-behind-left-handed.txt
+ini Hands Enabled=1
+ini Hands LeftHanded=1
+ini Tablet Enabled=1
+ini Tablet HeldTurnDegrees=90
+ini Tablet HeldLeanDegrees=15
+ini Tablet HeldRollDegrees=-10
+ini Tablet HeldAcrossCm=22
+ini Tablet HeldUpCm=0
+ini Tablet HeldOutCm=-9
+ini Tablet Unroll=sideways
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+ini Debug RecordCropLeft=0.04
+ini Debug RecordCropTop=0.16
+ini Debug RecordCropRight=0.84
+ini Debug RecordCropBottom=0.96
+# The harness save's question box (Lovers with PK.esm active without its esp) closed first.
+console-at ready CloseAllMenus
+
+expect HandScript: finished
+expect Tablet: in the off hand, drawn into the eyes
+expect Tablet: the left hand's finger links for the page's hold - 4 of 4 fingers
+expect Tablet: the left hand as drawn reaches
+expect Tablet: the left hand's fingers by the page (at the mark)
+expect Tablet: the fingers follow the controller again
+reject Tablet: the right hand's fingers by the page
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 1
+head pitch -15
+right pos 0.12 -0.22 -0.50
+right rot 90 0 -90
+right curl 0
+# The pointing (left) hand beside the page, its beam off it.
+left pos -0.30 -0.45 -0.30
+left rot 0 40 0
+left curl 0
+wait 1.5
+mark opens
+right b 1
+wait 0.2
+right b 0
+wait 4
+mark open_hand
+wait 1
+# Closed hard in a few steps, the left hand with it.
+right curl 0.25
+left curl 0.25
+wait 0.1
+right curl 0.5
+left curl 0.5
+wait 0.1
+right curl 0.75
+left curl 0.75
+wait 0.1
+right curl 1.0
+left curl 1.0
+wait 2.5
+mark fist
+wait 2
+right curl 0.5
+wait 2
+mark half
+wait 1
+right curl 0
+wait 2
+mark open_again
+wait 1
+right curl 1.0
+wait 2
+mark fist_again
+wait 1
+# Closed: the fingers follow the controller again.
+right b 1
+wait 0.2
+right b 0
+wait 3
+mark closed
+wait 1

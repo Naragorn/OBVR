@@ -2824,6 +2824,14 @@ if(NOT MSVC)
 endif()
 add_test(NAME tablet_on_hand COMMAND tablet_on_hand_test)
 
+# The holding hand's four fingers kept behind the tablet's page (vr/HeldFingers.h): pure.
+add_executable(held_fingers_test HeldFingersTest.cpp)
+target_include_directories(held_fingers_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(held_fingers_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME held_fingers COMMAND held_fingers_test)
+
 # The boxes on the tablet's page (vr/TabletBoxes.h): pure.
 add_executable(tablet_boxes_test TabletBoxesTest.cpp)
 target_include_directories(tablet_boxes_test PRIVATE ../src)
