@@ -1,5 +1,6 @@
 #include "render/WaterReflectionHook.h"
 #include "camera/CameraHook.h"
+#include "core/AddressSpace.h"
 #include "core/Config.h"
 #include "core/EntryDetour.h"
 #include "core/Log.h"
@@ -234,6 +235,38 @@ void LogManagerResources(void* self) {
 	}
 }
 
+// The first captures inside the mirror's render (docs/mirror-spec.md 15): the
+// engine's own reflection, from the camera it renders with. Four lines: the
+// scene camera handed in (the mirror's, as the pass set it) and the manager's
+// own camera after the render (slot +0x00, water-reflections.md) - its place
+// and frustum say whether the map covers what the mirror's off-axis frustum
+// sees of the water.
+void TraceMirrorWater(bool mirror, void* self, const NiAVObject* camera) {
+	static UInt32 linesLeft = 4;
+	if (!mirror || linesLeft == 0 || camera == nullptr) {
+		return;
+	}
+	--linesLeft;
+	const auto frustumOf = [](const NiAVObject* c) {
+		return *reinterpret_cast<const game::NiFrustum*>(reinterpret_cast<const UInt8*>(c) +
+		                                                 game::kNiCameraFrustumOffset);
+	};
+	const game::NiFrustum in = frustumOf(camera);
+	const UInt32 own = self != nullptr ? *static_cast<const UInt32*>(self) : 0;
+	const NiAVObject* const water = mem::LooksLikeObjectAddress(own) ? reinterpret_cast<const NiAVObject*>(own) : nullptr;
+	const game::NiFrustum out = water != nullptr ? frustumOf(water) : game::NiFrustum{};
+	const NiPoint3 at = water != nullptr ? water->worldTransform.pos : NiPoint3{0.0f, 0.0f, 0.0f};
+	OBVR_LOG("Water reflection in the mirror's render: the engine's own (no stable capture) - the scene camera at "
+	         "%.1f %.1f %.1f, frustum %.3f %.3f %.3f %.3f; the water camera %s at %.1f %.1f %.1f, frustum %.3f %.3f "
+	         "%.3f %.3f",
+	         static_cast<double>(camera->worldTransform.pos.x), static_cast<double>(camera->worldTransform.pos.y),
+	         static_cast<double>(camera->worldTransform.pos.z), static_cast<double>(in.l), static_cast<double>(in.r),
+	         static_cast<double>(in.t), static_cast<double>(in.b), water != nullptr ? "read" : "NOT read",
+	         static_cast<double>(at.x), static_cast<double>(at.y), static_cast<double>(at.z),
+	         static_cast<double>(out.l), static_cast<double>(out.r), static_cast<double>(out.t),
+	         static_cast<double>(out.b));
+}
+
 void __fastcall Hooked(void* self, void* edx, NiAVObject* camera, void* shadowScene) {
 	RecoverWaterManagerResource(self);
 	LogManagerResources(self);
@@ -250,13 +283,15 @@ void __fastcall Hooked(void* self, void* edx, NiAVObject* camera, void* shadowSc
 	const NiTransform renderWorld = WaterRenderCameraFromBody(stableWorld);
 	const bool transformsValid = playerTransformsValid &&
 		BuildWaterCameraLocalFromParent(captureParent, renderWorld, captureLocal);
+	const bool mirror = MirrorRenderRunning();  // the engine's own reflection there (WaterReprojection.h)
 	const bool stable = CanUseStableWaterCapture(
 		config.stableWaterReflections, config.waterReflectionMode,
-		WaterReprojectionReady(), camera != nullptr, transformsValid);
+		WaterReprojectionReady(), camera != nullptr, transformsValid, mirror);
 	if (!stable) {
 		SetWaterCaptureProjectionScale(1.0f, 1.0f);
 		SetWaterReflectionCapture(NiTransform{}, false);
 		g_original(self, edx, camera, shadowScene);
+		TraceMirrorWater(mirror, self, camera);
 		return;
 	}
 	const WaterStereoPass stereoPass = GetWaterStereoPass();

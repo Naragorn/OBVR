@@ -408,8 +408,14 @@ void TestCost() {
 	NoteMirrorShadowsKept(w, 3);
 	NoteMirrorShadowsKept(w, 1);
 	Check(w.shadowsKept == 4, "the shadow maps kept for the mirror's passes");
+	NoteMirrorStampCounted(w, true);
+	NoteMirrorStampCounted(w, false);
+	NoteMirrorStampCounted(w, true);
+	Check(w.stampCounted == 2, "the passes OBVR counted the skin stamp up for (game/MirrorStampLogic.h)");
 	ResetMirrorCost(w);
-	Check(w.modeFrames[1] == 0 && w.eyePasses[1] == 0 && w.stampAsked == 0 && w.shadowsKept == 0, "reset");
+	Check(w.modeFrames[1] == 0 && w.eyePasses[1] == 0 && w.stampAsked == 0 && w.shadowsKept == 0 &&
+	          w.stampCounted == 0,
+	      "reset");
 	Check(Near(static_cast<float>(MeanFrameMs(w)), 0.0f), "no frame: a mean of 0");
 }
 

@@ -11,6 +11,7 @@
 #include "game/GameTypes.h"
 #include "game/MenuMode.h"
 #include "game/MirrorHead.h"
+#include "game/MirrorStampLogic.h"
 #include "game/MenuPause.h"
 #include "game/MenuType.h"
 #include "game/SceneFrame.h"
@@ -75,6 +76,7 @@ struct MirrorState {
 	bool depth = false;
 	bool depthKnown = false;
 	unsigned shadowsKeptMark = 0;
+	game::MirrorStampState stamp;  // the skin stamp the last pass drew with (game/MirrorStampLogic.h)
 	bool handedIn = false;    // the glass shows one of the targets' textures
 	bool wantsBones = false;  // for the next single-pass render (MirrorWantsBones)
 	bool onSaid = false;
@@ -329,8 +331,10 @@ MirrorFrame ReadMirrorFrame(MirrorState& s, const MirrorPageState& page, bool se
 // Stage 4 calls it once for each eye in a frame, everything above set and put
 // back around each call: the bone lock replaces from the eyes' render's rows
 // with each camera's own shift (Replace mode writes no row of the log), the
-// head is shown and hidden per call (its skins' stamps turned each time, so it
-// is built for each camera whatever the engine's stamp did), the shadows keep
+// head is shown and hidden per call (its skins' stamps turned each time), the
+// renderer's skin stamp counted up before the second pass (NewStampForPass: it
+// does not move between the two by itself, so without it the second drew the
+// first camera's rows - docs/mirror-spec.md 15), the shadows keep
 // the frame's maps both times, and the water's reflection and the culling are
 // each render's own (docs/mirror-spec.md 14.2 says why).
 bool RenderFromMirror(const vr::MirrorCamera& camera, vr::MirrorPictureSize size, const d3d9::SurfaceDesc& back,
@@ -477,14 +481,36 @@ void MarkBoneLock(const perf::EventContext& context) {
 // EndScene, then the add); no other writer was found (a search for increments,
 // not for plain stores). For the trace and the cost line: whether a frame's two
 // passes see different stamps (each skin built again in the second) or the
-// same. 0 when not readable.
-UInt32 SkinBuildStamp() {
+// same - the same, on the owner's route (game/MirrorStampLogic.h). Null, and
+// 0, when not readable.
+UInt32* SkinBuildStampWord() {
 	const UInt32 renderer = *reinterpret_cast<const UInt32*>(addr::kRendererPointer);
 	if (!mem::LooksLikeObjectAddress(renderer)) {
-		return 0;
+		return nullptr;
 	}
 	const UInt32 manager = *reinterpret_cast<const UInt32*>(renderer + 0x8B0);
-	return mem::LooksLikeObjectAddress(manager) ? *reinterpret_cast<const UInt32*>(manager + 0x3C) : 0;
+	return mem::LooksLikeObjectAddress(manager) ? reinterpret_cast<UInt32*>(manager + 0x3C) : nullptr;
+}
+
+UInt32 SkinBuildStamp() {
+	const UInt32* const word = SkinBuildStampWord();
+	return word != nullptr ? *word : 0;
+}
+
+// Before a mirror pass: a second pass in the frame with the stamp the first
+// drew with counts it up once, as the engine's end of a scene frame does
+// (0x00777A40: ADD [ECX+0x3C],1), so every skin the pass draws - the head,
+// the body, any actor only the mirror sees - is built for its camera
+// (game/MirrorStampLogic.h). Never on the frame's only pass. True when counted.
+bool NewStampForPass(game::MirrorStampState& state, UInt32 sceneCall) {
+	UInt32* const word = SkinBuildStampWord();
+	const UInt32 now = word != nullptr ? *word : 0;
+	const bool count = game::MirrorPassNeedsNewStamp(state, sceneCall, now);
+	if (count) {
+		++*word;
+	}
+	game::NoteMirrorPassStamp(state, sceneCall, count ? now + 1 : now);
+	return count;
 }
 
 // The renderer's two scene-frame flags (+0x200 the default group's, +0x204 an
@@ -504,7 +530,8 @@ struct MirrorPassResult {
 	bool copied = false;    // its picture reached the texture
 	double ms = 0.0;
 	UInt32 draws = 0;
-	UInt32 stamp = 0;  // SkinBuildStamp before the render
+	UInt32 stamp = 0;            // SkinBuildStamp before the render, as the engine left it
+	bool stampCounted = false;  // counted up for this pass (NewStampForPass)
 	vr::MirrorPictureSize size;
 	game::MirrorHeadSwitch head;
 };
@@ -568,6 +595,7 @@ MirrorPassResult RenderMirror(MirrorState& s, HeadsetRenderer& renderer, const M
 	context.passIndex = 2 + eye;
 	const long long start = ReadPerformanceCounter();
 	out.stamp = SkinBuildStamp();
+	out.stampCounted = NewStampForPass(s.stamp, CurrentSceneCall());
 	{
 		perf::Profiler::Instance().GpuBegin(perf::EventType::MirrorPass, context, device);
 		perf::Profiler::ScopedSpan span(perf::Profiler::Instance(), perf::EventType::MirrorPass, context);
@@ -576,8 +604,10 @@ MirrorPassResult RenderMirror(MirrorState& s, HeadsetRenderer& renderer, const M
 		out.copied = landed && CopyToGlass(device, s.targets[eye], out.size, result);
 		perf::Profiler::Instance().GpuEnd();
 		if (trace) {
-			OBVR_LOG("Mirror trace: the world render returned (%u draws), put back; the picture %s, %s", out.draws,
-			         landed ? "in the frame" : "NOT in the frame", out.copied ? "copied to the glass" : "not copied");
+			OBVR_LOG("Mirror trace: the world render returned (%u draws), put back; the picture %s, %s; the skin stamp %s "
+			         "(now %u)",
+			         out.draws, landed ? "in the frame" : "NOT in the frame", out.copied ? "copied to the glass" : "not copied",
+			         out.stampCounted ? "counted up for this pass" : "as the engine left it", SkinBuildStamp());
 		}
 		if (!out.copied && DeviceGone(result)) {
 			if (vr::StopMirror(s.failures)) {
@@ -666,7 +696,8 @@ void LogMirrorCost(const MirrorState& s, UInt32 steady, float budgetMs) {
 	         "turned %.2f degrees mean, %.2f most from the steadied in %u frames, laid on %u eye draws, a corner past "
 	         "the picture in %u, not mapped in %u; depth %s: both eyes %u, taking turns %u, one for both %u frames, "
 	         "passes left %u right %u, together %.2f ms a frame mean, %.2f worst; budget %.2f ms a pass (last second "
-	         "%.2f); kept: actor shadow maps %u times; skin stamp moved between the two passes in %u of %u frames",
+	         "%.2f); kept: actor shadow maps %u times; skin stamp moved between the two passes in %u of %u frames, "
+	         "counted up by OBVR for %u passes",
 	         w.frames, w.passes, MeanMs(w), w.worstMs, w.passes > 0 ? static_cast<UInt32>(w.draws / w.passes) : 0u,
 	         w.width, w.height, s.targets[0].side, vr::SkippedTotal(w), skipped(vr::MirrorSkip::OutOfView),
 	         skipped(vr::MirrorSkip::FacingAway), skipped(vr::MirrorSkip::EdgeOn), skipped(vr::MirrorSkip::NotCaptured),
@@ -676,7 +707,7 @@ void LogMirrorCost(const MirrorState& s, UInt32 steady, float budgetMs) {
 	         s.depth ? "on" : "off", frames(vr::MirrorDepthMode::Both), frames(vr::MirrorDepthMode::Turns),
 	         frames(vr::MirrorDepthMode::OneForBoth), w.eyePasses[0], w.eyePasses[1], vr::MeanFrameMs(w),
 	         w.frameWorstMs, static_cast<double>(budgetMs), s.budget.lastMeanMs, w.shadowsKept, w.stampChanged,
-	         w.stampAsked);
+	         w.stampAsked, w.stampCounted);
 }
 
 // The frame into the cost window: each pass's head switch, the glass's turn,
@@ -688,6 +719,7 @@ bool NoteFrameCost(MirrorState& s, const MirrorFrame& f, vr::MirrorSkip counted,
 		if (p.head.asked) {
 			vr::NoteMirrorHead(s.cost, p.head.plan.refusal == game::MirrorHeadRefusal::None, p.head.ms);
 		}
+		vr::NoteMirrorStampCounted(s.cost, p.stampCounted);
 	}
 	if (r.Rendered() && f.steadied) {
 		vr::NoteMirrorTurn(s.cost, f.turnDegrees);

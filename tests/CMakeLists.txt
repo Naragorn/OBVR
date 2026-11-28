@@ -2941,6 +2941,16 @@ if(NOT MSVC)
 endif()
 add_test(NAME mirror_glass COMMAND mirror_glass_test)
 
+# The skin build stamp across the mirror's passes (game/MirrorStampLogic.h, docs/mirror-spec.md
+# 15): the palette builder's rule, a frame of two passes played over plain values - every skin
+# built for its pass's camera - and when the renderer's stamp is counted up. Pure.
+add_executable(mirror_stamp_test MirrorStampTest.cpp)
+target_include_directories(mirror_stamp_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(mirror_stamp_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME mirror_stamp COMMAND mirror_stamp_test)
+
 # The player's head in the mirror's render only, stage 3 (game/MirrorHeadLogic.h): what is
 # switched for the pass and put back after it, with every refusal. Pure.
 add_executable(mirror_head_test MirrorHeadTest.cpp)

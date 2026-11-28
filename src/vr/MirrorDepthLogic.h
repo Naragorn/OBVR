@@ -274,6 +274,9 @@ inline void NoteMirrorDepthFrame(MirrorCostWindow& w, MirrorDepthMode mode, doub
 
 inline void NoteMirrorShadowsKept(MirrorCostWindow& w, std::uint32_t kept) { w.shadowsKept += kept; }
 
+// A pass OBVR counted the skin stamp up for (game/MirrorStampLogic.h).
+inline void NoteMirrorStampCounted(MirrorCostWindow& w, bool counted) { w.stampCounted += counted ? 1u : 0u; }
+
 inline double MeanFrameMs(const MirrorCostWindow& w) {
 	return w.framesRendered > 0 ? w.frameMsSum / static_cast<double>(w.framesRendered) : 0.0;
 }

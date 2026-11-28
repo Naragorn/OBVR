@@ -90,6 +90,15 @@ expect Mirror: the eyes take turns now
 expect Mirror: both eyes every frame again
 expect depth on: both eyes
 expect skin stamp moved between the two passes in
+# Section 15: the second pass of a frame gets a skin stamp of its own, so the
+# face, hair and anyone behind the player are built for the right eye's
+# camera (the right glass's dump at mirror-depth: the face on the neck). With
+# water in the glass, the first captures in the mirror's render log the
+# engine's own reflection with both frustums ("Water reflection in the
+# mirror's render: the engine's own") - not expected here, the scene may have
+# no water in the glass.
+expect counted up by OBVR for
+expect the skin stamp counted up for this pass
 reject Mirror head: too many skins
 reject Mirror: switched off for this session
 reject HandScript: WARNING
