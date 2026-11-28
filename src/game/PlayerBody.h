@@ -81,6 +81,10 @@ NiAVObject* PlayerBodyRoot();
 // (vr/EngineAnimViewLogic.h). False when the root or the head is not read.
 bool HidePlayerHeadForThisDraw();
 
+// Bip01 Head under that root, found the same way; null when either is not
+// read. For the mirror's render, which shows the head (game/MirrorHead.h).
+NiAVObject* PlayerHeadBone();
+
 // Puts the engine's hidden bit back on the third-person root if this code
 // took it off - only while the player is still in first person, where the
 // engine wants it hidden; in third person the engine shows the body itself

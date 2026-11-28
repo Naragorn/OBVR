@@ -20,4 +20,12 @@ void CullPlayerHeadForThisRender(NiAVObject* bodyRoot, NiAVObject* head, bool en
 // set it. Safe every frame.
 void ReleasePlayerHeadCull();
 
+// The mirror's render (game/MirrorHead.h): which of the two FaceGen nodes
+// (0 the skinned face, 1 the parts under the head) carry the bit this code set
+// this render; that bit off for the render, and on again after it. A bit
+// someone else set is never touched.
+void PlayerHeadCullOurs(bool (&ours)[2]);
+void LiftPlayerHeadCull(const bool (&which)[2]);
+void PutBackPlayerHeadCull(const bool (&which)[2]);
+
 }  // namespace obvr::game

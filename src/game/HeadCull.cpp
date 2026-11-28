@@ -122,6 +122,31 @@ void CullPlayerHeadForThisRender(NiAVObject* bodyRoot, NiAVObject* head, bool en
 	CullOne(Slot(1), Readable(head) ? BipedFaceUnder(head) : nullptr, bodyRoot, enabled);
 }
 
+void PlayerHeadCullOurs(bool (&ours)[2]) {
+	for (UInt32 i = 0; i < kFaceNodes; ++i) {
+		const CulledNode& slot = Slot(i);
+		ours[i] = slot.ours && slot.node != nullptr && Readable(slot.node);
+	}
+}
+
+void LiftPlayerHeadCull(const bool (&which)[2]) {
+	for (UInt32 i = 0; i < kFaceNodes; ++i) {
+		CulledNode& slot = Slot(i);
+		if (which[i] && slot.ours && slot.node != nullptr && Readable(slot.node)) {
+			slot.node->flags = ReleaseHead(slot.node->flags, true);
+		}
+	}
+}
+
+void PutBackPlayerHeadCull(const bool (&which)[2]) {
+	for (UInt32 i = 0; i < kFaceNodes; ++i) {
+		CulledNode& slot = Slot(i);
+		if (which[i] && slot.ours && slot.node != nullptr && Readable(slot.node)) {
+			slot.node->flags = CullHead(slot.node->flags, true).flags;
+		}
+	}
+}
+
 void ReleasePlayerHeadCull() {
 	const bool culled = Slot(0).node != nullptr || Slot(1).node != nullptr;
 	for (UInt32 i = 0; i < kFaceNodes; ++i) {

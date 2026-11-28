@@ -106,6 +106,9 @@ struct TabletSettings {
 	// pixels, 256 to 2048 (vr/MirrorGlassLogic.h ClampMirrorPixels).
 	bool mirrorWorld = true;
 	UInt32 mirrorPixels = 1024;
+	// The steady picture (vr/MirrorSteadyLogic.h kMirrorSteadyDefault): 0 off,
+	// 1 to 100 stronger.
+	UInt32 mirrorSteady = 60;
 	TabletFigure figure = TabletFigure::Tab;  // Nadi, 2026-11-18: the tab by default
 	TabletUnroll unroll = TabletUnroll::Sideways;
 	// Where the page's lower edge meets the hand: above and ahead of the

@@ -540,6 +540,14 @@ inline constexpr SettingDefinition kHandsRows[] = {
 		+[](Config& c, float v) { c.hands.tablet.mirrorWorld = v != 0.0f; },
 	},
 	{
+		"Laser & wrist menus", "Steady mirror",
+		"Keeps the mirror's picture calm while your hand shakes. 0 lets it shake with your hand",
+		ItemKind::Number, 0.0f, 100.0f, 10.0f, 0, false,
+		"Tablet", "MirrorSteady",
+		+[](const Config& c) { return static_cast<float>(c.hands.tablet.mirrorSteady); },
+		+[](Config& c, float v) { c.hands.tablet.mirrorSteady = v > 0.0f ? static_cast<UInt32>(v > 100.0f ? 100.0f : v + 0.5f) : 0u; },
+	},
+	{
 		"Laser & wrist menus", "Hands stay in menus",
 		"Keep your hands in inventory, chests, map, books and talks. Only the pause menu hides them",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
