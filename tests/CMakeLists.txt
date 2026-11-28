@@ -3440,3 +3440,13 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME shield_plate COMMAND shield_plate_test)
+
+add_executable(main_menu_dome_test MainMenuDomeTest.cpp)
+
+target_include_directories(main_menu_dome_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(main_menu_dome_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME main_menu_dome COMMAND main_menu_dome_test)
