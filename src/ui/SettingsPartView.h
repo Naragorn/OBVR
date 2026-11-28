@@ -497,6 +497,13 @@ inline constexpr SettingDefinition kViewRows[] = {
 		"", "", SettingAction::None, stage::kDomeLookNames, stage::kDomeLookCount,
 	},
 	{
+		"Screen & menus", "Dome in the main menu", "Show the dome around the main menu, not black",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "MainMenuDome",
+		+[](const Config& c) { return c.mainMenuDome ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.mainMenuDome = v != 0.0f; },
+	},
+	{
 		"Screen & menus", "Menu backdrop strength", "How strong the tint is",
 		ItemKind::Number, 0.0f, 1.0f, 0.05f, 2, false,
 		"Render", "MenuShadeStrength",

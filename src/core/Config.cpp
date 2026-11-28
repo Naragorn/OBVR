@@ -497,7 +497,7 @@ const obvr::config::IniKey kConfigKeys[] = {
 	OBVR_KEY(Float, "Render", "GrassDistance", grassDistance),
 	OBVR_KEY(Float, "Render", "GrassDensity", grassDensity),
 	OBVR_KEY(Bool, "Render", "StableDistantTrees", stableDistantTrees),
-	OBVR_KEY(Bool, "Render", "LoadingStage", loadingStage),
+	OBVR_KEY(Bool, "Render", "LoadingStage", loadingStage), OBVR_KEY(Bool, "Render", "MainMenuDome", mainMenuDome),
 	OBVR_STEP(ReadLoadingStageLook, "Render", "LoadingStageLook"),
 	OBVR_KEY(Bool, "Render", "StableWaterReflections", stableWaterReflections),
 	OBVR_KEY(Bool, "Render", "SinglePassStereo", singlePassStereo),

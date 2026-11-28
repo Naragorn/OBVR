@@ -122,6 +122,12 @@ void TestLoadingStageSetting() {
 	Check(LoadFrom("config-stage-odd.ini", "[Render]\nLoadingStageLook=bright\n", oddLook) &&
 	          oddLook.loadingStageLook == obvr::stage::DomeLook::Dark,
 	      "an unknown word keeps the look");
+	Check(defaults.mainMenuDome, "the main menu's dome is on by default");
+	obvr::Config noDome;
+	Check(LoadFrom("config-menu-dome-off.ini", "[Render]\nMainMenuDome=0\n", noDome) && !noDome.mainMenuDome &&
+	          noDome.loadingStage,
+	      "MainMenuDome=0 switches only the main menu's dome off");
+	Check(LoadFrom("config-menu-dome-on.ini", "[Render]\nMainMenuDome=1\n", noDome) && noDome.mainMenuDome, "and on again");
 }
 
 // The guide's dome shows only while the eyes are held off the headset (ui::GuideHoldsScene); on by default

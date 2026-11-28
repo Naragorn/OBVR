@@ -338,6 +338,9 @@ struct Config {
 	// [Render] LoadingStage: OBVR's dome in place of SteamVR's grid while the game
 	// cannot hand the compositor a picture (vr/LoadingStage.h).
 	bool loadingStage = true;
+	// [Render] MainMenuDome: OBVR's dome around the main menu, its picture unchanged on the overlay quad
+	// (ui/MainMenuDome.h); off, black as before. Needs LoadingStage.
+	bool mainMenuDome = true;
 	// [Render] LoadingStageLook: which dome - the sky made from the game's own
 	// textures, or OBVR's dark one (stage/DomeLook.h).
 	stage::DomeLook loadingStageLook = stage::kDomeLookDefault;
