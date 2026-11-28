@@ -3347,6 +3347,16 @@ if(NOT MSVC)
 	target_compile_options(swim_stroke_test PRIVATE -Wall -Wextra)
 endif()
 add_test(NAME swim_stroke COMMAND swim_stroke_test)
+
+# The worn shield held rigid to the pinned left hand (game/ShieldHoldLogic.h,
+# game/ShieldHold.cpp).
+add_executable(shield_hold_test ShieldHoldTest.cpp ../src/core/Rotation.cpp)
+target_include_directories(shield_hold_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(shield_hold_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME shield_hold COMMAND shield_hold_test)
+
 add_executable(shield_outline_test ShieldOutlineTest.cpp)
 
 target_include_directories(shield_outline_test PRIVATE ../src)
