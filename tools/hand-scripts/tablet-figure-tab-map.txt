@@ -1,0 +1,75 @@
+# The figure's tab over the map (docs/inventory-tablet-spec.md 33; Nadi,
+# 2026-11-28: with the figure's tab chosen and the map page up, the map
+# showed in the figure's place). tablet-figure-tab.txt's press on the
+# figure's tab, then F4 (the map page): its extension lies over the figure's
+# place - no figure, its tab left out, the map shown; then F2 (the
+# inventory): the figure's tab back and still chosen. Eye pictures at each
+# mark: "map" the map alone with the page's and the mirror's tabs, "back"
+# the figure behind its tab again.
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+# The page in the hand as it was aimed at: a quarter turn alone (the defaults of
+# 2026-11-27 lean, tilt and move it).
+ini Tablet HeldLeanDegrees=0
+ini Tablet HeldRollDegrees=0
+ini Tablet HeldAcrossCm=0
+ini Tablet HeldOutCm=0
+# The finger aimed as the controller's tip 8 cm ahead (PokeTipForward), not the drawn index finger's.
+ini Tablet DrawnFinger=0
+# Opened by the B up-and-down is held from below (the clipboard) - the place the beam and finger are aimed at.
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+expect and the figure behind a tab
+expect Tablet: the figure's tab chosen
+expect Tablet: the Map page read
+expect no figure (the page lies over its place)
+expect Tablet: the page's tab chosen
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark page
+right pos -0.0282 0.0614 -0.4051
+wait 0.5
+right pos -0.0282 0.0414 -0.4398
+wait 0.5
+right pos -0.0282 0.0614 -0.4051
+wait 0.5
+mark figure
+# The hand away from the page, so no press reaches it while the keys turn the pages.
+right pos 0.15 -0.30 -0.15
+wait 1
+key 0x73 1
+wait 0.2
+key 0x73 0
+wait 2
+mark map
+key 0x71 1
+wait 0.2
+key 0x71 0
+wait 2
+mark back

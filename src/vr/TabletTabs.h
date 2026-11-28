@@ -65,7 +65,11 @@ inline TabSet TabsFor(const TabsWanted& w) {
 // The tab chosen: the click's rising edge on a tab picks it. A popup over the
 // page shows the page whatever was chosen (the game draws it there), and the
 // choice waits. A tab the strip no longer has - the figure's on a page with no
-// figure, the mirror's switched off, the tablet closed - is forgotten.
+// figure, the mirror's switched off, the tablet closed - is forgotten. The
+// figure's tab left out because the page lies over the figure's place (the
+// map: vr::PageOverFigure, `figureAway`) shows the page, and its choice waits
+// for a page that leaves the figure free - turning pages keeps the figure's
+// tab chosen (TurnTabletPage).
 struct TabletTabState {
 	TabletTab chosen = TabletTab::Page;
 	bool wasDown = false;
@@ -73,20 +77,22 @@ struct TabletTabState {
 
 // `under` is the tab the finger or the beam is on (a TabletTab's value, -1
 // none). Returns the tab to show this frame.
-inline TabletTab StepTabletTab(TabletTabState& s, const TabSet& set, int under, bool clickDown, bool popupUp) {
+inline TabletTab StepTabletTab(TabletTabState& s, const TabSet& set, int under, bool clickDown, bool popupUp,
+                               bool figureAway = false) {
 	const bool edge = clickDown && !s.wasDown;
 	s.wasDown = clickDown;
-	if (set.count == 0) {
+	const bool figureWaits = figureAway && s.chosen == TabletTab::Figure;
+	if (set.count == 0 && !figureWaits) {
 		s.chosen = TabletTab::Page;
 		return TabletTab::Page;
 	}
 	if (edge && under >= 0 && under < static_cast<int>(kTabletTabsMost) && set.Has(static_cast<TabletTab>(under))) {
 		s.chosen = static_cast<TabletTab>(under);
 	}
-	if (!set.Has(s.chosen)) {
+	if (!set.Has(s.chosen) && !(figureAway && s.chosen == TabletTab::Figure)) {
 		s.chosen = TabletTab::Page;
 	}
-	return popupUp ? TabletTab::Page : s.chosen;
+	return popupUp || !set.Has(s.chosen) ? TabletTab::Page : s.chosen;
 }
 
 // The tab's name for the log: "the page's tab chosen", as the harness scenarios expect.

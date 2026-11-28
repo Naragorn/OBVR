@@ -11,6 +11,7 @@
 #include "platform/Win32Min.h"
 #include "vr/TabletBook.h"
 #include "vr/TabletClose.h"
+#include "vr/TabletFigureCover.h"
 #include "vr/TabletTabStrip.h"
 
 namespace obvr::game {
@@ -184,9 +185,10 @@ void LogChange(TabletMenuState& state, UInt32 pageId, const vr::TabletFrame& fra
 	         "%d,%d..%d,%d",
 	         MenuIdName(pageId), static_cast<double>(frame.paper.left), static_cast<double>(frame.paper.top),
 	         static_cast<double>(frame.paper.right), static_cast<double>(frame.paper.bottom), popups,
-	         frame.figurePage ? " and the figure on its own page"
-	         : frame.figureTab ? " and the figure behind a tab"
-	                           : (state.figureSeen ? " and the figure" : ""),
+	         frame.figurePage        ? " and the figure on its own page"
+	         : frame.figureTab       ? " and the figure behind a tab"
+	         : frame.figureUnderPage ? ", no figure (the page lies over its place)"
+	                                 : (state.figureSeen ? " and the figure" : ""),
 	         crop[0],
 	         crop[1], crop[2], crop[3]);
 }
@@ -392,9 +394,13 @@ vr::TabletFrame ReadNow(TabletMenuState& state, bool wanted, float layerPixelsWi
 	const vr::UiRect figurePixels = vr::ToLayerPixels(figure, layerPixelsHeight);
 	const vr::UiRect readPixels = vr::ToLayerPixels(state.figureAsRead, layerPixelsHeight);
 	WatchFigure(state, inScene && mode != vr::TabletFigure::Off, readPixels);
-	if (inScene && mode == vr::TabletFigure::Beside && popups == 0) {
+	// The map reaches over the figure's place: the cut would show the map, so
+	// no figure there (vr/TabletFigureCover.h).
+	frame.figureUnderPage = vr::PageOverFigure(frame.paper, frame.outline, figurePixels);
+	const bool figureFree = !frame.figureUnderPage;
+	if (inScene && figureFree && mode == vr::TabletFigure::Beside && popups == 0) {
 		vr::SetFigurePage(frame, figurePixels);
-	} else if (inScene && mode == vr::TabletFigure::Tab) {
+	} else if (inScene && figureFree && mode == vr::TabletFigure::Tab) {
 		vr::SetFigureTab(frame, figurePixels);
 	} else if (figure.valid && !inScene && mode != vr::TabletFigure::Off) {
 		frame.crop = vr::UnionRect(frame.crop, figurePixels);

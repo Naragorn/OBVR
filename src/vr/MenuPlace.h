@@ -355,7 +355,7 @@ inline TabletTab StepTabletTabs(TabletTabState& state, const HandModeFrame& f, c
 		down = finger ? tip.depth <= s.poke.press : hand.trigger > 0.5f;
 	}
 	return StepTabletTab(state, tabs ? TabsOf(*t.tablet) : TabSet{}, under, down,
-	                     t.tablet != nullptr && t.tablet->popupUp);
+	                     t.tablet != nullptr && t.tablet->popupUp, t.tablet != nullptr && t.tablet->figureUnderPage);
 }
 
 // The mirror's page is OBVR's own glass: nothing the hand does while it is

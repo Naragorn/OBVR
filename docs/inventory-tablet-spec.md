@@ -2997,6 +2997,50 @@ mache (wie macht alyx das?)."
 - Not verified: the feel in the headset - whether 5 cm is near enough for a hand that comes in fast,
   the mark's size and brightness, whether the hidden beam is missed while the finger hovers.
 
+## 33. The map in the figure's place (Nadi, 2026-11-28)
+
+Nadi: "wenn ich die spielfigur als tab habe, und im inv das karten menü ausgewählt habe, dann
+clippt die karte in die fläche für die spielfigur hinein" - with the figure's tab chosen and the map
+page up, the map shows where the figure belongs.
+
+- [R code] The figure on the tablet, behind its tab (`vr::SetFigureTab`) or on its own page
+  (`vr::SetFigurePage`), is a cut of the game's screen at the figure's rectangle
+  (`game::ReadMenuFigure`), set every frame the figure is read, whatever the page. The figure's tab
+  stays chosen over a page turn (`vr::TurnTabletPage`).
+- [R measured] Every vanilla page's paper is 27,131, 745x792 HUD units; the map's extension,
+  567x613, stands beside it to the right (tablet-tiles.txt, 2026-11-17). The figure's rectangle is
+  0.545..0.913 of the screen across (Nadi's log of 2026-11-27, section 26.1), right of the paper too.
+- **Cause [D: from those numbers and that code]:** the map is the one page whose own pictures reach
+  past its paper, and they reach over the figure's place: on the map page the cut at the figure's
+  rectangle is the map's extension (whether the game draws the figure under it or not at all there
+  is not read), and the figure's tab showed that - and its small picture on the tab too.
+- **Fix** (`vr/TabletFigureCover.h`, pure; `game/TabletMenu.cpp` `ReadNow`): `vr::PageOverFigure`
+  - the parts of the page's outline (`TabletRects::outline`, without popups) outside its paper lie
+  over at least a tenth of the figure's rectangle (`kFigureCoverShare`: a few pixels of a picture
+  past the paper are no cover; the map's extension lies over most of it). Then no figure is shown on
+  that page - neither behind a tab nor on its own page (`Figure=beside` had the same cut) - and the
+  frame says so (`TabletFrame::figureUnderPage`). The figure's tab is left out of the strip there and
+  the map is shown; its choice waits (`vr::StepTabletTab`'s `figureAway`) and the figure is back
+  behind its tab on the next page that leaves its place free. A press on the page's or the mirror's
+  tab on the map chooses that; the tablet closed forgets the figure as before; a page with no figure
+  read forgets it as before. The overlay (`InScene=0`) is unchanged: it shows one cut of the layer as
+  the game draws it. The read line says it: "Tablet: the Map page read - ..., no figure (the page
+  lies over its place), the face ...".
+- Cost: four rectangle overlaps a frame while the pages are up, no allocation.
+- Tests: tablet_figure_cover_test (the inventory and the map at Nadi's layer and at 16:9, the
+  tenth's edge, every side of the paper, every refusal); tablet_tabs_test TestFigureAway (the map
+  shown, the figure waiting and back, no strip on the map, the page's and the mirror's tab pressed
+  on the map, the tablet closed there, the mirror not waiting). Compiled natively (64-bit) and green;
+  menu_place_test and function_sizes_test green. The DLL was not built (no Windows SDK in that
+  container).
+- Harness: `tablet-figure-tab-map.txt` (the figure's tab pressed, F4, F2; eye pictures at each
+  mark). Written, not run.
+- Assumed [G]: the map's extension's top at the paper's (not logged); the figure's height 0.2..0.95
+  of the screen in the test (not logged). Not verified: the game, the headset; another UI's map
+  that stays inside its paper keeps its figure.
+- Not changed: with the mirror's tab chosen on the map, the map's extension still stands beside the
+  mirror page (the page's picture is drawn whole under it) - not reported, left as it is.
+
 ## State-change audit (2026-11-28)
 
 An audit of the tablet's visible state changes against the rule set "State changes without glitches

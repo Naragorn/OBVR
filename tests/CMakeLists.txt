@@ -2926,6 +2926,14 @@ if(NOT MSVC)
 endif()
 add_test(NAME tablet_figure_steady COMMAND tablet_figure_steady_test)
 
+# Whether the page's own pictures lie over the figure's place (vr/TabletFigureCover.h): pure.
+add_executable(tablet_figure_cover_test TabletFigureCoverTest.cpp)
+target_include_directories(tablet_figure_cover_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(tablet_figure_cover_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME tablet_figure_cover COMMAND tablet_figure_cover_test)
+
 # The tablet's tab strip and its Mirror tab (vr/TabletTabs.h, vr/TabletTabStrip.h): pure.
 add_executable(tablet_tabs_test TabletTabsTest.cpp)
 target_include_directories(tablet_tabs_test PRIVATE ../src)
