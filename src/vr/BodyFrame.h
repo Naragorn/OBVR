@@ -45,11 +45,9 @@ inline constexpr NiPoint3 kEyesFromNeck{0.0f, 0.075f, -0.0805f};
 // it has no length on the level. Bowed, the head's up leans the way the face
 // looks (raised, the other way), so forward plus up (minus it, looking up)
 // keeps its length at every bow. A head on its side with nothing level
-// keeps -z.
-inline void LevelHeading(const Quaternion& head, float& fx, float& fz) {
-	const NiMatrix33 m = ToMatrix(head);
-	const NiPoint3 forward = m * NiPoint3{0.0f, 0.0f, -1.0f};
-	const NiPoint3 up = m * NiPoint3{0.0f, 1.0f, 0.0f};
+// keeps -z. LevelHeadingOf takes the head's forward and up, for a caller
+// that holds the head as a matrix (vr/MenuFacing.h).
+inline void LevelHeadingOf(const NiPoint3& forward, const NiPoint3& up, float& fx, float& fz) {
 	const float sign = forward.y <= 0.0f ? 1.0f : -1.0f;
 	float x = forward.x + sign * up.x;
 	float z = forward.z + sign * up.z;
@@ -63,6 +61,11 @@ inline void LevelHeading(const Quaternion& head, float& fx, float& fz) {
 	}
 	fx = x;
 	fz = z;
+}
+
+inline void LevelHeading(const Quaternion& head, float& fx, float& fz) {
+	const NiMatrix33 m = ToMatrix(head);
+	LevelHeadingOf(m * NiPoint3{0.0f, 0.0f, -1.0f}, m * NiPoint3{0.0f, 1.0f, 0.0f}, fx, fz);
 }
 
 struct BodyFrame {

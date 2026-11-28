@@ -28,5 +28,8 @@ void TorchReleaseFollowsWeaponStep(Config& config, const char* path);
 void TorchSpinFollowsWeaponStep(Config& config, const char* path);
 // The hands follow Full VR (moved out of core/Config.cpp the same day).
 void HandsFollowFullVrStep(Config& config, const char* path);
+// [Look] HeadTurnsViewOnly: the aim's three settings off with it (moved out of
+// core/Config.cpp on 2026-11-28, when the menus' facing keys came in).
+void HeadTurnsViewOnlyStep(Config& config, const char* path);
 
 }  // namespace obvr

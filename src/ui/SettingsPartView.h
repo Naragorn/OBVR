@@ -431,6 +431,13 @@ inline constexpr SettingDefinition kViewRows[] = {
 		"cinema", "world",
 	},
 	{
+		"Screen & menus", "Menus in front of you", "Pop-ups and menus open in front of your body and come along when you turn",
+		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
+		"Render", "MenusFaceBody",
+		+[](const Config& c) { return c.tracker.menusFaceBody ? 1.0f : 0.0f; },
+		+[](Config& c, float v) { c.tracker.menusFaceBody = v != 0.0f; },
+	},
+	{
 		"Screen & menus", "Live world behind menus", "Behind the pause menu and journal, the world stays 3D as you look around",
 		ItemKind::Toggle, 0.0f, 1.0f, 1.0f, 0, false,
 		"Render", "LiveMenuBackground",

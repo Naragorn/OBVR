@@ -1,0 +1,58 @@
+# The game's menus on the big quad in front of the body, gliding after it
+# (vr/MenuFacing.h, camera/MenuFacingStep.cpp; Nadi, 2026-11-28: message
+# boxes and the Esc menu in front of the body, also with the body hidden).
+# The head turns 30 degrees aside - quicker than the torso's hold - and the
+# Esc menu opens: it is placed along the body's heading (0), not the head's.
+# Turned on to about 100 degrees and held there with the menu up, the body
+# follows and the menu glides after it and settles. Closed; the journal with
+# the tablet off opens in front of the body as it stands then.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/menu-facing.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Tablet Enabled=0
+ini Body Visible=0
+ini Render Menus=world
+ini Render HudAnchor=world
+ini Render MenusFaceBody=1
+ini Render MenuFollowDegrees=30
+ini Render MenuFollowSeconds=0.4
+
+expect HandScript: finished
+expect Menu facing: Pause (0x3F5) placed in front of the body at 0 degrees
+expect Menu facing: the body turned away, the menu glides after it
+expect Menu facing: the menu settled in front of the body
+count 2 placed in front of the body
+reject HandScript: WARNING
+
+wait 12
+head yaw 0
+wait 2
+mark world
+head spin 1
+wait 0.4
+head yaw 30
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 1
+mark pause_placed
+head spin 1
+wait 1
+head yaw 100
+wait 4
+mark pause_followed
+key 0x1B 1
+wait 0.2
+key 0x1B 0
+wait 2
+mark closed
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark inventory
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark end

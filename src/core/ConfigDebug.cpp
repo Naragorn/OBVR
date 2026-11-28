@@ -77,6 +77,25 @@ void TorchReleaseFollowsWeaponStep(Config& config, const char*) {
 
 void HandsFollowFullVrStep(Config& config, const char*) { config.hands.enabled = config.fullVrMode; }
 
+// The headset turning the view only (Nexus, imoody, 2026-11-02: the mouse and
+// the stick aim, the headset turns and tilts the camera on top, not the aim):
+// seated, with the headset steering the view, the aim follows no gaze, the
+// source aim is off and the vertical look is the mouse's - the three that
+// would hand the aim to the head. Full VR (the hands aim) leaves them be.
+void HeadTurnsViewOnlyStep(Config& config, const char*) {
+	if (!config.headTurnsViewOnly || !config.tracker.headLook || config.fullVrMode) {
+		return;
+	}
+	if (config.aimFollowsGaze || config.aimAtSource || config.look.blockVerticalLook) {
+		OBVR_LOG("Config: Look.HeadTurnsViewOnly=1 - the headset turns the view only: AimFollowsGaze, AimAtSource "
+		         "and BlockVerticalLook are off with it (were %d %d %d)",
+		         config.aimFollowsGaze ? 1 : 0, config.aimAtSource ? 1 : 0, config.look.blockVerticalLook ? 1 : 0);
+	}
+	config.aimFollowsGaze = false;
+	config.aimAtSource = false;
+	config.look.blockVerticalLook = false;
+}
+
 void TorchSpinFollowsWeaponStep(Config& config, const char*) {
 	config.hands.torchRelease.throwSpinStrength = config.hands.weaponRelease.throwSpinStrength;
 }

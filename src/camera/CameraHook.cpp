@@ -9,6 +9,7 @@
 #include "camera/hands/Kick.h"
 #include "camera/hands/Archery.h"
 #include "camera/MenuStandIn.h"
+#include "camera/MenuFacingStep.h"
 #include "camera/hands/ControllerLog.h"
 #include "camera/hands/ControlsOut.h"
 #include "camera/hands/DragLog.h"
@@ -9226,29 +9227,15 @@ void MaybeSubmitOverlays(bool worldFrame) {
 		// greetings. Never infer the speaker from an unrelated hand pick.
 		static vr::DialogPanelPlacement s_dialogPlacement;
 		// A menu opens in front of the player: the room anchor is dropped as
-		// it opens, so the panel is placed where the head looks now. It was
-		// kept from the first placement, and with the walking direction and
-		// the body turned apart from the view an inventory or a book could
-		// open behind (the tester, 2026-09-29). The dialogue's own placement
-		// below comes after and wins.
+		// it opens (an inventory could open behind, the tester, 2026-09-29),
+		// so the next submit places it where the head looks - unless the
+		// dialogue's or the container's placement below, or the body's after
+		// them (camera/MenuFacingStep.h), place it first.
 		static bool s_menuWasUp = false;
 		const bool menuNowUp = visibility.menuIsUp;
 		if (game::BarterMenuBegan() || (menuNowUp && !s_menuWasUp)) {
 			g_hudLayer.ResetAnchor();
-			// Which of the player's shapes are near the eyes as it opens
-			// ([Debug] MenuNearShapes; Nadi, 2026-10-27: an armour piece in
-			// the view in the inventory).
-			static UInt32 s_nearMenus = 20;
-			const float within = config.hands.menuNearShapesUnits;
-			if (within > 0.0f && s_nearMenus > 0 && g_cyclopeanCameraWorldValid) {
-				--s_nearMenus;
-				const NiPoint3 eye = g_cyclopeanCameraWorldTransform.pos;
-				const UInt32 first = game::LogShapesNearEye(game::FirstPersonArmsNode(), eye, within, "first person", 12);
-				const UInt32 body = game::LogShapesNearEye(game::PlayerBodyRoot(), eye, within, "the body", 12);
-				OBVR_LOG("Menu near shapes: %s opened - %u first-person and %u body shape(s) within %.0f units of the "
-				         "eyes",
-				         game::MenuIdName(game::TopVisibleMenu()), first, body, static_cast<double>(within));
-			}
+			LogMenuNearShapes(config, g_cyclopeanCameraWorldValid, g_cyclopeanCameraWorldTransform.pos);
 		}
 		s_menuWasUp = menuNowUp;
 		const bool talking = vr::DialoguePanelShown(g_dialogMenuEpisode, game::BarterMenuUp());
@@ -9344,6 +9331,13 @@ void MaybeSubmitOverlays(bool worldFrame) {
 			}
 		}
 	}
+
+	// The game's menus on the big quad before the body, gliding after it (vr/MenuFacing.h).
+	StepMenuFacingFrame(config, g_hudLayer,
+	                    MenuFacingFrame{handHudFrame.haveHead, handHudFrame.head, visibility.menuIsUp,
+	                                    ContainerPanelUp(config) || g_hand.menuOnTablet || g_hand.menuOnWrist ||
+	                                        vr::DialoguePanelShown(g_dialogMenuEpisode, game::BarterMenuUp()),
+	                                    g_hand.laserHit, g_recenterSerial});
 
 	// Snap turn vignette: fades in when a snap fires, out after. Updated every frame
 	// so the fade advances even when nothing is happening (keeps it hidden).
