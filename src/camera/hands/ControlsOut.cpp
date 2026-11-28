@@ -8,6 +8,8 @@
 #include "core/MathFns.h"
 #include "core/Rotation.h"
 #include "game/AnalogWalk.h"
+#include "game/DrawSound.h"
+#include "game/HolsterSlots.h"
 #include "game/EngineInput.h"
 #include "game/FlyCam.h"
 #include "game/GameSound.h"
@@ -590,6 +592,35 @@ void LogTabletWalk(ControlsOutState& state, const vr::HandModeResult& hand, cons
 	StepTabletPageKey(state, hand, frame.tablet);
 }
 
+// The draw's and the sheathe's sounds, once a frame. The staff's, which the
+// game does not play (vr::DrawSoundForm): once the weapon shows drawn or
+// sheathed, the sound of the change. Every weapon's that came to the hand
+// without its draw animation, and the watch's line per draw and sheathe
+// (game/DrawSound.h).
+void StepWeaponSounds(ControlsOutState& state, bool menuIsUp, float dt) {
+	SInt32 soundType = -1;
+	UInt8* const equipped = game::EquippedWeaponForm(&soundType);
+	const game::WeaponState weaponNow = game::ReadPlayerWeaponState();
+	if (weaponNow != game::WeaponState::Unknown && state.lastWeapon != game::WeaponState::Unknown &&
+	    weaponNow != state.lastWeapon && !menuIsUp) {
+		// Sheathed, the weapon is still equipped: its own type.
+		const SInt32 type = soundType >= 0 ? soundType : state.lastType;
+		const UInt32 form = vr::DrawSoundForm(type, weaponNow == game::WeaponState::Drawn);
+		if (form != 0) {
+			const bool played = game::PlaySoundForm(form);
+			if (state.soundLines > 0) {
+				--state.soundLines;
+				OBVR_LOG("Hands: the %s's %s sound (%08X) %s", vr::IsStaffWeaponType(type) ? "staff" : "weapon",
+				         weaponNow == game::WeaponState::Drawn ? "draw" : "sheathe", form, played ? "played" : "not played");
+			}
+		}
+	}
+	state.lastWeapon = weaponNow;
+	state.lastType = soundType;
+	const bool out = weaponNow == game::WeaponState::Drawn;
+	game::StepDrawSoundWatch(out && equipped != nullptr ? game::FormIdOf(equipped) : 0, out, menuIsUp,
+	                         vr::IsStaffWeaponType(soundType), dt);
+}
 
 }  // namespace
 
@@ -738,32 +769,8 @@ void StepControlsOut(ControlsOutState& state, const HandStep& step, const HandSh
 			         static_cast<int>(weaponType));
 		}
 	
-		// The staff's draw and sheathe sounds, which the game
-		// does not play (vr::DrawSoundForm): once the weapon shows drawn or
-		// sheathed, the sound of the change.
-		{
-			SInt32 soundType = -1;
-			game::EquippedWeaponForm(&soundType);
-			const game::WeaponState weaponNow = game::ReadPlayerWeaponState();
-			if (weaponNow != game::WeaponState::Unknown && state.lastWeapon != game::WeaponState::Unknown &&
-			    weaponNow != state.lastWeapon && !menuIsUp) {
-				// Sheathed, the weapon is still equipped: its own type.
-				const SInt32 type = soundType >= 0 ? soundType : state.lastType;
-				const UInt32 form = vr::DrawSoundForm(type, weaponNow == game::WeaponState::Drawn);
-				if (form != 0) {
-					const bool played = game::PlaySoundForm(form);
-					if (state.soundLines > 0) {
-						--state.soundLines;
-						OBVR_LOG("Hands: the %s's %s sound (%08X) %s", vr::IsStaffWeaponType(type) ? "staff" : "weapon",
-						         weaponNow == game::WeaponState::Drawn ? "draw" : "sheathe", form,
-						         played ? "played" : "not played");
-					}
-				}
-			}
-			state.lastWeapon = weaponNow;
-			state.lastType = soundType;
-		}
-	
+		StepWeaponSounds(state, menuIsUp, links.deltaSeconds);
+
 		// Every click the laser sends into a game menu, the first several dozen: a message box
 		// that could not be clicked away (2026-09-27) left no trace of whether a click was sent.
 		LogDropPress(state, hand.dropGate);

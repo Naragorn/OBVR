@@ -27,7 +27,8 @@ struct BashAttemptFrame {
 	UInt32 actor = 0;           // the nearest
 	float speed = 0.0f;         // the drawn shield's speed, m/s
 	float controllerSpeed = 0.0f;
-	float towards = 0.0f;        // the gate's measure: the controller's speed in 3D towards their middle (BashSpeedTowards)
+	float approach = 0.0f;       // the gate's measure since 2026-11-28 13:55: the approach (game/BashApproachLogic.h)
+	float towards = 0.0f;        // this frame's alone: the controller's speed in 3D towards their middle (BashSpeedTowards)
 	float towardsGround = 0.0f;  // the same across the ground only, the measure before 2026-11-28 (SpeedTowards)
 	bool inColumn = false;      // the gate's place: the shield's middle in their column
 	bool cooling = false;       // they cool down from a shove
@@ -59,8 +60,9 @@ struct BashAttemptSummary {
 	float mostControllerSpeed = 0.0f;
 };
 
-// The frame that came closest: one in the column at the most speed towards
-// them; before any is, the one nearest the column across the ground.
+// The frame that came closest: one in the column at the most of the gate's
+// measure, the approach (then the frame's own speed towards them); before any
+// is, the one nearest the column across the ground.
 inline bool CloserToABash(const BashAttemptFrame& f, const BashAttemptFrame& best, bool haveBest) {
 	if (!haveBest) {
 		return true;
@@ -68,7 +70,10 @@ inline bool CloserToABash(const BashAttemptFrame& f, const BashAttemptFrame& bes
 	if (f.inColumn != best.inColumn) {
 		return f.inColumn;
 	}
-	return f.inColumn ? f.towards > best.towards : f.across < best.across;
+	if (!f.inColumn) {
+		return f.across < best.across;
+	}
+	return f.approach != best.approach ? f.approach > best.approach : f.towards > best.towards;
 }
 
 inline void FoldBashFrame(BashAttemptState& s, const BashAttemptFrame& f) {

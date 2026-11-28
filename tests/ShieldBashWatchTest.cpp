@@ -92,6 +92,23 @@ void TestEnds() {
 	}
 	{
 		BashAttemptState s;
+		BashAttemptFrame first = Fast();
+		first.inColumn = true;
+		first.approach = 2.9f;
+		first.towards = 1.5f;
+		first.across = 25.0f;
+		StepBashAttempt(s, first);
+		BashAttemptFrame later = first;
+		later.approach = 2.2f;
+		later.towards = 2.2f;
+		later.across = 10.0f;
+		StepBashAttempt(s, later);
+		const BashAttemptSummary r = StepBashAttempt(s, Still());
+		Check(Near(r.best.approach, 2.9f) && Near(r.best.towards, 1.5f) && Near(r.best.across, 25.0f),
+		      "the closest frame by the gate's measure, the approach - not by the frame's own speed");
+	}
+	{
+		BashAttemptState s;
 		BashAttemptFrame in = Fast();
 		in.inColumn = true;
 		in.cooling = true;

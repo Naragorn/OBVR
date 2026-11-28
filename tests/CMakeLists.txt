@@ -2726,6 +2726,26 @@ endif()
 
 add_test(NAME shield_bash_watch COMMAND shield_bash_watch_test)
 
+add_executable(bash_approach_test BashApproachTest.cpp)
+
+target_include_directories(bash_approach_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(bash_approach_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME bash_approach COMMAND bash_approach_test)
+
+add_executable(draw_sound_test DrawSoundTest.cpp)
+
+target_include_directories(draw_sound_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(draw_sound_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME draw_sound COMMAND draw_sound_test)
+
 add_executable(pommel_test PommelTest.cpp)
 
 target_include_directories(pommel_test PRIVATE ../src)

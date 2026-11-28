@@ -1,7 +1,9 @@
 #include "camera/hands/ShieldBashTrace.h"
 
+#include "camera/hands/ShieldBashApproach.h"
 #include "core/Log.h"
 #include "core/MathFns.h"
+#include "game/BashApproachLogic.h"
 #include "game/MeleeHits.h"
 #include "game/ShieldBashLogic.h"
 #include "game/ShieldBashWatch.h"
@@ -40,8 +42,10 @@ game::BashAttemptFrame FrameOf(const ShieldBashLook& look, float speed, float co
 	f.inColumn = look.actor != nullptr;
 	f.cooling = f.inColumn && look.cooling;
 	f.handBusy = look.handBusy;
-	// The bash's speed is the controller's (StepShieldBash): judged in 3D, and across the ground for the comparison.
-	f.towards = f.inColumn ? look.towards : game::BashSpeedTowards(look.controllerVelocity, look.at, centre);
+	// The bash's speed is the controller's approach (StepShieldBash, camera/hands/ShieldBashApproach.h); this frame's own
+	// speed in 3D and across the ground beside it, for the comparison.
+	f.approach = f.inColumn ? look.towards : ShieldBashApproachTowards(centre);
+	f.towards = game::BashSpeedTowards(look.controllerVelocity, look.at, centre);
 	f.towardsGround = game::SpeedTowards(look.controllerVelocity, look.at, centre);
 	const NiPoint3 off = look.at - centre;
 	f.across = math::Sqrt(off.x * off.x + off.y * off.y);
@@ -69,11 +73,13 @@ void TraceShieldBash(const ShieldBashLook& look) {
 	--s_lines;
 	const game::BashAttemptFrame& b = r.best;
 	OBVR_LOG("Shield bash attempt: %s - %u frames, the shield up to %.1f m/s (its controller %.1f); closest at %08X: "
-	         "the controller %.1f m/s towards their middle, judged (%.1f across the ground alone; the bash wants %.1f), "
+	         "the approach %.1f m/s towards their middle over the last %.2f s, judged (the bash wants %.1f); in that "
+	         "frame alone the controller %.1f m/s towards their middle (%.1f across the ground alone), "
 	         "%.0f units across and %.0f up from their middle (the column %.0f wide, %.0f high)",
 	         game::BashAttemptEndWords(r.end), r.frames, static_cast<double>(r.mostSpeed),
-	         static_cast<double>(r.mostControllerSpeed), b.actor, static_cast<double>(b.towards),
-	         static_cast<double>(b.towardsGround), static_cast<double>(look.gateSpeed), static_cast<double>(b.across),
+	         static_cast<double>(r.mostControllerSpeed), b.actor, static_cast<double>(b.approach),
+	         static_cast<double>(game::kBashApproachSeconds), static_cast<double>(look.gateSpeed),
+	         static_cast<double>(b.towards), static_cast<double>(b.towardsGround), static_cast<double>(b.across),
 	         static_cast<double>(b.up), static_cast<double>(b.columnWide), static_cast<double>(b.columnHigh));
 }
 

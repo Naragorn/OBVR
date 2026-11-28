@@ -1206,6 +1206,57 @@ hand's punch or slap (which a shield hand gave until now):
   - Open: the cause, from the next run's attempt lines; an imp in the harness
     (its form ID is in no file of this repo).
 
+- **2026-11-28 13:55: bashes "sometimes not"** (Nadi, headset, the attempt line
+  above in the build: "schildstoss ging nun paar mal nicht, paar mal schon. lag
+  vll an der geschwindigkeit").
+  - Read in OBVR.log (13:55, 29 "Shield bash attempt:" lines from 23249) [R]:
+    5 landed (23644, 47918, 51549, 51567, 51580) at a judged 3.0-3.9 m/s; 4
+    refused while the target cooled down from the bash before (47928, 51559,
+    51575, 51588 - judged 3.2-4.8, real bashes); 14 refused "too slow" or
+    "never in their column". Of the "too slow" ones, 6 had the controller at
+    3.8-5.1 m/s during the attempt but 1.6-2.9 towards the target in the best
+    frame in its column: 45763 (top 4.5, judged 2.8), 45777 (5.1, 2.8), 47936
+    (4.1, 2.4), 47961 (4.0, 1.8), 47974 (3.9, 2.9), 51547 (3.8, 1.6). The
+    shield's contact said "rests on 2A0C8210 ... 4.95 m/s into it" right
+    before 45763 (45762). 90 Hz (line 174).
+  - Read in the code [R]: the gate ran every frame, but with someone only when
+    the shield's middle stood in their column (`game::LivingActorAt(at, 0.5,
+    8, ..., 1)`, StepShieldBash); the speed was that one frame's
+    (`BashSpeedTowards`). The line's "closest" frame is the one in the column
+    with the most speed towards them; its "up to" is the speed's size in any
+    direction, not towards them.
+  - Derived [D]: the hand came in fast and was slowing down (a punch ends at
+    the target) by the frames the shield's middle was in the column. Not shown
+    [G]: that the top speed of those six was towards the target - the line gave
+    its size only; the contact's 4.95 m/s "into it" at 45762 backs it for one.
+  - Built: the bash is judged by its approach (game/BashApproachLogic.h,
+    camera/hands/ShieldBashApproach.cpp): the fastest speed towards the
+    target over the last 0.15 s, the frame in the column included, each
+    frame's controller velocity along the line from that frame's shield
+    middle to the target's centre now. A frame moving away ends the approach
+    (a pull back and in again counts from the pull back); a sweep across the
+    line counts nothing; the gate 3.0 and the hard 6.0 stay; the hard bash and
+    the knockdown's force take the approach. A ring of 32 frames, nothing
+    allocated, one clock read a frame; the walk only with someone in the
+    column. The window: the landed jabs took 6-10 frames (67-111 ms) from 1.5
+    m/s to the contact, so a jab's peak lies within some 0.11 s before it [D];
+    0.15 s gives room [G]. bash_approach_test 41 checks (23 red before): the
+    window, an approach too old, the hand gone a while, retreat, sweep, not a
+    number, the ring; the six above replayed land, the "too slow" ones under 3
+    and the ones moving away stay refused, the five landed still land (the
+    replay assumes the top speed was towards them and a jab that peaks four
+    frames before the column [G]). The attempt line now gives the approach
+    judged and, beside it, that frame's own speed (shield_bash_watch_test 20
+    checks, 1 red before: the closest frame by the approach).
+  - The cooldown [R], not changed: the shove's, 1.0 s per target
+    (`ShoveSettings::cooldownSeconds`, no INI key), started by every bash. A
+    second jab within a second of a landed one is refused - 4 of the run's
+    refusals, all fast enough (47928, 51559, 51575, 51588). Those are likely
+    part of what was felt as "ging nicht" [D]: a quick double jab lands once.
+  - Harness shield-bash-attempts.txt jab 4 (fast, slowing at the rat) written,
+    not run. Open: the headset's word; whether 0.15 s lets a jab that stopped
+    short and then drifted in land (bounded by the window and the retreat rule).
+
 ## Built 2026-11-01: the raised torch blocks
 
 Nadi, 2026-10-31: "bau das das Blocken durch Hochheben der Fackel" (the open
