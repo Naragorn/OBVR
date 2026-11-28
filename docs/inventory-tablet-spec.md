@@ -2746,3 +2746,28 @@ NICHT loslässt." It replaces section 30.2 (the off hand always).
   `tablet-scroll.txt` and `tablet-scroll-vertical.txt` back to their form before 30 (kept by the
   right hand, rolled up by the left). Written, not run.
 - Not verified: the feel in the headset; the free end's place in the rolling-up scenarios [G].
+
+## 32. The third run of 2026-11-28 (Nadi, headset, OBVR.log of 13:55)
+
+Four wishes after the run. Built on branch `tablet-4-1128` (from main 3c310a6), one commit each;
+unit-tested on Windows, the game not run, the harness not run. Marks: [R] read in the log, the code
+or the INI; [D] derived; [G] guessed.
+
+### 32.1 His tablet place as the default
+
+Nadi: "ich habe die inv tablet positions werte nochmal geändert, diese sollen nun der neue standard
+sein!"
+
+- [R his INI, `Data/OBSE/Plugins/OBVR.ini` [Tablet]] `WidthMetres=0.34`, `HeldTurnDegrees=90`,
+  `HeldOutCm=-9`, `HeldAcrossCm=22`, `HeldUpCm=0`, `HeldLeanDegrees=15`, `HeldRollDegrees=-10`.
+- **Changed**: `vr::HeldPlace` (vr/TabletLogic.h) Lean 15, Roll -10, Across 22, Out -9 (Turn 90 and
+  Up 0 were already so; the width was already 0.34); the shipped OBVR.ini and its comments; section
+  27.1's values are replaced. No settings row's range moved: every new default lies inside its row
+  (sideways -30 to 30, distance -30 to 20, lean and tilt +-90).
+- Books and letters have no place of their own [R code: camera/hands/ControlsOut.cpp `LogHeldPlace`
+  is handed `config.hands.tablet.held` for every page]: they sit by the same keys and follow. The
+  earlier log's "moved 20 0 -5 cm" for a letter (OBVR.log 1406) was his live INI of that moment.
+  Only the book's width (`BookWidthMetres`, 0.40) is its own; he did not change it.
+- The harness scenarios pin their own place (27.1), none pinned the old defaults: unchanged.
+- Tests: tablet_test (the defaults and the width, 1 red), settings_list_test (settings-rows.txt
+  re-pinned, 1 red).

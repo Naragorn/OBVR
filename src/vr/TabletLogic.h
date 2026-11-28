@@ -72,16 +72,16 @@ inline TabletUnroll TabletUnrollFromIndex(float value) {
 // three angles in turn, each about the page's own axis as it then stands -
 // mirrored for a right hand, so a value means the same in either - and its
 // middle on the palm's, moved by the place (TurnHeldPage, PlaceTablet). The
-// defaults are the values Nadi set in the game (Windows 2026-11-27: "the
-// values ... I now have in the INI are the values that should be the
-// standard"), the distance 5 cm further back than the settings row let him go.
+// defaults are the values Nadi set in the game (Windows 2026-11-28: "diese
+// sollen nun der neue standard sein"; spec 32.1). A book or a letter read in
+// the hand sits by the same values.
 struct HeldPlace {
 	float turnDegrees = 90.0f;   // about its upright, the blade: + the face away from the knuckles, to the head
-	float leanDegrees = 25.0f;   // about its width: + the top back, the face up
-	float rollDegrees = -15.0f;  // in its own flat: + the top towards the body's middle
-	float acrossCm = 20.0f;      // its middle off the palm's: + towards the body's middle
+	float leanDegrees = 15.0f;   // about its width: + the top back, the face up
+	float rollDegrees = -10.0f;  // in its own flat: + the top towards the body's middle
+	float acrossCm = 22.0f;      // its middle off the palm's: + towards the body's middle
 	float upCm = 0.0f;           // + up the page
-	float outCm = -15.0f;        // + out of its face, past the hand's reach
+	float outCm = -9.0f;         // + out of its face, past the hand's reach
 };
 
 // [Tablet].
