@@ -804,11 +804,10 @@ struct HandModeFrame {
 	bool slotWorn[kHolsterSlotCount] = {};
 	bool torchBesideTwoHander = false;  // HolsterInput's
 	bool pullRight = false, pullLeft = false;  // a pull to that hand under way (game/PullHold.h): the toggle keeps it
-	// The drawn weapon's weight, the item's own (game::WeaponWeightOf), while
-	// a swung weapon - a blade or a blunt one - is drawn in the hand; 0 with
-	// the fists, a bow, a staff, or nothing drawn. The weapon's lag is set by
-	// it (vr/WeaponWeight.h).
-	float weaponWeight = 0.0f;
+	// What each hand's lag goes by (vr/HeldItemWeight.h LagWeightOf): the weapon
+	// hand's swung weapon or staff drawn, the form's weight; the off hand's drawn
+	// bow or worn shield, the form's, or its torch, kTorchLagWeight. 0 for none.
+	float weaponWeight = 0.0f, offHandWeight = 0.0f;
 	// That weapon is a two-handed blade or blunt weapon - not a staff
 	// (vr::IsSwungTwoHanderType) - and the other hand holds its handle
 	// (vr::TwoHandHolds): without the other hand it is heavier
@@ -830,19 +829,17 @@ struct HandModeFrame {
 	// The left hand holds a weapon's handle: its trigger slides it along the
 	// handle, as in Blade & Sorcery, and casts nothing.
 	bool leftTriggerOnHandle = false;
-	// Where the drawn bow shoots, in the bow hand's controller frame (x right,
-	// y up, -z forward), as the last frame showed the bow (game::BowShotAxis):
-	// the arrow's aim. Without it, that hand's laser.
-	// Arrows in the quiver, while a bow is drawn (game::QuiverHasArrows): with
-	// none no arrow is taken.
+	// Arrows in the quiver, while a bow is drawn (game::QuiverHasArrows): with none no arrow is taken.
 	bool haveArrows = true;
+	// Where the drawn bow shoots, in the DRAWN bow hand's frame (x right, y up, -z forward; its
+	// weight's lag, offHandRotation), as the last frame showed the bow (game::BowShotAxis): the
+	// arrow's aim. Without it, that hand's laser. Its limbs (the model's y) the same way: upright,
+	// the bow blocks (vr::IsBowGuard).
 	bool bowShotValid = false;
 	NiPoint3 bowShotLocal{0.0f, 0.0f, -1.0f};
 	// The drawn index fingers' tips in their controllers' frames, while the fingers follow (vr/FingerTip.h).
 	IndexTip rightIndexTip;
 	IndexTip leftIndexTip;
-	// The bow's limbs (its model's y), in the bow hand's controller frame:
-	// upright, the bow blocks (vr::IsBowGuard).
 	bool bowLimbValid = false;
 	NiPoint3 bowLimbLocal{0.0f, 1.0f, 0.0f};
 	SInt32 playerAction = -1;
@@ -969,17 +966,18 @@ struct HandModeResult : MenuPlaceResult {  // the wrists and the tablet: TabletL
 	NiMatrix33 leftHandRotation{};
 	NiPoint3 rightHandOffsetUnits{0.0f, 0.0f, 0.0f};
 	NiPoint3 leftHandOffsetUnits{0.0f, 0.0f, 0.0f};
-	// The weapon hand as it is drawn: behind the controller by the weapon's
-	// weight (vr/WeaponWeight.h), in the same frame as rightHandRotation and
-	// rightHandOffsetUnits, and equal to them while nothing lags. The pin,
-	// the strike and the weapon's body take these; the reach, the ring, the
-	// laser and the grab stay on the controller's.
-	bool weaponLagging = false;
-	NiMatrix33 weaponHandRotation{};
-	NiPoint3 weaponHandOffsetUnits{0.0f, 0.0f, 0.0f};
-	// How far the drawn hand is behind the controller, for the log.
-	float weaponGapMetres = 0.0f;
-	float weaponGapDegrees = 0.0f;
+	// Each hand as it is drawn: behind the controller by what it holds
+	// (vr/WeaponWeight.h, vr/HeldItemWeight.h), in the same frame as its
+	// controller's pose above, and equal to it while nothing lags. The pin, the
+	// strike, the item's body and guard take these; the reach, the ring, the
+	// laser and the grab stay on the controller's. The off hand's velocity is
+	// the drawn hand's too (the shield bash, the torch's blow). The gaps: how
+	// far each drawn hand is behind its controller, for the log.
+	bool weaponLagging = false, offHandLagging = false;
+	NiMatrix33 weaponHandRotation{}, offHandRotation{};
+	NiPoint3 weaponHandOffsetUnits{0.0f, 0.0f, 0.0f}, offHandOffsetUnits{0.0f, 0.0f, 0.0f};
+	NiPoint3 offHandVelocity{0.0f, 0.0f, 0.0f};
+	float weaponGapMetres = 0.0f, weaponGapDegrees = 0.0f, offHandGapMetres = 0.0f, offHandGapDegrees = 0.0f;
 	// SteamVR's velocity of each controller, relative to the head's frame in
 	// the game's axes: metres and radians a second (for the throw).
 	NiPoint3 rightVelocity{0.0f, 0.0f, 0.0f};
@@ -1244,8 +1242,10 @@ private:
 	TapHoldState m_povHold, m_waitHold, m_quickHold, m_saveHold;
 	SneakHoldState m_sneak;
 	CrouchState m_crouch;
-	// The drawn weapon hand behind the controller (vr/WeaponWeight.h).
-	WeaponLagState m_weaponLag;
+	// Each drawn hand behind its controller by what it holds (vr/WeaponWeight.h,
+	// vr/HeldItemWeight.h): the weapon hand's, the off hand's (vr/HandLags.cpp).
+	void StepHandLags(const HandModeFrame& frame, const HandSettings& settings, HandModeResult& r);
+	WeaponLagState m_weaponLag, m_offHandLag;
 	// OBVR's own menu open: the sticks and buttons steer it, nothing else.
 	void SteerSettingsMenu(const HandModeFrame& frame, const HandSettings& settings,
 	                       HandModeResult& r);

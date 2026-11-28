@@ -1,0 +1,59 @@
+# The shield's weight (docs/physical-combat-spec.md, "The weight of shields,
+# bows, staffs and torches"; vr/HeldItemWeight.h): the off hand trails its
+# controller by the worn shield's form weight. The Arena Iron Shield
+# (000733ED) worn, the left hand at rest, then jerked 0.30 m to the right in
+# one frame and held - the drawn hand ("| O" in [Debug] HandLagTrace's lines)
+# arrives at the controller ("| L") over the frames after; then the same jerk
+# back with the shield taken off - the empty hand is on the controller at
+# once (the "off lag" gap 0). Read with tools/hand-lag.py and the lines
+# themselves: with the shield the O column trails L for several frames and
+# "off lag" is above 0, without it they are equal. The block's guard is where
+# the shield is drawn: the mark right after the jerk logs the left hand's
+# contact line ("the controller ..., the drawn tip ...", the drawn place
+# behind the controller) - the shield's disc, the stoppers and the guard at
+# the blow are put at that drawn pose (CameraHook, StepHandContacts,
+# StepWeaponContact, the BlockGuard).
+# The shield's weight itself is logged at the equip ("Off-hand weight: a
+# shield ... (its form's)"): to be checked against the item's row.
+# Not run yet (written 2026-11-28 on Windows).
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/weight-shield.txt --headless --no-steamvr --parallel --plugin build-linux-clangcl/OBVR.dll
+
+ini Hands Enabled=1
+ini Hands WeaponWeight=100
+ini Hands WeaponSwingThrough=0
+ini Debug HandLagTrace=40
+console player.additem 000733ED 1
+console player.equipitem 000733ED
+console-at ready CloseAllMenus
+console-at ready tgm
+console-at shield_off player.unequipitem 000733ED
+
+expect HandScript: finished
+expect Off-hand weight: a shield
+expect (its form's)
+expect Lag trace: jerk_shield
+expect Lag trace: jerk_empty
+expect Contact: the left hand
+reject HandScript: WARNING
+reject its form's weight could not be read
+
+wait 12
+mark ready
+right pos 0.20 -0.45 -0.25
+left pos -0.20 -0.30 -0.35
+left rot 0 0 0
+wait 3
+mark jerk_shield
+left pos 0.10 -0.30 -0.35
+wait 0.02
+mark jerked_shield
+wait 1.5
+mark shield_off
+wait 2
+mark jerk_empty
+left pos -0.20 -0.30 -0.35
+wait 0.02
+mark jerked_empty
+wait 1.5
+mark end
+wait 1

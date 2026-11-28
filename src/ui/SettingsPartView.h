@@ -120,7 +120,7 @@ inline constexpr SettingDefinition kViewRows[] = {
 		+[](Config& c, float v) { c.look.exhaustion.abovePercent = v; },
 	},
 	{
-		"Comfort", "Exhausted weapon weight", "How much heavier your weapon feels when you're exhausted",
+		"Comfort", "Heft when exhausted", "How much heavier what you hold feels when you're exhausted",
 		ItemKind::Number, 1.0f, 10.0f, 0.5f, 1, false,
 		"Look", "ExhaustionWeight",
 		+[](const Config& c) { return c.look.exhaustion.weight; },

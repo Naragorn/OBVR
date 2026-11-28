@@ -459,17 +459,16 @@ bool ChargeSwingFatigue(float weight, bool power, float* cost) {
 	return true;
 }
 
-bool WeaponWeightOf(const UInt8* weapon, float* weight) {
-	if (weapon == nullptr) {
-		return false;
-	}
-	const float raw = *reinterpret_cast<const float*>(weapon + addr::kWeaponWeightOffset);
+static bool FormWeightAt(const UInt8* form, UInt32 offset, float* weight) {
+	const float raw = form != nullptr ? *reinterpret_cast<const float*>(form + offset) : -1.0f;
 	if (!(raw >= 0.0f && raw < 1000.0f)) {
 		return false;
 	}
 	*weight = raw;
 	return true;
 }
+bool WeaponWeightOf(const UInt8* weapon, float* weight) { return FormWeightAt(weapon, addr::kWeaponWeightOffset, weight); }
+bool ShieldWeightOf(const UInt8* shield, float* weight) { return FormWeightAt(shield, addr::kArmorWeightOffset, weight); }
 
 // Equipping without the item's up/down sound, as xOBSE's EquipItemSilent
 // does (Commands_Inventory.cpp, OverrideGameSounds_Execute): the `jne` at the

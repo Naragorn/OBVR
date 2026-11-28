@@ -13,11 +13,100 @@
 #include "game/QuickKeys.h"
 #include "game/TorchFire.h"
 #include "game/TorchKeep.h"
+#include "vr/HeldItemWeight.h"
 #include "vr/Holster.h"
 #include "vr/OneHandTwoHander.h"
 #include "vr/WeaponWeight.h"
 
 namespace obvr::camera::hands {
+namespace {
+
+// The drawn weapon hand's weight, for its lag (vr/HeldItemWeight.h): a swung
+// weapon's own or a staff's - not the fists', which have no form, not a bow's,
+// which weighs in the other hand. Logged once per draw, with the lag it makes
+// at the slider's setting.
+void WeighWeaponHand(WeaponFrameState& state, const Config& config, vr::HandModeFrame& frame, UInt8* weaponForm,
+                     SInt32 weaponType) {
+	const bool staffDrawn = weaponForm != nullptr && vr::IsStaffWeaponType(weaponType) &&
+	                        game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	const vr::WeighedItem item = vr::WeaponHandWeighed(frame.meleeHeld, staffDrawn);
+	float weight = 0.0f;
+	const bool weighed = item != vr::WeighedItem::None && game::WeaponWeightOf(weaponForm, &weight);
+	frame.weaponWeight = vr::LagWeightOf(item, weighed, weight);
+	// A two-hander that is swung, not a staff (vr/OneHandTwoHander.h).
+	frame.twoHanderSwung = weighed && vr::IsSwungTwoHanderType(weaponType);
+	if (!weighed) {
+		state.weighed = nullptr;
+		return;
+	}
+	if (weaponForm == state.weighed) {
+		return;
+	}
+	state.weighed = weaponForm;
+	char name[64] = "";
+	game::ReadFormFullName(reinterpret_cast<UInt32>(weaponForm), name, sizeof(name));
+	const vr::WeaponLagTuning lag =
+		vr::WeaponLagFor(weight, config.hands.weaponWeightPercent, false, config.hands.weaponSwingThrough);
+	// A two-hander's weight in one hand and in both (vr/OneHandTwoHander.h).
+	char twoHander[160] = "";
+	if (frame.twoHanderSwung) {
+		const vr::WeaponLagTuning one =
+			vr::WeaponLagHeavier(lag, vr::PercentMore(config.hands.oneHandTwoHander.weightPercent));
+		const vr::WeaponLagTuning both =
+			vr::WeaponLagFor(weight, config.hands.weaponWeightPercent, true, config.hands.weaponSwingThrough);
+		std::snprintf(twoHander, sizeof(twoHander),
+		              "; a two-hander: in one hand %.0f ms, cap %.2f m / %.0f degrees, in both %.0f ms",
+		              static_cast<double>(one.timeConstantSeconds * 1000.0f), static_cast<double>(one.capMetres),
+		              static_cast<double>(one.capRadians * math::kRadiansToDegrees),
+		              static_cast<double>(both.timeConstantSeconds * 1000.0f));
+	}
+	OBVR_LOG("Weapon weight: %s %.1f (%s), time constant %.0f ms at %.0f %%, cap %.2f m / %.0f degrees, %s%s", name,
+	         static_cast<double>(weight), vr::WeighedItemWords(item),
+	         static_cast<double>(lag.timeConstantSeconds * 1000.0f),
+	         static_cast<double>(config.hands.weaponWeightPercent), static_cast<double>(lag.capMetres),
+	         static_cast<double>(lag.capRadians * math::kRadiansToDegrees),
+	         lag.swingThrough ? "swinging through" : "the plain lag", twoHander);
+}
+
+// The off hand's weight, for its lag (vr/HeldItemWeight.h): the drawn bow's own
+// (its WEAP form), the worn shield's (its ARMO form), the torch's constant
+// (vr::kTorchLagWeight, not its form's). Logged once per equip or draw, with the
+// lag it makes at the slider's setting.
+void WeighOffHand(WeaponFrameState& state, const Config& config, vr::HandModeFrame& frame, const UInt8* bowForm,
+                  const UInt8* worn) {
+	const bool bowDrawn =
+		frame.equipped == vr::EquippedKind::Bow && game::ReadPlayerWeaponState() == game::WeaponState::Drawn;
+	const vr::WeighedItem item = vr::OffHandWeighed(bowDrawn, frame.offHand);
+	const UInt8* const form = item == vr::WeighedItem::Bow ? bowForm : item == vr::WeighedItem::None ? nullptr : worn;
+	float weight = 0.0f;
+	const bool read = item == vr::WeighedItem::Bow      ? game::WeaponWeightOf(form, &weight)
+	                  : item == vr::WeighedItem::Shield ? game::ShieldWeightOf(form, &weight)
+	                                                    : false;
+	frame.offHandWeight = vr::LagWeightOf(item, read, weight);
+	if (form == state.offWeighed && item == state.offWeighedItem) {
+		return;
+	}
+	state.offWeighed = form;
+	state.offWeighedItem = item;
+	if (item == vr::WeighedItem::None) {
+		return;
+	}
+	char name[64] = "";
+	game::ReadFormFullName(reinterpret_cast<UInt32>(form), name, sizeof(name));
+	const vr::WeaponLagTuning lag = vr::OffHandLagTuning(frame.offHandWeight, config.hands.weaponWeightPercent,
+	                                                     config.hands.weaponSwingThrough, 0.0f, 1.0f);
+	OBVR_LOG("Off-hand weight: %s %s, lags by %.1f%s, time constant %.0f ms at %.0f %%, cap %.2f m / %.0f degrees, %s",
+	         vr::WeighedItemWords(item), name, static_cast<double>(frame.offHandWeight),
+	         item == vr::WeighedItem::Torch ? " (the torch's own, not its form's)"
+	         : read                         ? " (its form's)"
+	                                        : " (its form's weight could not be read - no lag)",
+	         static_cast<double>(lag.timeConstantSeconds * 1000.0f),
+	         static_cast<double>(config.hands.weaponWeightPercent), static_cast<double>(lag.capMetres),
+	         static_cast<double>(lag.capRadians * math::kRadiansToDegrees),
+	         lag.swingThrough ? "swinging through" : "the plain lag");
+}
+
+}  // namespace
 
 void StepWeaponFrame(WeaponFrameState& state, const HandStep& step, vr::HandModeFrame& frame,
                      const WeaponFrameLinks& links) {
@@ -62,49 +151,10 @@ void StepWeaponFrame(WeaponFrameState& state, const HandStep& step, vr::HandMode
 		// staff - so the holster gives one back with the claymore out.
 		frame.torchBesideTwoHander = config.hands.torchWithTwoHander && game::TorchKeepInstalled() &&
 		                             frame.equipped == vr::EquippedKind::TwoHand && !vr::IsStaffWeaponType(weaponType);
-		// The drawn weapon's weight, for its lag (vr/WeaponWeight.h): a swung
-		// weapon's own - not the fists', which have no form, not a staff's,
-		// which is not swung by its weight, not a bow's, which is aimed.
-		// Logged once per draw, with the lag it makes at the slider's setting.
-		// Exhausted, the lag is made heavier (StepExhaustion above).
+		// Exhausted, the lags are made heavier (StepExhaustion above).
 		frame.exhaustionEase = links.exhaustionEase;
 		frame.exhaustionFactor = links.exhaustionFactor;
-		float weight = 0.0f;
-		const bool weighed = frame.meleeHeld && weaponForm != nullptr && !vr::IsStaffWeaponType(weaponType) &&
-		                     game::WeaponWeightOf(weaponForm, &weight);
-		// A two-hander that is swung, not a staff (vr/OneHandTwoHander.h).
-		frame.twoHanderSwung = weighed && vr::IsSwungTwoHanderType(weaponType);
-		if (weighed) {
-			frame.weaponWeight = weight;
-			if (weaponForm != state.weighed) {
-				state.weighed = weaponForm;
-				char name[64] = "";
-				game::ReadFormFullName(reinterpret_cast<UInt32>(weaponForm), name, sizeof(name));
-				const vr::WeaponLagTuning lag = vr::WeaponLagFor(weight, config.hands.weaponWeightPercent, false,
-				                                                 config.hands.weaponSwingThrough);
-				// A two-hander's weight in one hand and in both (vr/OneHandTwoHander.h).
-				char twoHander[160] = "";
-				if (frame.twoHanderSwung) {
-					const vr::WeaponLagTuning one = vr::WeaponLagHeavier(
-						lag, vr::PercentMore(config.hands.oneHandTwoHander.weightPercent));
-					const vr::WeaponLagTuning both = vr::WeaponLagFor(weight, config.hands.weaponWeightPercent, true,
-					                                                  config.hands.weaponSwingThrough);
-					std::snprintf(twoHander, sizeof(twoHander),
-					              "; a two-hander: in one hand %.0f ms, cap %.2f m / %.0f degrees, in both %.0f ms",
-					              static_cast<double>(one.timeConstantSeconds * 1000.0f),
-					              static_cast<double>(one.capMetres),
-					              static_cast<double>(one.capRadians * math::kRadiansToDegrees),
-					              static_cast<double>(both.timeConstantSeconds * 1000.0f));
-				}
-				OBVR_LOG("Weapon weight: %s %.1f, time constant %.0f ms at %.0f %%, cap %.2f m / %.0f degrees, %s%s",
-				         name, static_cast<double>(weight), static_cast<double>(lag.timeConstantSeconds * 1000.0f),
-				         static_cast<double>(config.hands.weaponWeightPercent), static_cast<double>(lag.capMetres),
-				         static_cast<double>(lag.capRadians * math::kRadiansToDegrees),
-				         lag.swingThrough ? "swinging through" : "the plain lag", twoHander);
-			}
-		} else {
-			state.weighed = nullptr;
-		}
+		WeighWeaponHand(state, config, frame, weaponForm, weaponType);
 	}
 	// The other hand's shield or torch, worn (the shield first should the
 	// engine ever let both be worn), and where one is stowed. A change is
@@ -130,6 +180,7 @@ void StepWeaponFrame(WeaponFrameState& state, const HandStep& step, vr::HandMode
 		frame.offHand = shield != nullptr  ? vr::OffHandItem::Shield
 		                : torch != nullptr ? vr::OffHandItem::Torch
 		                                   : vr::OffHandItem::Nothing;
+		WeighOffHand(state, config, frame, state.equippedWeaponForm, frame.offHand == vr::OffHandItem::Shield ? shield : torch);
 		const UInt32 (&places)[vr::kHolsterSlotCount] = game::HolsterSlotIds();
 		for (UInt32 i = 1; i < vr::kHolsterSlotCount; ++i) {
 			UInt8* const form = frame.inWorld ? game::HolsterSlotForm(places[i]) : nullptr;

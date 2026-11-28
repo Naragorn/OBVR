@@ -105,6 +105,8 @@ UInt32 TakeBluntBlowActor();
 // TESWeightForm, addr::kWeaponWeightOffset); false for no form, or a figure
 // that cannot be a weight - not a number, negative, a thousand or more.
 bool WeaponWeightOf(const UInt8* weapon, float* weight);
+// The same for a shield, an ARMO form (addr::kArmorWeightOffset).
+bool ShieldWeightOf(const UInt8* shield, float* weight);
 
 // Takes a swing's fatigue off the player with the engine's own cost and
 // change functions (addr::kAttackFatigueCost, addr::kActorChangeFatigue;

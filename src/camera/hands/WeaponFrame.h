@@ -2,8 +2,8 @@
 
 // What the hands hold, read for the frame: the weapon slot and its kind, the
 // weapon kept at a place when it had none (vr::PlaceForUnkept), the torch
-// beside a two-hander, the drawn weapon's weight for its lag
-// (vr/WeaponWeight.h, logged once per draw), the other hand's shield or
+// beside a two-hander, each hand's weight for its lag - the weapon or staff,
+// the bow, shield or torch (vr/HeldItemWeight.h, logged once per equip), the other hand's shield or
 // torch and the places' items, a torch newly equipped for the torch's grace,
 // and a torch come into the hand watched for its flame's shapes.
 //
@@ -18,6 +18,7 @@
 #include "camera/hands/Holster.h"
 #include "game/FlameStateLogic.h"
 #include "game/WeaponGrab.h"
+#include "vr/HeldItemWeight.h"
 
 namespace obvr::camera::hands {
 
@@ -32,6 +33,8 @@ struct WeaponFrameState {
 	UInt32 torchWatch = 0;
 	// The block's function statics, as they were.
 	const UInt8* weighed = nullptr;  // the weapon whose weight was logged
+	const UInt8* offWeighed = nullptr;  // and the off hand's item (vr/HeldItemWeight.h)
+	vr::WeighedItem offWeighedItem = vr::WeighedItem::None;
 	bool loadGap = true;             // a load since the torch was last seen
 	const UInt8* torchSeen = nullptr;
 	const UInt8* shieldWas = nullptr;
