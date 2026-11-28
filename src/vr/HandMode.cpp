@@ -1008,7 +1008,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 	// Where the menu is - the tablet (and its tab), the menu wrist or its big quad - and who points (vr/MenuPlace.h).
 	MenuTarget target = PlaceMenu(f, s, m_pointRight, r, &m_tabletScroll);
 	r.tabletTab = target.tab = StepTabletTabs(m_tabletTab, f, s, target);
-	r.controls.menu = r.controls.menu || r.tabletMenuKey;
+	TabletKeys(f.tablet, target.tablet != nullptr, r.controls, r);  // the B, the scroll's key (vr/TabletBook.h)
 	const MenuQuad& quad = target.quad;
 	const HandPose* const pointHand = target.pointHand;
 	const bool pointRight = target.pointRight;
@@ -1116,7 +1116,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		if (finger.hover) {
 			r.pokeHover = true;
 			r.pokePress = finger.press;
-			r.controls.menuClick = r.controls.menuClick || finger.mouseDown;
+			r.controls.menuClick = (r.controls.menuClick && target.tablet == nullptr) || finger.mouseDown;  // no trigger at the tablet
 			placeCursor(finger.cursorX, finger.cursorY, f.layerPixelsHeight, true);
 			r.laserLengthMetres = finger.lengthMetres;
 		} else {

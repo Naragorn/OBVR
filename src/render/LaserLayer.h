@@ -31,10 +31,11 @@ public:
 	// Once per frame, after the eyes. pointing false hides the laser; true
 	// hangs the beam (withBeam) and the dot at its end (withDot) on the given
 	// tracked device for the given length - each on its own switch
-	// (vr::LaserPartsShown).
+	// (vr::LaserPartsShown). `alpha` fades both, 0 hides them: the finger
+	// near the tablet's page takes over (vr/TouchHandover.h).
 	void Submit(vr::OpenVRBackend& backend, bool pointing, UInt32 deviceIndex, float pitchDegrees,
 	            float yawDegrees, float originMetres, float lengthMetres, bool withBeam,
-	            bool withDot, const NiPoint3& offset = NiPoint3{0.0f, 0.0f, 0.0f});
+	            bool withDot, float alpha, const NiPoint3& offset = NiPoint3{0.0f, 0.0f, 0.0f});
 
 	void Destroy();
 
@@ -58,6 +59,10 @@ private:
 	float m_placedOrigin = 0.0f;
 	NiPoint3 m_placedOffset{0.0f, 0.0f, 0.0f};
 	bool m_reported = false;
+	// What the compositor was last told of each one's alpha (1 as created).
+	float m_beamAlpha = 1.0f;
+	float m_dotAlpha = 1.0f;
+	void FadeTo(vr::OpenVRBackend& backend, float alpha);
 };
 
 // The beam's device-to-overlay transform: the quad's up axis along the

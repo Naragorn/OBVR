@@ -224,11 +224,11 @@ Laser & wrist menus|Figure on the hand menu|Your character beside the menu in yo
 Laser & wrist menus|Unroll the hand menu|Grab with both empty hands in the inventory ring and pull them apart: sideways, or up and down|Tablet|Unroll|||1|0|1|1|0|0|1|0|0|0|2|sideways|vertical|RW
 Laser & wrist menus|Hand menu size|How wide the menus in your hand are|Tablet|WidthMetres|||1|0.15|0.8|0.02|2|0|1|0.34|0.34|0|0|RW
 Laser & wrist menus|Hand menu turn|Turn the menu in your hand to face you. 90 faces you, 0 faces out of your palm|Tablet|HeldTurnDegrees|||1|-180|180|5|0|0|1|90|90|0|0|RW
-Laser & wrist menus|Hand menu lean|Lean the top of the menu in your hand back, or towards you|Tablet|HeldLeanDegrees|||1|-90|90|5|0|0|1|25|25|0|0|RW
-Laser & wrist menus|Hand menu tilt|Tilt the menu in your hand sideways|Tablet|HeldRollDegrees|||1|-90|90|5|0|0|1|-15|-15|0|0|RW
-Laser & wrist menus|Hand menu sideways|Move the menu in your hand towards your middle, or away|Tablet|HeldAcrossCm|||1|-30|30|1|0|0|1|20|20|0|0|RW
+Laser & wrist menus|Hand menu lean|Lean the top of the menu in your hand back, or towards you|Tablet|HeldLeanDegrees|||1|-90|90|5|0|0|1|15|15|0|0|RW
+Laser & wrist menus|Hand menu tilt|Tilt the menu in your hand sideways|Tablet|HeldRollDegrees|||1|-90|90|5|0|0|1|-10|-10|0|0|RW
+Laser & wrist menus|Hand menu sideways|Move the menu in your hand towards your middle, or away|Tablet|HeldAcrossCm|||1|-30|30|1|0|0|1|22|22|0|0|RW
 Laser & wrist menus|Hand menu height|Move the menu in your hand up or down|Tablet|HeldUpCm|||1|-20|20|1|0|0|1|0|0|0|0|RW
-Laser & wrist menus|Hand menu distance|Move the menu in your hand closer to your eyes, or back to your palm|Tablet|HeldOutCm|||1|-30|20|1|0|0|1|-15|-15|0|0|RW
+Laser & wrist menus|Hand menu distance|Move the menu in your hand closer to your eyes, or back to your palm|Tablet|HeldOutCm|||1|-30|20|1|0|0|1|-9|-9|0|0|RW
 Laser & wrist menus|Hand menu in the world|Your finger shows in front of it. Off, it floats over your hand|Tablet|InScene|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Messages above the hand menu|Messages from the game and your mods show above the menu in your hand|Tablet|TextsOnTablet|||0|0|1|1|0|0|1|1|1|0|0|RW
 Laser & wrist menus|Mirror on the hand menu|A mirror tab at the end of your hand menu's tabs|Tablet|Mirror|||0|0|1|1|0|0|1|1|1|0|0|RW

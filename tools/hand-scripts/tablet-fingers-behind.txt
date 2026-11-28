@@ -1,0 +1,95 @@
+# The holding hand's four fingers behind the tablet's page (docs/inventory-
+# tablet-spec.md 32.2; Nadi, 2026-11-28: the fingers of the hand that holds the
+# tablet, not the thumb, should no longer clip through it). The tablet opened
+# by the left B in the left hand at Nadi's place of 2026-11-28 (pinned here, the
+# harness copies the live INI): 9 cm back, so a curled hand reaches through the
+# page's face. The fingers closed hard to a fist and held, opened and closed
+# again; the right hand's fingers curled too, beside the page - the tapping hand
+# is not held back. tablet-fingers-behind-left-handed.txt: the same mirrored. Films and eye
+# dumps at each mark: the four fingers behind the page, the thumb before it.
+# The log says each finger's curl as the controller gave it and as it was
+# held ("Tablet: the left hand's fingers by the page - index 1.00 to 0.xx ...").
+# The DLL from before: no such line, the fingertips through the face at "fist".
+# Written 2026-11-28, not run.
+# Run with: python3 tools/hand-script-run.py --headless --no-steamvr --parallel --headset beyond --record 9 --record-width 1280 tools/hand-scripts/tablet-fingers-behind.txt
+ini Hands Enabled=1
+ini Hands LeftHanded=0
+ini Tablet Enabled=1
+ini Tablet HeldTurnDegrees=90
+ini Tablet HeldLeanDegrees=15
+ini Tablet HeldRollDegrees=-10
+ini Tablet HeldAcrossCm=22
+ini Tablet HeldUpCm=0
+ini Tablet HeldOutCm=-9
+ini Tablet Unroll=sideways
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+ini Debug RecordCropLeft=0.10
+ini Debug RecordCropTop=0.16
+ini Debug RecordCropRight=0.90
+ini Debug RecordCropBottom=0.96
+# The harness save's question box (Lovers with PK.esm active without its esp) closed first.
+console-at ready CloseAllMenus
+
+expect HandScript: finished
+expect Tablet: in the off hand, drawn into the eyes
+expect Tablet: the left hand's finger links for the page's hold - 4 of 4 fingers
+expect Tablet: the left hand as drawn reaches
+expect Tablet: the left hand's fingers by the page (at the mark)
+expect Tablet: the fingers follow the controller again
+reject Tablet: the right hand's fingers by the page
+reject HandScript: WARNING
+
+wait 12
+mark ready
+wait 1
+head pitch -15
+left pos -0.12 -0.22 -0.50
+left rot 90 0 90
+left curl 0
+# The pointing hand beside the page, its beam off it.
+right pos 0.30 -0.45 -0.30
+right rot 0 -40 0
+right curl 0
+wait 1.5
+mark opens
+left b 1
+wait 0.2
+left b 0
+wait 4
+mark open_hand
+wait 1
+# Closed hard in a few steps, the right hand with it.
+left curl 0.25
+right curl 0.25
+wait 0.1
+left curl 0.5
+right curl 0.5
+wait 0.1
+left curl 0.75
+right curl 0.75
+wait 0.1
+left curl 1.0
+right curl 1.0
+wait 2.5
+mark fist
+wait 2
+left curl 0.5
+wait 2
+mark half
+wait 1
+left curl 0
+wait 2
+mark open_again
+wait 1
+left curl 1.0
+wait 2
+mark fist_again
+wait 1
+# Closed: the fingers follow the controller again.
+left b 1
+wait 0.2
+left b 0
+wait 3
+mark closed
+wait 1

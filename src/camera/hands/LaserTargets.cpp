@@ -233,7 +233,8 @@ void StepIndexTips(LaserTargetsState& state, bool rightFollows, bool leftFollows
 	held(true, hand.rightHandValid, hand.rightHandRotation, state.rightHeld);
 	held(false, hand.leftHandValid, hand.leftHandRotation, state.leftHeld);
 	// And how far each hand as drawn reaches out of the flat the page lies in, while the tablet is up.
-	StepHandReachRead(state.reach, state.tabletUp, hand, unitsPerMetre, GetConfig().hands.tablet.held);
+	StepHandReachRead(state.reach, state.tabletUp, hand, unitsPerMetre, GetConfig().hands.tablet.held,
+	                  state.heldFingers.active);
 }
 
 }  // namespace obvr::camera::hands

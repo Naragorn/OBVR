@@ -8,6 +8,7 @@
 #include "core/MathFns.h"
 #include "core/Rotation.h"
 #include "game/AnalogWalk.h"
+#include "game/ConsoleLine.h"
 #include "game/DrawSound.h"
 #include "game/HolsterSlots.h"
 #include "game/EngineInput.h"
@@ -274,6 +275,20 @@ render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::T
 		Piece(quad.pieces[render::kTabletTextsPiece],
 		      vr::RectOnTablet(place, t.crop, t.textsAt, t.texts, textureWidth, textureHeight, 1.0f), true, 0);
 	}
+	// The touch mark where the finger's tip would land (vr/TouchHandover.h), once open.
+	const vr::TabletTouchReport& touch = hand.tabletTouch;
+	const vr::TouchMarkRect mark = vr::TouchMarkAt(touch.mark && share >= 1.0f, touch.markX, touch.markY, touch.markShare,
+	                                               place.width > 0.0f ? (t.crop.right - t.crop.left) / place.width : 0.0f);
+	if (mark.valid) {
+		vr::UiRect at;
+		at.left = mark.left;
+		at.top = mark.top;
+		at.right = mark.right;
+		at.bottom = mark.bottom;
+		at.valid = true;
+		Piece(quad.pieces[render::kTabletTouchMarkPiece],
+		      vr::RectOnTablet(place, t.crop, at, none, textureWidth, textureHeight, 1.0f), false, mark.colour);
+	}
 	quad.valid = quad.pieces[0].valid;
 	return quad;
 }
@@ -488,6 +503,14 @@ void LogTabletTouch(ControlsOutState& state, const vr::HandModeResult& hand) {
 		OBVR_LOG("Tablet: at the mark the finger is over \"%s\" in the %s menu", tile,
 		         game::MenuIdName(game::ActiveMenuId()));
 	}
+	// The pointer handed between the laser and the finger (vr/TouchHandover.h).
+	if (hand.tabletTouch.leadChanged && state.leadLinesLeft > 0) {
+		--state.leadLinesLeft;
+		OBVR_LOG("Tablet: %s (the fingertip %.1f cm before the page)",
+		         hand.tabletTouch.laserAlpha <= 0.0f ? "the finger takes the pointer - the laser fades out and clicks nothing"
+		                                             : "the laser takes the pointer back",
+		         static_cast<double>(hand.tabletTouch.leadDepthMetres * 100.0f));
+	}
 	if (state.touchLinesLeft == 0) {
 		return;
 	}
@@ -541,8 +564,23 @@ void TurnBook(ControlsOutState& state, const vr::HandModeResult& hand, vr::Table
 	}
 }
 
+// The left B with a book or a letter up on the tablet (vr::TabletKeys): the
+// book's own Exit clicked, as a tap on it does - the game closes the book
+// alone, the pages under one from the inventory stay. Run at once, as the
+// harness's clicks are: the menu's own loop is not waited on.
+void CloseBookByB(const vr::HandModeResult& hand, const vr::TabletFrame& tablet) {
+	if (!hand.tabletBookExit) {
+		return;
+	}
+	const bool ran = game::RunConsoleLineNow(vr::kBookExitLine);
+	OBVR_LOG("Tablet: the left B closes the %s - its Exit clicked (%s)%s",
+	         tablet.page == game::kMenuIdBook ? (tablet.bookScroll ? "letter" : "book") : "book over the pages",
+	         ran ? "the line ran" : "the line failed", tablet.bookOver ? "; the pages stay" : "");
+}
+
 void StepTabletPageKey(ControlsOutState& state, const vr::HandModeResult& hand, const vr::TabletFrame& tablet) {
 	LogTabletTouch(state, hand);
+	CloseBookByB(hand, tablet);
 	if (state.pageKeyFrames > 0 && --state.pageKeyFrames == 0) {
 		game::TapKey(state.pageKey, false, false);
 		state.pageKey = 0;

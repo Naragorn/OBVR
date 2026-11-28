@@ -30,6 +30,7 @@
 
 #include "vr/FingerTip.h"
 #include "vr/HandInput.h"
+#include "vr/TouchHandover.h"
 
 namespace obvr::vr {
 
@@ -180,6 +181,7 @@ struct TabletTouchState {
 	bool clickPending = false;  // the tap's click went down; up next frame
 	LaserPressState scroll;     // the scroll and its coasting, in metres
 	TabletContactState contact; // where the touch begins and ends (StepTabletContact)
+	TouchHandoverState handover;  // the finger or the laser leads (vr/TouchHandover.h)
 };
 
 // What the hand mode hands on of a frame's touch, for the log: the event, how
@@ -190,6 +192,17 @@ struct TabletTouchReport {
 	float deepestMetres = 0.0f;  // in front of the glass; negative through it
 	float travelMetres = 0.0f;
 	float seconds = 0.0f;
+	// The laser yielding to the finger (vr/TouchHandover.h): the beam's alpha,
+	// whether the finger took or gave the pointer this frame (and the tip's
+	// distance then), and the touch mark where the tip would land - in the
+	// layer's pixels, grown 0 to 1.
+	float laserAlpha = 1.0f;
+	bool leadChanged = false;
+	float leadDepthMetres = 0.0f;
+	bool mark = false;
+	float markShare = 0.0f;
+	float markX = 0.0f;
+	float markY = 0.0f;
 };
 
 // StepLaserPress measures in shares of a layer height of at least one unit:

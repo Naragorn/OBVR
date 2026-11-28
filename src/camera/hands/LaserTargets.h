@@ -19,6 +19,7 @@
 
 #include "camera/hands/HandReachRead.h"
 #include "camera/hands/HandStep.h"
+#include "camera/hands/HeldFingers.h"
 #include "game/TabletMenu.h"
 #include "game/TabletTexts.h"
 #include "render/HeadsetRenderer.h"
@@ -51,6 +52,8 @@ struct LaserTargetsState {
 	// How far each hand as drawn reaches out of the page's flat, read while
 	// the tablet is up (camera/hands/HandReachRead.h): the page lies before it.
 	HandReachState reach;
+	// The holding hand's four fingers kept behind the page (camera/hands/HeldFingers.h).
+	HeldFingersState heldFingers;
 	bool tabletUp = false;  // the tablet's menus were up at the last fill
 	vr::TabletCloseState tabletClose;  // its menus fading out after the close (vr/TabletClose.h): the walk goes on
 };

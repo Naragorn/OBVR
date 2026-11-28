@@ -97,6 +97,7 @@ struct ControlsOutState {
 	UInt32 pageKey = 0;
 	UInt32 pageKeyFrames = 0;
 	UInt32 bookTurnLinesLeft = 40;  // a book's or a letter's turns said (vr/TabletBook.h)
+	UInt32 leadLinesLeft = 60;      // the pointer handed between the laser and the finger (vr/TouchHandover.h)
 	// The finger on the tablet's glass (vr/TabletTouch.h), said as it goes: the notches of its scroll summed until
 	// the list rests.
 	UInt32 touchLinesLeft = 200;

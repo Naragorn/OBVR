@@ -72,16 +72,16 @@ inline TabletUnroll TabletUnrollFromIndex(float value) {
 // three angles in turn, each about the page's own axis as it then stands -
 // mirrored for a right hand, so a value means the same in either - and its
 // middle on the palm's, moved by the place (TurnHeldPage, PlaceTablet). The
-// defaults are the values Nadi set in the game (Windows 2026-11-27: "the
-// values ... I now have in the INI are the values that should be the
-// standard"), the distance 5 cm further back than the settings row let him go.
+// defaults are the values Nadi set in the game (Windows 2026-11-28: "diese
+// sollen nun der neue standard sein"; spec 32.1). A book or a letter read in
+// the hand sits by the same values.
 struct HeldPlace {
 	float turnDegrees = 90.0f;   // about its upright, the blade: + the face away from the knuckles, to the head
-	float leanDegrees = 25.0f;   // about its width: + the top back, the face up
-	float rollDegrees = -15.0f;  // in its own flat: + the top towards the body's middle
-	float acrossCm = 20.0f;      // its middle off the palm's: + towards the body's middle
+	float leanDegrees = 15.0f;   // about its width: + the top back, the face up
+	float rollDegrees = -10.0f;  // in its own flat: + the top towards the body's middle
+	float acrossCm = 22.0f;      // its middle off the palm's: + towards the body's middle
 	float upCm = 0.0f;           // + up the page
-	float outCm = -15.0f;        // + out of its face, past the hand's reach
+	float outCm = -9.0f;         // + out of its face, past the hand's reach
 };
 
 // [Tablet].
@@ -460,6 +460,7 @@ struct TabletFrame {
 	UiRect textsAt;
 	bool popupUp = false;  // a popup over the page: the page is shown whatever tab is chosen
 	UInt32 page = 0;       // the page shown: the inventory's, stats', magic's or map's menu id, or the book's
+	bool bookOver = false;  // the book menu over the pages: a book or a letter read from the inventory
 	bool bookScroll = false;  // the book menu in its scroll look: a note or a letter (vr/TabletBook.h)
 	// The tab strip over the page's top edge (SetTabs, vr/TabletTabStrip.h):
 	// the page's, the figure's when it has one, the mirror's last.
@@ -964,6 +965,7 @@ struct MenuPlaceResult {
 	bool tabletHolderRight = false;  // the scroll kept by the right hand (vr/TabletScroll.h)
 	bool tabletUpright = false;      // unrolled up and down ([Tablet] Unroll)
 	bool tabletMenuKey = false;      // the scroll opens or closes the menus this frame
+	bool tabletBookExit = false;     // the left B clicks the book's own Exit this frame (vr/TabletBook.h)
 	bool tabletGrips = false;        // the scroll holds the grips (unrolling or rolling up): no grab from them
 	float tabletShare = -1.0f;       // unrolled between the hands by this much; < 0 by the time it has been up
 	bool tabletRolledUp = false;     // the scroll rolled it up or back, its close sent: nothing to show

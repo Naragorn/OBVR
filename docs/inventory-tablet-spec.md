@@ -2746,3 +2746,196 @@ NICHT loslässt." It replaces section 30.2 (the off hand always).
   `tablet-scroll.txt` and `tablet-scroll-vertical.txt` back to their form before 30 (kept by the
   right hand, rolled up by the left). Written, not run.
 - Not verified: the feel in the headset; the free end's place in the rolling-up scenarios [G].
+
+## 32. The third run of 2026-11-28 (Nadi, headset, OBVR.log of 13:55)
+
+Four wishes after the run. Built on branch `tablet-4-1128` (from main 3c310a6), one commit each;
+unit-tested on Windows, the game not run, the harness not run. Marks: [R] read in the log, the code
+or the INI; [D] derived; [G] guessed.
+
+### 32.1 His tablet place as the default
+
+Nadi: "ich habe die inv tablet positions werte nochmal geändert, diese sollen nun der neue standard
+sein!"
+
+- [R his INI, `Data/OBSE/Plugins/OBVR.ini` [Tablet]] `WidthMetres=0.34`, `HeldTurnDegrees=90`,
+  `HeldOutCm=-9`, `HeldAcrossCm=22`, `HeldUpCm=0`, `HeldLeanDegrees=15`, `HeldRollDegrees=-10`.
+- **Changed**: `vr::HeldPlace` (vr/TabletLogic.h) Lean 15, Roll -10, Across 22, Out -9 (Turn 90 and
+  Up 0 were already so; the width was already 0.34); the shipped OBVR.ini and its comments; section
+  27.1's values are replaced. No settings row's range moved: every new default lies inside its row
+  (sideways -30 to 30, distance -30 to 20, lean and tilt +-90).
+- Books and letters have no place of their own [R code: camera/hands/ControlsOut.cpp `LogHeldPlace`
+  is handed `config.hands.tablet.held` for every page]: they sit by the same keys and follow. The
+  earlier log's "moved 20 0 -5 cm" for a letter (OBVR.log 1406) was his live INI of that moment.
+  Only the book's width (`BookWidthMetres`, 0.40) is its own; he did not change it.
+- The harness scenarios pin their own place (27.1), none pinned the old defaults: unchanged.
+- Tests: tablet_test (the defaults and the width, 1 red), settings_list_test (settings-rows.txt
+  re-pinned, 1 red).
+
+### 32.2 The holding hand's fingers behind the page
+
+Nadi: "versuchen wir nun noch dass die finger der hand die das tablet hält (mit ausnahme vom daumen)
+nun nicht mehr durch das tablet clippen können."
+
+- [R code] The page stands before the holding hand's foremost drawn point (section 21,
+  `PageLiftMetres`: the reach read from the hand's vertices plus 0.3 cm), then `HeldOutCm` moves it
+  along its face: at -9 cm it stands about 9 cm behind that point, so it cuts through the hand. [R log
+  13:55] The left hand reached 5.0 to 6.4 cm before its palm's middle (e.g. 1438, 24438, 34157), so
+  the page stood some 2.5 to 4 cm behind the palm's middle, 22 cm across - its near edge about 5 cm
+  from the palm's middle towards the body. [D] Every finger that curls more than 5 cm across lies
+  over the face and before it: the clip he saw.
+- [R code] The holding hand's fingers are posed by the controller's curls (game::FingerPose::Tracked,
+  game/HandGrip.h `TrackedLinkRotation`: each link the game's open hand blended to its fist by its
+  finger's curl), every frame after the pin (camera/CameraHook.cpp `BeforeFirstScenePass`).
+- **Why a limit on the curl, not a pose blended in**: a finger's whole pose is one number, its curl;
+  limiting that number keeps the finger the game's own open-to-fist shape, follows the controller
+  exactly as long as it is behind the page, and needs no new pose authored for every place and angle
+  the player can set (`HeldPlace`). A pose blended in near the plane would be one shape for all
+  places and would leave the controller's finger at some distance before the page.
+- **Built** (vr/HeldFingers.h, pure; camera/hands/HeldFingers.cpp, the bones; one call in
+  `BeforeFirstScenePass`, which shrank by 6 lines; its row lowered to 505): each frame, before the fingers are posed, the
+  page placed this frame (the hand mode's `menuTransform`, `tabletWidth`, `tabletHeight`) is carried
+  into the world with the inverse of the tap's own mapping (`vr::ControllerLocalOf`), so finger and
+  tap agree on the face. For each of the holding hand's four fingers the joints and the tip
+  (`vr::IndexTipBeyond`, as the tap's) are carried down from the pinned hand bone at a curl, as the
+  engine's update pass carries a child. The curl kept is the controller's when every joint and the
+  tip with 1 cm of skin stand behind the face; else the nearest curl that does, searched in steps
+  of 0.1 both ways (the open side first at equal distance) and halved six times down to the face; a
+  finger keeps the side it took while the page is in its way (no jump through it as the controller's
+  finger moves on). Only points over the face (its outline plus the skin) count: beside the page
+  nothing shows through. No curl behind it (a knuckle already through): the least deep. The thumb
+  and the other hand - the one that taps - are as the controller says.
+- When: the tablet held in one hand (not unrolling between the hands, not rolled up), that hand's
+  fingers following the controller's, and its reach read once (`vr::FingersHeldBehindPage`). The
+  first reading of the reach is so taken with the fingers free.
+- **The page does not follow the fingers back** [D]: the page stands before the hand's foremost
+  point, and fingers held behind it would pull that point back - the page after them, the fingers
+  after the page, until a part not held (the thumb, the palm) is foremost. While the fingers are
+  held, a new reading of the holding hand's reach is kept only where it reaches further
+  (`vr::KeptReach`, camera/hands/HandReachRead.cpp): the page stays where the free hand put it.
+- Either hand: the holder's role picks its bones (the R bones for the right role, either side's
+  controller), the left-handed mirror carried by the matrices (checked on a turned-over hand); the
+  mirror page and a book are placed the same way and held the same.
+- The log: "Tablet: the left hand's finger links for the page's hold - 4 of 4 fingers hung from
+  ..." once per first-person tree; "Tablet: the left hand's fingers by the page - index 1.00 to
+  0.43, middle ..., ring 0.30 (free), ..." as the set held changes (30 lines) and at every mark;
+  "Tablet: the fingers follow the controller again" as it ends.
+- Cost [R, measured in held_fingers_test, Release, this Windows machine]: all four fingers through
+  the page, 9.1 us a frame; nothing allocated; the bones found once per tree.
+- [G] The skin of 1 cm; the step 0.1 and six halvings (to 0.002 of curl). [G] That the finger chains
+  hang Hand - Finger1 - Finger11 - Finger12 (the biped's): checked when found, a finger whose links do
+  not hang so is left as it is and the log says how many hung.
+- Tests: held_fingers_test, new (39 red against stubs; 55 green with the checks added on the way: the
+  side kept, the other side when the kept one has none, the cost): the joints at a curl, the depth
+  over and beside the face, the skin, the curl search (behind already, at the page, both sides, the
+  least deep, out-of-range curls, continuity), on a drawn hand (the nearest curl behind; the mirror;
+  the left bones), only the holder's four fingers (the thumb and the tapping hand untouched, the
+  right holder, not holding, bones or a finger not read, behind anyway), the gate's five
+  conditions, the reach kept, the page carried into the world and back.
+- Harness: `tablet-fingers-behind.txt` and `tablet-fingers-behind-left-handed.txt` (the fist held
+  hard, half, open, fist again, closed; eye dumps at each mark). Written, not run.
+- Not verified: how it looks in the headset; whether the fingers held open by the page look natural
+  (they stop at the page rather than wrap round its edge); the curl the Index controllers give.
+
+### 32.3 The left B closes a book
+
+Nadi: "bücher sind gut, aber lass nun so machen dass links B auch die schließt (ich glaube dort war
+des schließen oder?)."
+
+- [R log 13:55] He closed every book and letter with a tap on its Exit: "Hands: click sent to the
+  Book menu ... the tile under it "book_scroll_exit"" (1834; 46786, 47250, 47475, 48832 the
+  presses), followed by the tablet's close with its fade: "Menu pause: the tablet's menus fade out",
+  "Tablet: put down", "Tablet: closed - the menus' fade kept out of the room and the eyes (22
+  frame(s))", "Hud: back after the tablet - ..." (1835-1855). Twice a book over the inventory:
+  "Tablet: the Book box gone from the page" (47252, 47476) - the book closed, the inventory stayed.
+  No left B while a book was up in the log.
+- [R code, before] The left B in a menu is the menu key (`vr::PlanHandControls`, `out.menu =
+  in.leftMenuButton`; Tab by default), as on the F1-F4 pages. What Tab does under the book menu was
+  never measured (25.7: book-probe.txt's after_tab, not run). [D] Over the inventory it would put
+  the inventory down with the book, unlike the game's own close.
+- [R menus/book_menu.xml] Both looks' Exit buttons (`book_exit`, `book_scroll_exit`) carry id 31, and
+  the gamepad's B (`xbuttonb`) is "book_exit clicked" / "book_scroll_exit clicked": the game's own
+  close is a click on id 31.
+- **Built**: while a book or a letter is up on the tablet - read alone (from the world) or over the
+  pages (from the inventory; `TabletFrame::bookOver`, read in game/TabletMenu.cpp) - the left B (the
+  off hand's B, the other controller's left-handed) clicks the book's Exit instead of sending the
+  menu key (`vr::TabletKeys`, vr/TabletBook.h, one call in `HandMode::PointAtMenu` in place of the
+  line it replaces). The click: `ClickMenuButton "#31" 1026` through xOBSE, at once
+  (camera/hands/ControlsOut.cpp `CloseBookByB`), as the harness clicks a box's button. The close
+  then runs the path his taps on Exit ran: the tablet's fade and the HUD's return of 31.1.
+- The cases: from the world, the book closes and the tablet with it (nothing under it); from the
+  inventory, the book closes and the inventory stays on the tablet, as Exit leaves it - a second B
+  puts it down; a magic scroll casts on use and never opens the book menu, so there is nothing to
+  close and the B is as before. The scroll gesture's key (rolled up) still closes everything, as
+  before. The right B is Escape as before. The book on its panel (tablet off or not placed): as
+  before.
+- The log: "Tablet: the left B closes the letter - its Exit clicked (the line ran)", "... the book
+  over the pages - ...; the pages stay".
+- [G] xOBSE's ClickMenuButton with "#31" finds the first tile with id 31 and the book menu acts on
+  the id, whichever look's button that tile is (book_exit is hidden in the scroll look). Not
+  verified; the harness scenario says "the line ran" and whether the book menu left the stack.
+- Not covered: a box raised over a book (a script's message) - the B then still clicks the book's
+  Exit under it [D from the code].
+- Tests: tablet_book_test TestBCloses (6 red against stubs, 18 green): the book up alone, as a letter,
+  over the pages; the B's Exit and no menu key there; the pages, no B, off the tablet, the scroll's
+  key as before; through the hand mode, right- and left-handed, once per press, the other hand's B,
+  the inventory without a book.
+- Harness: `tablet-book-b-close.txt` (a book from the inventory closed by the B, the inventory kept,
+  put down by a second B; a letter from the world closed by the B). Written, not run.
+
+### 32.4 The laser yields to the finger at the page
+
+Nadi: "antippen geht ja nun, vll sollten wir dann den laserpointer auch ändern wenn ich touch und tipp
+mache (wie macht alyx das?)."
+
+- Sources read for this (2026-11-28):
+  - Meta, ray-casting spec (https://developers.meta.com/vr/design/raycasting_specs/): for hands the
+    ray fades out over the last 5 cm before a surface, and the ray is disabled while a poke is
+    active on the same hand - the poke takes over the interaction.
+  - Meta, hands UI best practices (https://developers.meta.com/vr/design/hands-ui-best-practices/):
+    hybrid panels switch from the ray to direct touch as the hand comes close, with a visible change
+    of cursor so the user knows which mode is active.
+  - Half-Life: Alyx (Road to VR, "VR Design Unpacked",
+    https://roadtovr.com/these-details-make-half-life-alyx-unlike-any-other-vr-game-inside-xr-design/):
+    the menu is built for the laser and also works as a touchscreen, both at once - the player's
+    first instinct is right either way.
+- [R code, before] On the tablet the finger took the cursor 10 cm before the glass (`[Hands]
+  PokeHover`, vr::StepPoke's hover) and gave it back at the same line, no hysteresis
+  (vr/MenuPlace.h `StepFingerOnTarget`). While it led, the beam stayed drawn - from the controller
+  to the tip, the dot with it (vr/HandMode.cpp `PointAtMenu`: `laserVisible`, the length to the
+  tip) - and the trigger still clicked. A finger curled or a trigger touched near the page
+  (vr::FingerPokes false) handed the cursor straight back to the beam, wherever the controller
+  pointed - another row, or off the page: the two fought over the cursor at the 10 cm line and at
+  every curl. [D] That is the likely cause of his wish; his log has no line that says which led.
+- **Built** (vr/TouchHandover.h, pure; on the tablet only): the beam leads until the tip is 5 cm
+  before the glass, fading from 10 cm (whole) to 5 cm (gone); at 5 cm the finger takes the pointer -
+  the beam and its dot hidden, the trigger clicks nothing, the cursor straight under the tip - and
+  keeps it, curled or not, until the tip is back past 7 cm, off the face, or 25 cm through it. A
+  touch mark, 8 mm, the laser's gold, lies on the page where the tip would land from 10 cm on,
+  brightening from a quarter to nine tenths as the tip comes to the glass (drawn into the eyes as one
+  more piece of the tablet, render::kTabletTouchMarkPiece, so the finger in front hides it). The
+  tap, the scroll, the swipe, the hold are the touch's (vr/TabletTouch.h), unchanged.
+- The pieces: `StepTouchHandover` in `StepFingerOnTarget` (the state in `TabletTouchState`); the
+  trigger dropped in the line that already joined it (`PointAtMenu`, no line added); the alpha and
+  the mark in `TabletTouchReport`; `render::LaserLayer::Submit` takes the alpha (`SetOverlayAlpha`
+  on the beam and the dot, only when it moved by 0.02 or reached 0 or 1; below 0.01 hidden); the
+  mark in camera/hands/ControlsOut.cpp `TabletPieces`.
+- Not changed: the wrist menu and the big quad (the poke's 10 cm hover and the beam as before), the
+  laser in the world, the other hand.
+- The log: "Tablet: the finger takes the pointer - the laser fades out and clicks nothing (the
+  fingertip 5.0 cm before the page)" and "Tablet: the laser takes the pointer back (... 7.1 cm ...)",
+  60 lines a run.
+- [G] The one set of distances: 5 cm to take over and the 5 cm fade before it (Meta's), 7 cm to let
+  go (2 cm of hysteresis), 25 cm through (the contact's own); the mark's 8 mm and its alphas.
+- Cost: one more `PokeOnQuad` and a few compares a frame while the tablet is pointed at; the beam's
+  alpha sent to the compositor only as it changes; one plain quad more. Not measured.
+- Tests: touch_handover_test, new (16 red against stubs of the 23 written first; 28 green with the
+  mark's 5 added with its code): the approach, the fade, the take-over and the hysteresis both ways,
+  the hand curled near the page, off the face, far through, not the tablet, the tablet gone while
+  the finger led, when the alpha is sent, the mark. menu_place_test TestLaserYields (6 red of 8):
+  through the hand mode at 8, 4, 6, 8 cm, the trigger pulled while the finger leads, the tap
+  unchanged, the big quad. tablet_touch_test unchanged and green.
+- Harness: `tablet-laser-yields.txt` (12 to 2 cm and back with a tap; eye dumps at each mark).
+  Written, not run.
+- Not verified: the feel in the headset - whether 5 cm is near enough for a hand that comes in fast,
+  the mark's size and brightness, whether the hidden beam is missed while the finger hovers.

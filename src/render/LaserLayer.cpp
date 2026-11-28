@@ -4,6 +4,7 @@
 #include "core/MathFns.h"
 #include "vr/LaserGeometry.h"
 #include "vr/OpenVRBackend.h"
+#include "vr/TouchHandover.h"
 
 namespace obvr::render {
 namespace {
@@ -86,14 +87,30 @@ bool LaserLayer::EnsureOverlay(vr::OpenVRBackend& backend) {
 	return true;
 }
 
+// Each overlay's alpha told only as it changes (vr::LaserAlphaChanged), and
+// only once it exists: one made later starts whole, as the member says.
+void LaserLayer::FadeTo(vr::OpenVRBackend& backend, float alpha) {
+	if (m_overlay != vr::openvr::kOverlayHandleInvalid && vr::LaserAlphaChanged(m_beamAlpha, alpha)) {
+		backend.SetOverlayAlpha(m_overlay, alpha);
+		m_beamAlpha = alpha;
+	}
+	if (m_dot != vr::openvr::kOverlayHandleInvalid && vr::LaserAlphaChanged(m_dotAlpha, alpha)) {
+		backend.SetOverlayAlpha(m_dot, alpha);
+		m_dotAlpha = alpha;
+	}
+}
+
 void LaserLayer::Submit(vr::OpenVRBackend& backend, bool pointing, UInt32 deviceIndex,
                         float pitchDegrees, float yawDegrees, float originMetres,
-                        float lengthMetres, bool withBeam, bool withDot, const NiPoint3& offset) {
+                        float lengthMetres, bool withBeam, bool withDot, float alpha, const NiPoint3& offset) {
 	const vr::LaserParts parts = vr::LaserPartsShown(
-		pointing, withBeam, withDot, deviceIndex != vr::openvr::kTrackedDeviceIndexInvalid,
+		pointing && vr::LaserShownAt(alpha), withBeam, withDot, deviceIndex != vr::openvr::kTrackedDeviceIndexInvalid,
 		lengthMetres);
 	SubmitDot(backend, parts.dot, deviceIndex, pitchDegrees, yawDegrees, originMetres,
 	          lengthMetres > 5.0f ? 5.0f : lengthMetres, offset);
+	if (vr::LaserShownAt(alpha)) {
+		FadeTo(backend, alpha);  // a beam hidden keeps the alpha it had; shown again, it fades from there
+	}
 	if (!parts.beam) {
 		if (m_overlayVisible && m_overlay != vr::openvr::kOverlayHandleInvalid) {
 			backend.HideOverlay(m_overlay);
@@ -128,6 +145,7 @@ void LaserLayer::Submit(vr::OpenVRBackend& backend, bool pointing, UInt32 device
 		m_placedOrigin = originMetres;
 		m_placedOffset = offset;
 	}
+	FadeTo(backend, vr::LaserShownAt(alpha) ? alpha : 1.0f);  // the beam made this frame
 	if (!m_overlayVisible) {
 		backend.ShowOverlay(m_overlay);
 		m_overlayVisible = true;
@@ -188,6 +206,8 @@ void LaserLayer::Destroy() {
 	m_placed = false;
 	m_dot = vr::openvr::kOverlayHandleInvalid;
 	m_dotVisible = false;
+	m_beamAlpha = 1.0f;
+	m_dotAlpha = 1.0f;
 }
 
 }  // namespace obvr::render
