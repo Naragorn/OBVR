@@ -1,4 +1,4 @@
-# A mirror on the tablet (feasibility and plan, 2026-11-28; stage 1 built, section 11)
+# A mirror on the tablet (feasibility and plan, 2026-11-28; stage 1 built, section 11; stage 2 built, section 12)
 
 The wish (Nadi, 2026-11-28): "neues feature: im inv egal wie eingestellt, gibts oben am ende ein
 neuen tab: spiegel, das gibt mir ein echtes spiegel erlebnis und ich kann mich selber ansehen und
@@ -75,6 +75,10 @@ and `vr/SheathMirror` (left-handed play). The new code should carry another word
   - [D] On the multisampled route without image space the world is drawn into the back buffer
     first, so a mirror render on that route destroys whatever eye picture is still there. On the
     image-space route the back buffer is not the target [D, not checked].
+  - **Corrected by stage 2's reading (section 12):** with image space on and antialiasing on (the
+    owner's route) the world is drawn into the back buffer too, and image space then maps the
+    whole frame into the argument. The image-space route leaves the back buffer alone only with
+    one sample.
 - A texture of any size: `0x007C2420(renderer, size, format, usage, x)` makes a square one through
   `0x007C1B50(renderer, width, height, format, usage, x)` (`../OBNG/knowledge/water-reflections.md`).
 
@@ -293,15 +297,20 @@ Total: large. Stage 2 carries most of the risk and settles it: if its pass costs
 
 ## 10. Not verified
 
+Stage 2 read the engine side of the first five points; section 12 says what was read and what
+stays open. Before stage 2:
+
 - The mirror pass's cost: every number in 5.3 is a guess.
 - Which target `0x0040C830(texture)` draws into on each route, and whether it leaves the back
-  buffer alone (3.1). `0x007D7280` and `0x007D6FE0` are not read.
-- Whether the bone rebase holds for a third render from a rotated camera (3.3).
-- Whether the first-person pass clears the depth (section 4).
+  buffer alone (3.1). `0x007D7280` and `0x007D6FE0` are not read. *(Read in stage 2: 12.2.)*
+- Whether the bone rebase holds for a third render from a rotated camera (3.3). *(Derived in
+  stage 2, not seen: 12.2.)*
+- Whether the first-person pass clears the depth (section 4). *(Read: it does, 12.2.)*
 - Whether OBNG's single-pass draw stays out of a texture render when no eyes are set (the eyes are
-  set only around the main render in `HandOverEyes`; [D] that it then draws once).
+  set only around the main render in `HandOverEyes`; [D] that it then draws once). *(Read: 12.2.)*
 - Whether the actor shadow share and the water reuse can be triggered from a pass that is not the
-  dual pass's second eye (both hooks key on the dual pass's state today).
+  dual pass's second eye (both hooks key on the dual pass's state today). *(Built for the shadows;
+  the water is rendered again: 12.2.)*
 - The px-per-degree of the Dream Air's lens.
 - The headset feel of all of it.
 - Mobbin was not checked for the tab's look: the Mobbin MCP is not authenticated in this session.
@@ -311,7 +320,7 @@ Total: large. Stage 2 carries most of the risk and settles it: if its pass costs
 
 Asked and approved by Nadi, 2026-11-28: stages 1 and 2; the recommendations of section 9 stand
 (name "Mirror", the last tab, a small drawn glass, no live picture, dust on by default and light,
-no mirror with the traditional inventory). Stage 2 is not built. What is there is the tab, the page
+no mirror with the traditional inventory). Stage 2 is built since (section 12). What stage 1 built is the tab, the page
 and the way in for the reflection.
 
 **What the tab strip is [R].** OBVR's own, not the game's: pieces of the tablet's quad drawn into the
@@ -380,3 +389,239 @@ the tab's picture, the dust's size and strength); whether the coplanar pieces z-
 (the figure's paper pieces draw the same way); the finger's place on the third tab; the dust
 texture's creation cost (measured by the log line "the mirror's dust made on the CPU", not yet
 read from a run). The unrolled tablet (`share` below 1) draws the mirror page cut like the others.
+
+## 12. Stage 2 as built (2026-11-28, branch mirror-1128)
+
+One reflection a frame on the glass: the world rendered by the engine from a camera behind the
+glass, copied into a texture of OBVR's own and drawn on the glass piece. Not run in the game yet:
+everything below about the running game is [D] or [G] until the owner's next session.
+
+### 12.1 What the player sees with this build, and what not
+
+- The Mirror tab's glass shows the world as a mirror held there would: the room behind the player,
+  the people in it, the player's body from the neck down, the player's hands. 90 percent bright,
+  the dust over it. The picture follows the head and the tablet.
+- One picture for both eyes, made from between the eyes (the cyclopean eye reflected). It has the
+  right parallax as the head moves, but no depth: it reads flatter than a real mirror, like a
+  screen showing one. Expected; stage 4 gives each eye its own.
+- No head, face, hair or helmet in it: the head stays hidden for every render of the frame, the
+  mirror's too. Expected; stage 3.
+- A frame late: the pass runs after the frame's eye pictures are taken (12.2, point 1), so the glass
+  shows the previous frame's reflection. The tablet's page lags the same way already.
+- The hands are drawn over everything in the mirror (the engine's first-person pass clears the
+  depth first, 12.2 point 2): a hand behind the reflected body would show in front of it.
+- The glass turned away from the eyes: dark (no old picture on its back). Edge-on, or out of both
+  eyes' view: the pass is skipped and the glass keeps its last picture (it is not seen then).
+- The first frame after the page opens on a single-pass frame shows the dark glass: the pass waits
+  one frame for the bone rows (12.2, point 2).
+- `MirrorWorld=0` (settings page: "Live mirror" off): the dark glass of stage 1.
+- The monitor (not the headset): while the mirror renders, the back buffer it shows carries the
+  mirror's picture in its top left corner over the frame (12.5).
+
+### 12.2 The five unknowns: what was read, what was decided
+
+**1. Which target the world render draws into.** Read in the decompile and OBNG's instruction-level
+map of RenderScene (`../OBNG/re/functions/0x0040C830.md`, branches B8, B9, B17, B18, B43-B48) and
+the callees: `0x007D7280(flags, group)` begins an offscreen frame (renderer +0x204 := 1 through
+vtable +0x130) when no frame is open, then sets the group through `0x007D70A0` -> `0x007D6A80(group,
+flags)`; `0x007D71C0` is the same for the default group (+0x200); `0x007D72D0` pops the group stack
+(`0x007D7150`) and ends an offscreen frame (vtable +0x134); `0x007D6FE0` is a rendered texture's
+group (`[this+8]`, or one picked through its +0x20 object); the image-space copy `0x00803E40`
+begins its output group only while +0x200 and +0x204 are both 0 [R]. The routes for a texture
+argument [R]:
+
+| Image space | Samples | The world drawn into | Then |
+| --- | --- | --- | --- |
+| on | 2 or more (the owner's) | the back buffer (renderer vtable +0x7C, 0x0040CA36) | StretchRect of the whole back buffer into a frame-sized texture of kind 4 (0x0040CF5D), image space from it into the argument |
+| on | 1 | the kind-4 texture (its port scaled by the engine when the sizes differ) | image space into the argument |
+| off | 2 or more | the back buffer | StretchRect into the argument (0x0040D043) |
+| off | 1 | the argument's own group | nothing |
+
+The owner's route [R in his OBVR.log of 2026-11-28 08:27]: "back buffer ... 8072x3376 ...
+samples=2", the scene's target set from 0x0040CA48 (the multisampled branch of the image-space
+route) and image space from 0x0040CF73. So on his machine a world render overwrites the back
+buffer whether it is given a texture or not, and image space maps the whole frame into the
+argument: a 1024 texture would need the world drawn over the whole 8072x3376 frame. This corrects
+section 3.1.
+
+Decided: not the texture argument. The pass takes the eyes' own route (argument 0), with the main
+camera's port cut to the picture's size in the frame's top left corner
+(`vr::MirrorPortFor`; the engine writes no port on the multisampled route, and on the one-sample
+image-space route only when its texture is not frame-sized, B11/B12), and copies that corner into
+OBVR's own texture with StretchRect, as the eye captures copy (render/EyeMirror.cpp). That is the
+dual pass's mechanism: a world render into the back buffer, taken by a copy. It can disturb the
+eyes' pictures only before they are copied, so it runs after both captures of the frame
+(`HeadsetRenderer::BothEyesCaptured`), and the glass shows it a frame later. Without antialiasing
+and with image space, the frame's copy leaves the frame open and the mirror's copy would draw into
+no group (game/SceneFrame.h): the pass closes it first, as the dual pass does between its eyes
+(`CloseSceneFrameBetweenPasses`, a no-op on the other routes). After the render it checks that
+target 0 is the back buffer, as the second eye's capture does, and copies only then.
+
+**2. The bone rebase, the culling replay, and what is reset.** Read in render/BoneRebase.h and
+InterfaceRenderHook.cpp: the palettes' translations are relative to the render's camera (the
+origin 0x00B3F92C; the rows that re-evaluate in a second render differ by exactly the camera's
+step, which the dual pass measures and calibrates its sign from [M]), the rotations are world
+rows, and a second render of a frame takes some rows unchanged or mixed up between look-alike
+bodies (the collapse) [R]. The mirror's render is the frame's second (single pass) or third (dual)
+render, so the bone lock runs in Replace mode with the shift from the recorded render's camera to
+the mirror's: a translation whatever the mirror camera's turn [D, not seen]. A dual frame's first
+pass always records; a single-pass frame did not, so it records now while the page is up (Capture
+changes no upload; SceneRenderHook.cpp:314). That is decided at the previous frame's pass, so the
+first frame with the page up skips the mirror ("eyes not captured"). The culling share (CullingSync)
+is closed by the frame's own render, so the mirror culls with its own frustum [R]. The first-person
+pass inside RenderScene clears the depth before the arms (renderer vtable +0x13C(0, 4) at 0x0040CE14,
+when +0x200 or +0x204 is 1 and the byte +0x20C is 1 [R]; 4 the depth [G: Gamebryo's CLEAR_ZBUFFER,
+the value not checked against a header]). The water stays on its single pass: its second-eye
+replay (WaterReprojection.cpp, mode 2 the owner's) would lay the first eye's per-draw matrices on
+the mirror's water draws, so the reflection map is rendered again inside the mirror's render (a
+pass of 6-13 draws, `culling-and-draw-setup.md` [M]). The actor shadows: the mirror keeps the maps
+the frame's world render drew (render/ShadowShare.h, under `ShareActorShadows`, the owner's 1).
+
+What the pass changes and where each is put back (render/MirrorGlassPass.cpp RenderFromMirror,
+line 169 on): its frustum (set at 210, back at 245) and the main camera's local transform, its
+world recomputed after the frustum is in (215, back at 246); its port (218, back at 241); the
+device's viewport, which the render leaves at the mirror's corner (saved, back at 239); the bone
+lock's mode and shift (223, back at 236); the frame clock, zeroed inside `RunMirrorWorldRender`
+(SceneRenderHook.cpp:749) and put back there. The camera moved is the NiCamera itself (the scene
+graph's +0xDC, a leaf), the way the water capture moves it (WaterReflectionHook.cpp
+RestoreCameraTransforms) - not the camera node, so nothing hanging off the node moves with it and
+the camera hook's and the menu stand-in's state is untouched.
+
+**3. The winding.** Read in `0x0049BEF0.c`: the water's camera takes the camera's columns 0 and 2
+reflected about z (`0x0070FCC0` builds the matrix from (1,0,0), (0,1,0), (0,0,-1), `0x00710250`
+applies it) and makes column 1 again as their cross product, so it stays a proper rotation; the
+function writes no cull mode (its only render state is 0x98, the clip plane) [R, in the
+pseudocode]. Done the same (`vr::MirrorCameraFor`, `vr::ReflectCameraRotation`): forward the glass's
+normal, up the glass's up, right = forward x up, determinant +1; the picture comes out flipped and
+the glass flips it back (`vr::GlassTexCoords`, stage 1).
+
+**4. OBNG's single-pass draw.** Read in `../OBNG/plugin/src/RouteStereoDraw.cpp`: with no eye data
+set `EyesForDraw` returns none and the draw takes the one-eye plan unless the test shift is set
+(`PlanFor(settings, eyes != nullptr || TestMode())`); the owner's OBNG.ini has
+`StereoTestEyeShift=0` [R]. OBVR clears the eyes right after the single pass's render
+(RenderSinglePassFrame) and never sets them on a dual frame, so the mirror's render draws once [D].
+The menu frames: the stand-in arms an ordinary dual frame (PrepareMenuFrameIfNeeded), whose
+captures and afterWorldRender are the same callbacks as a world frame's [R]; the pass reads only
+the main camera and the tablet's state, so it runs there the same way.
+
+**5. Where the extra render enters.** `RunMirrorWorldRender` (SceneRenderHook.cpp:733) calls the
+trampoline like `RunMenuWorldProbe`: no OBVR callbacks, no scene-call tick (the mirror's render
+belongs to the frame's scene call), inside the frame's `g_rendering` bracket.
+
+### 12.3 Where it runs in the frame
+
+`AfterWorldRender` (CameraHook.cpp:7758) calls `RunMirrorGlassPass` first (7760): after
+`afterSecondPass` - both eyes captured - and before the per-draw changes go back (the hidden head,
+the dead body's shift). On the plain path (no second pass) nothing was captured and the pass
+refuses. In order: the page's state (render/TabletQuad.h `MirrorPage`: up, the glass's corners, and
+from this frame's captures where the glass went into each eye and on which hand pose), the decision
+(`vr::DecideMirrorPass`), the texture (made once, MirrorPixels a side, the back buffer's format),
+the render (RenderFromMirror), the copy (CopyToGlass), the hand-in (`SetMirrorGlass`, line 348),
+the cost line.
+
+### 12.4 The switches and the safety
+
+- `[Tablet] MirrorWorld` (default 1; 0 the dark glass), read with the tablet's keys
+  (core/ConfigTablet.cpp), in OBVR.ini, on the settings page as "Live mirror" ("The mirror shows
+  the room behind you. Off, its glass stays dark"). `[Tablet] MirrorPixels` (default 1024, 256 to
+  2048), in OBVR.ini only: a pixel count is not a player's setting.
+- With the page not up the pass reads the page's state, hands back the dark glass once and
+  returns: no render, no texture, no capture of bones, no change to the frame. Only while the page
+  is up does a single-pass frame record its bone rows (no upload changes).
+- The pass runs only on a frame that delivers its two captured eye pictures, both captured.
+- The stage trace: the first three passes of a session write "Mirror trace:" lines - the glass, the
+  eye's distance and facing, the camera and frustum, the picture's size; the camera set and the
+  render starting; the render returned, the picture in the frame or not, copied or not. A log that
+  ends in a crash or a lost device names the stage.
+- Failures: three passes in a row whose picture did not reach the frame or whose copy was refused
+  switch the pass off for the session; a texture that cannot be made, or a copy refused with a lost
+  or removed device, at once. Each releases the texture, darkens the glass and writes one line,
+  "Mirror: switched off for this session - <why>".
+- The device: OBVR hooks no device reset; the texture is in the default pool like the eye copies,
+  and a device that is not the one it was made on gets a new one (the old one released).
+
+### 12.5 Reading the cost line
+
+Every 90 frames with the page up, one line:
+
+    Mirror: 90 frames up - 84 passes, 1.83 ms mean, 3.10 ms worst (CPU), 412 draws a pass, picture 704x528 of 1024; skipped 6 (out of view 4, facing away 2, edge-on 0, eyes not captured 0, loading 0, no glass 0, stopped 0, switched off 0)
+
+(the numbers made up). The milliseconds are the pass's own CPU time, QueryPerformanceCounter around
+the camera's setting, the engine's render, the putting back and the copy; the draws are OBVR's draw
+counter across the render. "stopped" also counts a pass that could not start (no back buffer read,
+no texture). With `[Performance] Enabled=1` the profiler's `mirror_pass` span carries the same pass
+with its GPU time, and the bone lock's work of the frame is one `bone_lock` span. The decision rule
+of section 8 reads off the mean: over about 2.5 ms a pass in the Walkers scene means option E (the
+eyes taking turns) before stage 4; the worst says whether single frames stutter.
+
+### 12.6 Tests
+
+Written first, run red, then green (Windows, MSVC):
+
+| Test | Red | Green |
+| --- | --- | --- |
+| `mirror_glass_test` (new, vr/MirrorGlassLogic.h): reflection of a point, a direction and a camera rotation with its handedness, the glass's plane, the camera and its off-axis frustum (centred, off to one side, tilted), the eye on, near or behind the plane, edge-on, the glass in view, the picture's size and port, the decision with every refusal and its order, the failure budget, the cost window, the trace | 87 of 115 checks failing (a stub header) | 115 |
+| `shadow_share_test`: the mirror keeps a single-pass or dual frame's maps, draws with sharing off or at another scene call, its own draw never stands for the world's, the second eye's rule unchanged | 3 of 22 failing | 22 |
+| `profile_logic_test`: the `mirror_pass` name | 1 failing | 110 |
+| `config_test`: the two settings' defaults, reading and clamps, the INI documenting them | 5 failing | green |
+| `settings_list_test`: the pinned rows with "Live mirror" | 1 failing | green, re-pinned |
+
+The whole suite: 333 of 335 pass; the two that fail are the known ones (`water_visual_harness`,
+`grass_flicker_map`: no numpy on this machine). Scenario `tools/hand-scripts/tablet-mirror-world.txt`
+written (the tablet towards the face, nearer, turned away, edge-on, back, then `MirrorWorld=0`),
+**not run** (Linux harness).
+
+### 12.7 Not verified, and what settles each
+
+- **The cost.** Nothing measured. The owner's next session: the cost line, and a capture's
+  `mirror_pass` span.
+- **That the engine honours an off-axis frustum** (independent l, r, t, b) in its projection and its
+  culling planes: NiFrustum keeps them apart, but the projection builder (renderer slot 80 from
+  SetCameraData 0x00701970) and the plane builder 0x00717A40 are not read for it; OBVR has only ever
+  written symmetric frustums. If not, the picture sits shifted on the glass. Settled by the eye
+  dump at the scenario's `mirror-towards` mark: the room in the glass meeting the room around it
+  where it should.
+- **That the glass's normal points at the eyes** as stage 1's corners are ordered (top left and top
+  right as the page is read, derived). If it is the other way, every frame skips as "facing away";
+  the cost line says so.
+- **The bone lock for a turned camera.** Derived from the palettes' layout, not seen. Settled by the
+  eye dumps: bodies in the mirror where they stand; a body a body-length off is the collapse.
+- **What image space does on the mirror's render.** The frame is open when it starts (state 1), so
+  the image-space copy begins no group of its own and draws into whatever is bound (`0x00803E40`).
+  The capture's target check passes after a dual pass's second render on the antialiased route
+  (it showed stereo, 2026-10-06 [M]); whether the mirror's corner carries the bloom is not read.
+  With HDR (not the owner's: an effective sample count of 2 means no HDR,
+  docs/vr-modding/rendering-and-stereo.md) a second image-space run a frame might move the eye
+  adaptation; not read.
+- **The monitor and a frame that turns flat.** After the pass the back buffer holds the mirror's
+  corner over the frame, image-spaced again. The headset never takes it on a stereo frame; the
+  monitor shows it while the mirror renders, and a frame that turns flat between the render and
+  Present (a menu opening exactly then) would show it on the cinema screen for that frame.
+- **The 2D pass after the mirror's render.** After two world renders the game's own later 2D pass
+  draws nothing (vr/HeadTracker.h, `hudBetweenPasses`); the layer the tablet shows is captured
+  between the passes (`HudBetweenPasses=1`, the owner's), so the page should not change. The
+  scenario's layer dumps (pass on, then `MirrorWorld=0`) settle it.
+- **Billboards and leaves in the mirror**: OBVR's facing hooks may turn them to the player's eye,
+  not the mirror's camera; not read. **The water's reflection seen in the mirror**: the stable
+  capture rebuilds the water's world origin from the camera node (`GetCurrentCameraWorldTransform`),
+  which the pass leaves at the eye, so the reflection on water seen in the mirror may sit offset.
+  **The sky and the distant land** are placed from the camera node too: up to a metre off at the
+  horizon [D].
+- **The pose the glass is drawn with** is the hands' pose of this frame's captures; the corners'
+  frame is the one ControlsOut set before the render. The same pose the page is drawn with, as 5.1
+  asks [R].
+- The headset: the feel of a flat mirror, the frame of lag, sharpness at 1024.
+
+### 12.8 Deviations from the spec, with the reason
+
+- Not the engine's texture argument (section 7, "the passes"): on the owner's route it needs a
+  full-frame render for any texture size and overwrites the back buffer anyway (12.2, point 1).
+  The eyes' route into the frame's corner and a copy instead.
+- After the captures, a frame late (section 7 allowed it per route): on the owner's route the
+  render overwrites the back buffer.
+- The size rule of stage 5 (the picture cut to the glass's size on screen) is built now, because
+  the port has to be cut anyway.
+- Section 8's stage 2 row said the left eye's reflection; built: the eye's middle, as asked for this
+  stage.
+- `MirrorPixels` (section 7 called it `MirrorSize`), and only in OBVR.ini.
+- The glass turned away goes dark instead of keeping its last picture.

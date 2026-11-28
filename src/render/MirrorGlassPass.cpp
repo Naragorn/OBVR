@@ -205,13 +205,15 @@ bool RenderFromMirror(const vr::MirrorCamera& camera, vr::MirrorPictureSize size
 	// the camera's move (render/BoneRebase.h: a translation, whatever the turn).
 	const NiPoint3 shift = camera.position - cam->worldTransform.pos;
 
-	cam->localTransform = local;
-	game::UpdateNodeTransforms(cam);
+	// The frustum before the transform's update, as the water capture orders
+	// them: the camera's derived state is made from both.
 	frustum->l = camera.left;
 	frustum->r = camera.right;
 	frustum->t = camera.top;
 	frustum->b = camera.bottom;
 	frustum->n = camera.nearUnits;
+	cam->localTransform = local;
+	game::UpdateNodeTransforms(cam);
 	const vr::MirrorPort p = vr::MirrorPortFor(size, back.width, back.height);
 	port[0] = p.left;
 	port[1] = p.right;
