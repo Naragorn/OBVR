@@ -214,8 +214,8 @@ void StepStrikes(SwingsState& state, const HandStep& step, const HandShared& sha
 		strike.powerGroup = vr::PowerAttackGroup(handResult.leftPowerDirection);
 		strike.swingMetres = handResult.leftSwingTravelledMetres;
 		strike.swingWay = handResult.leftSwingWay;
-		strike.handRotation = handResult.leftHandRotation;
-		strike.handOffsetUnits = handResult.leftHandOffsetUnits;
+		strike.handRotation = handResult.offHandRotation;  // drawn, behind by what the hand holds
+		strike.handOffsetUnits = handResult.offHandOffsetUnits;
 		SetStrikeCamera(strike, shared, state, step);
 		strike.boundFactor = config.hands.hitBoundFactor;
 		strike.padUnits = config.hands.hitPadUnits;

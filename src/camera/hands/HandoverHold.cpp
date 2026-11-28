@@ -128,7 +128,7 @@ void TraceSwitchFrames(TwoHandState& s, const TwoHandEnv& env, const NiMatrix33&
 	for (int i = 0; i < 2; ++i) {
 		NiMatrix33 rot;
 		read[i] = game::ReadHandBoneWorld(i == 0, rot, at[i]);
-		want[i] = cameraPos + cameraRot * (i == 0 ? env.hand.weaponHandOffsetUnits : env.hand.leftHandOffsetUnits);
+		want[i] = cameraPos + cameraRot * (i == 0 ? env.hand.weaponHandOffsetUnits : env.hand.offHandOffsetUnits);
 	}
 	const auto apart = [](const NiPoint3& a, const NiPoint3& b) { return math::Sqrt((a - b).LengthSquared()); };
 	OBVR_LOG("Hands: the switch's frame %u, the pins done - mirrored %d; the right bone %s at %.1f %.1f %.1f, "

@@ -56,19 +56,24 @@ void TraceHandLag(const vr::HandModeResult& hand, const vr::HandSettings& hands,
 	                               hand.weaponHandOffsetUnits, sharedGripMetres, perMetre, mirrored);
 	const NiPoint3 lc = BoneTarget(false, hands, cameraRot, cameraPos, hand.leftHandRotation, hand.leftHandOffsetUnits,
 	                               sharedGripMetres, perMetre, mirrored);
+	// The off hand as drawn (vr/HeldItemWeight.h): behind lc by its shield, bow or torch.
+	const NiPoint3 lp = BoneTarget(false, hands, cameraRot, cameraPos, hand.offHandRotation, hand.offHandOffsetUnits,
+	                               sharedGripMetres, perMetre, mirrored);
 	const NiPoint3 rb = NodeAt(hands.rightHandBone);
 	const NiPoint3 lb = NodeAt(hands.leftHandBone);
 	const NiPoint3 w = NodeAt("Weapon");
 	const float stepSeconds = game::HandBodyPhysicsStepSeconds();
 	OBVR_LOG("Lag trace: %s %u dt %.2f steps %u %.2f | R %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f | L %.2f %.2f "
-	         "%.2f %.2f %.2f %.2f | W %.2f %.2f %.2f | lag %.4f %.2f",
+	         "%.2f %.2f %.2f %.2f | W %.2f %.2f %.2f | lag %.4f %.2f | O %.2f %.2f %.2f | off lag %.4f %.2f",
 	         s_mark, s_frame++, static_cast<double>(dtSeconds * 1000.0f), game::HandBodyPhysicsSteps(),
 	         static_cast<double>(stepSeconds * 1000.0f), static_cast<double>(rc.x), static_cast<double>(rc.y),
 	         static_cast<double>(rc.z), static_cast<double>(rp.x), static_cast<double>(rp.y), static_cast<double>(rp.z),
 	         static_cast<double>(rb.x), static_cast<double>(rb.y), static_cast<double>(rb.z), static_cast<double>(lc.x),
 	         static_cast<double>(lc.y), static_cast<double>(lc.z), static_cast<double>(lb.x), static_cast<double>(lb.y),
 	         static_cast<double>(lb.z), static_cast<double>(w.x), static_cast<double>(w.y), static_cast<double>(w.z),
-	         static_cast<double>(hand.weaponGapMetres), static_cast<double>(hand.weaponGapDegrees));
+	         static_cast<double>(hand.weaponGapMetres), static_cast<double>(hand.weaponGapDegrees),
+	         static_cast<double>(lp.x), static_cast<double>(lp.y), static_cast<double>(lp.z),
+	         static_cast<double>(hand.offHandGapMetres), static_cast<double>(hand.offHandGapDegrees));
 }
 
 }  // namespace obvr::camera::hands

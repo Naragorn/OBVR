@@ -35,7 +35,7 @@ src/camera/hands/Swings.cpp	StepStrikes	176
 src/camera/hands/Teleport.cpp	StepTeleport	175
 src/camera/hands/TwoHands.cpp	StepTwoHands	281
 src/camera/hands/WalkersShake.cpp	StepWalkersShake	105
-src/camera/hands/WeaponFrame.cpp	StepWeaponFrame	150
+src/camera/hands/WeaponFrame.cpp	StepWeaponFrame	112
 src/camera/hands/WeaponRelease.cpp	StepRelease	533
 src/camera/hands/WorldPush.cpp	StepWorldPush	201
 src/core/Config.cpp	(file lines)	1581
@@ -109,7 +109,7 @@ src/game/HolsterSlots.cpp	(file globals)	2
 src/game/HorseTurnProbe.cpp	(file globals)	2
 src/game/ItemIcons.cpp	(file globals)	3
 src/game/Lead.cpp	(file globals)	2
-src/game/MeleeHits.cpp	(file lines)	1377
+src/game/MeleeHits.cpp	(file lines)	1374
 src/game/MeleeHits.cpp	StrikeByMotion	199
 src/game/MeleeHits.cpp	(file globals)	13
 src/game/MenuBackground.cpp	(file globals)	4
@@ -207,8 +207,8 @@ src/ui/NativeControlsCard.h	ControlsCardFor	126
 src/vr/HandHud.h	(file lines)	1003
 src/vr/HandInput.h	(file lines)	2071
 src/vr/HandInput.h	StepLaserPress	106
-src/vr/HandMode.cpp	(file lines)	1343
-src/vr/HandMode.cpp	HandMode::Update	687
+src/vr/HandMode.cpp	(file lines)	1318
+src/vr/HandMode.cpp	HandMode::Update	662
 src/vr/HandMode.cpp	HandMode::SteerSettingsMenu	114
 src/vr/HandMode.cpp	HandMode::PointAtMenu	232
 src/vr/HandMode.h	(file lines)	1351

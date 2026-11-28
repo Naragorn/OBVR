@@ -77,7 +77,7 @@ void StepGiving(const LivingLinks& links) {
 	NiPoint3 b{0.0f, 0.0f, 0.0f};
 	for (UInt32 side = 0; side < 2; ++side) {
 		game::BladePose pose;
-		pose.rot = camRot * (side == 0 ? links.hand.weaponHandRotation : links.hand.leftHandRotation);
+		pose.rot = camRot * (side == 0 ? links.hand.weaponHandRotation : links.hand.offHandRotation);
 		pose.pos = links.handWanted[side];
 		SpanEnds(pose, links.handSpan[side], a, b);
 		f.pusher[side] = game::PusherFrom(s_memory[side], now.hand[side], a, b, game::kGiveHandRadius, f.dtSeconds);

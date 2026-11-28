@@ -1592,19 +1592,19 @@ inline constexpr UInt32 kEquippedLightGetter = 0x0064B270;
 inline constexpr UInt32 kEntryDataTypeOffset = 0x08;
 inline constexpr UInt32 kWeaponTypeOffset = 0x90;
 inline constexpr UInt32 kWeaponReachOffset = 0x98;
-// The weapon's weight: xOBSE's GameForms.h lays TESObjectWEAP (0xA0) out as
-// TESBoundObject, then TESFullName 0x024, TESModel 0x030, TESIcon 0x048,
-// TESScriptableForm 0x054, TESEnchantableForm 0x060, TESValueForm 0x070,
-// TESWeightForm 0x078, TESHealthForm 0x080, TESAttackDamageForm 0x088, and
-// the type at 0x090 with the reach at 0x098 - the two the hit function was
-// seen to read (above). TESWeightForm is `class TESWeightForm :
-// BaseFormComponent { float weight; }`, 8 bytes, the float after the
-// component's vtable: 0x078 + 4. Not read in the disassembly; the figure is
-// logged at each draw ("Weapon weight: <name> <weight>") to be checked
-// against the item's row (an iron dagger 3, a longsword 24, a claymore 36,
-// a warhammer 42), and a figure that cannot be a weight is refused
-// (game::WeaponWeightOf).
+// The items' weights, each the float after its TESWeightForm's vtable. Read in
+// the EXE's RTTI (2026-11-28, the class hierarchy descriptors' base offsets):
+// TESWeightForm at 0x078 in TESObjectWEAP (as xOBSE's GameForms.h has it), at
+// 0x054 in TESObjectARMO (after TESFullName 0x024, TESScriptableForm 0x030,
+// TESEnchantableForm 0x03C, TESValueForm 0x04C; TESHealthForm 0x05C,
+// TESBipedModelForm 0x064), at 0x060 in TESObjectLIGH (unused: the torch lags by
+// a constant, vr::kTorchLagWeight). The DATA reader 0x0046BDA0 casts the form to
+// TESWeightForm (RTTI 0x00B0333C) and writes the float at +4. Logged once per
+// equip ("Weapon weight:", "Off-hand weight:") to be checked against the items'
+// rows; a figure that cannot be a weight is refused (game::WeaponWeightOf,
+// ShieldWeightOf). knowledge: ../OBNG/knowledge/item-weights.md.
 inline constexpr UInt32 kWeaponWeightOffset = 0x7C;
+inline constexpr UInt32 kArmorWeightOffset = 0x58;
 
 // The reach in game units. 0x00547540 is `fld [00B36F20h]; fmul [esp+4]`:
 // the weapon's reach times a setting, and it is what 0x005FEBF0 calls at
