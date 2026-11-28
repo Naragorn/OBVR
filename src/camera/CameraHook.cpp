@@ -9392,7 +9392,7 @@ void MaybeSubmitOverlays(bool worldFrame) {
 	                    config.hands.laserPitchDegrees,
 	                    vr::LaserYawFor(!g_hand.laserRight, g_handRolesSwapped, config.hands.laserYawDegrees),
 	                    config.hands.laserOriginMetres, laserLength,
-	                    config.hands.laserBeam, config.hands.laserDot,
+	                    config.hands.laserBeam, config.hands.laserDot, g_hand.tabletTouch.laserAlpha,
 	                    vr::LaserOffsetLocal(config.hands.laserOffsetRightMetres, config.hands.laserOffsetUpMetres,
 	                                         vr::PhysicalLeftOf(!g_hand.laserRight, g_handRolesSwapped)));
 

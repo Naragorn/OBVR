@@ -461,11 +461,24 @@ inline FingerVerdict StepFingerOnTarget(PokeState& poke, TabletTouchState& touch
 	in.turns = TabletTouchTurns(TabletLookOf(*t.tablet));
 	in.scrolls = TabletTouchScrolls(TabletLookOf(*t.tablet));
 	const TabletTouchVerdict touched = StepTabletTouch(touch, in, f.dtSeconds);
-	v.hover = p.hover || touched.active;
+	// On the tablet the finger leads from 5 cm, held to 7 (vr/TouchHandover.h),
+	// not from the poke's hover distance: the laser leads until then, fading.
+	const TouchHandover lead = StepTouchHandover(touch.handover, true, out, sample.inside, sample.depth);
+	v.hover = lead.fingerLeads || touched.active;
 	v.mouseDown = touched.mouseDown;
 	v.wheel = touched.wheel;
 	v.pageStep = touched.pageStep;
 	v.report = TabletTouchReport{touched.event, contact.end, contact.deepest, touched.travel, touched.seconds};
+	v.report.laserAlpha = v.hover ? 0.0f : lead.laserAlpha;
+	v.report.leadChanged = lead.changed;
+	v.report.leadDepthMetres = sample.depth;
+	v.report.mark = lead.mark;
+	v.report.markShare = lead.markShare;
+	// Drawn on the face where the tip is, not where a figure's pixel maps to in the layer.
+	const PokeSample onFace = PokeOnQuad(tip, t.quad.centre, t.quad.right, t.quad.up, t.quad.width, t.quad.height,
+	                                     t.pixelWidth, t.pixelHeight);
+	v.report.markX = onFace.pixelX + t.pixelLeft;
+	v.report.markY = onFace.pixelY + t.pixelTop;
 	if (touched.pinned) {
 		v.cursorX = touched.pinX;
 		v.cursorY = touched.pinY;

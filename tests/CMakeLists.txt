@@ -2832,6 +2832,14 @@ if(NOT MSVC)
 endif()
 add_test(NAME held_fingers COMMAND held_fingers_test)
 
+# The laser yielding to the finger at the tablet (vr/TouchHandover.h): pure.
+add_executable(touch_handover_test TouchHandoverTest.cpp)
+target_include_directories(touch_handover_test PRIVATE ../src)
+if(NOT MSVC)
+	target_compile_options(touch_handover_test PRIVATE -Wall -Wextra)
+endif()
+add_test(NAME touch_handover COMMAND touch_handover_test)
+
 # The boxes on the tablet's page (vr/TabletBoxes.h): pure.
 add_executable(tablet_boxes_test TabletBoxesTest.cpp)
 target_include_directories(tablet_boxes_test PRIVATE ../src)

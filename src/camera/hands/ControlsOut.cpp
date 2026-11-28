@@ -273,6 +273,20 @@ render::TabletQuadFrame TabletPieces(const vr::HandModeResult& hand, const vr::T
 		Piece(quad.pieces[render::kTabletTextsPiece],
 		      vr::RectOnTablet(place, t.crop, t.textsAt, t.texts, textureWidth, textureHeight, 1.0f), true, 0);
 	}
+	// The touch mark where the finger's tip would land (vr/TouchHandover.h), once open.
+	const vr::TabletTouchReport& touch = hand.tabletTouch;
+	const vr::TouchMarkRect mark = vr::TouchMarkAt(touch.mark && share >= 1.0f, touch.markX, touch.markY, touch.markShare,
+	                                               place.width > 0.0f ? (t.crop.right - t.crop.left) / place.width : 0.0f);
+	if (mark.valid) {
+		vr::UiRect at;
+		at.left = mark.left;
+		at.top = mark.top;
+		at.right = mark.right;
+		at.bottom = mark.bottom;
+		at.valid = true;
+		Piece(quad.pieces[render::kTabletTouchMarkPiece],
+		      vr::RectOnTablet(place, t.crop, at, none, textureWidth, textureHeight, 1.0f), false, mark.colour);
+	}
 	quad.valid = quad.pieces[0].valid;
 	return quad;
 }
@@ -486,6 +500,14 @@ void LogTabletTouch(ControlsOutState& state, const vr::HandModeResult& hand) {
 		game::ActiveTileName(tile, sizeof(tile));
 		OBVR_LOG("Tablet: at the mark the finger is over \"%s\" in the %s menu", tile,
 		         game::MenuIdName(game::ActiveMenuId()));
+	}
+	// The pointer handed between the laser and the finger (vr/TouchHandover.h).
+	if (hand.tabletTouch.leadChanged && state.leadLinesLeft > 0) {
+		--state.leadLinesLeft;
+		OBVR_LOG("Tablet: %s (the fingertip %.1f cm before the page)",
+		         hand.tabletTouch.laserAlpha <= 0.0f ? "the finger takes the pointer - the laser fades out and clicks nothing"
+		                                             : "the laser takes the pointer back",
+		         static_cast<double>(hand.tabletTouch.leadDepthMetres * 100.0f));
 	}
 	if (state.touchLinesLeft == 0) {
 		return;

@@ -2876,9 +2876,66 @@ des schließen oder?)."
   verified; the harness scenario says "the line ran" and whether the book menu left the stack.
 - Not covered: a box raised over a book (a script's message) - the B then still clicks the book's
   Exit under it [D from the code].
-- Tests: tablet_book_test TestBCloses (6 red against stubs, 16 green): the book up alone, as a letter,
+- Tests: tablet_book_test TestBCloses (6 red against stubs, 18 green): the book up alone, as a letter,
   over the pages; the B's Exit and no menu key there; the pages, no B, off the tablet, the scroll's
   key as before; through the hand mode, right- and left-handed, once per press, the other hand's B,
   the inventory without a book.
 - Harness: `tablet-book-b-close.txt` (a book from the inventory closed by the B, the inventory kept,
   put down by a second B; a letter from the world closed by the B). Written, not run.
+
+### 32.4 The laser yields to the finger at the page
+
+Nadi: "antippen geht ja nun, vll sollten wir dann den laserpointer auch ändern wenn ich touch und tipp
+mache (wie macht alyx das?)."
+
+- Sources read for this (2026-11-28):
+  - Meta, ray-casting spec (https://developers.meta.com/vr/design/raycasting_specs/): for hands the
+    ray fades out over the last 5 cm before a surface, and the ray is disabled while a poke is
+    active on the same hand - the poke takes over the interaction.
+  - Meta, hands UI best practices (https://developers.meta.com/vr/design/hands-ui-best-practices/):
+    hybrid panels switch from the ray to direct touch as the hand comes close, with a visible change
+    of cursor so the user knows which mode is active.
+  - Half-Life: Alyx (Road to VR, "VR Design Unpacked",
+    https://roadtovr.com/these-details-make-half-life-alyx-unlike-any-other-vr-game-inside-xr-design/):
+    the menu is built for the laser and also works as a touchscreen, both at once - the player's
+    first instinct is right either way.
+- [R code, before] On the tablet the finger took the cursor 10 cm before the glass (`[Hands]
+  PokeHover`, vr::StepPoke's hover) and gave it back at the same line, no hysteresis
+  (vr/MenuPlace.h `StepFingerOnTarget`). While it led, the beam stayed drawn - from the controller
+  to the tip, the dot with it (vr/HandMode.cpp `PointAtMenu`: `laserVisible`, the length to the
+  tip) - and the trigger still clicked. A finger curled or a trigger touched near the page
+  (vr::FingerPokes false) handed the cursor straight back to the beam, wherever the controller
+  pointed - another row, or off the page: the two fought over the cursor at the 10 cm line and at
+  every curl. [D] That is the likely cause of his wish; his log has no line that says which led.
+- **Built** (vr/TouchHandover.h, pure; on the tablet only): the beam leads until the tip is 5 cm
+  before the glass, fading from 10 cm (whole) to 5 cm (gone); at 5 cm the finger takes the pointer -
+  the beam and its dot hidden, the trigger clicks nothing, the cursor straight under the tip - and
+  keeps it, curled or not, until the tip is back past 7 cm, off the face, or 25 cm through it. A
+  touch mark, 8 mm, the laser's gold, lies on the page where the tip would land from 10 cm on,
+  brightening from a quarter to nine tenths as the tip comes to the glass (drawn into the eyes as one
+  more piece of the tablet, render::kTabletTouchMarkPiece, so the finger in front hides it). The
+  tap, the scroll, the swipe, the hold are the touch's (vr/TabletTouch.h), unchanged.
+- The pieces: `StepTouchHandover` in `StepFingerOnTarget` (the state in `TabletTouchState`); the
+  trigger dropped in the line that already joined it (`PointAtMenu`, no line added); the alpha and
+  the mark in `TabletTouchReport`; `render::LaserLayer::Submit` takes the alpha (`SetOverlayAlpha`
+  on the beam and the dot, only when it moved by 0.02 or reached 0 or 1; below 0.01 hidden); the
+  mark in camera/hands/ControlsOut.cpp `TabletPieces`.
+- Not changed: the wrist menu and the big quad (the poke's 10 cm hover and the beam as before), the
+  laser in the world, the other hand.
+- The log: "Tablet: the finger takes the pointer - the laser fades out and clicks nothing (the
+  fingertip 5.0 cm before the page)" and "Tablet: the laser takes the pointer back (... 7.1 cm ...)",
+  60 lines a run.
+- [G] The one set of distances: 5 cm to take over and the 5 cm fade before it (Meta's), 7 cm to let
+  go (2 cm of hysteresis), 25 cm through (the contact's own); the mark's 8 mm and its alphas.
+- Cost: one more `PokeOnQuad` and a few compares a frame while the tablet is pointed at; the beam's
+  alpha sent to the compositor only as it changes; one plain quad more. Not measured.
+- Tests: touch_handover_test, new (16 red against stubs of the 23 written first; 28 green with the
+  mark's 5 added with its code): the approach, the fade, the take-over and the hysteresis both ways,
+  the hand curled near the page, off the face, far through, not the tablet, the tablet gone while
+  the finger led, when the alpha is sent, the mark. menu_place_test TestLaserYields (6 red of 8):
+  through the hand mode at 8, 4, 6, 8 cm, the trigger pulled while the finger leads, the tap
+  unchanged, the big quad. tablet_touch_test unchanged and green.
+- Harness: `tablet-laser-yields.txt` (12 to 2 cm and back with a tap; eye dumps at each mark).
+  Written, not run.
+- Not verified: the feel in the headset - whether 5 cm is near enough for a hand that comes in fast,
+  the mark's size and brightness, whether the hidden beam is missed while the finger hovers.

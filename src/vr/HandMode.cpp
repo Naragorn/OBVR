@@ -1116,7 +1116,7 @@ void HandMode::PointAtMenu(const HandModeFrame& f, const HandSettings& s, HandMo
 		if (finger.hover) {
 			r.pokeHover = true;
 			r.pokePress = finger.press;
-			r.controls.menuClick = r.controls.menuClick || finger.mouseDown;
+			r.controls.menuClick = (r.controls.menuClick && target.tablet == nullptr) || finger.mouseDown;  // no trigger at the tablet
 			placeCursor(finger.cursorX, finger.cursorY, f.layerPixelsHeight, true);
 			r.laserLengthMetres = finger.lengthMetres;
 		} else {

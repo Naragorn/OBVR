@@ -1,0 +1,87 @@
+# The laser yields to the finger at the tablet (docs/inventory-tablet-spec.md
+# 32.4; Nadi, 2026-11-28: when he touches and taps, the laser pointer should
+# change too - "wie macht alyx das?"). tablet-touch.txt's tablet and aim
+# (DrawnFinger=0, the controller's tip 8 cm ahead), on the Iron Longsword's
+# row: the tip brought along the face's normal (0, 0.5, 0.866) from 12 cm to
+# 8, 6, 4 and 2 cm before the glass, a tap, then back out to 6, 8 and 12 cm.
+# Eye dumps at each mark: at 12 cm the beam whole, no mark; at 8 cm the beam
+# fading and a faint touch mark on the row; from 4 cm no beam, the mark
+# bright; back at 6 cm still no beam (the finger keeps the pointer to 7 cm);
+# at 8 cm the beam back. The log says each hand-over with the tip's distance.
+# [G] tablet-touch.txt's tap-down point lies half a centimetre before the
+# glass; the distances below are counted from that.
+# The DLL from before: no hand-over lines, the beam drawn to the tip whatever
+# the distance, the cursor the finger's from 10 cm.
+# Written 2026-11-28, not run.
+# Run with: python3 tools/hand-script-run.py tools/hand-scripts/tablet-laser-yields.txt --headless --no-steamvr --parallel
+
+ini Hands Enabled=1
+ini Tablet Enabled=1
+ini Tablet HeldLeanDegrees=0
+ini Tablet HeldRollDegrees=0
+ini Tablet HeldAcrossCm=0
+ini Tablet HeldOutCm=0
+ini Tablet DrawnFinger=0
+ini Tablet Unroll=vertical
+ini Tablet Figure=tab
+ini Hands LeftHandGripX=0
+ini Hands LeftHandGripY=0
+ini Hands LeftHandGripZ=0
+ini Hands HandGripUpMetres=0
+ini Hands HandGripForwardMetres=0
+ini Hands LaserPitchDegrees=0
+ini Hands LaserYawDegrees=0
+ini Hands LaserOffsetRightMetres=0
+ini Hands LaserOffsetUpMetres=0
+ini Hands PokeTipForward=0.08
+ini Render MonitorMenusOnly=0
+ini Debug EyeDump=1
+
+expect HandScript: finished
+expect Tablet: the Inventory page read
+count 1 Tablet: the finger takes the pointer - the laser fades out and clicks nothing
+count 1 Tablet: the laser takes the pointer back
+count 1 Tablet: the finger tapped
+expect Tablet: at the mark the finger is over "Iron_Longsword"
+reject HandScript: WARNING
+
+wait 12
+left pos -0.12 -0.32 -0.32
+left rot 0 0 0
+right pos 0.15 -0.30 -0.15
+right rot 0 0 0
+wait 1.5
+left b 1
+wait 0.2
+left b 0
+wait 2
+mark open
+
+right pos -0.0600 -0.0024 -0.2817
+wait 0.4
+mark at-12cm
+right pos -0.0600 -0.0224 -0.3164
+wait 0.4
+mark at-8cm
+right pos -0.0600 -0.0324 -0.3337
+wait 0.4
+mark at-6cm
+right pos -0.0600 -0.0424 -0.3510
+wait 0.4
+mark at-4cm
+right pos -0.0600 -0.0524 -0.3683
+wait 0.4
+mark at-2cm
+# The tap: down to the glass and out again.
+right pos -0.0600 -0.0599 -0.3813
+wait 0.2
+right pos -0.0600 -0.0324 -0.3337
+wait 0.4
+mark back-6cm
+right pos -0.0600 -0.0224 -0.3164
+wait 0.4
+mark back-8cm
+right pos -0.0600 -0.0024 -0.2817
+wait 0.4
+mark back-12cm
+wait 1

@@ -471,6 +471,54 @@ void TestTouch() {
 	Check(r.pokeHover && Near(r.cursorWantedX, 200.0f, 0.5f), "[Tablet] DrawnFinger=0: the controller's tip though read");
 }
 
+// The laser yields to the finger at the tablet (spec 32.4; Nadi, 2026-11-28:
+// "vll sollten wir dann den laserpointer auch ändern wenn ich touch und tipp
+// mache"): through the hand mode, the tip at 8, 4, 6 and 8 cm before the
+// glass, the trigger pulled while the finger leads, and the big quad.
+void TestLaserYields() {
+	std::printf("The laser yields to the finger at the tablet\n");
+	const HandSettings s = PlainSettings();
+	HandModeFrame f = TabletFrameUp();
+	f.dtSeconds = 1.0f / 90.0f;
+	const float at = -0.5f + 0.08f;  // the hand here puts its tip on the glass
+	HandMode mode;
+	f.right.position = NiPoint3{-0.1f, 0.1f, at + 0.08f};
+	HandModeResult r = mode.Update(f, s);
+	Check(!r.pokeHover && r.laserHit && Near(r.cursorWantedX, 300.0f, 0.5f) && Near(r.tabletTouch.laserAlpha, 0.6f, 0.01f),
+	      "8 cm off: the laser leads, fading (0.6), the cursor where it hits");
+	Check(r.tabletTouch.mark && Near(r.tabletTouch.markShare, 0.2f, 0.01f) && Near(r.tabletTouch.markX, 300.0f, 0.5f) &&
+	          Near(r.tabletTouch.markY, 800.0f, 0.5f),
+	      "the touch mark where the tip would land, a fifth grown");
+	f.right.position.z = at + 0.04f;
+	r = mode.Update(f, s);
+	Check(r.pokeHover && !r.laserHit && Near(r.tabletTouch.laserAlpha, 0.0f) && Near(r.cursorWantedX, 300.0f, 0.5f),
+	      "4 cm: the finger leads, the laser gone, the cursor under the tip");
+	f.right.trigger = 1.0f;
+	r = mode.Update(f, s);
+	const bool clicked = r.controls.menuClick;
+	f.right.trigger = 0.0f;
+	r = mode.Update(f, s);
+	Check(!clicked && !r.controls.menuClick && r.pokeHover, "the trigger pulled while the finger leads: no click, still the finger's");
+	f.right.position.z = at + 0.06f;
+	r = mode.Update(f, s);
+	Check(r.pokeHover && Near(r.tabletTouch.laserAlpha, 0.0f), "back to 6 cm: still the finger's");
+	f.right.position.z = at + 0.08f;
+	r = mode.Update(f, s);
+	Check(!r.pokeHover && r.laserHit && Near(r.tabletTouch.laserAlpha, 0.6f, 0.01f), "8 cm: the laser back");
+	// The tap itself unchanged: touched and lifted.
+	f.right.position.z = at + 0.01f;
+	r = mode.Update(f, s);
+	f.right.position.z = at + 0.06f;
+	r = mode.Update(f, s);
+	Check(r.controls.menuClick && r.tabletTouch.event == TabletTouchEvent::Tap, "a tap as before");
+	// The big quad: the laser as before.
+	f.left.valid = false;
+	f.right.position = NiPoint3{0.1f, 0.3f, 0.0f};
+	r = mode.Update(f, s);
+	Check(!r.menuOnTablet && Near(r.tabletTouch.laserAlpha, 1.0f) && !r.tabletTouch.mark,
+	      "not on the tablet: the laser whole, no mark");
+}
+
 void TestTabs() {
 	std::printf("The figure's tab in the hand mode\n");
 	const HandSettings s = PlainSettings();
@@ -893,6 +941,7 @@ int main() {
 	TestTabs();
 	TestMirrorTab();
 	TestTouch();
+	TestLaserYields();
 	TestScroll();
 	TestHolds();
 	TestSword();
