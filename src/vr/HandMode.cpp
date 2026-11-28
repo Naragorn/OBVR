@@ -191,7 +191,7 @@ void HandMode::Reset() {
 	m_ready = ReadyWeaponState{};
 	m_sneak = SneakHoldState{};
 	m_crouch = CrouchState{};
-	m_weaponLag = WeaponLagState{};
+	m_weaponLag = m_offHandLag = WeaponLagState{};
 	m_runLatched = false;
 	m_armSwing = ArmSwingState{};
 }
@@ -270,39 +270,6 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		}
 	}
 
-	// The weapon hand as it is drawn (vr/WeaponWeight.h): behind the
-	// controller by the weapon's weight, lagged in the room, then put relative
-	// to the head the way the controller's own pose is. Only a swung weapon
-	// with a weight lags - the frame carries 0 for the fists, a bow, a staff -
-	// and not while the hands are being adjusted: the fit measures the
-	// controller. Both hands on the handle stiffen it; a two-hander in one
-	// hand is heavier (vr/OneHandTwoHander.h).
-	{
-		const bool weaponInHand = f.right.valid && f.firstPerson && f.meleeHeld && f.weaponWeight > 0.0f &&
-		                          !(s.adjustHands || f.adjustingHands);
-		const float oneHanded =
-			f.twoHanderSwung && !f.bothHandsOnHandle ? PercentMore(s.oneHandTwoHander.weightPercent) : 1.0f;
-		// Exhausted, the lag is made heavier (game/ExhaustionLogic.h).
-		const WeaponLagTuning tuning = WeaponLagExhausted(
-			WeaponLagHeavier(
-				WeaponLagFor(f.weaponWeight, s.weaponWeightPercent, f.bothHandsOnHandle, s.weaponSwingThrough),
-				oneHanded),
-			f.exhaustionEase, f.exhaustionFactor);
-		const WeaponLagVerdict drawn =
-			StepWeaponLag(m_weaponLag, weaponInHand, tuning, f.right.orientation, f.right.position, f.dtSeconds);
-		r.weaponLagging = drawn.lagging;
-		r.weaponGapMetres = drawn.gapMetres;
-		r.weaponGapDegrees = drawn.gapRadians * math::kRadiansToDegrees;
-		if (r.rightHandValid && drawn.lagging) {
-			const Quaternion relative = (f.head.Conjugate() * drawn.orientation).Normalized();
-			r.weaponHandRotation = ToMatrix(FromOpenXR(relative));
-			r.weaponHandOffsetUnits = OffsetFromPose(f.head, drawn.position, f.headPosition, 1.0f) * f.unitsPerMetre;
-		} else {
-			r.weaponHandRotation = r.rightHandRotation;
-			r.weaponHandOffsetUnits = r.rightHandOffsetUnits;
-		}
-	}
-
 	if (f.left.valid) {
 		const Quaternion relative = (f.head.Conjugate() * f.left.orientation).Normalized();
 		const NiMatrix33 relativeMatrix = ToMatrix(FromOpenXR(relative));
@@ -330,6 +297,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			}
 		}
 	}
+	StepHandLags(f, s, r);  // each hand as drawn, behind its controller by what it holds (vr/HandLags.cpp)
 
 	// Gestures: the block the hands' pose makes (vr/HandBlockLogic.h) - none
 	// while the arms run by swinging (ArmSwingHoldsBlocks); the shield's and the
@@ -596,6 +564,12 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 	const bool bowDrawn = f.inWorld && !f.menuMode && f.equipped == EquippedKind::Bow &&
 	                      f.weaponSeen == WeaponSeen::Drawn;
 	{
+		// The bow where it is drawn: behind its controller by its weight
+		// (StepHandLags), the frame the bow's shot and limbs are read in - the
+		// nock, the aim and the arrow's flight go by it; the string hand is the
+		// controller's.
+		const Quaternion bowTurn = r.offHandLagging ? m_offHandLag.orientation : cl.orientation;
+		const NiPoint3 bowAt = r.offHandLagging ? m_offHandLag.position : cl.position;
 		ArcheryInput ain;
 		ain.bowDrawn = bowDrawn;
 		ain.drawValid = cr.valid && f.headValid;
@@ -604,7 +578,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 			ain.drawBody = PlaceRelative(f.body, f.head, f.headPosition, cr.position);
 		}
 		ain.drawAt = cr.position;
-		ain.bowAt = cl.position;
+		ain.bowAt = bowAt;
 		// The arrow is held by the trigger (the default) or by the grip
 		// (Hands.ArrowWithGrip); that button is the arrow's from the take on.
 		ain.drawGrip = s.archery.takeWithTrigger ? in.rightTrigger : (cr.valid && GripDown(cr.buttonsPressed));
@@ -623,7 +597,7 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		// before the bow is seen, along the bow hand's laser.
 		if (cl.valid) {
 			const NiPoint3 axis = TrackingRotate(
-				cl.orientation, f.bowShotValid ? f.bowShotLocal
+				bowTurn, f.bowShotValid ? f.bowShotLocal
 				                               : LaserDirectionLocal(s.laserPitchDegrees,
 				                                                     LaserYawFor(true, f.rolesSwapped, s.laserYawDegrees)));
 			const float length = math::Sqrt(axis.LengthSquared());
@@ -638,10 +612,11 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		// across the body (vr/HandBlockLogic.h DecideBowBlock). Always: vanilla
 		// blocks with a bow (the tester, 2026-10-01).
 		if (bowDrawn && s.archery.enabled) {
-			const NiPoint3 limb = TrackingRotate(cl.orientation, f.bowLimbLocal);
+			const NiPoint3 limb = TrackingRotate(bowTurn, f.bowLimbLocal);
 			const float length = math::Sqrt(limb.LengthSquared());
+			const NiPoint3 bowRelative = r.offHandLagging ? OffsetFromPose(f.head, bowAt, f.headPosition, 1.0f) : leftRelative;
 			const BowBlockFrame bow{cl.valid && f.bowLimbValid, f.menuMode, ArmSwingHoldsBlocks(m_armSwing, s.armSwing),
-			                        leftRelative, length > 1e-4f, length > 1e-4f ? limb.y / length : 0.0f,
+			                        bowRelative, length > 1e-4f, length > 1e-4f ? limb.y / length : 0.0f,
 			                        r.archery.state != ArrowState::None, s.contactBlock.weapon && f.guardReads.bowLimb};
 			ApplyBowBlock(r, DecideBowBlock(bow, s.gestures));
 		}
@@ -655,12 +630,12 @@ HandModeResult HandMode::Update(const HandModeFrame& f, const HandSettings& s) {
 		// along the arrow from the drawing hand through the bow.
 		NiPoint3 line{};
 		if (r.archery.aiming && ain.axisValid) {
-			r.arrowOrigin = cl.position;
+			r.arrowOrigin = bowAt;
 			r.arrowDirection = ain.bowAxis;
 			r.arrowAimValid = LevelAim(TrackingRotate(f.head, NiPoint3{1.0f, 0.0f, 0.0f}), ain.bowAxis, r.arrowYawTurn,
 			                           r.arrowSinPitch);
-		} else if (r.archery.aiming && ArrowLine(cr.position, cl.position, line)) {
-			r.arrowOrigin = cl.position;
+		} else if (r.archery.aiming && ArrowLine(cr.position, bowAt, line)) {
+			r.arrowOrigin = bowAt;
 			r.arrowDirection = line;
 			r.arrowAimValid =
 				LevelAim(TrackingRotate(f.head, NiPoint3{1.0f, 0.0f, 0.0f}), line, r.arrowYawTurn, r.arrowSinPitch);

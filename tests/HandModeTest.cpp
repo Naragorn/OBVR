@@ -15,6 +15,7 @@
 #include "vr/HandInput.h"
 #include "vr/HandMode.h"
 #include "vr/HandSettingsOps.h"
+#include "vr/HeldItemWeight.h"
 #include "vr/OpenVRTypes.h"
 
 namespace {
@@ -5280,6 +5281,190 @@ void TestWeaponWeightInMode() {
 	Check(Near(r.weaponHandOffsetUnits.x, 7.0f, 0.05f), "and rests on it");
 }
 
+// Every held item's weight through the mode (vr/HeldItemWeight.h): the off
+// hand behind its controller by its shield, bow or torch, the controller's own
+// pose untouched, and every case that leaves the two equal; the staff in the
+// weapon hand; the bow's arrow along the drawn bow.
+void TestOffHandWeightInMode() {
+	std::printf("The off hand's weight in the mode\n");
+	HandSettings settings;
+	settings.enabled = true;
+	settings.weaponWeightPercent = 100.0f;
+	settings.weaponSwingThrough = false;  // the plain lag: its numbers are the share's
+	HandModeFrame frame;
+	frame.headValid = true;
+	frame.firstPerson = true;
+	frame.unitsPerMetre = 70.0f;
+	frame.dtSeconds = 1.0f / 90.0f;
+	frame.left.valid = true;
+	frame.right.valid = true;
+	frame.offHandWeight = 43.0f;  // the heaviest shield there could be
+	const float share = frame.dtSeconds / (0.12f + frame.dtSeconds);
+	HandMode mode;
+	HandModeResult r = mode.Update(frame, settings);
+	Check(r.leftHandValid && r.offHandLagging && Near(r.offHandGapMetres, 0.0f), "a shield lags, taken up where the hand is");
+	frame.left.position.x = 0.1f;
+	frame.right.position.x = 0.1f;
+	r = mode.Update(frame, settings);
+	Check(Near(r.leftHandOffsetUnits.x, 7.0f), "the controller's hand is where the controller is");
+	Check(Near(r.offHandOffsetUnits.x, 7.0f * share, 0.01f), "the drawn off hand a frame behind, in units");
+	Check(Near(r.offHandGapMetres, 0.1f * (1.0f - share), 0.002f), "the gap in metres");
+	Check(Near(r.offHandVelocity.x, 0.1f * share / frame.dtSeconds, 0.01f) && !Near(r.offHandVelocity.x, r.leftVelocity.x),
+	      "its velocity the drawn hand's (the bash, the torch's blow), not the controller's");
+	Check(!r.weaponLagging && Near(r.weaponHandOffsetUnits.x, 7.0f), "the other hand (the bow's string hand) untouched");
+	frame.left.orientation = FromAxisAngle(0.0f, 1.0f, 0.0f, 20.0f);
+	r = mode.Update(frame, settings);
+	Check(Near(r.offHandGapDegrees, 20.0f * (1.0f - share), 0.1f) &&
+	          !Near(r.offHandRotation.data[0][1], r.leftHandRotation.data[0][1], 0.0001f),
+	      "and a frame behind in heading");
+
+	// Every refusal: on the controller, and the lag let go - the next item is
+	// taken up where the hand is.
+	const auto onController = [&](const HandModeResult& x) {
+		return !x.offHandLagging && Near(x.offHandOffsetUnits.x, x.leftHandOffsetUnits.x) &&
+		       Near(x.offHandRotation.data[0][1], x.leftHandRotation.data[0][1], 0.0001f) &&
+		       Near(x.offHandVelocity.x, x.leftVelocity.x);
+	};
+	const auto refused = [&](HandModeFrame f, const HandSettings& with, const char* what) {
+		HandMode m;
+		f.left.position.x = 0.0f;
+		m.Update(f, with);
+		f.left.position.x = 0.2f;
+		Check(onController(m.Update(f, with)), what);
+	};
+	HandModeFrame f = frame;
+	f.offHandWeight = 0.0f;
+	refused(f, settings, "an empty hand or a spell: on the controller");
+	f = frame;
+	f.adjustingHands = true;
+	refused(f, settings, "the hands being adjusted: on the controller");
+	HandSettings adjust = settings;
+	adjust.adjustHands = true;
+	refused(frame, adjust, "the INI's adjusting switch: on the controller");
+	f = frame;
+	f.menuMode = true;
+	refused(f, settings, "a menu up: on the controller");
+	f = frame;
+	f.tablet.up = true;
+	refused(f, settings, "the tablet in that hand: on the controller");
+	f = frame;
+	f.leftGripOnHandle = true;
+	refused(f, settings, "the hand on a weapon's handle: on the controller");
+	f = frame;
+	f.firstPerson = false;
+	{
+		HandMode m;
+		m.Update(f, settings);
+		f.left.position.x = 0.3f;
+		const HandModeResult third = m.Update(f, settings);
+		Check(!third.leftHandValid && !third.offHandLagging, "in third person there is no drawn hand to lag");
+	}
+
+	// The item leaves the hand mid-lag: on the controller at once, and the
+	// next one taken up where the hand is, without momentum.
+	{
+		HandMode m;
+		HandModeFrame g = frame;
+		g.left.position.x = 0.0f;
+		m.Update(g, settings);
+		g.left.position.x = 0.2f;
+		Check(m.Update(g, settings).offHandGapMetres > 0.1f, "lagging before the shield is taken off");
+		g.offHandWeight = 0.0f;
+		Check(onController(m.Update(g, settings)), "taken off: on the controller");
+		g.offHandWeight = 43.0f;
+		Check(Near(m.Update(g, settings).offHandGapMetres, 0.0f), "worn again: taken up where the hand is");
+		// The weapon handed to the other hand: the roles switch, the lag let go.
+		g.left.position.x = 0.4f;
+		Check(m.Update(g, settings).offHandGapMetres > 0.1f, "lagging before the roles switch");
+		g.rolesSwapped = true;
+		Check(Near(m.Update(g, settings).offHandGapMetres, 0.0f), "the roles switched: taken up where the hand is");
+		m.Reset();
+		g.left.position.x = 0.6f;
+		Check(Near(m.Update(g, settings).offHandGapMetres, 0.0f), "after a reset: taken up where the hand is");
+	}
+
+	// A torch (its constant) trails less far than a heavy shield after the
+	// same jerk; exhausted, further than rested.
+	{
+		const auto gapAfter = [&](float weight, float ease) {
+			HandMode m;
+			HandModeFrame g = frame;
+			g.offHandWeight = weight;
+			g.exhaustionEase = ease;
+			g.exhaustionFactor = 3.0f;
+			g.left.position.x = 0.0f;
+			m.Update(g, settings);
+			g.left.position.x = 0.1f;
+			return m.Update(g, settings).offHandGapMetres;
+		};
+		const float torch = gapAfter(kTorchLagWeight, 0.0f);
+		Check(torch > 0.0f && torch < gapAfter(43.0f, 0.0f), "the torch trails, less than a heavy shield");
+		Check(gapAfter(kTorchLagWeight, 1.0f) > torch, "exhausted, the torch trails further");
+	}
+
+	// A staff in the weapon hand lags by its weight - no swung weapon needed.
+	{
+		HandMode m;
+		HandModeFrame g = frame;
+		g.offHandWeight = 0.0f;
+		g.meleeHeld = false;  // a staff is not swung
+		g.weaponWeight = 30.0f;
+		g.right.position.x = 0.0f;
+		m.Update(g, settings);
+		g.right.position.x = 0.1f;
+		const HandModeResult staff = m.Update(g, settings);
+		Check(staff.weaponLagging && staff.weaponGapMetres > 0.05f, "a staff lags by its weight");
+	}
+
+	// The bow: the arrow flies along the drawn bow, from where it is drawn - not
+	// along the controller.
+	{
+		HandSettings byTrigger = WithoutLaserOffset();
+		byTrigger.enabled = true;
+		byTrigger.weaponWeightPercent = 100.0f;
+		byTrigger.weaponSwingThrough = false;
+		const ArcherySettings& a = byTrigger.archery;
+		const NiPoint3 quiver{a.quiverZone.x, a.quiverZone.z, -a.quiverZone.y};
+		HandModeFrame g;
+		g.headValid = true;
+		g.inWorld = true;
+		g.unitsPerMetre = 70.0f;
+		g.dtSeconds = 1.0f / 90.0f;
+		g.weaponSeen = WeaponSeen::Drawn;
+		g.equipped = EquippedKind::Bow;
+		g.right.valid = true;
+		g.left.valid = true;
+		g.left.position = NiPoint3{-0.1f, -0.2f, -0.5f};
+		g.bowShotValid = true;
+		g.bowShotLocal = NiPoint3{0.0f, 0.0f, -1.0f};  // straight ahead of the hand
+		const auto nocked = [&](float weight, HandMode& m) {
+			HandModeFrame h = g;
+			h.offHandWeight = weight;
+			h.right.position = quiver;
+			m.Update(h, byTrigger);
+			h.right.trigger = 1.0f;
+			m.Update(h, byTrigger);
+			h.right.position = h.left.position + NiPoint3{0.0f, 0.0f, 0.15f};
+			m.Update(h, byTrigger);
+			// The bow hand turned 20 degrees left in one frame, the string hand with it.
+			h.left.orientation = FromAxisAngle(0.0f, 1.0f, 0.0f, 20.0f);
+			return m.Update(h, byTrigger);
+		};
+		HandMode light;
+		HandMode heavy;
+		const HandModeResult onHand = nocked(0.0f, light);
+		const HandModeResult lagged = nocked(43.0f, heavy);
+		const NiPoint3 controllerAxis = Rotate(FromAxisAngle(0.0f, 1.0f, 0.0f, 20.0f), NiPoint3{0.0f, 0.0f, -1.0f});
+		const NiPoint3 drawnAxis = Rotate(SlerpTowards(Quaternion::Identity(), FromAxisAngle(0.0f, 1.0f, 0.0f, 20.0f), share),
+		                                  NiPoint3{0.0f, 0.0f, -1.0f});
+		Check(onHand.arrowAimValid && Near(onHand.arrowDirection.x, controllerAxis.x, 0.001f),
+		      "no weight: the arrow along the controller's bow");
+		Check(lagged.offHandLagging && lagged.arrowAimValid && Near(lagged.arrowDirection.x, drawnAxis.x, 0.001f) &&
+		          !Near(lagged.arrowDirection.x, controllerAxis.x, 0.01f),
+		      "the bow's weight: the arrow along the drawn bow, a frame behind the controller");
+	}
+}
+
 int main() {
 	TestGestures();
 	TestGrabHand();
@@ -5359,6 +5544,7 @@ int main() {
 	TestHolsterInMode();
 	TestFistInMode();
 	TestWeaponWeightInMode();
+	TestOffHandWeightInMode();
 
 	if (g_failures != 0) {
 		std::printf("%d check(s) FAILED\n", g_failures);

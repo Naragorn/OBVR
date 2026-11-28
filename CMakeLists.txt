@@ -353,6 +353,7 @@ add_library(OBVR SHARED
 	src/core/SelfCheckNotes.cpp
 	src/vr/HandMode.cpp
 	src/vr/HandSides.cpp
+	src/vr/HandLags.cpp
 	src/vr/Quaternion.cpp
 )
 

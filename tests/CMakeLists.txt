@@ -1100,6 +1100,7 @@ add_executable(hand_mode_test
 	HandModeTest.cpp
 	../src/vr/HandMode.cpp
 	../src/vr/HandSides.cpp
+	../src/vr/HandLags.cpp
 	../src/vr/HeadOffset.cpp
 	../src/vr/Quaternion.cpp
 	../src/core/Rotation.cpp
@@ -2021,6 +2022,20 @@ endif()
 
 add_test(NAME weapon_weight COMMAND weapon_weight_test)
 
+add_executable(held_item_weight_test
+	HeldItemWeightTest.cpp
+	../src/vr/Quaternion.cpp
+	../src/core/Rotation.cpp
+)
+
+target_include_directories(held_item_weight_test PRIVATE ../src)
+
+if(NOT MSVC)
+	target_compile_options(held_item_weight_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME held_item_weight COMMAND held_item_weight_test)
+
 add_executable(reach_open_test ReachOpenTest.cpp)
 
 target_include_directories(reach_open_test PRIVATE ../src)
@@ -2856,6 +2871,7 @@ add_executable(menu_place_test
 	MenuPlaceTest.cpp
 	../src/vr/HandMode.cpp
 	../src/vr/HandSides.cpp
+	../src/vr/HandLags.cpp
 	../src/vr/HeadOffset.cpp
 	../src/vr/Quaternion.cpp
 	../src/core/Rotation.cpp
